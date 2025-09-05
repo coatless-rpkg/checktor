@@ -1,0 +1,61 @@
+// Config options: https://github.com/rocker-org/devcontainer-templates/tree/main/src/r-ver
+{
+  "name": "R Package Dev (rocker/r-ver base)",
+  "image": "ghcr.io/rocker-org/devcontainer/r-ver:4.5",
+  // Add software
+  "features": {
+    // Rig configuration: https://github.com/rocker-org/devcontainer-features/blob/main/src/r-rig/README.md
+    "ghcr.io/rocker-org/devcontainer-features/r-rig:1": {
+      "installDevTools": true,
+      "installRadian": true,
+      "installVscDebugger": true,
+      "installRMarkdown": true,
+      "vscodeRSupport": "full"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      // Ensure VS Code extensions for R are present
+      "extensions": [
+        // R Extensions
+        "rdebugger.r-debugger",
+        "reditorsupport.r",
+        // Quarto
+        "quarto.quarto",
+        // LLM  
+        "GitHub.copilot"
+      ]
+    },
+    // Customize R settings
+    "settings": { 
+      "editor.wordWrap": "wordWrapColumn",
+      "r.rterm.linux": "/usr/local/bin/radian",
+      "r.bracketedPaste": true,
+      "r.plot.useHttpgd": true,
+      // Settings by language
+      "[r]": {
+        "editor.wordSeparators": "`~!@#%$^&*()-=+[{]}\\|;:'\",<>/?",
+        "editor.defaultFormatter": "REditorSupport.r",
+        "editor.snippetSuggestions": "top"    
+      },
+      "[rmd]": {
+        "editor.defaultFormatter": "REditorSupport.r",
+        "editor.snippetSuggestions": "top"
+      },
+      "[quarto]": {
+        "editor.defaultFormatter": "quarto.quarto",
+        "editor.snippetSuggestions": "top"
+      },
+      // Enable suggestions
+      "github.copilot.enable": {
+        "quarto": true,
+        "*": true
+      }
+    }
+  },
+  // Enable pak using system package manager
+  // https://github.com/rocker-org/devcontainer-features/blob/main/src/r-rig/README.md#install-r-packages-via-pak
+  "remoteEnv": {
+      "PKG_SYSREQS": "true"
+  }
+}

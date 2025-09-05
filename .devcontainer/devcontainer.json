@@ -1,0 +1,9 @@
+// Config options: https://github.com/rocker-org/devcontainer-templates/tree/main/src/r-ver
+{
+  "name": "R Package Dev Prebuilt (rocker/r-ver base)",
+  // Image to pull when not building from scratch. 
+  // See .github/devcontainer/devcontainer.json for build details 
+  // and .github/workflows/pre-build-devcontainer.yml for how the
+  // image is built using GitHub Actions/CI
+  "image": "ghcr.io/coatless-devcontainer/r-pkg:latest"
+}
