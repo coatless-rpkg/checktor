@@ -1,0 +1,5 @@
+^vignettes/\.quarto$
+^vignettes/*_files$
+^LICENSE\.md$
+^.*\.Rproj$
+^\.Rproj\.user$
