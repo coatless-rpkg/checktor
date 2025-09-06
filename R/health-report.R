@@ -13,7 +13,7 @@
 #' @export
 health_report <- function(results, file = NULL, format = "markdown") {
   if (!inherits(results, "checktor_results")) {
-    cli_abort("Input must be a checktor_results object")
+    cli::cli_abort("Input must be a checktor_results object")
   }
 
   if (format == "markdown") {
@@ -26,7 +26,7 @@ health_report <- function(results, file = NULL, format = "markdown") {
 
   if (!is.null(file)) {
     writeLines(report, file)
-    cli_alert_success("Health report written to: {.path {file}}")
+    cli::cli_alert_success("Health report written to: {.path {file}}")
   }
 
   return(report)
@@ -85,7 +85,7 @@ generate_markdown_report <- function(results) {
 
                 if (length(check_result$issues) > 0) {
                   report <- c(report, "**Affected Areas:**")
-                  for (issue in head(check_result$issues, 10)) {
+                  for (issue in utils::head(check_result$issues, 10)) {
                     report <- c(report, paste("- `", issue, "`", sep = ""))
                   }
                   if (length(check_result$issues) > 10) {
@@ -214,21 +214,12 @@ generate_html_report <- function(results) {
 # Helper functions for better error messages
 validate_package_directory <- function(path) {
   if (!dir.exists(path)) {
-    cli_abort("Directory {.path {path}} does not exist")
+    cli::cli_abort("Directory {.path {path}} does not exist")
   }
 
   if (!file.exists(file.path(path, "DESCRIPTION"))) {
-    cli_abort("No DESCRIPTION file found in {.path {path}}. Is this an R package directory?")
+    cli::cli_abort("No DESCRIPTION file found in {.path {path}}. Is this an R package directory?")
   }
 
   return(TRUE)
-}
-
-# Safe file reading with error handling
-safe_read_lines <- function(file, warn = FALSE) {
-  tryCatch({
-    readLines(file, warn = warn)
-  }, error = function(e) {
-    character(0)
-  })
 }
