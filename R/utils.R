@@ -28,7 +28,20 @@ configure_doctor <- function(verbose_default = TRUE, progress_default = TRUE, co
     checktor.color = color
   )
 
-  cli_alert_success("Package doctor configuration updated")
+  cli::cli_alert_success("Package doctor configuration updated")
   invisible()
 }
 
+
+safe_read_lines <- function(file) {
+  # Check if file exists first to avoid error messages
+  if (!file.exists(file)) {
+    return(character(0))
+  }
+
+  tryCatch({
+    readLines(file)
+  }, error = function(e) {
+    character(0)
+  })
+}
