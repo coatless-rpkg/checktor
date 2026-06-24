@@ -1,181 +1,179 @@
-
-# Additional diagnostic functions
-
 #' Check for Common CRAN Policy Violations
 #'
-#' @description Checks for additional policy violations
+#' Runs additional diagnostics focused on CRAN policy: leftover `browser()`
+#' calls, raw system invocations, file writes outside `tempdir()`, and
+#' unwrapped network access in examples or vignettes. Code-side checks use
+#' the parsed AST so string/comment matches don't false-positive; Rd-side
+#' checks use [tools::parse_Rd()] for the same reason.
 #'
-#' @param path Character. Path to package directory
-#' @param verbose Logical. Print output
+#' @param path Character. Path to the R package directory. Default: `"."`.
+#' @param verbose Logical. Whether to print diagnostic output. Default: `TRUE`.
+#'
+#' @return
+#' List of [checktor_check_result()] objects, plus a `passed` named logical
+#' vector summarizing pass/fail per check.
+#'
+#' @seealso [checktor()] for complete package diagnostics
 #'
 #' @export
+#' @examples
+#' pkg <- example_diagnose_scenario("code_examples/browser_calls_bad.R",
+#'                                  show_content = FALSE)
+#' policy <- diagnose_policy_violations(pkg, verbose = FALSE)
+#' policy$browser_calls$passed
 diagnose_policy_violations <- function(path = ".", verbose = TRUE) {
   if (verbose) {
     cli::cli_h2("CRAN Policy Violations Check")
   }
 
-  results <- list()
+  # Pre-parse once for the code-side checks.
+  parsed <- if (dir.exists(file.path(path, "R"))) read_r_xml(path) else list()
 
-  # Check for browser() calls
-  results$browser_calls <- diagnose_browser_calls(path, verbose)
-
-  # Check for system calls
-  results$system_calls <- diagnose_system_calls(path, verbose)
-
-  # Check for file operations in wrong locations
-  results$file_operations <- diagnose_file_operations(path, verbose)
-
-  # Check for network operations in examples
-  results$network_operations <- diagnose_network_operations(path, verbose)
-
-  results$passed <- sapply(results, function(x) if(is.logical(x)) x else x$passed)
-
-  return(results)
+  run_checks(list(
+    browser_calls      = function(p, v) diagnose_browser_calls(p, v, parsed = parsed),
+    system_calls       = function(p, v) diagnose_system_calls(p, v, parsed = parsed),
+    file_operations    = function(p, v) diagnose_file_operations(p, v, parsed = parsed),
+    network_operations = function(p, v) diagnose_network_operations(p, v)
+  ), path, verbose)
 }
 
-diagnose_browser_calls <- function(path, verbose) {
-  r_files <- list.files(file.path(path, "R"), pattern = "\\.R$", full.names = TRUE, recursive = TRUE)
-  if (length(r_files) == 0) return(list(passed = TRUE, message = "No R files found"))
-
-  issues <- character(0)
-  for (file in r_files) {
-    content <- safe_read_lines(file)
-    if (length(content) == 0) next
-
-    browser_lines <- grep("\\bbrowser\\s*\\(", content, perl = TRUE)
-    if (length(browser_lines) > 0) {
-      issues <- c(issues, paste0(basename(file), ":", browser_lines))
-    }
+diagnose_browser_calls <- function(path, verbose = TRUE, parsed = NULL) {
+  if (is.null(parsed)) parsed <- read_r_xml(path)
+  if (length(parsed) == 0L) {
+    return(checktor_check_result(TRUE, character(0), "Browser calls check"))
   }
-
-  passed <- length(issues) == 0
-  if (verbose) {
-    if (passed) {
-      cli::cli_alert_success("No {.code browser()} calls found")
-    } else {
-      cli::cli_alert_danger("{.code browser()} calls found (should be removed for CRAN)")
-      cli::cli_ul(issues)
-    }
-  }
-
-  return(list(passed = passed, issues = issues, message = "Browser calls check"))
+  issues <- undesirable_function_check(parsed, "browser", label = FALSE)
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues, verbose,
+    "No {.code browser()} calls found",
+    "{.code browser()} calls found (should be removed for CRAN)"
+  )
+  checktor_check_result(passed, issues, "Browser calls check")
 }
 
-diagnose_system_calls <- function(path, verbose) {
-  r_files <- list.files(file.path(path, "R"), pattern = "\\.R$", full.names = TRUE, recursive = TRUE)
-  if (length(r_files) == 0) return(list(passed = TRUE, message = "No R files found"))
-
-  issues <- character(0)
-  dangerous_patterns <- c("system\\s*\\(", "system2\\s*\\(", "shell\\s*\\(")
-
-  for (file in r_files) {
-    content <- safe_read_lines(file)
-    if (length(content) == 0) next
-
-    for (pattern in dangerous_patterns) {
-      matches <- grep(pattern, content, perl = TRUE)
-      if (length(matches) > 0) {
-        issues <- c(issues, paste0(basename(file), ":", matches, " (", pattern, ")"))
-      }
-    }
+diagnose_system_calls <- function(path, verbose = TRUE, parsed = NULL) {
+  if (is.null(parsed)) parsed <- read_r_xml(path)
+  if (length(parsed) == 0L) {
+    return(checktor_check_result(TRUE, character(0), "System calls check"))
   }
-
-  passed <- length(issues) == 0
-  if (verbose) {
-    if (passed) {
-      cli::cli_alert_success("No dangerous system calls found")
-    } else {
-      cli::cli_alert_warning("Potential dangerous system calls found")
-      cli::cli_ul(utils::head(issues, 5))
-      if (length(issues) > 5) {
-        cli::cli_text("{.emph ... and {length(issues) - 5} more}")
-      }
-      cli::cli_text("{.emph Treatment: Review these carefully - may need platform checks}")
-    }
-  }
-
-  return(list(passed = passed, issues = issues, message = "System calls check"))
+  issues <- undesirable_function_check(parsed,
+                                       c("system", "system2", "shell"),
+                                       label = TRUE)
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues, verbose,
+    "No dangerous system calls found",
+    "Potential dangerous system calls found",
+    "Treatment: Review these carefully - may need platform checks",
+    level = "warning"
+  )
+  checktor_check_result(passed, issues, "System calls check")
 }
 
-diagnose_file_operations <- function(path, verbose) {
-  r_files <- list.files(file.path(path, "R"), pattern = "\\.R$", full.names = TRUE, recursive = TRUE)
-  if (length(r_files) == 0) return(list(passed = TRUE, message = "No R files found"))
-
-  issues <- character(0)
-  file_patterns <- c("write\\.csv", "write\\.table", "saveRDS", "save\\s*\\(", "file\\.create")
-
-  for (file in r_files) {
-    content <- safe_read_lines(file)
-    if (length(content) == 0) next
-
-    for (pattern in file_patterns) {
-      matches <- grep(pattern, content, perl = TRUE)
-      if (length(matches) > 0) {
-        # Check if it's writing to tempdir or has path parameter
-        for (match in matches) {
-          line_content <- content[match]
-          if (!grepl("tempdir|tempfile", line_content, ignore.case = TRUE)) {
-            issues <- c(issues, paste0(basename(file), ":", match, " (", pattern, ")"))
-          }
-        }
-      }
-    }
+# Writes outside tempdir(). For each write-like call, check whether the first
+# argument expression - or any nearby preceding assignment - references
+# tempfile/tempdir. We approximate "preceding assignment" by looking at
+# top-level siblings before the call.
+diagnose_file_operations <- function(path, verbose = TRUE, parsed = NULL) {
+  if (is.null(parsed)) parsed <- read_r_xml(path)
+  if (length(parsed) == 0L) {
+    return(checktor_check_result(TRUE, character(0), "File operations check"))
   }
 
-  passed <- length(issues) == 0
-  if (verbose) {
-    if (passed) {
-      cli::cli_alert_success("File operations appear safe")
-    } else {
-      cli::cli_alert_warning("Potential file operations without temp directory")
-      cli::cli_ul(utils::head(issues, 5))
-      if (length(issues) > 5) {
-        cli::cli_text("{.emph ... and {length(issues) - 5} more}")
-      }
-      cli::cli_text("{.emph Treatment: Ensure file operations use temporary directories}")
-    }
-  }
+  write_funs <- c("write.csv", "write.csv2", "write.table", "writeLines",
+                  "saveRDS", "save", "file.create")
+  predicate <- paste(sprintf("text() = '%s'", write_funs),
+                     collapse = " or ")
+  # A write call is "safe" if any tempfile/tempdir call appears in:
+  #   (a) the same call's argument expressions (path argument is a tempfile()
+  #       invocation, e.g. `saveRDS(x, tempfile())`)
+  #   (b) earlier statements in the same scope (enclosing function body or
+  #       same top-level exprlist), e.g. `p <- tempfile(); saveRDS(x, p)`
+  xpath <- sprintf(
+    "//SYMBOL_FUNCTION_CALL[%s][
+       not(parent::expr/following-sibling::expr//SYMBOL_FUNCTION_CALL[
+         text() = 'tempfile' or text() = 'tempdir'
+       ])
+       and not(
+         ancestor::expr[parent::expr/FUNCTION or parent::exprlist][1]
+         //SYMBOL_FUNCTION_CALL[text() = 'tempfile' or text() = 'tempdir']
+       )
+     ]",
+    predicate
+  )
+  issues <- xpath_per_file(parsed, xpath, function(file, nodes) {
+    paste0(basename(file), ":",
+           xml2::xml_attr(nodes, "line1"),
+           " (", xml2::xml_text(nodes), "())")
+  })
 
-  return(list(passed = passed, issues = issues, message = "File operations check"))
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues, verbose,
+    "File operations appear safe",
+    "Potential file operations without temp directory",
+    "Treatment: Ensure file operations use temporary directories",
+    level = "warning"
+  )
+  checktor_check_result(passed, issues, "File operations check")
 }
 
-diagnose_network_operations <- function(path, verbose) {
-  # Check examples and vignettes for network operations
-  example_files <- list.files(file.path(path, "man"), pattern = "\\.Rd$", full.names = TRUE, recursive = TRUE)
-  vignette_files <- list.files(file.path(path, "vignettes"), pattern = "\\.(Rmd|md)$", full.names = TRUE, recursive = TRUE)
+# Walks .Rd files via tools::parse_Rd. For each \examples{} block, looks for
+# nested network calls that are NOT wrapped in \dontrun/\donttest/\dontshow
+# or an `if (interactive())` / `capabilities("libcurl")` guard.
+diagnose_network_operations <- function(path, verbose = TRUE) {
+  rd_files <- list.files(file.path(path, "man"),
+                         pattern = "\\.Rd$", full.names = TRUE, recursive = TRUE)
+  vignette_files <- list.files(file.path(path, "vignettes"),
+                               pattern = "\\.(Rmd|qmd|md)$",
+                               full.names = TRUE, recursive = TRUE)
+  if (length(rd_files) == 0L && length(vignette_files) == 0L) {
+    return(checktor_check_result(TRUE, character(0),
+                                 "Network operations check"))
+  }
 
-  all_files <- c(example_files, vignette_files)
-  if (length(all_files) == 0) return(list(passed = TRUE, message = "No example/vignette files found"))
+  net_re <- paste(
+    "\\bdownload\\.file\\b", "\\bhttr2?::", "\\bcurl::", "\\bRCurl::",
+    sep = "|"
+  )
 
   issues <- character(0)
-  network_patterns <- c("download\\.file", "url\\s*\\(", "httr::", "curl::", "RCurl::")
 
-  for (file in all_files) {
+  for (file in rd_files) {
+    rd <- tryCatch(tools::parse_Rd(file), error = function(e) NULL)
+    if (is.null(rd)) next
+    ex <- extract_rd_section(rd, "\\examples")
+    if (is.null(ex)) next
+    code <- collect_rd_text(ex, skip = c("\\dontrun", "\\donttest", "\\dontshow"))
+    if (!nzchar(code)) next
+    if (grepl(net_re, code, perl = TRUE)) {
+      issues <- c(issues, paste0(basename(file), " (unwrapped network call in \\examples)"))
+    }
+  }
+
+  for (file in vignette_files) {
     content <- safe_read_lines(file)
-    if (length(content) == 0) next
-
-    for (pattern in network_patterns) {
-      matches <- grep(pattern, content, perl = TRUE)
-      if (length(matches) > 0) {
-        # Check if it's wrapped in dontrun or conditional
-        wrapped <- any(grepl("\\\\dontrun|\\\\donttest|if.*available|if.*internet", content, ignore.case = TRUE))
-        if (!wrapped) {
-          issues <- c(issues, paste0(basename(file), " (", pattern, ")"))
-        }
+    if (length(content) == 0L) next
+    has_wrapper <- any(grepl("if\\s*\\(\\s*interactive|capabilities\\(\\s*[\"']libcurl[\"']",
+                             content, perl = TRUE))
+    for (pat in c("\\bdownload\\.file\\b", "\\bhttr2?::",
+                  "\\bcurl::", "\\bRCurl::")) {
+      hits <- grep(pat, content, perl = TRUE)
+      if (length(hits) > 0L && !has_wrapper) {
+        issues <- c(issues, paste0(basename(file), " (",
+                                   gsub("\\\\b|\\\\.|::", "", pat), ")"))
       }
     }
   }
 
-  passed <- length(issues) == 0
-  if (verbose) {
-    if (passed) {
-      cli::cli_alert_success("Network operations appear properly wrapped")
-    } else {
-      cli::cli_alert_warning("Potential unwrapped network operations")
-      cli::cli_ul(issues)
-      cli::cli_text("{.emph Treatment: Consider wrapping in \\dontrun or conditional checks}")
-    }
-  }
-
-  return(list(passed = passed, issues = issues, message = "Network operations check"))
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues, verbose,
+    "Network operations appear properly wrapped",
+    "Potential unwrapped network operations",
+    "Treatment: Wrap in \\dontrun{}, \\donttest{}, or capability checks",
+    level = "warning"
+  )
+  checktor_check_result(passed, issues, "Network operations check")
 }

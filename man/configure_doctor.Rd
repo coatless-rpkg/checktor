@@ -2,17 +2,32 @@
 % Please edit documentation in R/utils.R
 \name{configure_doctor}
 \alias{configure_doctor}
-\title{Configure Package Doctor}
+\title{Configure Package Doctor Defaults}
 \usage{
 configure_doctor(verbose_default = TRUE, progress_default = TRUE, color = TRUE)
 }
 \arguments{
-\item{verbose_default}{Logical. Default verbosity}
+\item{verbose_default}{Logical. Default verbosity for \code{checktor()}.}
 
-\item{progress_default}{Logical. Default progress bar setting}
+\item{progress_default}{Logical. Default progress-bar setting.}
 
-\item{color}{Logical. Use colored output}
+\item{color}{Logical. Whether \code{cli} should emit ANSI color. Sets
+\code{cli.num_colors} via \code{options()}.}
+}
+\value{
+Invisibly returns the previous values of the changed options, so the call
+can be reversed with \code{options(.)}.
 }
 \description{
-Set global options for checktor behavior
+Sets session-wide defaults for \code{\link[=checktor]{checktor()}} behavior. Subsequent calls to
+\code{checktor()} (and helpers that delegate to it) pick up these defaults via
+\code{getOption()}.
+}
+\examples{
+# Save defaults so we can restore them after the example runs
+old <- options(checktor.verbose = NULL, checktor.progress = NULL)
+on.exit(options(old), add = TRUE)
+
+configure_doctor(verbose_default = FALSE)
+getOption("checktor.verbose")
 }

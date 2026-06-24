@@ -1,0 +1,11 @@
+Package: badexample
+Title: example package for data analysis
+Version: 0.1.0
+Author: John Doe <john@example.com>
+Maintainer: John Doe <john@example.com>
+Description: This package works with ggplot2 and provides API access.
+    It uses ML algorithms for data processing.
+License: MIT + file LICENSE
+Encoding: UTF-8
+URL: http://example.com
+BugReports: https://github.com/user/pkg/issues

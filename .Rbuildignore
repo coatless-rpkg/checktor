@@ -3,3 +3,10 @@
 ^LICENSE\.md$
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^\.devcontainer$
+^\.github$
+^CLAUDE\.md$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^cran-comments\.md$

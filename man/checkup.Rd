@@ -2,16 +2,22 @@
 % Please edit documentation in R/utils.R
 \name{checkup}
 \alias{checkup}
-\title{Quick Health Check - Fast version with summary only}
+\title{Quick Health Check}
 \usage{
 checkup(path = ".")
 }
 \arguments{
-\item{path}{Character. Path to package directory}
+\item{path}{Character. Path to the R package directory. Default: \code{"."}.}
 }
 \value{
-Logical. TRUE if no issues, FALSE if issues found
+Logical. \code{TRUE} if no issues were found, \code{FALSE} otherwise.
 }
 \description{
-Runs checktor with minimal output, suitable for CI/CD
+Runs \code{\link[=checktor]{checktor()}} with minimal output, suitable for CI/CD pipelines.
+}
+\examples{
+# A clean synthetic package passes; a known-bad one does not
+pkg_bad <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+                                     show_content = FALSE)
+checkup(pkg_bad)
 }

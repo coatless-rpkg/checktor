@@ -4,32 +4,70 @@
 \alias{checktor}
 \title{Diagnose Package for CRAN Submission Issues}
 \usage{
-checktor(path = ".", verbose = TRUE, progress = verbose)
+checktor(
+  path = ".",
+  verbose = getOption("checktor.verbose", TRUE),
+  progress = getOption("checktor.progress", verbose)
+)
 }
 \arguments{
-\item{path}{Character. Path to the R package directory. Defaults to current directory.}
+\item{path}{Character. Path to the R package directory. Defaults to current
+directory (\code{"."}).}
 
-\item{verbose}{Logical. Whether to print detailed output. Default TRUE.}
+\item{verbose}{Logical. Whether to print detailed diagnostic output to
+console. Defaults to \code{getOption("checktor.verbose", TRUE)}.}
 
-\item{progress}{Logical. Whether to show progress bars. Default TRUE when verbose.}
+\item{progress}{Logical. Whether to show progress bars during diagnostics.
+Defaults to \code{getOption("checktor.progress", verbose)}.}
 }
 \value{
-A list containing results of all diagnostics with status and messages
+A \code{checktor_results} object (list) containing:
+\itemize{
+\item \code{code_issues}: Results from code diagnostics
+\item \code{description_issues}: Results from DESCRIPTION file diagnostics
+\item \code{documentation_issues}: Results from documentation diagnostics
+\item \code{general_issues}: Results from general package diagnostics
+\item \code{policy_issues}: Results from CRAN policy violation diagnostics
+\item \code{metadata}: List with package path, diagnosis time, total issue count,
+total failed-check count, and checktor version
+}
+
+Each diagnostic category contains a \code{passed} element showing which individual
+checks passed/failed, plus detailed results for each check.
 }
 \description{
-Runs a comprehensive diagnostic suite for common CRAN submission
-issues that are not caught by standard R CMD check. Like a doctor for your package.
+Runs a comprehensive diagnostic suite for common CRAN submission issues that
+are not caught by standard R CMD check. Like a doctor for your package, this
+function examines your code, DESCRIPTION file, documentation, general
+package structure, and CRAN policy compliance to identify potential problems
+that could cause CRAN submission delays or rejections.
+}
+\details{
+The function runs five categories of diagnostics: \strong{Code}, \strong{DESCRIPTION},
+\strong{Documentation}, \strong{General}, and \strong{Policy}. See \code{\link[=diagnose_code_issues]{diagnose_code_issues()}},
+\code{\link[=diagnose_description_issues]{diagnose_description_issues()}}, \code{\link[=diagnose_documentation_issues]{diagnose_documentation_issues()}},
+\code{\link[=diagnose_general_issues]{diagnose_general_issues()}}, and \code{\link[=diagnose_policy_violations]{diagnose_policy_violations()}} for the
+specific checks within each category.
+
+The \code{metadata$total_issues} figure counts the total number of distinct
+issues found across all checks (e.g., 80 lines using \code{T}/\code{F} count as 80,
+not 1). The \code{metadata$failed_checks} figure counts how many individual
+checks reported any issue at all.
 }
 \examples{
-\dontrun{
-# Diagnose current package
-results <- checktor()
+# Run against a synthetic package with known T/F issues
+pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+                                 show_content = FALSE)
+results <- checktor(pkg, verbose = FALSE, progress = FALSE)
 
-# Diagnose specific package
-results <- checktor("path/to/package")
+# Inspect the metadata
+results$metadata$total_issues
+results$metadata$failed_checks
 
-# Quiet mode
-results <- checktor(verbose = FALSE)
+# Check whether a specific diagnostic passed
+results$code_issues$tf_usage$passed
 }
-
+\seealso{
+\code{\link[=health_report]{health_report()}} to generate detailed reports, \code{\link[=prescribe]{prescribe()}} for treatment
+recommendations, \code{\link[=checkup]{checkup()}} for quick health checks
 }

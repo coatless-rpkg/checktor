@@ -1,0 +1,89 @@
+url: https://r-pkg.thecoatlessprofessor.com/checktor
+
+template:
+  bootstrap: 5
+
+navbar:
+  structure:
+    left:  [intro, reference, articles, news]
+    right: [search, github]
+  components:
+    articles:
+      text: Articles
+      menu:
+      - text: Getting Started
+        href: articles/getting-started-with-checktor.html
+      - text: Writing Your Own Checks
+        href: articles/writing-checks.html
+
+reference:
+- title: Top-level orchestrator
+  desc: >
+    Functions you call directly to diagnose a package.
+  contents:
+  - checktor
+  - checkup
+  - prescribe
+  - health_report
+  - configure_doctor
+
+- title: Code-pattern diagnostics
+  desc: >
+    Per-check entry points for R source patterns. Each operates on the parsed
+    AST and can be called independently of `checktor()`.
+  contents:
+  - diagnose_code_issues
+  - diagnose_tf_usage
+  - diagnose_seed_setting
+  - diagnose_print_cat_usage
+
+- title: DESCRIPTION-field diagnostics
+  desc: >
+    Checks against the DESCRIPTION file, parsed via `base::read.dcf()`.
+  contents:
+  - diagnose_description_issues
+
+- title: Documentation diagnostics
+  desc: >
+    Checks against `.Rd` files, walked via `tools::parse_Rd()`.
+  contents:
+  - diagnose_documentation_issues
+  - diagnose_value_tags
+  - diagnose_roxygen_usage
+  - diagnose_example_structure
+
+- title: General-purpose diagnostics
+  desc: >
+    Package-size and URL checks that don't fit other categories.
+  contents:
+  - diagnose_general_issues
+  - diagnose_package_size
+  - diagnose_urls
+
+- title: CRAN policy diagnostics
+  desc: >
+    Checks targeting common CRAN policy violations (debugging leftovers,
+    raw shell calls, file/network access).
+  contents:
+  - diagnose_policy_violations
+
+- title: Result classes
+  desc: >
+    S3 constructors and print methods for diagnostic result objects.
+    You typically don't construct these by hand - use the diagnostic
+    functions instead.
+  contents:
+  - checktor_check_result
+  - checktor_category_result
+  - print.checktor_results
+
+- title: Example scenarios
+  desc: >
+    Helpers for building temporary packages with canned bad-pattern code,
+    used in the `@examples` of individual diagnostics.
+  contents:
+  - example_diagnose_scenario
+  - show_example_files
+
+development:
+  mode: auto

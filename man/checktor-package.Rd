@@ -3,20 +3,26 @@
 \docType{package}
 \name{checktor-package}
 \alias{checktor-package}
-\title{checktor: Extra CRAN Checks for R Package Submissions}
+\title{checktor: Extra CRAN Submission Checks}
 \description{
-Provides automated checks for common CRAN submission issues that are not caught by standard 'R CMD check'. Based on the comprehensive documentation of CRAN submission problems, this package helps package maintainers identify and fix issues before submission, reducing rejection rates and improving the submission process. Covers code issues, DESCRIPTION file formatting, documentation problems, and general package structure concerns. Think of it as a "doctor" for your R packages!
+Provides automated checks for common Comprehensive R Archive Network (CRAN) submission issues that are not caught by standard 'R CMD check'. Consolidates ad-hoc requirements that CRAN reviewers enforce but standard checks do not surface, helping 'R' package maintainers identify and fix issues before submission to reduce rejection rates. Covers code-pattern issues, DESCRIPTION-field formatting, documentation problems, and general package structure concerns.
 }
 \seealso{
 Useful links:
 \itemize{
   \item \url{https://github.com/coatless-rpkg/checktor}
+  \item \url{https://r-pkg.thecoatlessprofessor.com/checktor/}
   \item Report bugs at \url{https://github.com/coatless-rpkg/checktor/issues}
 }
 
 }
 \author{
-\strong{Maintainer}: James Joseph Balamuta \email{james.balamuta@gmail.com} (\href{https://orcid.org/0000-0003-2826-8458}{ORCID})
+\strong{Maintainer}: James Joseph Balamuta \email{james.balamuta@gmail.com} (\href{https://orcid.org/0000-0003-2826-8458}{ORCID}) [copyright holder]
+
+Authors:
+\itemize{
+  \item James Joseph Balamuta \email{james.balamuta@gmail.com} (\href{https://orcid.org/0000-0003-2826-8458}{ORCID}) [copyright holder]
+}
 
 }
 \keyword{internal}

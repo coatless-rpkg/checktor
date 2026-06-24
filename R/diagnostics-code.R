@@ -1,560 +1,513 @@
 #' Diagnose Code Health Issues
 #'
 #' Runs comprehensive diagnostics on R source code to identify common CRAN
-#' submission issues and coding best practices violations.
+#' submission issues and coding best-practice violations.
 #'
 #' @param path Character. Path to the R package directory. Default: `"."`.
-#' @param verbose Logical. Whether to print detailed diagnostic output. Default: `TRUE`.
+#' @param verbose Logical. Whether to print detailed diagnostic output.
+#'   Default: `TRUE`.
 #'
 #' @return
-#' A list containing results of all code diagnostics with named elements for
-#' each check (e.g., `tf_usage`, `seed_setting`). Each element contains:
-#'
-#' - `passed`: Logical indicating if the check passed
-#' - `issues`: Character vector of specific issues found (if any)
-#' - `message`: Description of what was checked
+#' List of named [checktor_check_result()] objects (e.g., `tf_usage`,
+#' `seed_setting`) plus a `passed` named logical vector summarizing pass/fail
+#' for each sub-check.
 #'
 #' @details
-#' This function orchestrates multiple code-level diagnostics including:
+#' Each source file is parsed once with `parse(keep.source = TRUE)`; checks
+#' run XPath queries against the parsed XML representation, so identifiers
+#' that appear only inside string literals or comments do not false-positive.
+#' Multi-line constructs (`set.seed(\n123\n)`), formula `~` versus path `~`,
+#' and scope-aware patterns (an `options()` call guarded by a sibling
+#' `on.exit()` in the same function body) are all handled correctly.
 #'
-#' - `T`/`F` usage (should use `TRUE`/`FALSE`)
-#' - Hardcoded seed setting without user control
-#' - Unsuppressable print/cat statements
-#' - Global option modifications without proper reset
-#' - Writing to user's home directory
-#' - Missing temporary file cleanup
-#' - GlobalEnv modifications
-#' - Use of installed.packages()
-#' - Inappropriate warning suppression
-#' - Software installation in functions
-#' - Unlimited core usage in parallel operations
-#'
-#' @seealso
-#' [checktor()] for complete package diagnostics
+#' @seealso [checktor()] for complete package diagnostics
 #'
 #' @export
 #' @examples
-#' \dontrun{
-#' # Diagnose code issues in current package
-#' code_results <- diagnose_code_issues()
-#'
-#' # Check specific package directory
-#' code_results <- diagnose_code_issues("path/to/package")
-#'
-#' # Silent check
-#' code_results <- diagnose_code_issues(verbose = FALSE)
-#'
-#' # View specific diagnostic result
+#' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+#'                                  show_content = FALSE)
+#' code_results <- diagnose_code_issues(pkg, verbose = FALSE)
 #' code_results$tf_usage$passed
-#' }
 diagnose_code_issues <- function(path = ".", verbose = TRUE) {
   if (verbose) {
     cli::cli_h2("Code Health Check")
   }
 
-  # Check if R directory exists
-  r_dir <- file.path(path, "R")
-  if (!dir.exists(r_dir)) {
-    if (verbose) {
-      cli::cli_alert_info("No R/ directory found")
-    }
+  if (!dir.exists(file.path(path, "R"))) {
+    if (verbose) cli::cli_alert_info("No R/ directory found")
     return(list(passed = TRUE, message = "No R directory found"))
   }
 
-  results <- list()
+  # Parse all R files once and pass the cache to each public diagnostic via
+  # its hidden `parsed` argument. The closures below reference the public
+  # function names symbolically, so resolution happens at call time and
+  # `with_mocked_bindings` can replace any of them in tests.
+  parsed <- read_r_xml(path)
 
-  # Define diagnostics with metadata
-  diagnostics <- list(
-    list(name = "tf_usage", description = "T/F usage", func = diagnose_tf_usage),
-    list(name = "seed_setting", description = "Seed setting", func = diagnose_seed_setting),
-    list(name = "print_cat_usage", description = "Print/cat usage", func = diagnose_print_cat_usage),
-    list(name = "option_changes", description = "Option changes", func = diagnose_option_changes),
-    list(name = "home_writing", description = "Home directory writing", func = diagnose_home_writing),
-    list(name = "temp_cleanup", description = "Temp file cleanup", func = diagnose_temp_cleanup),
-    list(name = "globalenv_mod", description = "GlobalEnv modification", func = diagnose_globalenv_modification),
-    list(name = "installed_packages", description = "installed.packages() usage", func = diagnose_installed_packages_usage),
-    list(name = "warn_option", description = "Warn option", func = diagnose_warn_option),
-    list(name = "software_install", description = "Software installation", func = diagnose_software_installation),
-    list(name = "core_usage", description = "Core usage", func = diagnose_core_usage)
-  )
-
-  # Run diagnostics with error handling
-  for (diagnostic in diagnostics) {
-    tryCatch({
-      results[[diagnostic$name]] <- diagnostic$func(path, verbose)
-    }, error = function(e) {
-      if (verbose) {
-        cli::cli_alert_danger("Error in {diagnostic$description} diagnostic: {e$message}")
-      }
-      results[[diagnostic$name]] <<- list(passed = FALSE, error = e$message)
-    })
-  }
-
-  results$passed <- sapply(results, function(x) if(is.logical(x)) x else x$passed)
-
-  return(results)
+  run_checks(list(
+    tf_usage           = function(p, v) diagnose_tf_usage(p, v, parsed = parsed),
+    seed_setting       = function(p, v) diagnose_seed_setting(p, v, parsed = parsed),
+    print_cat_usage    = function(p, v) diagnose_print_cat_usage(p, v, parsed = parsed),
+    option_changes     = function(p, v) diagnose_option_changes(p, v, parsed = parsed),
+    home_writing       = function(p, v) diagnose_home_writing(p, v, parsed = parsed),
+    temp_cleanup       = function(p, v) diagnose_temp_cleanup(p, v, parsed = parsed),
+    globalenv_mod      = function(p, v) diagnose_globalenv_modification(p, v, parsed = parsed),
+    installed_packages = function(p, v) diagnose_installed_packages_usage(p, v, parsed = parsed),
+    warn_option        = function(p, v) diagnose_warn_option(p, v, parsed = parsed),
+    software_install   = function(p, v) diagnose_software_installation(p, v, parsed = parsed),
+    core_usage         = function(p, v) diagnose_core_usage(p, v, parsed = parsed),
+    library_in_pkg     = function(p, v) diagnose_library_in_pkg_code(p, v, parsed = parsed),
+    sys_setenv         = function(p, v) diagnose_sys_setenv_no_reset(p, v, parsed = parsed)
+  ), path, verbose)
 }
+
+# Verbose output helper shared across diagnostic functions.
+emit_issue_summary <- function(issues, verbose, success_msg, failure_msg,
+                               treatment = NULL, max_show = 5L,
+                               level = c("danger", "warning")) {
+  if (!verbose) return(invisible())
+  level <- match.arg(level)
+  if (length(issues) == 0L) {
+    cli::cli_alert_success(success_msg)
+    return(invisible())
+  }
+  if (level == "danger") cli::cli_alert_danger(failure_msg)
+  else                   cli::cli_alert_warning(failure_msg)
+  cli::cli_ul(utils::head(issues, max_show))
+  if (length(issues) > max_show) {
+    cli::cli_text("{.emph ... and {length(issues) - max_show} more}")
+  }
+  if (!is.null(treatment)) cli::cli_text("{.emph {treatment}}")
+}
+
+# In the xmlparsedata XML, a call `fn(a, b)` is:
+#   <expr>                                <- call expr ("outer" expr)
+#     <expr>                              <- function-name expr
+#       <SYMBOL_FUNCTION_CALL>fn</...>
+#     </expr>
+#     <OP-LEFT-PAREN>(
+#     <expr><SYMBOL>a</SYMBOL></expr>     <- first positional arg
+#     <OP-COMMA>,
+#     <expr><SYMBOL>b</SYMBOL></expr>
+#     <OP-RIGHT-PAREN>)
+#   </expr>
+# Named args `f(a = 1)` use SYMBOL_SUB/EQ_SUB/expr triples (children of the
+# call expr, not wrapped in another expr).
+# Helper: from a SYMBOL_FUNCTION_CALL position, navigate to:
+#   - the call expr:           `parent::expr/parent::expr`
+#   - first positional arg:    `parent::expr/following-sibling::expr[1]`
+#   - any named-arg name:      `parent::expr/parent::expr/SYMBOL_SUB`
 
 #' Diagnose `T`/`F` Usage in R Code
 #'
-#' Checks for usage of `T` and `F` instead of the recommended `TRUE` and `FALSE`
-#' in R source files. CRAN requires explicit use of `TRUE`/`FALSE` for clarity
-#' and to avoid potential conflicts.
+#' Flags bare `T` / `F` symbols that should be `TRUE` / `FALSE`. Operates on
+#' the parsed AST, so `T` inside string literals or comments is not flagged
+#' (a long-standing source of regex false positives). Named-argument names
+#' (`f(T = 1)`) and `$T` / `@T` extractions are excluded.
 #'
-#' @param path Character. Path to package directory
-#' @param verbose Logical. Print diagnostic messages
-#'
-#' @return
-#' List with elements:
-#'
-#' - `passed`: Logical, TRUE if no T/F usage found
-#' - `issues`: Character vector of "file:line" locations
-#' - `file_issues`: Named list grouping issues by file
-#' - `message`: Description of the check
-#'
+#' @param path Character. Path to package directory.
+#' @param verbose Logical. Print diagnostic messages.
+#' @param parsed Internal. Pre-parsed source cache; if `NULL`, files are read
+#'   from `path` on demand.
+#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @export
 #' @examples
-#' \dontrun{
-#' # Check for T/F usage
-#' tf_result <- diagnose_tf_usage(".")
-#'
-#' # View issues by file
-#' tf_result$file_issues
-#' }
-diagnose_tf_usage <- function(path, verbose) {
-  r_files <- list.files(file.path(path, "R"), pattern = "\\.R$", full.names = TRUE, recursive = TRUE)
-  if (length(r_files) == 0) return(list(passed = TRUE, message = "No R files found"))
-
-  issues <- character(0)
-  file_issues <- list()
-
-  for (file in r_files) {
-    tryCatch({
-      content <- safe_read_lines(file)
-      if (length(content) == 0) next
-
-      # Look for standalone T or F (not part of TRUE/FALSE)
-      tf_lines <- grep("\\b[^A-Z]T\\b|\\bF\\b(?!ALSE)", content, perl = TRUE)
-      if (length(tf_lines) > 0) {
-        file_name <- basename(file)
-        file_issues[[file_name]] <- tf_lines
-        issues <- c(issues, paste0(file_name, ":", tf_lines))
-      }
-    }, error = function(e) {
-      if (verbose) cli::cli_alert_warning("Could not examine file {.path {basename(file)}}")
-    })
+#' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+#'                                  show_content = FALSE)
+#' diagnose_tf_usage(pkg, verbose = FALSE)$issues
+diagnose_tf_usage <- function(path, verbose = TRUE, parsed = NULL) {
+  if (is.null(parsed)) parsed <- read_r_xml(path)
+  if (length(parsed) == 0L) {
+    return(checktor_check_result(TRUE, character(0), "T/F usage check"))
   }
 
-  passed <- length(issues) == 0
-  if (verbose) {
-    if (passed) {
-      cli::cli_alert_success("No {.code T}/{.code F} usage found")
-    } else {
-      cli::cli_alert_danger("Found {.code T}/{.code F} usage (should use {.code TRUE}/{.code FALSE})")
-      # Group by file for better readability
-      for (file_name in names(file_issues)) {
-        cli::cli_text("  {.file {file_name}}: lines {paste(file_issues[[file_name]], collapse = ', ')}")
-      }
-    }
-  }
+  xpath <- paste0(
+    "//SYMBOL[(text() = 'T' or text() = 'F')",
+    "  and not(parent::expr[OP-DOLLAR or OP-AT])",
+    "  and not(parent::expr/preceding-sibling::*[1][self::EQ_SUB])",
+    "]"
+  )
+  issues <- c(xpath_lints(parsed, xpath), parse_error_issues(parsed))
 
-  return(list(passed = passed, issues = issues, file_issues = file_issues, message = "T/F usage check"))
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues, verbose,
+    "No {.code T}/{.code F} usage found",
+    "Found {.code T}/{.code F} usage (should use {.code TRUE}/{.code FALSE})"
+  )
+  checktor_check_result(passed, issues, "T/F usage check")
 }
 
 #' Diagnose Hardcoded Seed Setting
 #'
-#' Identifies hardcoded `set.seed()` calls in R code. CRAN prefers that
-#' functions allow users to control randomness through parameters rather
-#' than forcing specific seeds.
+#' Flags `set.seed(<numeric>)` calls. Multi-line forms are handled because
+#' the check matches the call AST node, not raw text.
 #'
-#' @param path Character. Path to package directory
-#' @param verbose Logical. Print diagnostic messages
-#'
-#' @return
-#' List with elements:
-#'
-#' - `passed`: Logical, `TRUE` if no hardcoded seeds found
-#' - `issues`: Character vector of `"file:line"` locations
-#' - `message`: Description of the check
-#'
+#' @inheritParams diagnose_tf_usage
+#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @export
 #' @examples
-#' \dontrun{
-#' # Check for hardcoded seeds
-#' seed_result <- diagnose_seed_setting(".")
-#' }
-diagnose_seed_setting <- function(path, verbose) {
-  r_files <- list.files(file.path(path, "R"), pattern = "\\.R$", full.names = TRUE, recursive = TRUE)
-  if (length(r_files) == 0) return(list(passed = TRUE, message = "No R files found"))
-
-  issues <- character(0)
-  for (file in r_files) {
-    content <- safe_read_lines(file)
-    if (length(content) == 0) next
-
-    seed_lines <- grep("set\\.seed\\s*\\(\\s*[0-9]+\\s*\\)", content, perl = TRUE)
-    if (length(seed_lines) > 0) {
-      issues <- c(issues, paste0(basename(file), ":", seed_lines))
-    }
+#' pkg <- example_diagnose_scenario("code_examples/seed_setting_bad.R",
+#'                                  show_content = FALSE)
+#' diagnose_seed_setting(pkg, verbose = FALSE)$passed
+diagnose_seed_setting <- function(path, verbose = TRUE, parsed = NULL) {
+  if (is.null(parsed)) parsed <- read_r_xml(path)
+  if (length(parsed) == 0L) {
+    return(checktor_check_result(TRUE, character(0), "Seed setting check"))
   }
 
-  passed <- length(issues) == 0
-  if (verbose) {
-    if (passed) {
-      cli::cli_alert_success("No hardcoded seed setting found")
-    } else {
-      cli::cli_alert_danger("Found hardcoded seed setting")
-      cli::cli_ul(issues)
-      cli::cli_text("{.emph Treatment: Add a seed parameter to allow user control}")
-    }
-  }
+  # set.seed() call whose first positional arg expression contains a numeric
+  # literal (covers `set.seed(123)` and `set.seed(\n  123\n)`).
+  xpath <- paste0(
+    "//SYMBOL_FUNCTION_CALL[text() = 'set.seed']",
+    "/parent::expr/following-sibling::expr[1]//NUM_CONST"
+  )
+  issues <- xpath_lints(parsed, xpath)
 
-  return(list(passed = passed, issues = issues, message = "Seed setting check"))
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues, verbose,
+    "No hardcoded seed setting found",
+    "Found hardcoded seed setting",
+    "Treatment: Add a seed parameter to allow user control"
+  )
+  checktor_check_result(passed, issues, "Seed setting check")
 }
 
 #' Diagnose Print/Cat Usage in Functions
 #'
-#' Identifies potentially unsuppressable `print()` and `cat()` calls that
-#' could create unwanted output. CRAN prefers suppressable output using
-#' `message()` or conditional verbose parameters.
+#' Flags `print()` / `cat()` calls not guarded by an enclosing `if()`,
+#' `for()`, or `while()`. The check uses the ancestor axis, so guard
+#' detection is robust regardless of formatting.
 #'
-#' @param path Character. Path to package directory
-#' @param verbose Logical. Print diagnostic messages
-#'
-#' @return
-#' List with elements:
-#'
-#' - `passed`: Logical, `TRUE` if no problematic print/cat usage found
-#' - `issues`: Character vector of `"file:line"` locations
-#' - `message`: Description of the check
-#'
+#' @inheritParams diagnose_tf_usage
+#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
+#' @export
 #' @examples
-#' \dontrun{
-#' # Check for print/cat usage
-#' print_result <- diagnose_print_cat_usage(".")
-#' }
-diagnose_print_cat_usage <- function(path, verbose) {
-  r_files <- list.files(file.path(path, "R"), pattern = "\\.R$", full.names = TRUE, recursive = TRUE)
-  if (length(r_files) == 0) return(list(passed = TRUE, message = "No R files found"))
-
-  issues <- character(0)
-  for (file in r_files) {
-    content <- safe_read_lines(file)
-    if (length(content) == 0) next
-
-    # Look for print() or cat() calls - simplified pattern
-    print_lines <- grep("\\b(print|cat)\\s*\\(", content, perl = TRUE)
-
-    if (length(print_lines) > 0) {
-      # Filter out lines that appear to be in if statements or other conditional structures
-      for (line_num in print_lines) {
-        line_content <- content[line_num]
-        # Check if the line contains 'if(' before the print/cat call
-        # or if it's indented suggesting it's inside a conditional block
-        if (!grepl("if\\s*\\([^)]*\\).*\\b(print|cat)\\s*\\(", line_content, perl = TRUE) &&
-            !grepl("^\\s*if\\s*\\(", line_content, perl = TRUE)) {
-          # Also check a few lines before for if statements
-          check_range <- max(1, line_num - 3):line_num
-          preceding_lines <- content[check_range]
-          has_conditional <- any(grepl("if\\s*\\(|while\\s*\\(|for\\s*\\(", preceding_lines, perl = TRUE))
-
-          if (!has_conditional) {
-            issues <- c(issues, paste0(basename(file), ":", line_num))
-          }
-        }
-      }
-    }
+#' pkg <- example_diagnose_scenario("code_examples/print_cat_bad.R",
+#'                                  show_content = FALSE)
+#' diagnose_print_cat_usage(pkg, verbose = FALSE)$passed
+diagnose_print_cat_usage <- function(path, verbose = TRUE, parsed = NULL) {
+  if (is.null(parsed)) parsed <- read_r_xml(path)
+  if (length(parsed) == 0L) {
+    return(checktor_check_result(TRUE, character(0), "Print/cat usage check"))
   }
 
-  passed <- length(issues) == 0
-  if (verbose) {
-    if (passed) {
-      cli::cli_alert_success("No unsuppressable {.code print()}/{.code cat()} usage found")
-    } else {
-      cli::cli_alert_warning("Potential unsuppressable {.code print()}/{.code cat()} usage")
-      cli::cli_ul(utils::head(issues, 5))
-      if (length(issues) > 5) {
-        cli::cli_text("{.emph ... and {length(issues) - 5} more}")
-      }
-      cli::cli_text("{.emph Treatment: Use {.code message()} or {.code if(verbose)} conditions}")
-    }
-  }
+  xpath <- paste0(
+    "//SYMBOL_FUNCTION_CALL[text() = 'print' or text() = 'cat'][",
+    "  not(ancestor::expr[IF or FOR or WHILE])",
+    "]"
+  )
+  issues <- xpath_lints(parsed, xpath)
 
-  return(list(passed = passed, issues = issues, message = "Print/cat usage check"))
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues, verbose,
+    "No unsuppressable {.code print()}/{.code cat()} usage found",
+    "Potential unsuppressable {.code print()}/{.code cat()} usage",
+    "Treatment: Use {.code message()} or {.code if(verbose)} conditions"
+  )
+  checktor_check_result(passed, issues, "Print/cat usage check")
 }
 
-diagnose_option_changes <- function(path, verbose) {
-  r_files <- list.files(file.path(path, "R"), pattern = "\\.R$", full.names = TRUE, recursive = TRUE)
-  if (length(r_files) == 0) return(list(passed = TRUE, message = "No R files found"))
-
-  issues <- character(0)
-  for (file in r_files) {
-    content <- safe_read_lines(file)
-    if (length(content) == 0) next
-
-    option_lines <- grep("\\b(options|par|setwd)\\s*\\(", content, perl = TRUE)
-    if (length(option_lines) > 0) {
-      # Check if there's an on.exit nearby
-      for (line_num in option_lines) {
-        # Check next few lines for on.exit
-        check_range <- seq(line_num, min(line_num + 5, length(content)))
-        if (!any(grepl("on\\.exit", content[check_range]))) {
-          issues <- c(issues, paste0(basename(file), ":", line_num))
-        }
-      }
-    }
+diagnose_option_changes <- function(path, verbose = TRUE, parsed = NULL) {
+  if (is.null(parsed)) parsed <- read_r_xml(path)
+  if (length(parsed) == 0L) {
+    return(checktor_check_result(TRUE, character(0), "Option changes check"))
   }
 
-  passed <- length(issues) == 0
-  if (verbose) {
-    if (passed) {
-      cli::cli_alert_success("Option changes appear to be properly reset")
-    } else {
-      cli::cli_alert_danger("Option changes without apparent reset")
-      cli::cli_ul(utils::head(issues, 5))
-      if (length(issues) > 5) {
-        cli::cli_text("{.emph ... and {length(issues) - 5} more}")
-      }
-      cli::cli_text("{.emph Treatment: Use {.code on.exit()} to reset options}")
-    }
-  }
+  # options/par/setwd call whose innermost enclosing function body does NOT
+  # contain an on.exit() or any withr::local_*/with_* helper.
+  xpath <- paste0(
+    "//SYMBOL_FUNCTION_CALL[text() = 'options' or text() = 'par' or text() = 'setwd'][",
+    "  ", not_under_fn_with_call_xpath(c(
+        "on.exit",
+        "local_options", "with_options",
+        "local_par",     "with_par",
+        "local_dir",     "with_dir"
+      )),
+    "]"
+  )
+  issues <- xpath_lints(parsed, xpath)
 
-  return(list(passed = passed, issues = issues, message = "Option changes check"))
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues, verbose,
+    "Option changes appear to be properly reset",
+    "Option changes without apparent reset",
+    "Treatment: Use {.code on.exit()} or {.code withr::local_*}"
+  )
+  checktor_check_result(passed, issues, "Option changes check")
 }
 
-diagnose_home_writing <- function(path, verbose) {
-  r_files <- list.files(file.path(path, "R"), pattern = "\\.R$", full.names = TRUE, recursive = TRUE)
-  if (length(r_files) == 0) return(list(passed = TRUE, message = "No R files found"))
+diagnose_home_writing <- function(path, verbose = TRUE, parsed = NULL) {
+  if (is.null(parsed)) parsed <- read_r_xml(path)
+  if (length(parsed) == 0L) {
+    return(checktor_check_result(TRUE, character(0), "Home writing check"))
+  }
+
+  # Each rule = (function name, first-arg STR_CONST prefix to flag, label).
+  # STR_CONST text retains the surrounding quotes, hence the
+  # `"<prefix>` and `'<prefix>` alternation.
+  rules <- list(
+    list(fn = "path.expand",   prefix = "~",           label = "path.expand('~...')"),
+    list(fn = "normalizePath", prefix = "~",           label = "normalizePath('~...')"),
+    list(fn = "file.path",     prefix = "~",           label = "file.path('~', ...)"),
+    list(fn = "Sys.getenv",    prefix = "HOME",        label = "Sys.getenv('HOME')"),
+    list(fn = "Sys.getenv",    prefix = "USERPROFILE", label = "Sys.getenv('USERPROFILE')")
+  )
 
   issues <- character(0)
-  suspicious_patterns <- c("getwd\\(\\)", "~", "Sys\\.getenv\\(.*HOME.*\\)", "file\\.path\\(.*home.*\\)")
-
-  for (file in r_files) {
-    content <- safe_read_lines(file)
-    if (length(content) == 0) next
-
-    for (pattern in suspicious_patterns) {
-      matches <- grep(pattern, content, perl = TRUE)
-      if (length(matches) > 0) {
-        issues <- c(issues, paste0(basename(file), ":", matches, " (", pattern, ")"))
-      }
-    }
+  for (r in rules) {
+    xpath <- sprintf(
+      "//SYMBOL_FUNCTION_CALL[text() = '%s']/parent::expr/following-sibling::expr[1]/STR_CONST[starts-with(text(), '\"%s') or starts-with(text(), \"'%s\")]",
+      r$fn, r$prefix, r$prefix
+    )
+    issues <- c(issues, xpath_lints(parsed, xpath, label = r$label))
   }
 
-  passed <- length(issues) == 0
-  if (verbose) {
-    if (passed) {
-      cli::cli_alert_success("No obvious home directory writing detected")
-    } else {
-      cli::cli_alert_warning("Potential home directory writing patterns")
-      cli::cli_ul(utils::head(issues, 5))
-      if (length(issues) > 5) {
-        cli::cli_text("{.emph ... and {length(issues) - 5} more}")
-      }
-      cli::cli_text("{.emph Treatment: Verify these don't write to user's home directory}")
-    }
-  }
-
-  return(list(passed = passed, issues = issues, message = "Home writing check"))
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues, verbose,
+    "No obvious home directory writing detected",
+    "Potential home directory writing patterns",
+    "Treatment: Verify these don't write to the user's home directory"
+  )
+  checktor_check_result(passed, issues, "Home writing check")
 }
 
-diagnose_temp_cleanup <- function(path, verbose) {
-  # Check examples and tests for temp file usage without cleanup
-  examples_files <- list.files(file.path(path, "man"), pattern = "\\.Rd$", full.names = TRUE, recursive = TRUE)
-  test_files <- list.files(file.path(path, "tests"), pattern = "\\.R$", full.names = TRUE, recursive = TRUE)
-
-  all_files <- c(examples_files, test_files)
-  if (length(all_files) == 0) return(list(passed = TRUE, message = "No example/test files found"))
-
-  issues <- character(0)
-  for (file in all_files) {
-    content <- safe_read_lines(file)
-    if (length(content) == 0) next
-
-    temp_lines <- grep("temp(file|dir)", content, perl = TRUE)
-    if (length(temp_lines) > 0) {
-      # Check if there's cleanup (unlink, file.remove)
-      cleanup_lines <- grep("\\b(unlink|file\\.remove|on\\.exit)\\b", content, perl = TRUE)
-      if (length(cleanup_lines) == 0) {
-        issues <- c(issues, paste0(basename(file), " (temp files without cleanup)"))
-      }
-    }
+# Per-tempfile cleanup detection. Only scans `tests/` since R/ helpers may
+# legitimately hand temp paths back to callers. A tempfile()/tempdir() call
+# is "clean" if cleanup exists either (a) in the innermost enclosing function
+# body, OR (b) later in the same top-level scope (handles test scripts).
+diagnose_temp_cleanup <- function(path, verbose = TRUE, parsed = NULL) {
+  test_dir <- file.path(path, "tests")
+  if (!dir.exists(test_dir)) {
+    return(checktor_check_result(TRUE, character(0), "Temp cleanup check"))
+  }
+  test_files <- list.files(test_dir, pattern = "\\.R$",
+                           full.names = TRUE, recursive = TRUE)
+  if (length(test_files) == 0L) {
+    return(checktor_check_result(TRUE, character(0), "Temp cleanup check"))
   }
 
-  passed <- length(issues) == 0
-  if (verbose) {
-    if (passed) {
-      cli::cli_alert_success("Temp file usage appears to include cleanup")
-    } else {
-      cli::cli_alert_warning("Temp files without apparent cleanup")
-      cli::cli_ul(issues)
-      cli::cli_text("{.emph Treatment: Add cleanup code}")
-    }
-  }
+  test_parsed <- setNames(lapply(test_files, parse_one_r_file), test_files)
 
-  return(list(passed = passed, issues = issues, message = "Temp cleanup check"))
+  cleanup_funs <- c("unlink", "file.remove", "on.exit", "defer", "defer_cleanup",
+                    "local_tempfile", "deferred_run")
+  predicate <- paste(sprintf("text() = '%s'", cleanup_funs),
+                     collapse = " or ")
+  # A tempfile()/tempdir() call is "clean" if cleanup exists in any of:
+  #   (a) the innermost enclosing function body (most precise),
+  #   (b) the same top-level statement (handles testthat blocks like
+  #       `test_that("...", { tempfile(); on.exit(...) })` where the lambda is
+  #       constructed at runtime, not statically a FUNCTION node), or
+  #   (c) a later top-level statement (handles top-level test scripts).
+  # Only tempfile() needs explicit cleanup; tempdir() returns the session
+  # temp directory which R auto-cleans at session end.
+  xpath <- sprintf(
+    "//SYMBOL_FUNCTION_CALL[text() = 'tempfile'][
+       not(ancestor::expr[parent::expr/FUNCTION][1]//SYMBOL_FUNCTION_CALL[%s])
+       and not(
+         ancestor::expr[parent::exprlist][1]
+         //SYMBOL_FUNCTION_CALL[%s]
+       )
+       and not(
+         ancestor::expr[parent::exprlist][1]
+         /following-sibling::expr
+         //SYMBOL_FUNCTION_CALL[%s]
+       )
+     ]",
+    predicate, predicate, predicate
+  )
+  issues <- xpath_lints(test_parsed, xpath)
+
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues, verbose,
+    "Temp file usage appears to include cleanup",
+    "Temp files without apparent cleanup",
+    "Treatment: Add cleanup (unlink, on.exit, withr::local_tempfile, ...)"
+  )
+  checktor_check_result(passed, issues, "Temp cleanup check")
 }
 
-diagnose_globalenv_modification <- function(path, verbose) {
-  r_files <- list.files(file.path(path, "R"), pattern = "\\.R$", full.names = TRUE, recursive = TRUE)
-  if (length(r_files) == 0) return(list(passed = TRUE, message = "No R files found"))
-
-  issues <- character(0)
-  for (file in r_files) {
-    content <- safe_read_lines(file)
-    if (length(content) == 0) next
-
-    global_lines <- grep("<<-|\\.GlobalEnv|globalenv\\(\\)|assign\\(.*envir\\s*=.*\\.GlobalEnv", content, perl = TRUE)
-    if (length(global_lines) > 0) {
-      issues <- c(issues, paste0(basename(file), ":", global_lines))
-    }
+diagnose_globalenv_modification <- function(path, verbose = TRUE, parsed = NULL) {
+  if (is.null(parsed)) parsed <- read_r_xml(path)
+  if (length(parsed) == 0L) {
+    return(checktor_check_result(TRUE, character(0),
+                                 "GlobalEnv modification check"))
   }
 
-  passed <- length(issues) == 0
-  if (verbose) {
-    if (passed) {
-      cli::cli_alert_success("No {.code .GlobalEnv} modification detected")
-    } else {
-      cli::cli_alert_danger("Potential {.code .GlobalEnv} modification")
-      cli::cli_ul(issues)
-      cli::cli_text("{.emph Treatment: Avoid modifying the global environment}")
-    }
-  }
+  xpath_op <- "//LEFT_ASSIGN[text() = '<<-'] | //RIGHT_ASSIGN[text() = '->>']"
+  xpath_globalenv_ref <- paste0(
+    "//SYMBOL[text() = '.GlobalEnv'] | ",
+    "//SYMBOL_FUNCTION_CALL[text() = 'globalenv']"
+  )
 
-  return(list(passed = passed, issues = issues, message = "GlobalEnv modification check"))
+  issues <- c(
+    xpath_lints(parsed, xpath_op),
+    xpath_lints(parsed, xpath_globalenv_ref)
+  )
+
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues, verbose,
+    "No {.code .GlobalEnv} modification detected",
+    "Potential {.code .GlobalEnv} modification",
+    "Treatment: Avoid modifying the global environment"
+  )
+  checktor_check_result(passed, issues, "GlobalEnv modification check")
 }
 
-diagnose_installed_packages_usage <- function(path, verbose) {
-  r_files <- list.files(file.path(path, "R"), pattern = "\\.R$", full.names = TRUE, recursive = TRUE)
-  if (length(r_files) == 0) return(list(passed = TRUE, message = "No R files found"))
-
-  issues <- character(0)
-  for (file in r_files) {
-    content <- safe_read_lines(file)
-    if (length(content) == 0) next
-
-    installed_lines <- grep("installed\\.packages\\(\\)", content, perl = TRUE)
-    if (length(installed_lines) > 0) {
-      issues <- c(issues, paste0(basename(file), ":", installed_lines))
-    }
+diagnose_installed_packages_usage <- function(path, verbose = TRUE, parsed = NULL) {
+  if (is.null(parsed)) parsed <- read_r_xml(path)
+  if (length(parsed) == 0L) {
+    return(checktor_check_result(TRUE, character(0),
+                                 "installed.packages() usage check"))
   }
-
-  passed <- length(issues) == 0
-  if (verbose) {
-    if (passed) {
-      cli::cli_alert_success("No {.code installed.packages()} usage found")
-    } else {
-      cli::cli_alert_danger("{.code installed.packages()} usage found")
-      cli::cli_ul(issues)
-      cli::cli_text("{.emph Treatment: Use {.code requireNamespace()} or {.code require()} instead}")
-    }
-  }
-
-  return(list(passed = passed, issues = issues, message = "installed.packages() usage check"))
+  issues <- undesirable_function_check(parsed, "installed.packages",
+                                       label = FALSE)
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues, verbose,
+    "No {.code installed.packages()} usage found",
+    "{.code installed.packages()} usage found",
+    "Treatment: Use {.code requireNamespace()} or {.code find.package()} instead"
+  )
+  checktor_check_result(passed, issues, "installed.packages() usage check")
 }
 
-diagnose_warn_option <- function(path, verbose) {
-  r_files <- list.files(file.path(path, "R"), pattern = "\\.R$", full.names = TRUE, recursive = TRUE)
-  if (length(r_files) == 0) return(list(passed = TRUE, message = "No R files found"))
-
-  issues <- character(0)
-  for (file in r_files) {
-    content <- safe_read_lines(file)
-    if (length(content) == 0) next
-
-    warn_lines <- grep("options\\(\\s*warn\\s*=\\s*-1\\s*\\)", content, perl = TRUE)
-    if (length(warn_lines) > 0) {
-      issues <- c(issues, paste0(basename(file), ":", warn_lines))
-    }
+# `options(..., warn = -1)` in any form: standalone, multi-arg, or wrapped in
+# withr::local_options/with_options. Anchors on the named-arg SYMBOL_SUB
+# (a child of the call expr), then checks its value expr for `-1`.
+diagnose_warn_option <- function(path, verbose = TRUE, parsed = NULL) {
+  if (is.null(parsed)) parsed <- read_r_xml(path)
+  if (length(parsed) == 0L) {
+    return(checktor_check_result(TRUE, character(0), "Warn option check"))
   }
 
-  passed <- length(issues) == 0
-  if (verbose) {
-    if (passed) {
-      cli::cli_alert_success("No {.code options(warn = -1)} usage found")
-    } else {
-      cli::cli_alert_danger("{.code options(warn = -1)} usage found")
-      cli::cli_ul(issues)
-      cli::cli_text("{.emph Treatment: Use {.code suppressWarnings()} instead}")
-    }
-  }
+  xpath <- paste0(
+    "//SYMBOL_FUNCTION_CALL[",
+    "  text() = 'options' or text() = 'local_options' or text() = 'with_options'",
+    "]/parent::expr/parent::expr/SYMBOL_SUB[text() = 'warn'][",
+    "  following-sibling::expr[1][OP-MINUS and expr/NUM_CONST[text() = '1']]",
+    "]"
+  )
+  issues <- xpath_lints(parsed, xpath)
 
-  return(list(passed = passed, issues = issues, message = "Warn option check"))
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues, verbose,
+    "No {.code options(warn = -1)} usage found",
+    "{.code options(warn = -1)} usage found",
+    "Treatment: Use {.code suppressWarnings()} for a narrow scope instead"
+  )
+  checktor_check_result(passed, issues, "Warn option check")
 }
 
-diagnose_software_installation <- function(path, verbose) {
-  r_files <- list.files(file.path(path, "R"), pattern = "\\.R$", full.names = TRUE, recursive = TRUE)
-  if (length(r_files) == 0) return(list(passed = TRUE, message = "No R files found"))
-
-  issues <- character(0)
-  install_patterns <- c("install\\.packages", "devtools::install", "remotes::install", "install_")
-
-  for (file in r_files) {
-    content <- safe_read_lines(file)
-    if (length(content) == 0) next
-
-    for (pattern in install_patterns) {
-      install_lines <- grep(pattern, content, perl = TRUE)
-      if (length(install_lines) > 0) {
-        issues <- c(issues, paste0(basename(file), ":", install_lines, " (", pattern, ")"))
-      }
-    }
+diagnose_software_installation <- function(path, verbose = TRUE, parsed = NULL) {
+  if (is.null(parsed)) parsed <- read_r_xml(path)
+  if (length(parsed) == 0L) {
+    return(checktor_check_result(TRUE, character(0),
+                                 "Software installation check"))
   }
 
-  passed <- length(issues) == 0
-  if (verbose) {
-    if (passed) {
-      cli::cli_alert_success("No software installation in functions detected")
-    } else {
-      cli::cli_alert_warning("Potential software installation in functions")
-      cli::cli_ul(utils::head(issues, 3))
-      if (length(issues) > 3) {
-        cli::cli_text("{.emph ... and {length(issues) - 3} more}")
-      }
-      cli::cli_text("{.emph Treatment: Verify this is appropriate for your package}")
-    }
-  }
+  direct_funs <- c("install.packages", "pkg_install", "install_local",
+                   "install_github", "install_url", "install_bitbucket",
+                   "install_cran", "install_dev", "install_git",
+                   "install_gitlab", "install_svn", "install_version")
+  issues <- undesirable_function_check(parsed, direct_funs, label = TRUE)
 
-  return(list(passed = passed, issues = issues, message = "Software installation check"))
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues, verbose,
+    "No software installation in functions detected",
+    "Potential software installation in functions",
+    "Treatment: Packages should not install other packages at runtime",
+    max_show = 3L
+  )
+  checktor_check_result(passed, issues, "Software installation check")
 }
 
-diagnose_core_usage <- function(path, verbose) {
-  # Check examples and tests for high core usage
-  r_files <- list.files(path, pattern = "\\.R$", full.names = TRUE, recursive = TRUE)
-  if (length(r_files) == 0) return(list(passed = TRUE, message = "No R files found"))
-
-  issues <- character(0)
-  core_patterns <- c("detectCores\\(\\)", "parallel::", "mclapply", "parLapply", "makeCluster")
-
-  for (file in r_files) {
-    content <- safe_read_lines(file)
-    if (length(content) == 0) next
-
-    for (pattern in core_patterns) {
-      core_lines <- grep(pattern, content, perl = TRUE)
-      if (length(core_lines) > 0) {
-        # Check if there's a limit to 2 cores
-        limited <- any(grepl("min\\s*\\(.*2.*,|\\b2\\b.*cores", content))
-        if (!limited) {
-          issues <- c(issues, paste0(basename(file), ":", core_lines[1], " (", pattern, ")"))
-        }
-      }
-    }
+# Parallelism calls without an explicit per-call core bound. Looks for
+# mclapply/parLapply/makeCluster/detectCores whose enclosing call has no
+# `mc.cores =` named argument.
+diagnose_core_usage <- function(path, verbose = TRUE, parsed = NULL) {
+  if (is.null(parsed)) parsed <- read_r_xml(path)
+  if (length(parsed) == 0L) {
+    return(checktor_check_result(TRUE, character(0), "Core usage check"))
   }
 
-  passed <- length(issues) == 0
-  if (verbose) {
-    if (passed) {
-      cli::cli_alert_success("Core usage appears limited appropriately")
-    } else {
-      cli::cli_alert_warning("Potential unlimited core usage")
-      cli::cli_ul(utils::head(issues, 3))
-      if (length(issues) > 3) {
-        cli::cli_text("{.emph ... and {length(issues) - 3} more}")
-      }
-      cli::cli_text("{.emph Treatment: Consider limiting to 2 cores for CRAN}")
-    }
-  }
+  xpath <- paste0(
+    "//SYMBOL_FUNCTION_CALL[",
+    "  text() = 'mclapply' or text() = 'parLapply' or text() = 'makeCluster'",
+    "  or text() = 'detectCores'",
+    "][",
+    "  not(parent::expr/parent::expr/SYMBOL_SUB[text() = 'mc.cores'])",
+    "]"
+  )
+  issues <- xpath_per_file(parsed, xpath, function(file, nodes) {
+    paste0(basename(file), ":",
+           xml2::xml_attr(nodes, "line1"),
+           " (", xml2::xml_text(nodes), "())")
+  })
 
-  return(list(passed = passed, issues = issues, message = "Core usage check"))
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues, verbose,
+    "Core usage appears limited appropriately",
+    "Potential unlimited core usage",
+    "Treatment: Limit to 2 cores on CRAN (e.g., {.code mc.cores = 2L})",
+    max_show = 3L
+  )
+  checktor_check_result(passed, issues, "Core usage check")
+}
+
+# library() / require() in package R/ code is almost always a mistake -
+# package dependencies belong in DESCRIPTION Imports/Depends and should be
+# referenced via NAMESPACE imports or pkg::fn calls.
+diagnose_library_in_pkg_code <- function(path, verbose = TRUE, parsed = NULL) {
+  if (is.null(parsed)) parsed <- read_r_xml(path)
+  if (length(parsed) == 0L) {
+    return(checktor_check_result(TRUE, character(0), "library() in pkg code check"))
+  }
+  issues <- undesirable_function_check(parsed,
+                                       c("library", "require"),
+                                       label = TRUE)
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues, verbose,
+    "No {.code library()}/{.code require()} calls in package code",
+    "{.code library()}/{.code require()} calls in package code",
+    "Treatment: Declare deps in DESCRIPTION Imports and use {.code pkg::fn()}"
+  )
+  checktor_check_result(passed, issues, "library() in pkg code check")
+}
+
+# Sys.setenv() without on.exit()/withr cleanup in the same function body.
+# Mirrors diagnose_option_changes for environment variables.
+diagnose_sys_setenv_no_reset <- function(path, verbose = TRUE, parsed = NULL) {
+  if (is.null(parsed)) parsed <- read_r_xml(path)
+  if (length(parsed) == 0L) {
+    return(checktor_check_result(TRUE, character(0), "Sys.setenv reset check"))
+  }
+  xpath <- paste0(
+    "//SYMBOL_FUNCTION_CALL[text() = 'Sys.setenv'][",
+    "  ", not_under_fn_with_call_xpath(c(
+        "on.exit",
+        "Sys.unsetenv",
+        "local_envvar", "with_envvar"
+      )),
+    "]"
+  )
+  issues <- xpath_lints(parsed, xpath)
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues, verbose,
+    "{.code Sys.setenv()} calls appear to be reset",
+    "{.code Sys.setenv()} without apparent reset",
+    "Treatment: Use {.code on.exit(Sys.unsetenv(...))} or {.code withr::local_envvar()}"
+  )
+  checktor_check_result(passed, issues, "Sys.setenv reset check")
 }
