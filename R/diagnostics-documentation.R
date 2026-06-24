@@ -1,147 +1,135 @@
 #' Diagnose Documentation Issues
 #'
-#' Runs diagnostics on package documentation to identify common issues
-#' that can cause CRAN submission problems or poor user experience.
+#' Runs diagnostics on package documentation to identify common issues that
+#' can cause CRAN submission problems or a poor user experience.
 #'
 #' @details
 #' This function checks for:
-#' - Missing \\value tags in function documentation
-#' - Roxygen2 usage patterns
-#' - Example structure and appropriateness
+#' - Missing `\value` tags in function documentation
+#' - Roxygen2 usage
+#' - Example structure (appropriate use of `\dontrun{}`)
+#'
+#' `.Rd` files are parsed structurally via [tools::parse_Rd()] so analyses
+#' look at sections by their `Rd_tag` rather than grepping LaTeX text.
 #'
 #' @param path Character. Path to package directory. Default: `"."`.
 #' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
 #'
 #' @return
-#' List containing results of all documentation diagnostics
+#' List of [checktor_check_result()] objects plus a `passed` named logical
+#' vector summarizing pass/fail per check.
 #'
-#' @seealso
-#' [checktor()] for complete package diagnostics
+#' @seealso [checktor()] for complete package diagnostics
 #'
 #' @export
 #' @examples
-#' # Test with example missing value tags
-#' pkg_path <- example_diagnose_scenario("documentation_examples/missing_value_tag.Rd")
-#' doc_results <- diagnose_documentation_issues(pkg_path, verbose = TRUE)
-#'
-#' # Check for missing value tags
+#' pkg_path <- example_diagnose_scenario("documentation_examples/missing_value_tag.Rd",
+#'                                       show_content = FALSE)
+#' doc_results <- diagnose_documentation_issues(pkg_path, verbose = FALSE)
 #' doc_results$value_tags$passed  # Should be FALSE
-#'
-#' # Compare with good documentation
-#' pkg_path_good <- example_diagnose_scenario("documentation_examples/good_documentation.Rd")
-#' good_results <- diagnose_documentation_issues(pkg_path_good, verbose = FALSE)
-#' good_results$value_tags$passed  # Should be TRUE
 diagnose_documentation_issues <- function(path = ".", verbose = TRUE) {
   if (verbose) {
     cli::cli_h2("Documentation Health Check")
   }
+  run_checks(list(
+    value_tags                = diagnose_value_tags,
+    roxygen_usage             = diagnose_roxygen_usage,
+    example_structure         = diagnose_example_structure,
+    commented_examples        = diagnose_commented_examples,
+    unexported_example_ns     = diagnose_unexported_example_namespace,
+    donttest_vs_dontrun       = diagnose_donttest_vs_dontrun
+  ), path, verbose)
+}
 
-  results <- list()
-
-  # Check for missing \\value tags
-  results$value_tags <- diagnose_value_tags(path, verbose)
-
-  # Check roxygen2 usage
-  results$roxygen_usage <- diagnose_roxygen_usage(path, verbose)
-
-  # Check example structure
-  results$example_structure <- diagnose_example_structure(path, verbose)
-
-  results$passed <- sapply(results, function(x) if(is.logical(x)) x else x$passed)
-
-  return(results)
+# Heuristics for "Rd files we should NOT require to have \value{}".
+# Data, class, methods, and package-level topics, plus re-export pages.
+is_non_function_rd_obj <- function(rd) {
+  doctype <- extract_rd_section(rd, "\\docType")
+  if (!is.null(doctype)) {
+    dt <- trimws(collect_rd_text(doctype))
+    if (dt %in% c("data", "class", "package", "methods")) return(TRUE)
+  }
+  # Package-level: any \alias ending in -package.
+  for (sec in rd) {
+    if (identical(attr(sec, "Rd_tag"), "\\alias")) {
+      if (grepl("-package$", trimws(collect_rd_text(sec)))) return(TRUE)
+    }
+  }
+  # Re-export pages
+  for (sec in rd) {
+    if (identical(attr(sec, "Rd_tag"), "\\name")) {
+      nm <- trimws(collect_rd_text(sec))
+      if (nm == "reexports") return(TRUE)
+    }
+  }
+  FALSE
 }
 
 #' Diagnose Missing Value Tags in Documentation
 #'
-#' @description
-#' Checks .Rd files for missing \\value tags in function documentation.
-#' CRAN requires that all exported functions document their return values.
+#' Walks `.Rd` files via [tools::parse_Rd()] and reports topics that are
+#' missing a `\value{}` section. Data, class, methods, package-level, and
+#' re-export topics are skipped (they don't need `\value{}`).
 #'
 #' @param path Character. Path to package directory
 #' @param verbose Logical. Print diagnostic messages
 #'
-#' @return
-#' List with elements:
-#' - `passed`: Logical, TRUE if all functions have \\value tags
-#' - `missing`: Character vector of .Rd files missing \\value tags
-#' - `message`: Description of the check
-#'
+#' @return [checktor_check_result()] with `passed`, `issues`, `missing`,
+#'   `message`.
 #' @export
 #' @examples
-#' # Test with documentation missing value tags
-#' pkg_path <- example_diagnose_scenario("documentation_examples/missing_value_tag.Rd")
-#' result <- diagnose_value_tags(pkg_path, verbose = TRUE)
-#'
-#' # Check results
-#' result$passed                    # Should be FALSE
-diagnose_value_tags <- function(path, verbose) {
-  rd_files <- list.files(file.path(path, "man"), pattern = "\\.Rd$", full.names = TRUE)
-  if (length(rd_files) == 0) {
+#' pkg_path <- example_diagnose_scenario("documentation_examples/missing_value_tag.Rd",
+#'                                       show_content = FALSE)
+#' diagnose_value_tags(pkg_path, verbose = FALSE)$passed
+diagnose_value_tags <- function(path, verbose = TRUE) {
+  rd_files <- list.files(file.path(path, "man"),
+                         pattern = "\\.Rd$", full.names = TRUE)
+  if (length(rd_files) == 0L) {
     if (verbose) cli::cli_alert_info("No .Rd files found")
-    return(list(passed = TRUE, message = "No .Rd files found"))
+    return(checktor_check_result(TRUE, character(0), "Value tags check"))
   }
 
   missing_value <- character(0)
   for (file in rd_files) {
-    content <- safe_read_lines(file)
-    if (length(content) == 0) next
-
-    # Skip if it's a data documentation
-    if (any(grepl("\\\\docType\\{data\\}", content))) next
-
-    # Check for \\value tag
-    if (!any(grepl("\\\\value", content))) {
+    rd <- tryCatch(tools::parse_Rd(file), error = function(e) NULL)
+    if (is.null(rd)) next
+    if (is_non_function_rd_obj(rd)) next
+    if (is.null(extract_rd_section(rd, "\\value"))) {
       missing_value <- c(missing_value, basename(file))
     }
   }
 
-  passed <- length(missing_value) == 0
-  if (verbose) {
-    if (passed) {
-      cli::cli_alert_success("All function documentation has {.code \\\\value} tags")
-    } else {
-      cli::cli_alert_danger("Missing {.code \\\\value} tags in")
-      cli::cli_ul(utils::head(missing_value, 5))
-      if (length(missing_value) > 5) {
-        cli::cli_text("{.emph ... and {length(missing_value) - 5} more}")
-      }
-    }
-  }
-
-  return(list(passed = passed, missing = missing_value, message = "Value tags check"))
+  passed <- length(missing_value) == 0L
+  emit_issue_summary(
+    missing_value, verbose,
+    "All function documentation has {.code \\value} tags",
+    "Missing {.code \\value} tags"
+  )
+  checktor_check_result(passed, missing_value, "Value tags check",
+                        missing = missing_value)
 }
 
-#' Diagnose Roxygen2 Usage Patterns
+#' Diagnose Roxygen2 Usage
 #'
-#' Detects whether the package uses Roxygen2 for documentation generation
-#' and provides guidance for CRAN submission preparation.
+#' Informational check: reports whether the package appears to use roxygen2.
 #'
-#' @param path Character. Path to package directory
-#' @param verbose Logical. Print diagnostic messages
-#'
-#' @return
-#' List with elements:
-#'
-#' - `passed`: Logical, always TRUE (informational check)
-#' - `has_roxygen`: Logical, TRUE if Roxygen2 comments detected
-#' - `message`: Description of the check
-#'
+#' @inheritParams diagnose_value_tags
+#' @return [checktor_check_result()] with `passed` (always `TRUE`),
+#'   `has_roxygen`, `message`.
 #' @export
 #' @examples
-#' # Test Roxygen2 detection
-#' pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R")
-#' result <- diagnose_roxygen_usage(pkg_path, verbose = TRUE)
-diagnose_roxygen_usage <- function(path, verbose) {
-  r_files <- list.files(file.path(path, "R"), pattern = "\\.R$", full.names = TRUE)
-  if (length(r_files) == 0) {
-    return(list(passed = TRUE, message = "No R files found"))
+#' diagnose_roxygen_usage(".", verbose = FALSE)$has_roxygen
+diagnose_roxygen_usage <- function(path, verbose = TRUE) {
+  r_files <- list_r_files(path)
+  if (length(r_files) == 0L) {
+    return(checktor_check_result(TRUE, character(0), "Roxygen usage check",
+                                 has_roxygen = FALSE))
   }
 
   has_roxygen <- FALSE
   for (file in r_files) {
     content <- safe_read_lines(file)
-    if (length(content) > 0 && any(grepl("^\\s*#'", content))) {
+    if (length(content) > 0L && any(grepl("^\\s*#'", content))) {
       has_roxygen <- TRUE
       break
     }
@@ -149,69 +137,265 @@ diagnose_roxygen_usage <- function(path, verbose) {
 
   if (verbose) {
     if (has_roxygen) {
-      cli::cli_alert_info("Roxygen2 usage detected - ensure to run {.code roxygenize()} before submission")
+      cli::cli_alert_info(
+        "Roxygen2 usage detected - ensure to run {.code roxygenize()} before submission"
+      )
     } else {
       cli::cli_alert_info("No Roxygen2 usage detected")
     }
   }
-
-  return(list(passed = TRUE, has_roxygen = has_roxygen, message = "Roxygen usage check"))
+  checktor_check_result(TRUE, character(0), "Roxygen usage check",
+                        has_roxygen = has_roxygen)
 }
 
-#' Diagnose Example Structure in Documentation
+#' Diagnose Example Structure
 #'
-#' Checks for appropriate use of \\dontrun in examples, ensuring it's
-#' only used when necessary (interactive functions, API calls, etc.).
+#' Walks `\examples{}` sections via [tools::parse_Rd()] and flags
+#' `\dontrun{}` subtrees that don't appear to have a justifying reason
+#' (interactive, network, credentials, long-running, etc.).
 #'
-#' @param path Character. Path to package directory
-#' @param verbose Logical. Print diagnostic messages
-#'
-#' @return
-#' List with elements:
-#'
-#' - `passed`: Logical, TRUE if example structure appears appropriate
-#' - `issues`: Character vector of potential example issues
-#' - `message`: Description of the check
-#'
+#' @inheritParams diagnose_value_tags
+#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @export
 #' @examples
-#' # Test with network example
-#' pkg_path <- example_diagnose_scenario("network_examples/bad_network_example.Rd")
-#' result <- diagnose_example_structure(pkg_path, verbose = TRUE)
-diagnose_example_structure <- function(path, verbose) {
-  rd_files <- list.files(file.path(path, "man"), pattern = "\\.Rd$", full.names = TRUE)
-  if (length(rd_files) == 0) {
-    return(list(passed = TRUE, message = "No .Rd files found"))
+#' pkg_path <- example_diagnose_scenario("network_examples/bad_network_example.Rd",
+#'                                       show_content = FALSE)
+#' diagnose_example_structure(pkg_path, verbose = FALSE)$passed
+diagnose_example_structure <- function(path, verbose = TRUE) {
+  rd_files <- list.files(file.path(path, "man"),
+                         pattern = "\\.Rd$", full.names = TRUE)
+  if (length(rd_files) == 0L) {
+    return(checktor_check_result(TRUE, character(0), "Example structure check"))
+  }
+
+  justify_re <- paste(
+    "interactive", "API", "password", "token", "key", "secret",
+    "credentials?", "auth", "download\\.file", "httr2?::", "curl",
+    "long.running", "long.time", "Sys.sleep", "shiny",
+    sep = "|"
+  )
+
+  issues <- character(0)
+  for (file in rd_files) {
+    rd <- tryCatch(tools::parse_Rd(file), error = function(e) NULL)
+    if (is.null(rd)) next
+    examples <- extract_rd_section(rd, "\\examples")
+    if (is.null(examples)) next
+    if (!contains_dontrun(examples)) next
+    text <- collect_rd_text(examples)
+    if (!grepl(justify_re, text, ignore.case = TRUE, perl = TRUE)) {
+      issues <- c(issues,
+                  paste0(basename(file), ": potential unnecessary \\dontrun{}"))
+    }
+  }
+
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues, verbose,
+    "Example structure appears appropriate",
+    "Potential example structure issues",
+    level = "warning"
+  )
+  checktor_check_result(passed, issues, "Example structure check")
+}
+
+# Recursively true if any subtree carries Rd_tag `tag`.
+contains_rd_tag <- function(node, tag) {
+  if (identical(attr(node, "Rd_tag"), tag)) return(TRUE)
+  if (is.list(node)) {
+    any(vapply(node, contains_rd_tag, logical(1), tag = tag, USE.NAMES = FALSE))
+  } else {
+    FALSE
+  }
+}
+
+contains_dontrun <- function(node) contains_rd_tag(node, "\\dontrun")
+
+# Flags commented-out code lines inside \examples{}. A "commented-out call"
+# is heuristically a line that starts with `#`, has no other code before it,
+# and contains a `(` (the giveaway that it's a call rather than prose).
+diagnose_commented_examples <- function(path, verbose = TRUE) {
+  rd_files <- list.files(file.path(path, "man"),
+                         pattern = "\\.Rd$", full.names = TRUE)
+  if (length(rd_files) == 0L) {
+    return(checktor_check_result(TRUE, character(0),
+                                 "Commented-out examples check"))
   }
 
   issues <- character(0)
   for (file in rd_files) {
-    content <- safe_read_lines(file)
-    if (length(content) == 0) next
-
-    # Find examples section
-    example_start <- grep("\\\\examples\\{", content)
-    if (length(example_start) == 0) next
-
-    # Check for problematic patterns
-    if (any(grepl("\\\\dontrun", content))) {
-      # Check if it's appropriate (look for interactive, API, etc.)
-      example_content <- paste(content[example_start:length(content)], collapse = " ")
-      if (!grepl("interactive|API|password|token|key", example_content, ignore.case = TRUE)) {
-        issues <- c(issues, paste0(basename(file), ": potential unnecessary \\dontrun"))
+    rd <- tryCatch(tools::parse_Rd(file), error = function(e) NULL)
+    if (is.null(rd)) next
+    examples <- extract_rd_section(rd, "\\examples")
+    if (is.null(examples)) next
+    text <- collect_rd_text(examples)
+    lines <- strsplit(text, "\n", fixed = TRUE)[[1L]]
+    for (i in seq_along(lines)) {
+      ln <- lines[i]
+      if (grepl("^\\s*#[^'#].*\\(", ln, perl = TRUE)) {
+        issues <- c(issues,
+                    paste0(basename(file),
+                           ": commented-out call in \\examples{}"))
+        break  # one report per file is enough
       }
     }
   }
 
-  passed <- length(issues) == 0
-  if (verbose) {
-    if (passed) {
-      cli::cli_alert_success("Example structure appears appropriate")
-    } else {
-      cli::cli_alert_warning("Potential example structure issues")
-      cli::cli_ul(issues)
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues, verbose,
+    "No commented-out code in {.code \\examples{}}",
+    "Commented-out code in {.code \\examples{}}",
+    "Treatment: Remove the comment or make it a real example",
+    level = "warning"
+  )
+  checktor_check_result(passed, issues, "Commented-out examples check")
+}
+
+# Reads NAMESPACE and returns a character vector of all exported symbol
+# names (from export(...) directives). Empty character vector on any error.
+read_exports <- function(path) {
+  ns_file <- file.path(path, "NAMESPACE")
+  if (!file.exists(ns_file)) return(character(0))
+  content <- safe_read_lines(ns_file)
+  m <- regmatches(content, regexpr("(?<=export\\()[^)]+", content, perl = TRUE))
+  trimws(unlist(m), whitespace = "[\\s\"']")
+}
+
+# Reads NAMESPACE and returns names appearing in S3method(...) registrations
+# (those count as exports for our purposes).
+read_s3methods <- function(path) {
+  ns_file <- file.path(path, "NAMESPACE")
+  if (!file.exists(ns_file)) return(character(0))
+  content <- safe_read_lines(ns_file)
+  m <- regmatches(content, regexpr("(?<=S3method\\()[^)]+", content, perl = TRUE))
+  out <- character(0)
+  for (entry in m) {
+    parts <- trimws(strsplit(entry, ",", fixed = TRUE)[[1]])
+    if (length(parts) >= 2L) {
+      out <- c(out, paste(parts[[1]], parts[[2]], sep = "."))
+    }
+  }
+  out
+}
+
+# Returns the primary topic name (first \name{...}) of an Rd object, or NA.
+rd_primary_name <- function(rd) {
+  for (sec in rd) {
+    if (identical(attr(sec, "Rd_tag"), "\\name")) {
+      return(trimws(collect_rd_text(sec)))
+    }
+  }
+  NA_character_
+}
+
+# Returns all \alias{} values from an Rd object.
+rd_aliases <- function(rd) {
+  out <- character(0)
+  for (sec in rd) {
+    if (identical(attr(sec, "Rd_tag"), "\\alias")) {
+      out <- c(out, trimws(collect_rd_text(sec)))
+    }
+  }
+  out
+}
+
+# If an Rd file documents an unexported function and the \examples{} calls
+# the function by bare name, CRAN requires the call to use `pkg:::fn()`.
+diagnose_unexported_example_namespace <- function(path, verbose = TRUE) {
+  rd_files <- list.files(file.path(path, "man"),
+                         pattern = "\\.Rd$", full.names = TRUE)
+  if (length(rd_files) == 0L) {
+    return(checktor_check_result(TRUE, character(0),
+                                 "Unexported example-namespace check"))
+  }
+
+  exports <- c(read_exports(path), read_s3methods(path))
+  if (length(exports) == 0L) {
+    # No exports declared - either an empty package or NAMESPACE is missing;
+    # don't try to enforce.
+    return(checktor_check_result(TRUE, character(0),
+                                 "Unexported example-namespace check"))
+  }
+
+  issues <- character(0)
+  for (file in rd_files) {
+    rd <- tryCatch(tools::parse_Rd(file), error = function(e) NULL)
+    if (is.null(rd)) next
+    names <- c(rd_primary_name(rd), rd_aliases(rd))
+    names <- names[!is.na(names) & nzchar(names)]
+    if (length(names) == 0L) next
+    # If any documented name is exported, the topic is treated as exported.
+    if (any(names %in% exports)) next
+    examples <- extract_rd_section(rd, "\\examples")
+    if (is.null(examples)) next
+    text <- collect_rd_text(examples)
+    # Flag if a documented name appears as `name(` without preceding `:::`.
+    # R function names match [A-Za-z0-9._], so only `.` needs escaping.
+    for (nm in names) {
+      pat <- sprintf("(?<!:)\\b%s\\s*\\(", gsub(".", "\\.", nm, fixed = TRUE))
+      if (grepl(pat, text, perl = TRUE)) {
+        issues <- c(issues,
+                    paste0(basename(file),
+                           ": unexported '", nm,
+                           "()' called bare in \\examples; use ",
+                           "'pkg:::", nm, "()'"))
+        break
+      }
     }
   }
 
-  return(list(passed = passed, issues = issues, message = "Example structure check"))
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues, verbose,
+    "Unexported examples use {.code :::} where needed",
+    "Unexported topics call themselves bare in {.code \\examples{}}",
+    "Treatment: Use {.code pkg:::name()} or add {.code @noRd}",
+    level = "warning"
+  )
+  checktor_check_result(passed, issues,
+                        "Unexported example-namespace check")
+}
+
+# Suggest \donttest{} for code that is only slow, not impossible to run.
+# Heuristic: an \examples block contains \dontrun{} AND the only "justifying"
+# pattern is Sys.sleep() or a "long.running"/"long.time" comment - in that
+# case \donttest{} would be the correct macro.
+diagnose_donttest_vs_dontrun <- function(path, verbose = TRUE) {
+  rd_files <- list.files(file.path(path, "man"),
+                         pattern = "\\.Rd$", full.names = TRUE)
+  if (length(rd_files) == 0L) {
+    return(checktor_check_result(TRUE, character(0),
+                                 "donttest vs dontrun check"))
+  }
+
+  issues <- character(0)
+  for (file in rd_files) {
+    rd <- tryCatch(tools::parse_Rd(file), error = function(e) NULL)
+    if (is.null(rd)) next
+    examples <- extract_rd_section(rd, "\\examples")
+    if (is.null(examples)) next
+    if (!contains_dontrun(examples)) next
+    text <- collect_rd_text(examples)
+    only_slow <- grepl("Sys\\.sleep\\b|long.running|long.time",
+                       text, ignore.case = TRUE, perl = TRUE) &&
+      !grepl("interactive|API|password|token|key|secret|credentials?|auth|download\\.file|httr2?::|curl",
+             text, ignore.case = TRUE, perl = TRUE)
+    if (only_slow) {
+      issues <- c(issues,
+                  paste0(basename(file),
+                         ": uses \\dontrun{} for slow code; ",
+                         "prefer \\donttest{}"))
+    }
+  }
+
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues, verbose,
+    "{.code \\dontrun{}} use is appropriate",
+    "Some {.code \\dontrun{}} blocks should be {.code \\donttest{}}",
+    "Treatment: Slow-only code belongs in {.code \\donttest{}}",
+    level = "warning"
+  )
+  checktor_check_result(passed, issues, "donttest vs dontrun check")
 }

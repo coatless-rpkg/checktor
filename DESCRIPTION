@@ -1,33 +1,37 @@
 Package: checktor
-Title: Extra CRAN Checks for R Package Submissions
+Title: Extra CRAN Submission Checks
 Version: 0.1.0
 Authors@R: c(
     person("James Joseph", "Balamuta",
-            email = "james.balamuta@gmail.com", 
-            role = c("aut", "cre"),
+            email = "james.balamuta@gmail.com",
+            role = c("aut", "cre", "cph"),
             comment = c(ORCID = "0000-0003-2826-8458")
            )
     )
-Description: Provides automated checks for common CRAN submission issues that 
-    are not caught by standard 'R CMD check'. Based on the comprehensive 
-    documentation of CRAN submission problems, this package helps package 
-    maintainers identify and fix issues before submission, reducing rejection 
-    rates and improving the submission process. Covers code issues, DESCRIPTION 
-    file formatting, documentation problems, and general package structure 
-    concerns. Think of it as a "doctor" for your R packages!
+Description: Provides automated checks for common Comprehensive R Archive
+    Network (CRAN) submission issues that are not caught by standard
+    'R CMD check'. Consolidates ad-hoc requirements that CRAN reviewers
+    enforce but standard checks do not surface, helping 'R' package
+    maintainers identify and fix issues before submission to reduce
+    rejection rates. Covers code-pattern issues, DESCRIPTION-field
+    formatting, documentation problems, and general package structure
+    concerns.
 License: AGPL (>= 3)
-URL: https://github.com/coatless-rpkg/checktor
+URL: https://github.com/coatless-rpkg/checktor,
+    https://r-pkg.thecoatlessprofessor.com/checktor/
 BugReports: https://github.com/coatless-rpkg/checktor/issues
 Depends: R (>= 3.5.0)
-Imports: 
+Imports:
     utils,
     tools,
-    cli (>= 3.0.0)
+    cli (>= 3.0.0),
+    xml2,
+    xmlparsedata
 Suggests: 
     testthat (>= 3.0.0),
     quarto
 VignetteBuilder: quarto
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.2
 Config/testthat/edition: 3
+Config/roxygen2/version: 8.0.0

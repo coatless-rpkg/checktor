@@ -1,0 +1,12 @@
+Package: goodexample
+Title: Advanced Data Analysis Tools for Statistical Computing
+Version: 0.1.0
+Authors@R: person("John", "Doe", email = "john@example.com", role = c("aut", "cre"))
+Description: This package works with 'ggplot2' and provides Application Programming
+    Interface (API) access. It uses Machine Learning (ML) algorithms for data
+    processing. The package implements novel statistical methods for analyzing
+    complex datasets and provides user-friendly functions for visualization.
+License: MIT
+Encoding: UTF-8
+URL: https://example.com
+BugReports: https://github.com/user/pkg/issues

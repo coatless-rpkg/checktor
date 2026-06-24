@@ -7,13 +7,18 @@
 prescribe(results)
 }
 \arguments{
-\item{results}{checktor_results object}
-
-\item{x}{A parameter}
+\item{results}{A \code{checktor_results} object.}
 }
 \value{
-A character vector with results
+Invisibly returns \code{NULL}. Called for the side effect of printing
+recommendations.
 }
 \description{
-Provides specific treatment recommendations for found issues
+Prints specific treatment recommendations for issues found by \code{\link[=checktor]{checktor()}}.
+}
+\examples{
+pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+                                 show_content = FALSE)
+results <- checktor(pkg, verbose = FALSE, progress = FALSE)
+prescribe(results)
 }
