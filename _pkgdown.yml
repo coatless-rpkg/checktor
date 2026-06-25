@@ -75,6 +75,8 @@ reference:
   contents:
   - checktor_check_result
   - checktor_category_result
+  - print.checktor_check_result
+  - print.checktor_category_result
   - print.checktor_results
 
 - title: Example scenarios
