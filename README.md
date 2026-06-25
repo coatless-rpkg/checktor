@@ -5,20 +5,15 @@
 [![R-CMD-check](https://github.com/coatless-rpkg/checktor/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/coatless-rpkg/checktor/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
-`checktor` runs extra-CRAN diagnostic checks on R packages — catching common
-submission issues that `R CMD check` does not flag. It covers code patterns
-(`T`/`F` literals, hardcoded `set.seed()`, `options()` without cleanup,
-`browser()` calls, raw `system()`/`shell()`, `<<-` to the global environment,
-`tempfile()` without cleanup), DESCRIPTION-field issues (title case,
-'for R'/'A Toolkit for' anti-patterns, bare `R` in Description, missing
-`[cph]` role, software-name quoting, acronym expansion), documentation issues
-(missing `\value` tags, unjustified `\dontrun{}`, commented-out examples,
-unexported topics that need `pkg:::name()`), and general policy concerns
-(package size, `http://` URLs, file writes outside `tempdir()`).
+`checktor` runs extra-CRAN diagnostic checks on R packages, catching common
+submission issues that `R CMD check` does not flag. It looks at code patterns,
+DESCRIPTION fields, documentation, and policy concerns: the kinds of things a
+reviewer would otherwise catch by hand. It reads your code, `.Rd` files, and
+DESCRIPTION the way R does instead of searching text, so it won't trip over a
+pattern that only appears in a string or a comment.
 
-Checks operate on the parsed AST via `xmlparsedata` + `xml2` and on
-structured `.Rd` files via `tools::parse_Rd()`, so matches inside string
-literals, comments, or Rd macros do not false-positive.
+For the full list of checks, see the
+[function reference](https://r-pkg.thecoatlessprofessor.com/checktor/reference/index.html).
 
 ## Installation
 
