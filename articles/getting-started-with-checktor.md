@@ -21,7 +21,7 @@ fix problems before submission.
 ``` r
 
 # Install from GitHub
-devtools::install_github("your-username/checktor")
+devtools::install_github("coatless-rpkg/checktor")
 ```
 
 ## Basic Usage

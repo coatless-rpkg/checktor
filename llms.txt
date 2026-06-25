@@ -56,6 +56,14 @@ before submitting to CRAN.
 
 # Package index
 
+## Overview
+
+Start here. The package-level help topic summarises what checktor checks
+and how the pieces fit together.
+
+- [`checktor-package`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor-package.md)
+  : checktor: Extra CRAN Submission Checks
+
 ## Top-level orchestrator
 
 Functions you call directly to diagnose a package.
@@ -163,6 +171,8 @@ used in the `@examples` of individual diagnostics.
 
 ### All vignettes
 
+- [checktor in Continuous
+  Integration](https://r-pkg.thecoatlessprofessor.com/checktor/articles/checktor-in-ci.md):
 - [Getting Started with checktor - Your Package
   Doctor](https://r-pkg.thecoatlessprofessor.com/checktor/articles/getting-started-with-checktor.md):
 - [Writing Your Own checktor

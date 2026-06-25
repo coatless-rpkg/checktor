@@ -1,5 +1,13 @@
 # Package index
 
+## Overview
+
+Start here. The package-level help topic summarises what checktor checks
+and how the pieces fit together.
+
+- [`checktor-package`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor-package.md)
+  : checktor: Extra CRAN Submission Checks
+
 ## Top-level orchestrator
 
 Functions you call directly to diagnose a package.
