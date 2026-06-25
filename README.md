@@ -1,4 +1,4 @@
-# checktor
+# checktor <a href="https://r-pkg.thecoatlessprofessor.com/checktor"><img src="man/figures/logo.png" align="right" height="138" alt="checktor website" /></a>
 
 <!-- badges: start -->
 [![CRAN status](https://www.r-pkg.org/badges/version/checktor)](https://CRAN.R-project.org/package=checktor)
