@@ -2,6 +2,22 @@ url: https://r-pkg.thecoatlessprofessor.com/checktor
 
 template:
   bootstrap: 5
+  light-switch: true
+  opengraph:
+    twitter:
+      creator: "@axiomsofxyz"
+      card: summary_large_image
+
+home:
+  links:
+  - text: CRAN Repository Policy
+    href: https://cran.r-project.org/web/packages/policies.html
+  - text: Releasing a package (R Packages, 2e)
+    href: https://r-pkgs.org/release.html
+  - text: lintr
+    href: https://lintr.r-lib.org
+  - text: rcmdcheck
+    href: https://rcmdcheck.r-lib.org
 
 navbar:
   structure:
@@ -13,10 +29,19 @@ navbar:
       menu:
       - text: Getting Started
         href: articles/getting-started-with-checktor.html
+      - text: checktor in Continuous Integration
+        href: articles/checktor-in-ci.html
       - text: Writing Your Own Checks
         href: articles/writing-checks.html
 
 reference:
+- title: Overview
+  desc: >
+    Start here. The package-level help topic summarises what checktor checks
+    and how the pieces fit together.
+  contents:
+  - checktor-package
+
 - title: Top-level orchestrator
   desc: >
     Functions you call directly to diagnose a package.
