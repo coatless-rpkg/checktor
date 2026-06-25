@@ -25,7 +25,7 @@ The package provides automated diagnostics for CRAN submission issues that are n
 
 ```{r eval=FALSE}
 # Install from GitHub
-devtools::install_github("your-username/checktor")
+devtools::install_github("coatless-rpkg/checktor")
 ```
 
 ## Basic Usage
