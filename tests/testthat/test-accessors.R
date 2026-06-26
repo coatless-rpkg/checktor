@@ -59,3 +59,20 @@ test_that("predicates report status without sublist navigation", {
   clean <- checktor(cp, verbose = FALSE, progress = FALSE)
   expect_true(is_healthy(clean)); expect_equal(n_issues(clean), 0L)
 })
+
+test_that("tidy() is per-check and summary() is per-category", {
+  pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R", show_content = FALSE)
+  r <- checktor(pkg, verbose = FALSE, progress = FALSE)
+
+  td <- tidy(r)
+  expect_identical(names(td), c("category","check","passed","n_issues","message"))
+  expect_equal(nrow(td), 39L)                        # all checks
+  expect_equal(td$n_issues[td$check == "tf_usage"], 7L)
+  expect_identical(as.data.frame(r), td)             # as.data.frame == tidy
+
+  s <- summary(r)
+  expect_identical(names(s), c("category","checks","passed","failed","issues"))
+  expect_equal(nrow(s), 5L)
+  expect_equal(s$issues[s$category == "code"], 7L)
+  expect_equal(s$failed[s$category == "description"], 3L)
+})
