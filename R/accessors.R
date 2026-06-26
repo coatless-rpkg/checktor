@@ -189,7 +189,10 @@ n_issues.checktor_results <- function(x, ...) x$metadata$total_issues
 n_failed_checks <- function(x, ...) UseMethod("n_failed_checks")
 #' @rdname predicates
 #' @export
-n_failed_checks.checktor_category_result <- function(x, ...) sum(!x$passed, na.rm = TRUE)
+n_failed_checks.checktor_category_result <- function(x, ...) {
+  nms <- .check_names(x)
+  sum(vapply(nms, function(nm) !isTRUE(x[[nm]]$passed), logical(1)))
+}
 #' @rdname predicates
 #' @export
 n_failed_checks.checktor_results <- function(x, ...) x$metadata$failed_checks
@@ -293,10 +296,10 @@ as.data.frame.checktor_category_result <- function(x, ...) tidy(x)
 #' @rdname checktor-summary
 #' @export
 summary.checktor_category_result <- function(object, ...) {
-  p <- object$passed
-  checks <- length(p); passed <- sum(p, na.rm = TRUE)
-  issues <- sum(vapply(.check_names(object),
-                       function(nm) length(object[[nm]]$issues), integer(1)))
+  nms    <- .check_names(object)
+  checks <- length(nms)
+  passed <- sum(vapply(nms, function(nm) isTRUE(object[[nm]]$passed), logical(1)))
+  issues <- sum(vapply(nms, function(nm) length(object[[nm]]$issues), integer(1)))
   data.frame(checks = checks, passed = passed, failed = checks - passed,
              issues = issues, stringsAsFactors = FALSE)
 }

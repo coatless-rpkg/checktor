@@ -91,6 +91,23 @@ test_that("accessors are robust to early-return categories (no R/ dir)", {
   expect_equal(n_issues(r$code_issues), 0L)
 })
 
+test_that("summary check counts agree with tidy for early-return categories", {
+  d <- make_temp_dir()
+  writeLines(c("Package: x", "Title: T", "Version: 0.0.1",
+    "Description: A minimal package used to pin summary/tidy agreement here.",
+    "License: GPL-3"), file.path(d, "DESCRIPTION"))
+  r <- checktor(d, verbose = FALSE, progress = FALSE)
+  s <- summary(r)
+  td <- tidy(r)
+  # the code category has no R/ dir -> zero checks ran
+  expect_equal(s$checks[s$category == "code"], 0L)
+  expect_equal(s$passed[s$category == "code"], 0L)
+  # per-category check counts in summary must equal tidy's row counts
+  tcounts <- as.integer(table(factor(td$category, levels = s$category)))
+  expect_equal(s$checks, tcounts)
+  expect_equal(n_failed_checks(r$code_issues), 0L)
+})
+
 test_that("print footer points to accessors and Patient shows package name", {
   pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R", show_content = FALSE)
   r <- checktor(pkg, verbose = FALSE, progress = FALSE)
