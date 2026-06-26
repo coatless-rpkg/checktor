@@ -60,14 +60,19 @@ Checks against `.Rd` files, walked via
   : Diagnose Documentation Issues
 - [`diagnose_value_tags()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_value_tags.md)
   : Diagnose Missing Value Tags in Documentation
+- [`diagnose_missing_examples()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_missing_examples.md)
+  : Diagnose Exported Functions Missing Examples
 - [`diagnose_roxygen_usage()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_roxygen_usage.md)
   : Diagnose Roxygen2 Usage
 - [`diagnose_example_structure()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_example_structure.md)
   : Diagnose Example Structure
+- [`diagnose_suggested_in_examples()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_suggested_in_examples.md)
+  : Diagnose Suggested Packages Used in Examples Without a Guard
 
 ## General-purpose diagnostics
 
-Package-size and URL checks that don’t fit other categories.
+Package-level checks (size, URLs, NEWS, README links) that don’t fit
+other categories.
 
 - [`diagnose_general_issues()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_general_issues.md)
   : Diagnose General Package Issues
@@ -75,6 +80,12 @@ Package-size and URL checks that don’t fit other categories.
   : Diagnose Package Size
 - [`diagnose_urls()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_urls.md)
   : Diagnose URL Issues in Package Files
+- [`diagnose_news_file()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_news_file.md)
+  : Diagnose a Missing NEWS File
+- [`diagnose_readme_relative_links()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_readme_relative_links.md)
+  : Diagnose Relative Links in the README
+- [`diagnose_cran_comments_file()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_cran_comments_file.md)
+  : Diagnose a Missing cran-comments.md File
 
 ## CRAN policy diagnostics
 

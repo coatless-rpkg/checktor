@@ -71,8 +71,10 @@ vector summarizing pass/fail per check.</p>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>This function checks for:</p><ul><li><p>Missing <code>\value</code> tags in function documentation</p></li>
+<li><p>Exported functions missing an <code>\examples</code> section</p></li>
 <li><p>Roxygen2 usage</p></li>
 <li><p>Example structure (appropriate use of <code>\dontrun{}</code>)</p></li>
+<li><p>Examples that use Suggested packages without a guard</p></li>
 </ul><p><code>.Rd</code> files are parsed structurally via <code><a href="https://rdrr.io/r/tools/parse_Rd.html" class="external-link">tools::parse_Rd()</a></code> so analyses
 look at sections by their <code>Rd_tag</code> rather than grepping LaTeX text.</p>
     </div>
@@ -88,7 +90,7 @@ look at sections by their <code>Rd_tag</code> rather than grepping LaTeX text.</
 <span class="r-in"><span><span class="va">doc_results</span> <span class="op">&lt;-</span> <span class="fu">diagnose_documentation_issues</span><span class="op">(</span><span class="va">pkg_path</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">doc_results</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   checks passed failed issues</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1      6      5      1      1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1      8      7      1      1</span>
 <span class="r-in"><span><span class="fu"><a href="issues.html">issues</a></span><span class="op">(</span><span class="va">doc_results</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>        check file line             location          message</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1 value_tags &lt;NA&gt;   NA missing_value_tag.Rd Value tags check</span>

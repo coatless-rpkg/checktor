@@ -73,7 +73,12 @@ into specific code, documentation, or DESCRIPTION categories.</p>
 tarball (<code>.Rbuildignore</code> and standard scratch dirs are excluded), with
 a 5 MB warning threshold matching CRAN's recommendation.</p></li>
 <li><p>Invalid or problematic URLs in package files.</p></li>
-</ul></div>
+<li><p>Presence of a <code>NEWS</code> file documenting user-facing changes.</p></li>
+<li><p>Relative links in the <code>README</code> that would break on CRAN.</p></li>
+</ul><p><code><a href="diagnose_cran_comments_file.html">diagnose_cran_comments_file()</a></code> is intentionally not part of this default
+run, since a <code>cran-comments.md</code> is a workflow convention rather than a CRAN
+requirement; call it directly to opt in.</p>
+    </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><code><a href="checktor.html">checktor()</a></code> for complete package diagnostics</p></div>
@@ -85,7 +90,7 @@ a 5 MB warning threshold matching CRAN's recommendation.</p></li>
 <span class="r-in"><span>                                      show_content <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">general_results</span> <span class="op">&lt;-</span> <span class="fu">diagnose_general_issues</span><span class="op">(</span><span class="va">pkg_path</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">general_results</span><span class="op">$</span><span class="va">package_size</span><span class="op">$</span><span class="va">size_mb</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.001019478</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.001089096</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

@@ -35,6 +35,15 @@ This function checks:
 
 - Invalid or problematic URLs in package files.
 
+- Presence of a `NEWS` file documenting user-facing changes.
+
+- Relative links in the `README` that would break on CRAN.
+
+[`diagnose_cran_comments_file()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_cran_comments_file.md)
+is intentionally not part of this default run, since a
+`cran-comments.md` is a workflow convention rather than a CRAN
+requirement; call it directly to opt in.
+
 ## See also
 
 [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md)
@@ -47,5 +56,5 @@ pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                       show_content = FALSE)
 general_results <- diagnose_general_issues(pkg_path, verbose = FALSE)
 general_results$package_size$size_mb
-#> [1] 0.001019478
+#> [1] 0.001089096
 ```

@@ -38,19 +38,21 @@ to create test scenarios with these files
 ``` r
 # List all available examples
 show_example_files()
-#>  [1] "code_examples/browser_calls_bad.R"           
-#>  [2] "code_examples/core_usage_bad.R"              
-#>  [3] "code_examples/globalenv_bad.R"               
-#>  [4] "code_examples/option_changes_bad.R"          
-#>  [5] "code_examples/print_cat_bad.R"               
-#>  [6] "code_examples/seed_setting_bad.R"            
-#>  [7] "code_examples/tf_usage_bad.R"                
-#>  [8] "description_examples/bad_description.txt"    
-#>  [9] "description_examples/good_description.txt"   
-#> [10] "documentation_examples/good_documentation.Rd"
-#> [11] "documentation_examples/missing_value_tag.Rd" 
-#> [12] "network_examples/bad_network_example.Rd"     
-#> [13] "temp_examples/bad_temp_usage.R"              
+#>  [1] "code_examples/browser_calls_bad.R"                  
+#>  [2] "code_examples/core_usage_bad.R"                     
+#>  [3] "code_examples/globalenv_bad.R"                      
+#>  [4] "code_examples/option_changes_bad.R"                 
+#>  [5] "code_examples/print_cat_bad.R"                      
+#>  [6] "code_examples/seed_setting_bad.R"                   
+#>  [7] "code_examples/tf_usage_bad.R"                       
+#>  [8] "description_examples/bad_description.txt"           
+#>  [9] "description_examples/good_description.txt"          
+#> [10] "documentation_examples/good_documentation.Rd"       
+#> [11] "documentation_examples/missing_examples_bad.Rd"     
+#> [12] "documentation_examples/missing_value_tag.Rd"        
+#> [13] "documentation_examples/suggested_in_examples_bad.Rd"
+#> [14] "network_examples/bad_network_example.Rd"            
+#> [15] "temp_examples/bad_temp_usage.R"                     
 
 # List only code examples
 show_example_files("code")
@@ -61,16 +63,18 @@ show_example_files("code")
 
 # List files matching a pattern
 show_example_files(pattern = "bad")
-#>  [1] "code_examples/browser_calls_bad.R"       
-#>  [2] "code_examples/core_usage_bad.R"          
-#>  [3] "code_examples/globalenv_bad.R"           
-#>  [4] "code_examples/option_changes_bad.R"      
-#>  [5] "code_examples/print_cat_bad.R"           
-#>  [6] "code_examples/seed_setting_bad.R"        
-#>  [7] "code_examples/tf_usage_bad.R"            
-#>  [8] "description_examples/bad_description.txt"
-#>  [9] "network_examples/bad_network_example.Rd" 
-#> [10] "temp_examples/bad_temp_usage.R"          
+#>  [1] "code_examples/browser_calls_bad.R"                  
+#>  [2] "code_examples/core_usage_bad.R"                     
+#>  [3] "code_examples/globalenv_bad.R"                      
+#>  [4] "code_examples/option_changes_bad.R"                 
+#>  [5] "code_examples/print_cat_bad.R"                      
+#>  [6] "code_examples/seed_setting_bad.R"                   
+#>  [7] "code_examples/tf_usage_bad.R"                       
+#>  [8] "description_examples/bad_description.txt"           
+#>  [9] "documentation_examples/missing_examples_bad.Rd"     
+#> [10] "documentation_examples/suggested_in_examples_bad.Rd"
+#> [11] "network_examples/bad_network_example.Rd"            
+#> [12] "temp_examples/bad_temp_usage.R"                     
 
 # Use with example_diagnose_scenario
 examples <- show_example_files("code")
@@ -106,7 +110,7 @@ pkg_path <- example_diagnose_scenario(examples[1])
 #> 
 #> === End of example ===
 #> 
-#> Temporary package created at: /tmp/RtmpayGnSR/checktor_example_20260626_041510_7829 
-#> Example file copied to: /tmp/RtmpayGnSR/checktor_example_20260626_041510_7829/R/browser_calls_bad.R 
+#> Temporary package created at: /tmp/RtmpRLX3FP/checktor_example_20260626_200721_3783 
+#> Example file copied to: /tmp/RtmpRLX3FP/checktor_example_20260626_200721_3783/R/browser_calls_bad.R 
 #> 
 ```

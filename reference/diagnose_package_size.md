@@ -31,5 +31,5 @@ with `passed`, `issues`, `message`, and `size_mb`.
 pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                       show_content = FALSE)
 diagnose_package_size(pkg_path, verbose = FALSE)$size_mb
-#> [1] 0.001019478
+#> [1] 0.001089096
 ```

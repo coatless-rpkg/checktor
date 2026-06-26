@@ -32,9 +32,13 @@ This function checks for:
 
 - Missing `\value` tags in function documentation
 
+- Exported functions missing an `\examples` section
+
 - Roxygen2 usage
 
 - Example structure (appropriate use of `\dontrun{}`)
+
+- Examples that use Suggested packages without a guard
 
 `.Rd` files are parsed structurally via
 [`tools::parse_Rd()`](https://rdrr.io/r/tools/parse_Rd.html) so analyses
@@ -53,7 +57,7 @@ pkg_path <- example_diagnose_scenario("documentation_examples/missing_value_tag.
 doc_results <- diagnose_documentation_issues(pkg_path, verbose = FALSE)
 summary(doc_results)
 #>   checks passed failed issues
-#> 1      6      5      1      1
+#> 1      8      7      1      1
 issues(doc_results)
 #>        check file line             location          message
 #> 1 value_tags <NA>   NA missing_value_tag.Rd Value tags check

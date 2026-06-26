@@ -117,8 +117,8 @@ pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R")
 #> 
 #> === End of example ===
 #> 
-#> Temporary package created at: /tmp/RtmpayGnSR/checktor_example_20260626_041508_9943 
-#> Example file copied to: /tmp/RtmpayGnSR/checktor_example_20260626_041508_9943/R/tf_usage_bad.R 
+#> Temporary package created at: /tmp/RtmpRLX3FP/checktor_example_20260626_200719_3069 
+#> Example file copied to: /tmp/RtmpRLX3FP/checktor_example_20260626_200719_3069/R/tf_usage_bad.R 
 #> 
 result <- diagnose_tf_usage(pkg_path, verbose = TRUE)
 #> ✖ Found `T`/`F` usage (should use `TRUE`/`FALSE`)
@@ -185,8 +185,8 @@ pkg_path <- example_diagnose_scenario("description_examples/bad_description.txt"
 #> 
 #> === End of example ===
 #> 
-#> Temporary package created at: /tmp/RtmpayGnSR/checktor_example_20260626_041508_2022 
-#> Example file copied to: /tmp/RtmpayGnSR/checktor_example_20260626_041508_2022/DESCRIPTION 
+#> Temporary package created at: /tmp/RtmpRLX3FP/checktor_example_20260626_200719_5274 
+#> Example file copied to: /tmp/RtmpRLX3FP/checktor_example_20260626_200719_5274/DESCRIPTION 
 #> 
 desc_result <- diagnose_description_issues(pkg_path)
 #> 
@@ -203,8 +203,10 @@ desc_result <- diagnose_description_issues(pkg_path)
 #> • Word should be capitalized: package
 #> • Word should be capitalized: data
 #> • Word should be capitalized: analysis
+#> ✔ Title length is within the 65-character guideline
 #> ✔ Title does not start with an article
 #> ✔ Title is free of redundant phrases
+#> ✔ No single-quoted function names in Title/Description
 #> ! No `Authors@R` field found
 #> Legacy Author/Maintainer fields detected
 #> Treatment: Consider adding Authors@R field
@@ -253,8 +255,8 @@ pkg_path <- example_diagnose_scenario("code_examples/browser_calls_bad.R",
 #> 
 #> === End of example ===
 #> 
-#> Temporary package created at: /tmp/RtmpayGnSR/checktor_example_20260626_041509_2289 
-#> Example file copied to: /tmp/RtmpayGnSR/checktor_example_20260626_041509_2289/R/browser_calls_bad.R 
+#> Temporary package created at: /tmp/RtmpRLX3FP/checktor_example_20260626_200719_7829 
+#> Example file copied to: /tmp/RtmpRLX3FP/checktor_example_20260626_200719_7829/R/browser_calls_bad.R 
 #> 
 # Cleanup happens automatically when R session ends
 ```
