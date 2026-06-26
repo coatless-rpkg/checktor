@@ -76,3 +76,17 @@ test_that("tidy() is per-check and summary() is per-category", {
   expect_equal(s$issues[s$category == "code"], 7L)
   expect_equal(s$failed[s$category == "description"], 3L)
 })
+
+test_that("accessors are robust to early-return categories (no R/ dir)", {
+  d <- make_temp_dir()
+  writeLines(c("Package: x", "Title: T", "Version: 0.0.1",
+    "Description: A minimal package used to exercise accessor robustness here.",
+    "License: GPL-3"), file.path(d, "DESCRIPTION"))
+  r <- checktor(d, verbose = FALSE, progress = FALSE)
+  expect_no_error(summary(r))
+  expect_equal(nrow(summary(r)), 5L)
+  expect_no_error(issues(r))
+  expect_no_error(tidy(r))
+  expect_no_error(n_issues(r$code_issues))
+  expect_equal(n_issues(r$code_issues), 0L)
+})

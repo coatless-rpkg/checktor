@@ -7,6 +7,14 @@
   policy        = "policy_issues"
 )
 
+# Names of the actual check elements in a category result: every named
+# element except the `passed` summary, restricted to list-valued elements so
+# early-return categories (which carry a bare `message` string) are skipped.
+.check_names <- function(cat) {
+  nms <- setdiff(names(cat), "passed")
+  nms[vapply(nms, function(nm) is.list(cat[[nm]]), logical(1))]
+}
+
 # Split "file.R:12" into file + integer line; non-locational issues keep the
 # raw string as `location` with file/line = NA.
 .split_issue <- function(issues) {
@@ -20,7 +28,7 @@
 # Per-issue frame for one category list. `category` adds a leading column when
 # not NA (used by the results-level method).
 .category_issue_df <- function(cat, category = NA_character_) {
-  check_names <- setdiff(names(cat), "passed")
+  check_names <- .check_names(cat)
   parts <- lapply(check_names, function(nm) {
     ch <- cat[[nm]]
     if (!is.list(ch)) return(NULL)
@@ -169,7 +177,7 @@ n_issues.checktor_check_result <- function(x, ...) length(x$issues)
 #' @rdname predicates
 #' @export
 n_issues.checktor_category_result <- function(x, ...) {
-  sum(vapply(setdiff(names(x), "passed"),
+  sum(vapply(.check_names(x),
              function(nm) length(x[[nm]]$issues), integer(1)))
 }
 #' @rdname predicates
@@ -211,8 +219,7 @@ failed_checks.checktor_results <- function(x, ...) {
 
 # Per-check frame for one category list.
 .category_tidy_df <- function(cat, category = NA_character_) {
-  check_names <- setdiff(names(cat), "passed")
-  check_names <- check_names[vapply(check_names, function(nm) is.list(cat[[nm]]), logical(1))]
+  check_names <- .check_names(cat)
   if (length(check_names) == 0L) {
     out <- data.frame(check = character(0), passed = logical(0),
                       n_issues = integer(0), message = character(0),
@@ -288,7 +295,7 @@ as.data.frame.checktor_category_result <- function(x, ...) tidy(x)
 summary.checktor_category_result <- function(object, ...) {
   p <- object$passed
   checks <- length(p); passed <- sum(p, na.rm = TRUE)
-  issues <- sum(vapply(setdiff(names(object), "passed"),
+  issues <- sum(vapply(.check_names(object),
                        function(nm) length(object[[nm]]$issues), integer(1)))
   data.frame(checks = checks, passed = passed, failed = checks - passed,
              issues = issues, stringsAsFactors = FALSE)
