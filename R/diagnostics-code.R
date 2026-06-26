@@ -35,7 +35,9 @@ diagnose_code_issues <- function(path = ".", verbose = TRUE) {
 
   if (!dir.exists(file.path(path, "R"))) {
     if (verbose) cli::cli_alert_info("No R/ directory found")
-    return(list(passed = TRUE, message = "No R directory found"))
+    out <- list(passed = TRUE, message = "No R directory found")
+    class(out) <- "checktor_category_result"
+    return(out)
   }
 
   # Parse all R files once and pass the cache to each public diagnostic via
