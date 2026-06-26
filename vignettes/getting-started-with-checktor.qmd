@@ -89,6 +89,32 @@ Examines general package structure and content:
 1. **Package Size**: Warning if package exceeds 5MB
 2. **URLs**: Checking for http vs https and redirect issues
 
+## Inspecting Results as Data
+
+The printed report is for reading. When you want to *work* with the findings,
+the accessor functions return plain data frames you can filter, sort, or drop
+into a report of your own -- no navigating nested lists.
+
+```{r eval=FALSE}
+results <- checktor()
+
+summary(results)   # one row per category: checks, passed, failed, issues
+tidy(results)      # one row per check that ran
+issues(results)    # one row per individual issue, with file and line
+```
+
+Three predicates answer the common questions directly:
+
+```{r eval=FALSE}
+is_healthy(results)      # TRUE if nothing was flagged
+n_issues(results)        # total number of issues found
+failed_checks(results)   # names of the checks that failed
+```
+
+`as.data.frame(results)` is equivalent to `tidy(results)`, and every accessor
+also works on a single category (`issues(results$code_issues)`) or a single
+check.
+
 ## Quick Health Checks
 
 For CI/CD pipelines or quick verification, use the `checkup()` function:

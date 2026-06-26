@@ -93,7 +93,7 @@ fails, you want the diagnosis in the log, not a scavenger hunt. Run the full
 ```r
 results <- checktor::checktor()
 
-if (results$metadata$total_issues > 0) {
+if (!checktor::is_healthy(results)) {
   cat(checktor::health_report(results), sep = "\n")
   quit(status = 1)
 }
