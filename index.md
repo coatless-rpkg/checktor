@@ -1,4 +1,4 @@
-# checktor
+# checktor [![checktor website](reference/figures/logo-checktor-light-animated.svg)](https://r-pkg.thecoatlessprofessor.com/checktor)
 
 `checktor` runs extra-CRAN diagnostic checks on R packages, catching
 common submission issues that `R CMD check` does not flag. It looks at

@@ -3,7 +3,7 @@
 testing diagnostic functions. This is primarily used in documentation
 examples to demonstrate diagnostic capabilities with known problematic code."><meta property="og:description" content="Creates a temporary package structure with a specified example file for
 testing diagnostic functions. This is primarily used in documentation
-examples to demonstrate diagnostic capabilities with known problematic code."><meta property="og:image" content="https://r-pkg.thecoatlessprofessor.com/checktor/logo.png"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:creator" content="@axiomsofxyz"><meta name="twitter:site" content="@axiomsofxyz"></head><body>
+examples to demonstrate diagnostic capabilities with known problematic code."><meta name="twitter:card" content="summary_large_image"><meta name="twitter:creator" content="@axiomsofxyz"><meta name="twitter:site" content="@axiomsofxyz"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -37,7 +37,8 @@ examples to demonstrate diagnostic capabilities with known problematic code."><m
 </nav><div class="container template-reference-topic">
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
-      <img src="../logo.png" class="logo" alt=""><h1>Create Example Diagnostic Scenario</h1>
+
+      <h1>Create Example Diagnostic Scenario</h1>
       <small class="dont-index">Source: <a href="https://github.com/coatless-rpkg/checktor/blob/main/R/example-scenarios.R" class="external-link"><code>R/example-scenarios.R</code></a></small>
       <div class="d-none name"><code>example_diagnose_scenario.Rd</code></div>
     </div>
@@ -153,8 +154,8 @@ for running diagnostics, plus a basic <code>DESCRIPTION</code> file.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> === End of example ===</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Temporary package created at: /tmp/RtmpB5JkB8/checktor_example_20260626_034319_9943 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Example file copied to: /tmp/RtmpB5JkB8/checktor_example_20260626_034319_9943/R/tf_usage_bad.R </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Temporary package created at: /tmp/RtmpayGnSR/checktor_example_20260626_041508_9943 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Example file copied to: /tmp/RtmpayGnSR/checktor_example_20260626_041508_9943/R/tf_usage_bad.R </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="diagnose_tf_usage.html">diagnose_tf_usage</a></span><span class="op">(</span><span class="va">pkg_path</span>, verbose <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #BB0000;">✖</span> Found `T`/`F` usage (should use `TRUE`/`FALSE`)</span>
@@ -221,8 +222,8 @@ for running diagnostics, plus a basic <code>DESCRIPTION</code> file.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> === End of example ===</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Temporary package created at: /tmp/RtmpB5JkB8/checktor_example_20260626_034319_2022 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Example file copied to: /tmp/RtmpB5JkB8/checktor_example_20260626_034319_2022/DESCRIPTION </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Temporary package created at: /tmp/RtmpayGnSR/checktor_example_20260626_041508_2022 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Example file copied to: /tmp/RtmpayGnSR/checktor_example_20260626_041508_2022/DESCRIPTION </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span><span class="va">desc_result</span> <span class="op">&lt;-</span> <span class="fu"><a href="diagnose_description_issues.html">diagnose_description_issues</a></span><span class="op">(</span><span class="va">pkg_path</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
@@ -289,8 +290,8 @@ for running diagnostics, plus a basic <code>DESCRIPTION</code> file.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> === End of example ===</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Temporary package created at: /tmp/RtmpB5JkB8/checktor_example_20260626_034319_2289 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Example file copied to: /tmp/RtmpB5JkB8/checktor_example_20260626_034319_2289/R/browser_calls_bad.R </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Temporary package created at: /tmp/RtmpayGnSR/checktor_example_20260626_041509_2289 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Example file copied to: /tmp/RtmpayGnSR/checktor_example_20260626_041509_2289/R/browser_calls_bad.R </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span><span class="co"># Cleanup happens automatically when R session ends</span></span></span>
 </code></pre></div>
