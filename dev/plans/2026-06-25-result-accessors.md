@@ -159,7 +159,7 @@ test_that("issues() returns a tidy per-issue frame at each level", {
 })
 
 test_that("issues() on a healthy package is a 0-row typed frame", {
-  pkg <- write_pkg()                                 # clean fixture
+  pkg <- make_temp_dir(); write_pkg(pkg)             # clean fixture (0 issues)
   r <- checktor(pkg, verbose = FALSE, progress = FALSE)
   di <- issues(r)
   expect_equal(nrow(di), 0L)
@@ -327,7 +327,8 @@ test_that("predicates report status without sublist navigation", {
   expect_false(passed(r$code_issues$tf_usage))
   expect_equal(n_issues(r$code_issues$tf_usage), 7L)
 
-  clean <- checktor(write_pkg(), verbose = FALSE, progress = FALSE)
+  cp <- make_temp_dir(); write_pkg(cp)
+  clean <- checktor(cp, verbose = FALSE, progress = FALSE)
   expect_true(is_healthy(clean)); expect_equal(n_issues(clean), 0L)
 })
 ```
