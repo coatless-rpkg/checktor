@@ -25,7 +25,13 @@ This function checks:
 tarball (\code{.Rbuildignore} and standard scratch dirs are excluded), with
 a 5 MB warning threshold matching CRAN's recommendation.
 \item Invalid or problematic URLs in package files.
+\item Presence of a \code{NEWS} file documenting user-facing changes.
+\item Relative links in the \code{README} that would break on CRAN.
 }
+
+\code{\link[=diagnose_cran_comments_file]{diagnose_cran_comments_file()}} is intentionally not part of this default
+run, since a \code{cran-comments.md} is a workflow convention rather than a CRAN
+requirement; call it directly to opt in.
 }
 \examples{
 pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",

@@ -66,7 +66,7 @@ test_that("tidy() is per-check and summary() is per-category", {
 
   td <- tidy(r)
   expect_identical(names(td), c("category","check","passed","n_issues","message"))
-  expect_equal(nrow(td), 39L)                        # all checks
+  expect_equal(nrow(td), 45L)                        # all checks
   expect_equal(td$n_issues[td$check == "tf_usage"], 7L)
   expect_identical(as.data.frame(r), td)             # as.data.frame == tidy
 

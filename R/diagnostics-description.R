@@ -55,8 +55,10 @@ diagnose_description_issues <- function(path = ".", verbose = TRUE) {
     acronyms            = function(p, v) diagnose_acronym_explanation(desc, v),
     license             = function(p, v) diagnose_license_formatting(desc, p, v),
     title_case          = function(p, v) diagnose_title_case(desc, v),
+    title_length        = function(p, v) diagnose_title_length(desc, v),
     title_starts_with_article = function(p, v) diagnose_title_starts_with_article(desc, v),
     title_redundant_phrases   = function(p, v) diagnose_title_redundant_phrases(desc, v),
+    description_function_quotes = function(p, v) diagnose_description_function_quotes(desc, v),
     authors             = function(p, v) diagnose_authors_field(desc, v),
     cph_role            = function(p, v) diagnose_cph_role(desc, v),
     references          = function(p, v) diagnose_references_formatting(desc, v),
@@ -203,8 +205,13 @@ diagnose_title_case <- function(desc, verbose) {
     } else {
       is_small <- tolower(bare) %in% small_words
       starts_caps <- grepl("^[A-Z]", bare)
+      # A capitalized small word right after a colon is correct (subtitle
+      # start), so only flag over-capitalized small words elsewhere.
+      after_colon <- grepl(":$", words[i - 1L])
       if (!is_small && !starts_caps) {
         issues <- c(issues, paste("Word should be capitalized:", word))
+      } else if (is_small && starts_caps && !after_colon) {
+        issues <- c(issues, paste("Small word should be lowercase:", word))
       }
     }
   }
@@ -529,6 +536,57 @@ diagnose_license_year <- function(path, verbose) {
     level = "warning"
   )
   checktor_check_result(passed, issues, "License year check")
+}
+
+# Title should stay under CRAN's ~65-character guideline.
+diagnose_title_length <- function(desc, verbose) {
+  title <- desc[["Title"]]
+  if (is.null(title) || !nzchar(title)) {
+    return(checktor_check_result(TRUE, character(0), "Title length check"))
+  }
+  flat <- trimws(gsub("\\s+", " ", title))
+  n <- nchar(flat)
+  issues <- if (n >= 65L) {
+    paste0("Title is ", n, " characters; CRAN prefers under 65")
+  } else {
+    character(0)
+  }
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues, verbose,
+    "Title length is within the 65-character guideline",
+    "Title exceeds the 65-character guideline",
+    "Treatment: Shorten the Title to under 65 characters",
+    level = "warning"
+  )
+  checktor_check_result(passed, issues, "Title length check", nchar = n)
+}
+
+# Function names must NOT be single-quoted in Title/Description (single quotes
+# are reserved for software/package/API names). Heuristic: flag a single-quoted
+# token of the form `'name(...)'` - a quoted call is a clear function name.
+diagnose_description_function_quotes <- function(desc, verbose) {
+  # 'fn()', 'fn(x)', 'pkg::fn()' - identifier (optionally pkg::) then parens.
+  pat <- "'\\s*[A-Za-z.][A-Za-z0-9._]*(?:::[A-Za-z0-9._]+)?\\s*\\([^')]*\\)\\s*'"
+  issues <- character(0)
+  for (field in c("Title", "Description")) {
+    text <- desc[[field]]
+    if (is.null(text) || !nzchar(text)) next
+    hits <- regmatches(text, gregexpr(pat, text, perl = TRUE))[[1L]]
+    for (h in unique(hits)) {
+      issues <- c(issues, paste0(field, ": function name ", trimws(h),
+                                 " should not be quoted"))
+    }
+  }
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues, verbose,
+    "No single-quoted function names in Title/Description",
+    "Function names are single-quoted (reserve quotes for software names)",
+    "Treatment: Drop the single quotes around function names like 'fn()'",
+    level = "warning"
+  )
+  checktor_check_result(passed, issues, "Description function-quotes check")
 }
 
 `%||%` <- function(a, b) if (is.null(a)) b else a

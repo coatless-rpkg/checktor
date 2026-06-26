@@ -21,6 +21,8 @@ write_pkg <- function(path,
                       maintainer = NULL,
                       r_code = "test_fn <- function() TRUE",
                       rd_files = NULL,
+                      news = TRUE,
+                      cran_comments = TRUE,
                       extra = NULL) {
   dir.create(file.path(path, "R"), recursive = TRUE, showWarnings = FALSE)
   dir.create(file.path(path, "man"), recursive = TRUE, showWarnings = FALSE)
@@ -71,6 +73,17 @@ write_pkg <- function(path,
     for (nm in names(rd_files)) {
       writeLines(rd_files[[nm]], file.path(path, "man", nm))
     }
+  }
+
+  # Standard CRAN-prep files (on by default) so a baseline fixture is clean
+  # for the general NEWS/cran-comments checks. Pass FALSE to omit them.
+  if (isTRUE(news)) {
+    writeLines(c("# testpkg 0.0.1", "", "* Initial release."),
+               file.path(path, "NEWS.md"))
+  }
+  if (isTRUE(cran_comments)) {
+    writeLines(c("## Test environments", "* local"),
+               file.path(path, "cran-comments.md"))
   }
 
   invisible(path)

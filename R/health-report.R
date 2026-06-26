@@ -11,6 +11,12 @@
 #' @return Character vector with report content
 #'
 #' @export
+#' @examples
+#' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+#'                                  show_content = FALSE)
+#' results <- checktor(pkg, verbose = FALSE, progress = FALSE)
+#' report <- health_report(results, format = "text")
+#' head(report)
 health_report <- function(results, file = NULL, format = "markdown") {
   if (!inherits(results, "checktor_results")) {
     cli::cli_abort("Input must be a checktor_results object")

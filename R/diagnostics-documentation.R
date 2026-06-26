@@ -6,8 +6,10 @@
 #' @details
 #' This function checks for:
 #' - Missing `\value` tags in function documentation
+#' - Exported functions missing an `\examples` section
 #' - Roxygen2 usage
 #' - Example structure (appropriate use of `\dontrun{}`)
+#' - Examples that use Suggested packages without a guard
 #'
 #' `.Rd` files are parsed structurally via [tools::parse_Rd()] so analyses
 #' look at sections by their `Rd_tag` rather than grepping LaTeX text.
@@ -34,11 +36,13 @@ diagnose_documentation_issues <- function(path = ".", verbose = TRUE) {
   }
   run_checks(list(
     value_tags                = diagnose_value_tags,
+    missing_examples          = diagnose_missing_examples,
     roxygen_usage             = diagnose_roxygen_usage,
     example_structure         = diagnose_example_structure,
     commented_examples        = diagnose_commented_examples,
     unexported_example_ns     = diagnose_unexported_example_namespace,
-    donttest_vs_dontrun       = diagnose_donttest_vs_dontrun
+    donttest_vs_dontrun       = diagnose_donttest_vs_dontrun,
+    suggested_in_examples     = diagnose_suggested_in_examples
   ), path, verbose)
 }
 
@@ -399,4 +403,141 @@ diagnose_donttest_vs_dontrun <- function(path, verbose = TRUE) {
     level = "warning"
   )
   checktor_check_result(passed, issues, "donttest vs dontrun check")
+}
+
+#' Diagnose Exported Functions Missing Examples
+#'
+#' CRAN expects exported functions to carry a runnable `\examples{}` section.
+#' Walks `.Rd` files via [tools::parse_Rd()] and reports exported function
+#' topics that lack one. Data, class, methods, package-level, and re-export
+#' topics are skipped, and only topics whose name appears in NAMESPACE
+#' `export()` are considered (so internal helpers and S3 methods aren't
+#' required to have examples). Genuinely side-effect-only functions may be
+#' false positives and can be ignored.
+#'
+#' @inheritParams diagnose_value_tags
+#' @return [checktor_check_result()] with `passed`, `issues`, `missing`,
+#'   `message`.
+#' @export
+#' @examples
+#' pkg_path <- example_diagnose_scenario(
+#'   "documentation_examples/missing_examples_bad.Rd", show_content = FALSE)
+#' writeLines("export(undocumented_fn)", file.path(pkg_path, "NAMESPACE"))
+#' issues(diagnose_missing_examples(pkg_path, verbose = FALSE))
+diagnose_missing_examples <- function(path, verbose = TRUE) {
+  rd_files <- list.files(file.path(path, "man"),
+                         pattern = "\\.Rd$", full.names = TRUE)
+  if (length(rd_files) == 0L) {
+    return(checktor_check_result(TRUE, character(0), "Missing examples check"))
+  }
+
+  exports <- read_exports(path)
+  if (length(exports) == 0L) {
+    # No exports declared - can't tell which topics are exported; don't enforce.
+    return(checktor_check_result(TRUE, character(0), "Missing examples check"))
+  }
+
+  missing <- character(0)
+  for (file in rd_files) {
+    rd <- tryCatch(tools::parse_Rd(file), error = function(e) NULL)
+    if (is.null(rd)) next
+    if (is_non_function_rd_obj(rd)) next
+    names <- c(rd_primary_name(rd), rd_aliases(rd))
+    names <- names[!is.na(names) & nzchar(names)]
+    if (!any(names %in% exports)) next     # only exported function topics
+    if (is.null(extract_rd_section(rd, "\\examples"))) {
+      missing <- c(missing, basename(file))
+    }
+  }
+
+  passed <- length(missing) == 0L
+  emit_issue_summary(
+    missing, verbose,
+    "Exported functions include {.code \\examples}",
+    "Exported functions missing {.code \\examples}",
+    "Treatment: Add a runnable {.code @examples} (side-effect-only functions may be exempt)",
+    level = "warning"
+  )
+  checktor_check_result(passed, missing, "Missing examples check",
+                        missing = missing)
+}
+
+# Split a DESCRIPTION dependency field (Suggests/Imports/...) into bare package
+# names, dropping version constraints and the special "R" entry.
+parse_package_list <- function(field) {
+  if (is.null(field) || !nzchar(field)) return(character(0))
+  parts <- strsplit(field, ",", fixed = TRUE)[[1L]]
+  parts <- trimws(sub("\\(.*\\)", "", parts))
+  parts <- parts[nzchar(parts)]
+  setdiff(parts, "R")
+}
+
+#' Diagnose Suggested Packages Used in Examples Without a Guard
+#'
+#' Under CRAN's `noSuggests` check a package must work without its Suggested
+#' packages installed. This flags `\examples{}` that load a Suggested package
+#' (`library()`/`require()`/`pkg::`) in code that runs unconditionally and is
+#' not guarded by `requireNamespace()` / `rlang::is_installed()` (the form
+#' `@examplesIf` and `if (requireNamespace(...))` produce). Usage inside
+#' `\dontrun{}` or `\donttest{}` is not flagged.
+#'
+#' @inheritParams diagnose_value_tags
+#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
+#' @export
+#' @examples
+#' pkg_path <- example_diagnose_scenario(
+#'   "documentation_examples/suggested_in_examples_bad.Rd", show_content = FALSE)
+#' cat("Suggests: somesuggest\n",
+#'     file = file.path(pkg_path, "DESCRIPTION"), append = TRUE)
+#' issues(diagnose_suggested_in_examples(pkg_path, verbose = FALSE))
+diagnose_suggested_in_examples <- function(path, verbose = TRUE) {
+  rd_files <- list.files(file.path(path, "man"),
+                         pattern = "\\.Rd$", full.names = TRUE)
+  desc_file <- file.path(path, "DESCRIPTION")
+  if (length(rd_files) == 0L || !file.exists(desc_file)) {
+    return(checktor_check_result(TRUE, character(0),
+                                 "Suggested-package examples check"))
+  }
+  desc <- tryCatch(read_description(desc_file), error = function(e) NULL)
+  suggests <- if (is.null(desc)) character(0) else
+    parse_package_list(desc[["Suggests"]])
+  if (length(suggests) == 0L) {
+    return(checktor_check_result(TRUE, character(0),
+                                 "Suggested-package examples check"))
+  }
+
+  issues <- character(0)
+  for (file in rd_files) {
+    rd <- tryCatch(tools::parse_Rd(file), error = function(e) NULL)
+    if (is.null(rd)) next
+    examples <- extract_rd_section(rd, "\\examples")
+    if (is.null(examples)) next
+    full <- collect_rd_text(examples)
+    run  <- collect_rd_text(examples, skip = c("\\dontrun", "\\donttest"))
+    for (pkg in suggests) {
+      esc <- gsub("([.])", "\\\\\\1", pkg)
+      use_re <- sprintf(
+        "\\b(?:library|require)\\s*\\(\\s*['\"]?%s['\"]?|\\b%s::", esc, esc
+      )
+      if (!grepl(use_re, run, perl = TRUE)) next
+      guard_re <- sprintf(
+        "(?:requireNamespace|is_installed)\\s*\\(\\s*['\"]%s['\"]", esc
+      )
+      if (grepl(guard_re, full, perl = TRUE)) next
+      issues <- c(issues,
+                  paste0(basename(file), ": uses Suggested package '", pkg,
+                         "' in \\examples without a guard"))
+      break  # one report per file is enough
+    }
+  }
+
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues, verbose,
+    "Examples guard Suggested-package usage",
+    "Examples use Suggested packages without a guard",
+    "Treatment: Wrap in @examplesIf rlang::is_installed('pkg') or if (requireNamespace('pkg'))",
+    level = "warning"
+  )
+  checktor_check_result(passed, issues, "Suggested-package examples check")
 }

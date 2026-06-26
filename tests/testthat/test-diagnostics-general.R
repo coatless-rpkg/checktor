@@ -65,3 +65,76 @@ test_that("diagnose_urls flags known URL shorteners", {
   res <- diagnose_urls(pkg, verbose = FALSE)
   expect_false(res$passed)
 })
+
+# ---- NEWS file ---------------------------------------------------------------
+
+test_that("diagnose_news_file flags a missing NEWS, accepts one present", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, news = FALSE)
+  expect_false(diagnose_news_file(pkg, verbose = FALSE)$passed)
+
+  pkg_ok <- make_temp_dir()
+  write_pkg(pkg_ok)                     # NEWS.md created by default
+  expect_true(diagnose_news_file(pkg_ok, verbose = FALSE)$passed)
+})
+
+test_that("diagnose_news_file accepts NEWS under inst/", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, news = FALSE)
+  dir.create(file.path(pkg, "inst"))
+  writeLines("# pkg 0.1.0", file.path(pkg, "inst", "NEWS.md"))
+  expect_true(diagnose_news_file(pkg, verbose = FALSE)$passed)
+})
+
+# ---- cran-comments.md --------------------------------------------------------
+
+test_that("diagnose_cran_comments_file flags absence, accepts presence", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, cran_comments = FALSE)
+  expect_false(diagnose_cran_comments_file(pkg, verbose = FALSE)$passed)
+
+  pkg_ok <- make_temp_dir()
+  write_pkg(pkg_ok)                     # cran-comments.md created by default
+  expect_true(diagnose_cran_comments_file(pkg_ok, verbose = FALSE)$passed)
+})
+
+# ---- README relative links ---------------------------------------------------
+
+test_that("diagnose_readme_relative_links flags a link to a missing file", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  writeLines("See [the guide](docs/guide.md) for details.",
+             file.path(pkg, "README.md"))
+  res <- diagnose_readme_relative_links(pkg, verbose = FALSE)
+  expect_false(res$passed)
+})
+
+test_that("diagnose_readme_relative_links flags links to .Rbuildignore'd files", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  writeLines("See the [code of conduct](CODE_OF_CONDUCT.md).",
+             file.path(pkg, "README.md"))
+  writeLines("Our pledge ...", file.path(pkg, "CODE_OF_CONDUCT.md"))
+  writeLines("^CODE_OF_CONDUCT\\.md$", file.path(pkg, ".Rbuildignore"))
+  res <- diagnose_readme_relative_links(pkg, verbose = FALSE)
+  expect_false(res$passed)
+})
+
+test_that("diagnose_readme_relative_links accepts absolute URLs and shipped files", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  dir.create(file.path(pkg, "man", "figures"), recursive = TRUE)
+  writeLines("x", file.path(pkg, "man", "figures", "logo.png"))
+  writeLines(c("Full link: [site](https://example.com).",
+               "Anchor: [top](#intro).",
+               "Shipped image: ![logo](man/figures/logo.png)."),
+             file.path(pkg, "README.md"))
+  res <- diagnose_readme_relative_links(pkg, verbose = FALSE)
+  expect_true(res$passed)
+})
+
+test_that("diagnose_readme_relative_links passes when there is no README", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  expect_true(diagnose_readme_relative_links(pkg, verbose = FALSE)$passed)
+})

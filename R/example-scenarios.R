@@ -121,6 +121,13 @@ example_diagnose_scenario <- function(example_path,
     create_example_description(desc_path, description_type)
   }
 
+  # Standard CRAN-prep files so the scenario isolates the single injected
+  # issue (the general NEWS/cran-comments checks would otherwise also fire).
+  writeLines(c("# examplepackage 0.1.0", "", "* Initial scenario."),
+             file.path(temp_pkg, "NEWS.md"))
+  writeLines(c("## Test environments", "* local"),
+             file.path(temp_pkg, "cran-comments.md"))
+
   # Show file content if requested
   if (show_content) {
     cat("=== Example file:", basename(example_file), "===\n")
