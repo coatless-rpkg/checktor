@@ -23,8 +23,10 @@ can cause CRAN submission problems or a poor user experience.
 This function checks for:
 \itemize{
 \item Missing \verb{\\value} tags in function documentation
+\item Exported functions missing an \verb{\\examples} section
 \item Roxygen2 usage
 \item Example structure (appropriate use of \verb{\dontrun{}})
+\item Examples that use Suggested packages without a guard
 }
 
 \code{.Rd} files are parsed structurally via \code{\link[tools:parse_Rd]{tools::parse_Rd()}} so analyses

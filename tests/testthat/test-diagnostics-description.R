@@ -92,6 +92,51 @@ test_that("title_case flags lowercase content words", {
   expect_false(res$title_case$passed)
 })
 
+test_that("title_case flags over-capitalized small words", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, title = "Tools For The Analysis Of Data")
+  res <- diagnose_description_issues(pkg, verbose = FALSE)
+  expect_false(res$title_case$passed)
+
+  # A capitalized small word right after a colon (subtitle start) is fine.
+  pkg_ok <- make_temp_dir()
+  write_pkg(pkg_ok, title = "Analysis Toolkit: The Next Generation")
+  expect_true(diagnose_description_issues(pkg_ok, verbose = FALSE)$title_case$passed)
+})
+
+# ---- title_length ------------------------------------------------------------
+
+test_that("title_length flags titles of 65+ characters", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, title = paste(rep("Word", 20), collapse = " "))  # > 65 chars
+  res <- diagnose_description_issues(pkg, verbose = FALSE)
+  expect_false(res$title_length$passed)
+
+  pkg_ok <- make_temp_dir()
+  write_pkg(pkg_ok, title = "Concise Package Title")
+  expect_true(diagnose_description_issues(pkg_ok, verbose = FALSE)$title_length$passed)
+})
+
+# ---- description_function_quotes ---------------------------------------------
+
+test_that("description_function_quotes flags single-quoted function names", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg,
+            description = paste("Wraps the 'lm()' interface for users.",
+                                "It does a number of helpful things here."))
+  res <- diagnose_description_issues(pkg, verbose = FALSE)
+  expect_false(res$description_function_quotes$passed)
+})
+
+test_that("description_function_quotes accepts quoted software names", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg,
+            description = paste("Provides an interface to 'ggplot2' graphics.",
+                                "It does a number of helpful things here."))
+  res <- diagnose_description_issues(pkg, verbose = FALSE)
+  expect_true(res$description_function_quotes$passed)
+})
+
 test_that("authors_field is OK when Authors@R is present, fails otherwise", {
   pkg_ok <- make_temp_dir()
   write_pkg(pkg_ok)
