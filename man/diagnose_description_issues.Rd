@@ -24,7 +24,7 @@ with \code{\link[base:read.dcf]{base::read.dcf()}} so that multi-line fields lik
 pkg_path <- example_diagnose_scenario("description_examples/bad_description.txt",
                                       show_content = FALSE)
 results <- diagnose_description_issues(pkg_path, verbose = FALSE)
-results$license$passed       # MIT + file LICENSE flagged depends on standard
+issues(results)     # description-field problems, if any
 }
 \seealso{
 \code{\link[=checktor]{checktor()}} for complete package diagnostics

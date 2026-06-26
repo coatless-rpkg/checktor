@@ -26,7 +26,8 @@
 #' pkg_path <- example_diagnose_scenario("documentation_examples/missing_value_tag.Rd",
 #'                                       show_content = FALSE)
 #' doc_results <- diagnose_documentation_issues(pkg_path, verbose = FALSE)
-#' doc_results$value_tags$passed  # Should be FALSE
+#' summary(doc_results)
+#' issues(doc_results)
 diagnose_documentation_issues <- function(path = ".", verbose = TRUE) {
   if (verbose) {
     cli::cli_h2("Documentation Health Check")
@@ -80,7 +81,7 @@ is_non_function_rd_obj <- function(rd) {
 #' @examples
 #' pkg_path <- example_diagnose_scenario("documentation_examples/missing_value_tag.Rd",
 #'                                       show_content = FALSE)
-#' diagnose_value_tags(pkg_path, verbose = FALSE)$passed
+#' issues(diagnose_value_tags(pkg_path, verbose = FALSE))
 diagnose_value_tags <- function(path, verbose = TRUE) {
   rd_files <- list.files(file.path(path, "man"),
                          pattern = "\\.Rd$", full.names = TRUE)
@@ -160,7 +161,7 @@ diagnose_roxygen_usage <- function(path, verbose = TRUE) {
 #' @examples
 #' pkg_path <- example_diagnose_scenario("network_examples/bad_network_example.Rd",
 #'                                       show_content = FALSE)
-#' diagnose_example_structure(pkg_path, verbose = FALSE)$passed
+#' diagnose_example_structure(pkg_path, verbose = FALSE)
 diagnose_example_structure <- function(path, verbose = TRUE) {
   rd_files <- list.files(file.path(path, "man"),
                          pattern = "\\.Rd$", full.names = TRUE)

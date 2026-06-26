@@ -21,5 +21,5 @@ Checks common package files for \verb{http://} URLs (should usually be
 \examples{
 pkg_path <- example_diagnose_scenario("description_examples/bad_description.txt",
                                       show_content = FALSE)
-diagnose_urls(pkg_path, verbose = FALSE)$passed
+issues(diagnose_urls(pkg_path, verbose = FALSE))
 }

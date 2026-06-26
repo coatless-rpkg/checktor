@@ -27,7 +27,8 @@
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
 #' code_results <- diagnose_code_issues(pkg, verbose = FALSE)
-#' code_results$tf_usage$passed
+#' summary(code_results)   # per-category overview
+#' issues(code_results)    # the issues found
 diagnose_code_issues <- function(path = ".", verbose = TRUE) {
   if (verbose) {
     cli::cli_h2("Code Health Check")
@@ -116,7 +117,7 @@ emit_issue_summary <- function(issues, verbose, success_msg, failure_msg,
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_tf_usage(pkg, verbose = FALSE)$issues
+#' issues(diagnose_tf_usage(pkg, verbose = FALSE))
 diagnose_tf_usage <- function(path, verbose = TRUE, parsed = NULL) {
   if (is.null(parsed)) parsed <- read_r_xml(path)
   if (length(parsed) == 0L) {
@@ -151,7 +152,7 @@ diagnose_tf_usage <- function(path, verbose = TRUE, parsed = NULL) {
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/seed_setting_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_seed_setting(pkg, verbose = FALSE)$passed
+#' diagnose_seed_setting(pkg, verbose = FALSE)   # prints PASSED/FAILED
 diagnose_seed_setting <- function(path, verbose = TRUE, parsed = NULL) {
   if (is.null(parsed)) parsed <- read_r_xml(path)
   if (length(parsed) == 0L) {
@@ -188,7 +189,7 @@ diagnose_seed_setting <- function(path, verbose = TRUE, parsed = NULL) {
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/print_cat_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_print_cat_usage(pkg, verbose = FALSE)$passed
+#' diagnose_print_cat_usage(pkg, verbose = FALSE)
 diagnose_print_cat_usage <- function(path, verbose = TRUE, parsed = NULL) {
   if (is.null(parsed)) parsed <- read_r_xml(path)
   if (length(parsed) == 0L) {

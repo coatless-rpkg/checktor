@@ -33,7 +33,8 @@ and scope-aware patterns (an \code{options()} call guarded by a sibling
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)
 code_results <- diagnose_code_issues(pkg, verbose = FALSE)
-code_results$tf_usage$passed
+summary(code_results)   # per-category overview
+issues(code_results)    # the issues found
 }
 \seealso{
 \code{\link[=checktor]{checktor()}} for complete package diagnostics
