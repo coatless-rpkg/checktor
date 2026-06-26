@@ -74,16 +74,22 @@ reference:
   contents:
   - diagnose_documentation_issues
   - diagnose_value_tags
+  - diagnose_missing_examples
   - diagnose_roxygen_usage
   - diagnose_example_structure
+  - diagnose_suggested_in_examples
 
 - title: General-purpose diagnostics
   desc: >
-    Package-size and URL checks that don't fit other categories.
+    Package-level checks (size, URLs, NEWS, README links) that don't fit
+    other categories.
   contents:
   - diagnose_general_issues
   - diagnose_package_size
   - diagnose_urls
+  - diagnose_news_file
+  - diagnose_readme_relative_links
+  - diagnose_cran_comments_file
 
 - title: CRAN policy diagnostics
   desc: >
