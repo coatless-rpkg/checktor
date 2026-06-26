@@ -90,3 +90,15 @@ test_that("accessors are robust to early-return categories (no R/ dir)", {
   expect_no_error(n_issues(r$code_issues))
   expect_equal(n_issues(r$code_issues), 0L)
 })
+
+test_that("print footer points to accessors and Patient shows package name", {
+  pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R", show_content = FALSE)
+  r <- checktor(pkg, verbose = FALSE, progress = FALSE)
+  out <- cli::cli_fmt(print(r))
+  txt <- paste(out, collapse = "\n")
+  expect_match(txt, "summary\\(\\)")
+  expect_match(txt, "issues\\(\\)")
+  expect_false(grepl("Run `checktor\\(\\)` for detailed diagnosis", txt))
+  # Patient line shows a short package name, not the wrapped temp path
+  expect_false(grepl("/var/folders|/tmp/|Rtmp", txt))
+})
