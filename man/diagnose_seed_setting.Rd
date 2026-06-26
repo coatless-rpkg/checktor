@@ -24,5 +24,5 @@ the check matches the call AST node, not raw text.
 \examples{
 pkg <- example_diagnose_scenario("code_examples/seed_setting_bad.R",
                                  show_content = FALSE)
-diagnose_seed_setting(pkg, verbose = FALSE)$passed
+diagnose_seed_setting(pkg, verbose = FALSE)   # prints PASSED/FAILED
 }

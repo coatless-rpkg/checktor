@@ -25,5 +25,5 @@ detection is robust regardless of formatting.
 \examples{
 pkg <- example_diagnose_scenario("code_examples/print_cat_bad.R",
                                  show_content = FALSE)
-diagnose_print_cat_usage(pkg, verbose = FALSE)$passed
+diagnose_print_cat_usage(pkg, verbose = FALSE)
 }

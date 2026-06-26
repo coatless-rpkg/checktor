@@ -25,6 +25,7 @@ Imports:
     utils,
     tools,
     cli (>= 3.0.0),
+    generics,
     xml2,
     xmlparsedata
 Suggests: 

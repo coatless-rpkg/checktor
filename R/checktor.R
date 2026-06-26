@@ -50,12 +50,10 @@
 #'                                  show_content = FALSE)
 #' results <- checktor(pkg, verbose = FALSE, progress = FALSE)
 #'
-#' # Inspect the metadata
-#' results$metadata$total_issues
-#' results$metadata$failed_checks
-#'
-#' # Check whether a specific diagnostic passed
-#' results$code_issues$tf_usage$passed
+#' results              # the diagnosis summary
+#' summary(results)     # per-category overview
+#' issues(results)      # every issue as a tidy data frame
+#' is_healthy(results)  # FALSE
 checktor <- function(path = ".",
                      verbose = getOption("checktor.verbose", TRUE),
                      progress = getOption("checktor.progress", verbose)) {
@@ -184,7 +182,7 @@ count_results <- function(results) {
 print.checktor_results <- function(x, ...) {
   cli::cli_rule("Package Doctor - Diagnosis Summary")
 
-  cli::cli_text("Patient: {.path {x$metadata$package_path}}")
+  cli::cli_text("Patient: {.pkg {package_label(x$metadata$package_path)}}")
   cli::cli_text("Examined: {x$metadata$diagnosis_time}")
   cli::cli_text("Doctor version: {x$metadata$checktor_version}")
   cli::cli_text()
@@ -208,7 +206,19 @@ print.checktor_results <- function(x, ...) {
     cli::cli_alert_warning(
       "Overall health: NEEDS ATTENTION ({total_issues} issue{?s})"
     )
-    cli::cli_text("Run {.code checktor()} for detailed diagnosis")
+    cli::cli_text("Run {.code summary()}, {.code issues()}, or {.code prescribe()} for details")
   }
   invisible(x)
+}
+
+# Human-friendly package label: the DESCRIPTION Package field if readable,
+# else the directory basename.
+package_label <- function(path) {
+  desc <- file.path(path, "DESCRIPTION")
+  if (file.exists(desc)) {
+    nm <- tryCatch(unname(read.dcf(desc, fields = "Package")[1, 1]),
+                   error = function(e) NA_character_)
+    if (!is.na(nm) && nzchar(nm)) return(nm)
+  }
+  basename(normalizePath(path, mustWork = FALSE))
 }

@@ -19,7 +19,7 @@
 #' pkg_path <- example_diagnose_scenario("description_examples/bad_description.txt",
 #'                                       show_content = FALSE)
 #' results <- diagnose_description_issues(pkg_path, verbose = FALSE)
-#' results$license$passed       # MIT + file LICENSE flagged depends on standard
+#' issues(results)     # description-field problems, if any
 diagnose_description_issues <- function(path = ".", verbose = TRUE) {
   if (verbose) {
     cli::cli_h2("DESCRIPTION File Health Check")
@@ -30,7 +30,9 @@ diagnose_description_issues <- function(path = ".", verbose = TRUE) {
   desc_file <- file.path(path, "DESCRIPTION")
   if (!file.exists(desc_file)) {
     if (verbose) cli::cli_alert_danger("DESCRIPTION file not found")
-    return(list(passed = FALSE, message = "DESCRIPTION file not found"))
+    out <- list(passed = FALSE, message = "DESCRIPTION file not found")
+    class(out) <- "checktor_category_result"
+    return(out)
   }
 
   desc <- tryCatch(
@@ -39,7 +41,9 @@ diagnose_description_issues <- function(path = ".", verbose = TRUE) {
   )
   if (is.null(desc)) {
     if (verbose) cli::cli_alert_danger("Could not parse DESCRIPTION file")
-    return(list(passed = FALSE, message = "Could not parse DESCRIPTION file"))
+    out <- list(passed = FALSE, message = "Could not parse DESCRIPTION file")
+    class(out) <- "checktor_category_result"
+    return(out)
   }
 
   # The DESCRIPTION sub-checks operate on the parsed `desc` (and `path` for

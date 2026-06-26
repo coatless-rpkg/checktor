@@ -143,5 +143,6 @@ run_checks <- function(checks, path, verbose) {
     )
   }
   results$passed <- summarise_passed(results[names(checks)])
+  class(results) <- "checktor_category_result"
   results
 }

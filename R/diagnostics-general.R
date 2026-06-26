@@ -97,7 +97,7 @@ diagnose_package_size <- function(path, verbose = TRUE) {
 #' @examples
 #' pkg_path <- example_diagnose_scenario("description_examples/bad_description.txt",
 #'                                       show_content = FALSE)
-#' diagnose_urls(pkg_path, verbose = FALSE)$passed
+#' issues(diagnose_urls(pkg_path, verbose = FALSE))
 diagnose_urls <- function(path, verbose = TRUE) {
   rd_files <- list.files(file.path(path, "man"),
                          pattern = "\\.Rd$", full.names = TRUE)

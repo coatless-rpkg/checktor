@@ -26,5 +26,5 @@ the parsed AST, so \code{T} inside string literals or comments is not flagged
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)
-diagnose_tf_usage(pkg, verbose = FALSE)$issues
+issues(diagnose_tf_usage(pkg, verbose = FALSE))
 }

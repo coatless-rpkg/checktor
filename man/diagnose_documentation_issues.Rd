@@ -34,7 +34,8 @@ look at sections by their \code{Rd_tag} rather than grepping LaTeX text.
 pkg_path <- example_diagnose_scenario("documentation_examples/missing_value_tag.Rd",
                                       show_content = FALSE)
 doc_results <- diagnose_documentation_issues(pkg_path, verbose = FALSE)
-doc_results$value_tags$passed  # Should be FALSE
+summary(doc_results)
+issues(doc_results)
 }
 \seealso{
 \code{\link[=checktor]{checktor()}} for complete package diagnostics

@@ -23,5 +23,5 @@ re-export topics are skipped (they don't need \verb{\\value\{\}}).
 \examples{
 pkg_path <- example_diagnose_scenario("documentation_examples/missing_value_tag.Rd",
                                       show_content = FALSE)
-diagnose_value_tags(pkg_path, verbose = FALSE)$passed
+issues(diagnose_value_tags(pkg_path, verbose = FALSE))
 }

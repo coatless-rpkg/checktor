@@ -6,3 +6,5 @@ inst/doc
 **/.quarto/
 .DS_Store
 logo-options/
+.superpowers/
+dev/

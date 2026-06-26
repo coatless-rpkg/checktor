@@ -60,12 +60,10 @@ pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)
 results <- checktor(pkg, verbose = FALSE, progress = FALSE)
 
-# Inspect the metadata
-results$metadata$total_issues
-results$metadata$failed_checks
-
-# Check whether a specific diagnostic passed
-results$code_issues$tf_usage$passed
+results              # the diagnosis summary
+summary(results)     # per-category overview
+issues(results)      # every issue as a tidy data frame
+is_healthy(results)  # FALSE
 }
 \seealso{
 \code{\link[=health_report]{health_report()}} to generate detailed reports, \code{\link[=prescribe]{prescribe()}} for treatment
