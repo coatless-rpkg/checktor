@@ -306,31 +306,13 @@ if (healthy) {
 devtools::build()
 ```
 
-## CI/CD Integration
+## Continuous Integration
 
-Add package health checks to your continuous integration:
-
-```yaml
-# Example GitHub Actions workflow
-name: Package Health Check
-on: [push, pull_request]
-jobs:
-  health-check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: r-lib/actions/setup-r@v2
-      - name: Install checktor
-        run: remotes::install_github('your-username/checktor')
-        shell: Rscript {0}
-      - name: Run health check
-        run: |
-          library(checktor)
-          if (!checkup()) {
-            stop('Package health check failed')
-          }
-        shell: Rscript {0}
-```
+`checkup()` returns a single `TRUE`/`FALSE`, so it drops straight into a build
+step as a quality gate. For a ready-to-use GitHub Actions workflow -- including
+how to install `checktor` with `setup-r-dependencies` and surface the diagnosis
+in the log when a build fails -- see the
+[checktor in Continuous Integration](checktor-in-ci.html) vignette.
 
 ## Understanding the Output
 
