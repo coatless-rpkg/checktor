@@ -20,7 +20,8 @@
 #' pkg <- example_diagnose_scenario("code_examples/browser_calls_bad.R",
 #'                                  show_content = FALSE)
 #' policy <- diagnose_policy_violations(pkg, verbose = FALSE)
-#' policy$browser_calls$passed
+#' summary(policy)
+#' issues(policy)
 diagnose_policy_violations <- function(path = ".", verbose = TRUE) {
   if (verbose) {
     cli::cli_h2("CRAN Policy Violations Check")

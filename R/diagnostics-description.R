@@ -19,7 +19,7 @@
 #' pkg_path <- example_diagnose_scenario("description_examples/bad_description.txt",
 #'                                       show_content = FALSE)
 #' results <- diagnose_description_issues(pkg_path, verbose = FALSE)
-#' results$license$passed       # MIT + file LICENSE flagged depends on standard
+#' issues(results)     # description-field problems, if any
 diagnose_description_issues <- function(path = ".", verbose = TRUE) {
   if (verbose) {
     cli::cli_h2("DESCRIPTION File Health Check")

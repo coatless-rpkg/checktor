@@ -26,7 +26,8 @@ checks use \code{\link[tools:parse_Rd]{tools::parse_Rd()}} for the same reason.
 pkg <- example_diagnose_scenario("code_examples/browser_calls_bad.R",
                                  show_content = FALSE)
 policy <- diagnose_policy_violations(pkg, verbose = FALSE)
-policy$browser_calls$passed
+summary(policy)
+issues(policy)
 }
 \seealso{
 \code{\link[=checktor]{checktor()}} for complete package diagnostics

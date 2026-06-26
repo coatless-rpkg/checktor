@@ -53,7 +53,7 @@
 #' # Create scenario with T/F usage issues
 #' pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R")
 #' result <- diagnose_tf_usage(pkg_path, verbose = TRUE)
-#' cat("Issues found:", length(result$issues))
+#' issues(checktor(pkg_path, verbose = FALSE, progress = FALSE))
 #'
 #' # Create scenario without showing file content
 #' pkg_path <- example_diagnose_scenario("code_examples/seed_setting_bad.R",

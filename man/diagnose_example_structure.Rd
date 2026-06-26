@@ -22,5 +22,5 @@ Walks \verb{\\examples\{\}} sections via \code{\link[tools:parse_Rd]{tools::pars
 \examples{
 pkg_path <- example_diagnose_scenario("network_examples/bad_network_example.Rd",
                                       show_content = FALSE)
-diagnose_example_structure(pkg_path, verbose = FALSE)$passed
+diagnose_example_structure(pkg_path, verbose = FALSE)
 }
