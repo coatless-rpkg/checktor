@@ -6,3 +6,7 @@
 #' @importFrom stats setNames
 ## usethis namespace: end
 NULL
+
+#' @importFrom generics tidy
+#' @export
+generics::tidy
