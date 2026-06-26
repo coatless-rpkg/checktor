@@ -38,3 +38,24 @@ test_that("issues() on a healthy package is a 0-row typed frame", {
   expect_identical(names(di), c("category","check","file","line","location","message"))
   expect_type(di$line, "integer")
 })
+
+test_that("predicates report status without sublist navigation", {
+  pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R", show_content = FALSE)
+  r <- checktor(pkg, verbose = FALSE, progress = FALSE)
+
+  expect_false(is_healthy(r))
+  expect_equal(n_issues(r), 10L)
+  expect_equal(n_failed_checks(r), 4L)
+
+  expect_true("code.tf_usage" %in% failed_checks(r))
+  expect_type(failed_checks(r), "character")
+
+  pc <- passed(r$code_issues)
+  expect_type(pc, "logical"); expect_false(pc[["tf_usage"]]); expect_true(pc[["seed_setting"]])
+  expect_false(passed(r$code_issues$tf_usage))
+  expect_equal(n_issues(r$code_issues$tf_usage), 7L)
+
+  cp <- make_temp_dir(); write_pkg(cp)
+  clean <- checktor(cp, verbose = FALSE, progress = FALSE)
+  expect_true(is_healthy(clean)); expect_equal(n_issues(clean), 0L)
+})

@@ -108,3 +108,103 @@ issues.checktor_results <- function(x, ...) {
   rownames(out) <- NULL
   out
 }
+
+#' Status predicates for checktor results
+#'
+#' @param x A `checktor_results`, `checktor_category_result`, or
+#'   `checktor_check_result` object.
+#' @param ... Unused.
+#' @return `passed()`: logical — a single value for a check, a named logical by
+#'   check for a category, and a named logical by category for results.
+#'   `is_healthy()`: a single logical. `n_issues()` / `n_failed_checks()`:
+#'   integer counts. `failed_checks()`: character vector of failing check names
+#'   (qualified `"category.check"` at the results level).
+#' @examples
+#' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+#'                                  show_content = FALSE)
+#' results <- checktor(pkg, verbose = FALSE, progress = FALSE)
+#' is_healthy(results)
+#' failed_checks(results)
+#' @name predicates
+NULL
+
+#' @rdname predicates
+#' @export
+passed <- function(x, ...) UseMethod("passed")
+#' @rdname predicates
+#' @export
+passed.checktor_check_result <- function(x, ...) isTRUE(x$passed)
+#' @rdname predicates
+#' @export
+passed.checktor_category_result <- function(x, ...) x$passed
+#' @rdname predicates
+#' @export
+passed.checktor_results <- function(x, ...) {
+  vapply(names(.checktor_cat_map), function(short) {
+    cn <- .checktor_cat_map[[short]]
+    if (!cn %in% names(x)) return(NA)
+    all(x[[cn]]$passed, na.rm = TRUE)
+  }, logical(1))
+}
+
+#' @rdname predicates
+#' @export
+is_healthy <- function(x, ...) UseMethod("is_healthy")
+#' @rdname predicates
+#' @export
+is_healthy.checktor_check_result <- function(x, ...) isTRUE(x$passed)
+#' @rdname predicates
+#' @export
+is_healthy.checktor_category_result <- function(x, ...) all(x$passed, na.rm = TRUE)
+#' @rdname predicates
+#' @export
+is_healthy.checktor_results <- function(x, ...) x$metadata$total_issues == 0L
+
+#' @rdname predicates
+#' @export
+n_issues <- function(x, ...) UseMethod("n_issues")
+#' @rdname predicates
+#' @export
+n_issues.checktor_check_result <- function(x, ...) length(x$issues)
+#' @rdname predicates
+#' @export
+n_issues.checktor_category_result <- function(x, ...) {
+  sum(vapply(setdiff(names(x), "passed"),
+             function(nm) length(x[[nm]]$issues), integer(1)))
+}
+#' @rdname predicates
+#' @export
+n_issues.checktor_results <- function(x, ...) x$metadata$total_issues
+
+#' @rdname predicates
+#' @export
+n_failed_checks <- function(x, ...) UseMethod("n_failed_checks")
+#' @rdname predicates
+#' @export
+n_failed_checks.checktor_category_result <- function(x, ...) sum(!x$passed, na.rm = TRUE)
+#' @rdname predicates
+#' @export
+n_failed_checks.checktor_results <- function(x, ...) x$metadata$failed_checks
+
+#' @rdname predicates
+#' @export
+failed_checks <- function(x, ...) UseMethod("failed_checks")
+#' @rdname predicates
+#' @export
+failed_checks.checktor_category_result <- function(x, ...) {
+  p <- x$passed
+  names(p)[!p]
+}
+#' @rdname predicates
+#' @export
+failed_checks.checktor_results <- function(x, ...) {
+  out <- character(0)
+  for (short in names(.checktor_cat_map)) {
+    cn <- .checktor_cat_map[[short]]
+    if (!cn %in% names(x)) next
+    p <- x[[cn]]$passed
+    failed <- names(p)[!p]
+    if (length(failed)) out <- c(out, paste0(short, ".", failed))
+  }
+  out
+}
