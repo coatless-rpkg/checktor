@@ -80,8 +80,43 @@ least <code>passed</code>, <code>issues</code>, and <code>message</code> (see <c
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">pkg_path</span> <span class="op">&lt;-</span> <span class="fu"><a href="example_diagnose_scenario.html">example_diagnose_scenario</a></span><span class="op">(</span><span class="st">"description_examples/bad_description.txt"</span>,</span></span>
 <span class="r-in"><span>                                      show_content <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu">diagnose_description_issues</span><span class="op">(</span><span class="va">pkg_path</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">results</span><span class="op">$</span><span class="va">license</span><span class="op">$</span><span class="va">passed</span>       <span class="co"># MIT + file LICENSE flagged depends on standard</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] FALSE</span>
+<span class="r-in"><span><span class="fu"><a href="issues.html">issues</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span>     <span class="co"># description-field problems, if any</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                      check file line</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1           software_names &lt;NA&gt;   NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2                 acronyms &lt;NA&gt;   NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3                  license &lt;NA&gt;   NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4               title_case &lt;NA&gt;   NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5               title_case &lt;NA&gt;   NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6               title_case &lt;NA&gt;   NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7               title_case &lt;NA&gt;   NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8                  authors &lt;NA&gt;   NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9                 cph_role &lt;NA&gt;   NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 10      description_length &lt;NA&gt;   NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 11 description_starts_with &lt;NA&gt;   NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                                       location</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1              Description: ggplot2 should be in single quotes</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2                                                           ML</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3  License declares '+ file LICENSE' but no LICENSE file found</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4                    First word should be capitalized: example</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5                          Word should be capitalized: package</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6                             Word should be capitalized: data</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7                         Word should be capitalized: analysis</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8                                      Missing Authors@R field</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9                                            Authors@R missing</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 10                Description too short: 2 sentences, 16 words</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 11    Description starts with forbidden phrase: 'This package'</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                          message</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1           Software names check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2                 Acronyms check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3                  License check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4               Title case check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5               Title case check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6               Title case check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7               Title case check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8          Authors@R field check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9                 cph role check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 10      Description length check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 11 Description starts-with check</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

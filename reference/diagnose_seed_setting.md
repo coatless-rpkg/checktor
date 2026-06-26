@@ -34,6 +34,9 @@ with `passed`, `issues`, `message`.
 ``` r
 pkg <- example_diagnose_scenario("code_examples/seed_setting_bad.R",
                                  show_content = FALSE)
-diagnose_seed_setting(pkg, verbose = FALSE)$passed
-#> [1] FALSE
+diagnose_seed_setting(pkg, verbose = FALSE)   # prints PASSED/FAILED
+#> ✖ Seed setting check: FAILED
+#> Issues found:
+#> • seed_setting_bad.R:7
+#> • seed_setting_bad.R:15
 ```

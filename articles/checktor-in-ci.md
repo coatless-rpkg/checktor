@@ -2,18 +2,15 @@
 
 ## Why bother
 
-`R CMD check` answers one question very well: *does this package build
-and run?* It does not answer the question that actually decides your
-submission: *will a CRAN volunteer, reading by hand, send it back?*
-Those are different questions, and the gap between them is where
-afternoons disappear: a title that isn’t in title case, a `\value{}` tag
-you forgot, a stray `T` standing in for `TRUE`.
+You already run `checktor` on your package. The trouble with running it
+by hand is that you do it when you remember to, which is not the same as
+every time it matters. A pipeline has no such lapses: it runs the check
+on every push, for every contributor, whether or not anyone remembered
+to.
 
-The fix is not vigilance. Vigilance does not survive contact with a
-deadline. The fix is to let a machine remember the rules so you don’t
-have to, and the natural home for a machine that never forgets is your
-continuous integration (CI) pipeline. Run `checktor` there and every
-push gets a second opinion for free.
+Moving the check into continuous integration (CI) turns a good habit
+into an unconditional one, in about as many lines of YAML as it takes to
+describe.
 
 ## The one function CI needs
 
@@ -25,40 +22,8 @@ package is clean, `FALSE` if anything wants attention.
 ``` r
 
 # A throwaway package that (deliberately) uses T/F instead of TRUE/FALSE
-bad_pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R")
-#> === Example file: tf_usage_bad.R ===
-#> # Example file showing T/F usage issues
-#> 
-#> #' Process Data Function
-#> #' @param data A data frame
-#> #' @return Logical indicating success
-#> process_data <- function(data) {
-#>   if (is.null(data)) {
-#>     return(F)  # Issue: should be FALSE
-#>   }
-#>   
-#>   has_complete_cases <- T  # Issue: should be TRUE
-#>   
-#>   if (has_complete_cases) {
-#>     cleaned_data <- data[complete.cases(data), ]
-#>     return(T)  # Issue: should be TRUE
-#>   }
-#>   
-#>   return(F)  # Issue: should be FALSE
-#> }
-#> 
-#> # Another function with T/F issues
-#> validate_input <- function(x, strict = T) {  # Issue: should be TRUE
-#>   if (length(x) == 0) return(F)  # Issue: should be FALSE
-#>   
-#>   valid <- all(is.numeric(x))
-#>   return(valid && strict == T)  # Issue: should be TRUE
-#> }
-#> 
-#> === End of example ===
-#> 
-#> Temporary package created at: /tmp/Rtmp9ZrB9U/checktor_example_20260626_015344_2254 
-#> Example file copied to: /tmp/Rtmp9ZrB9U/checktor_example_20260626_015344_2254/R/tf_usage_bad.R
+bad_pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+                                     show_content = FALSE)
 
 checkup(bad_pkg)
 #> [1] FALSE
@@ -119,8 +84,8 @@ once and print the report before you quit:
 
 results <- checktor::checktor()
 
-if (results$metadata$total_issues > 0) {
-  cat(checktor::health_report(results), sep = "\n")
+if (!checktor::is_healthy(results)) {
+  writeLines(checktor::health_report(results))
   quit(status = 1)
 }
 ```
@@ -169,19 +134,18 @@ laptop.
 
 ## The takeaway
 
-`R CMD check` is your build’s physician; `checktor` is the specialist it
-refers you to before the operation. Wire
+Wire
 [`checkup()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checkup.md)
 into CI once and the rules stop living in your head, where they were
 never safe anyway. The best submission is the one where the reviewer
-finds nothing to say — and the surest way there is to have already said
-it to yourself.
+finds nothing to say, and the surest way there is to have already said
+it to yourself, automatically, on every push.
 
 ## See also
 
 - [Getting Started with
-  checktor](https://r-pkg.thecoatlessprofessor.com/checktor/articles/getting-started-with-checktor.md)
-  — the guided tour of the diagnostics.
+  checktor](https://r-pkg.thecoatlessprofessor.com/checktor/articles/getting-started-with-checktor.md):
+  the guided tour of the diagnostics.
 - [Writing Your Own
-  Checks](https://r-pkg.thecoatlessprofessor.com/checktor/articles/writing-checks.md)
-  — add project-specific checks against the parsed AST.
+  Checks](https://r-pkg.thecoatlessprofessor.com/checktor/articles/writing-checks.md):
+  add project-specific checks against the parsed syntax tree.

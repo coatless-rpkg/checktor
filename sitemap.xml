@@ -9,6 +9,7 @@
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/index.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/news/index.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor-package.html</loc></url>
+<url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor-summary.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor_category_result.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor_check_result.html</loc></url>
@@ -30,10 +31,14 @@
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/example_diagnose_scenario.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/health_report.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/index.html</loc></url>
+<url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/issues.html</loc></url>
+<url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/predicates.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/prescribe.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/print.checktor_category_result.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/print.checktor_check_result.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/print.checktor_results.html</loc></url>
+<url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/reexports.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/show_example_files.html</loc></url>
+<url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/tidy.html</loc></url>
 </urlset>
 

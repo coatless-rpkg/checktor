@@ -80,48 +80,16 @@
 
     <section class="level2"><h2 id="why-bother">Why bother<a class="anchor" aria-label="anchor" href="#why-bother"></a>
 </h2>
-<p><code>R CMD check</code> answers one question very well: <em>does this package build and run?</em> It does not answer the question that actually decides your submission: <em>will a CRAN volunteer, reading by hand, send it back?</em> Those are different questions, and the gap between them is where afternoons disappear: a title that isn’t in title case, a <code>\value{}</code> tag you forgot, a stray <code>T</code> standing in for <code>TRUE</code>.</p>
-<p>The fix is not vigilance. Vigilance does not survive contact with a deadline. The fix is to let a machine remember the rules so you don’t have to, and the natural home for a machine that never forgets is your continuous integration (CI) pipeline. Run <code>checktor</code> there and every push gets a second opinion for free.</p>
+<p>You already run <code>checktor</code> on your package. The trouble with running it by hand is that you do it when you remember to, which is not the same as every time it matters. A pipeline has no such lapses: it runs the check on every push, for every contributor, whether or not anyone remembered to.</p>
+<p>Moving the check into continuous integration (CI) turns a good habit into an unconditional one, in about as many lines of YAML as it takes to describe.</p>
 </section><section class="level2"><h2 id="the-one-function-ci-needs">The one function CI needs<a class="anchor" aria-label="anchor" href="#the-one-function-ci-needs"></a>
 </h2>
 <p>Everything in this article rests on a single function. <code><a href="../reference/checkup.html">checkup()</a></code> runs the full diagnosis and collapses it to one verdict: <code>TRUE</code> if the package is clean, <code>FALSE</code> if anything wants attention.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># A throwaway package that (deliberately) uses T/F instead of TRUE/FALSE</span></span>
-<span><span class="va">bad_pkg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/example_diagnose_scenario.html">example_diagnose_scenario</a></span><span class="op">(</span><span class="st">"code_examples/tf_usage_bad.R"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; === Example file: tf_usage_bad.R ===</span></span>
-<span><span class="co">#&gt; # Example file showing T/F usage issues</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; #' Process Data Function</span></span>
-<span><span class="co">#&gt; #' @param data A data frame</span></span>
-<span><span class="co">#&gt; #' @return Logical indicating success</span></span>
-<span><span class="co">#&gt; process_data &lt;- function(data) {</span></span>
-<span><span class="co">#&gt;   if (is.null(data)) {</span></span>
-<span><span class="co">#&gt;     return(F)  # Issue: should be FALSE</span></span>
-<span><span class="co">#&gt;   }</span></span>
-<span><span class="co">#&gt;   </span></span>
-<span><span class="co">#&gt;   has_complete_cases &lt;- T  # Issue: should be TRUE</span></span>
-<span><span class="co">#&gt;   </span></span>
-<span><span class="co">#&gt;   if (has_complete_cases) {</span></span>
-<span><span class="co">#&gt;     cleaned_data &lt;- data[complete.cases(data), ]</span></span>
-<span><span class="co">#&gt;     return(T)  # Issue: should be TRUE</span></span>
-<span><span class="co">#&gt;   }</span></span>
-<span><span class="co">#&gt;   </span></span>
-<span><span class="co">#&gt;   return(F)  # Issue: should be FALSE</span></span>
-<span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; # Another function with T/F issues</span></span>
-<span><span class="co">#&gt; validate_input &lt;- function(x, strict = T) {  # Issue: should be TRUE</span></span>
-<span><span class="co">#&gt;   if (length(x) == 0) return(F)  # Issue: should be FALSE</span></span>
-<span><span class="co">#&gt;   </span></span>
-<span><span class="co">#&gt;   valid &lt;- all(is.numeric(x))</span></span>
-<span><span class="co">#&gt;   return(valid &amp;&amp; strict == T)  # Issue: should be TRUE</span></span>
-<span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; === End of example ===</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Temporary package created at: /tmp/Rtmp9ZrB9U/checktor_example_20260626_015344_2254 </span></span>
-<span><span class="co">#&gt; Example file copied to: /tmp/Rtmp9ZrB9U/checktor_example_20260626_015344_2254/R/tf_usage_bad.R</span></span>
+<span><span class="va">bad_pkg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/example_diagnose_scenario.html">example_diagnose_scenario</a></span><span class="op">(</span><span class="st">"code_examples/tf_usage_bad.R"</span>,</span>
+<span>                                     show_content <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/checkup.html">checkup</a></span><span class="op">(</span><span class="va">bad_pkg</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] FALSE</span></span></code></pre></div>
@@ -161,8 +129,8 @@
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu">checktor</span><span class="fu">::</span><span class="fu"><a href="../reference/checktor.html">checktor</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
-<span><span class="kw">if</span> <span class="op">(</span><span class="va">results</span><span class="op">$</span><span class="va">metadata</span><span class="op">$</span><span class="va">total_issues</span> <span class="op">&gt;</span> <span class="fl">0</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu">checktor</span><span class="fu">::</span><span class="fu"><a href="../reference/health_report.html">health_report</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></span>
+<span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu">checktor</span><span class="fu">::</span><span class="fu"><a href="../reference/predicates.html">is_healthy</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/writeLines.html" class="external-link">writeLines</a></span><span class="op">(</span><span class="fu">checktor</span><span class="fu">::</span><span class="fu"><a href="../reference/health_report.html">health_report</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/quit.html" class="external-link">quit</a></span><span class="op">(</span>status <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 <p><code><a href="../reference/health_report.html">health_report()</a></code> returns the findings as Markdown, so the failing log reads like a chart at the foot of a hospital bed: what is wrong, and where. Point its <code>file =</code> argument at a path and you can just as easily upload the report as a build artifact for the squeamish who prefer not to read CI logs.</p>
@@ -184,14 +152,14 @@
 <p>Now a commit that would have embarrassed you on CRAN never leaves your laptop.</p>
 </section><section class="level2"><h2 id="the-takeaway">The takeaway<a class="anchor" aria-label="anchor" href="#the-takeaway"></a>
 </h2>
-<p><code>R CMD check</code> is your build’s physician; <code>checktor</code> is the specialist it refers you to before the operation. Wire <code><a href="../reference/checkup.html">checkup()</a></code> into CI once and the rules stop living in your head, where they were never safe anyway. The best submission is the one where the reviewer finds nothing to say — and the surest way there is to have already said it to yourself.</p>
+<p>Wire <code><a href="../reference/checkup.html">checkup()</a></code> into CI once and the rules stop living in your head, where they were never safe anyway. The best submission is the one where the reviewer finds nothing to say, and the surest way there is to have already said it to yourself, automatically, on every push.</p>
 </section><section class="level2"><h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a>
 </h2>
 <ul>
 <li>
-<a href="getting-started-with-checktor.html">Getting Started with checktor</a> — the guided tour of the diagnostics.</li>
+<a href="getting-started-with-checktor.html">Getting Started with checktor</a>: the guided tour of the diagnostics.</li>
 <li>
-<a href="writing-checks.html">Writing Your Own Checks</a> — add project-specific checks against the parsed AST.</li>
+<a href="writing-checks.html">Writing Your Own Checks</a>: add project-specific checks against the parsed syntax tree.</li>
 </ul></section><script id="quarto-html-after-body" type="application/javascript">
   window.document.addEventListener("DOMContentLoaded", function (event) {
       var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);

@@ -1,384 +1,245 @@
-# Getting Started with checktor - Your Package Doctor
+# Getting Started with checktor
 
-``` r
+## The gap checktor fills
 
-library(checktor)
-```
+`R CMD check` answers one question well: does this package build and
+run? It is silent on the question that actually decides your submission:
+will a CRAN volunteer, reading by hand, send it back? Those are
+different questions, and the space between them is where afternoons
+disappear. A title that isn’t in title case. A missing `\value{}` tag. A
+stray `T` where you meant `TRUE`.
 
-## Introduction
-
-`checktor` is the package doctor for R packages heading to CRAN. Like a
-medical professional, it examines your package for common ailments and
-provides specific treatment recommendations to ensure a healthy CRAN
-submission.
-
-The package provides automated diagnostics for CRAN submission issues
-that are not caught by standard `R CMD check`, helping you identify and
-fix problems before submission.
+`checktor` is the specialist your build refers you to before that
+appointment. It runs the extra-CRAN checks that live in the Repository
+Policy and reviewers’ long memories but nowhere in the standard
+toolchain, and, true to the name, it gives you a checkup, a diagnosis,
+and a prescription.
 
 ## Installation
 
+`checktor` lives on GitHub for now; once it reaches CRAN you will be
+able to `install.packages("checktor")`. Until then, install the
+development version:
+
 ``` r
 
-# Install from GitHub
-devtools::install_github("coatless-rpkg/checktor")
+# install.packages("pak")
+pak::pak("coatless-rpkg/checktor")
 ```
 
-## Basic Usage
+## A first checkup
 
-The main function
 [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md)
-runs a comprehensive diagnostic on your package:
+examines a package directory. So we can watch it work without maiming
+your own package, we will point it at a throwaway package built around
+one deliberately bad file:
 
 ``` r
 
-library(checktor)
+pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+                                 show_content = FALSE)
 
-# Examine the current package
-results <- checktor()
-
-# Examine a specific package
-results <- checktor("path/to/your/package")
+results <- checktor(pkg, verbose = FALSE, progress = FALSE)
+results
+#> ── Package Doctor - Diagnosis Summary ──────────────────────────────────────────
+#> Patient: examplepackage
+#> Examined: 2026-06-26 03:43:25.585393
+#> Doctor version: 0.1.0
+#> 
+#> CODE ISSUES: 1 failing check
+#> DESCRIPTION ISSUES: 3 failing checks
+#> DOCUMENTATION ISSUES: HEALTHY
+#> GENERAL ISSUES: HEALTHY
+#> POLICY ISSUES: HEALTHY
+#> 
+#> ! Overall health: NEEDS ATTENTION (10 issues)
+#> Run `summary()`, `issues()`, or `prescribe()` for details
 ```
 
-## Understanding the Doctor’s Report
+That is the bedside summary: which of the five categories (code,
+DESCRIPTION, documentation, general, and CRAN policy) need attention,
+and an overall verdict. On your own package the call is just
+[`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md).
+For the full catalogue of what each category checks, see the [function
+reference](https://r-pkg.thecoatlessprofessor.com/checktor/reference/index.html).
 
-The package doctor examines four main areas of your package health:
+## Reading the results as data
 
-### Code Health Check
+The printed report is for humans. When you want to *compute* on the
+findings, filter them, count them, fold them into a report of your own,
+reach for the accessors. They return plain data frames, so you never
+spelunk through nested lists.
 
-Examines your R code for common issues that CRAN reviewers flag:
+``` r
 
-1.  **T/F Usage**: Using `T` and `F` instead of `TRUE` and `FALSE`
-2.  **Seed Setting**: Hardcoded
-    [`set.seed()`](https://rdrr.io/r/base/Random.html) calls without
-    user control
-3.  **Print/Cat Usage**: Unsuppressable console output
-4.  **Option Changes**: Changing
-    [`options()`](https://rdrr.io/r/base/options.html),
-    [`par()`](https://rdrr.io/r/graphics/par.html), or
-    [`setwd()`](https://rdrr.io/r/base/getwd.html) without reset
-5.  **Home Directory Writing**: Writing files to user’s home directory
-6.  **Temp Cleanup**: Not cleaning up temporary files
-7.  **GlobalEnv Modification**: Modifying the global environment
-8.  **installed.packages()**: Using slow
-    [`installed.packages()`](https://rdrr.io/r/utils/installed.packages.html)
-    function
-9.  **Warn Option**: Setting `options(warn = -1)`
-10. **Software Installation**: Installing packages/software in functions
-11. **Core Usage**: Using more than 2 CPU cores
+summary(results)   # one row per category
+#>        category checks passed failed issues
+#> 1          code     13     12      1      7
+#> 2   description     14     11      3      3
+#> 3 documentation      6      6      0      0
+#> 4       general      2      2      0      0
+#> 5        policy      4      4      0      0
+```
 
-### DESCRIPTION File Health Check
+``` r
 
-Examines your DESCRIPTION file for formatting and content issues:
+issues(results)    # one row per issue, with file and line
+#>       category              check           file line
+#> 1         code           tf_usage tf_usage_bad.R    8
+#> 2         code           tf_usage tf_usage_bad.R   11
+#> 3         code           tf_usage tf_usage_bad.R   15
+#> 4         code           tf_usage tf_usage_bad.R   18
+#> 5         code           tf_usage tf_usage_bad.R   22
+#> 6         code           tf_usage tf_usage_bad.R   23
+#> 7         code           tf_usage tf_usage_bad.R   26
+#> 8  description            license           <NA>   NA
+#> 9  description           cph_role           <NA>   NA
+#> 10 description description_length           <NA>   NA
+#>                                                           location
+#> 1                                                 tf_usage_bad.R:8
+#> 2                                                tf_usage_bad.R:11
+#> 3                                                tf_usage_bad.R:15
+#> 4                                                tf_usage_bad.R:18
+#> 5                                                tf_usage_bad.R:22
+#> 6                                                tf_usage_bad.R:23
+#> 7                                                tf_usage_bad.R:26
+#> 8  MIT/BSD license requires '+ file LICENSE' for copyright holders
+#> 9                Authors@R lacks any [cph] (copyright holder) role
+#> 10                    Description too short: 1 sentences, 18 words
+#>                     message
+#> 1           T/F usage check
+#> 2           T/F usage check
+#> 3           T/F usage check
+#> 4           T/F usage check
+#> 5           T/F usage check
+#> 6           T/F usage check
+#> 7           T/F usage check
+#> 8             License check
+#> 9            cph role check
+#> 10 Description length check
+```
 
-1.  **Software Names**: Package and software names should be in single
-    quotes
-2.  **Acronyms**: Unexplained acronyms should be expanded
-3.  **License**: Unnecessary LICENSE files for standard licenses
-4.  **Title Case**: Title field should be in proper Title Case
-5.  **Authors@R**: Modern Authors@R field should be used
-6.  **References**: Proper formatting of DOI and URL references
-7.  **Description Length**: Description should be adequate length
+`tidy(results)` gives one row per check, passed or not, and
+[`as.data.frame()`](https://rdrr.io/r/base/as.data.frame.html) is its
+alias. Three predicates answer the yes/no questions directly:
 
-### Documentation Health Check
+``` r
 
-Examines your package documentation:
+is_healthy(results)
+#> [1] FALSE
+n_issues(results)
+#> [1] 10
+failed_checks(results)
+#> [1] "code.tf_usage"                  "description.license"           
+#> [3] "description.cph_role"           "description.description_length"
+```
 
-1.  **Value Tags**: Missing `\value` tags in .Rd files
-2.  **Roxygen2**: Detection of roxygen2 usage and reminders
-3.  **Example Structure**: Appropriate use of `\dontrun`, `\donttest`,
-    etc.
+Each accessor also works on a single category, as in
+`issues(results$code_issues)`, or on a single check.
 
-### General Health Check
+## The one-line gate
 
-Examines general package structure and content:
-
-1.  **Package Size**: Warning if package exceeds 5MB
-2.  **URLs**: Checking for http vs https and redirect issues
-
-## Quick Health Checks
-
-For CI/CD pipelines or quick verification, use the
+For scripts and pre-submission checklists,
 [`checkup()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checkup.md)
-function:
+collapses the whole diagnosis to a single verdict, `TRUE` when the
+package is clean:
 
 ``` r
 
-# Returns TRUE if healthy, FALSE if issues found
-healthy <- checkup()
-
-if (!healthy) {
-  stop("Package needs treatment before submission")
-}
+checkup(pkg)
+#> [1] FALSE
 ```
 
-## Getting Treatment Recommendations
+It is built to be the last word in a shell one-liner; the [checktor in
+Continuous
+Integration](https://r-pkg.thecoatlessprofessor.com/checktor/articles/checktor-in-ci.md)
+vignette puts it in charge of a GitHub Actions build.
 
-When issues are found, get specific treatment advice:
+## From diagnosis to treatment
+
+A diagnosis you cannot act on is just bad news.
+[`prescribe()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/prescribe.md)
+turns each finding into a concrete remedy:
 
 ``` r
 
-# Run full diagnosis
-results <- checktor()
-
-# Get specific treatment recommendations
 prescribe(results)
 ```
 
-The
-[`prescribe()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/prescribe.md)
-function provides code examples showing exactly how to fix common
-issues.
-
-## Generating Health Reports
-
-Create comprehensive reports for documentation or sharing:
+[`health_report()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/health_report.md)
+writes the whole consultation to a file, as Markdown, HTML, or plain
+text, to keep alongside your `cran-comments.md`:
 
 ``` r
 
-# Generate markdown report
 health_report(results, file = "package-health.md")
-
-# Generate HTML report  
 health_report(results, file = "package-health.html", format = "html")
-
-# Generate plain text report
-health_report(results, file = "package-health.txt", format = "text")
 ```
 
-## Specialized Diagnostics
+## Examining one system at a time
 
-Run specific diagnostic categories independently:
+Each category runs on its own, which helps when you are fixing one thing
+and would rather not hear about the others:
 
 ``` r
 
-# Only code health
-code_health <- diagnose_code_issues()
-
-# Only DESCRIPTION health
-desc_health <- diagnose_description_issues()
-
-# Only documentation health
-docs_health <- diagnose_documentation_issues()
-
-# Only general health
-general_health <- diagnose_general_issues()
-
-# Additional policy violation checks
-policy_health <- diagnose_policy_violations()
+diagnose_code_issues()           # just the R sources
+diagnose_description_issues()    # just DESCRIPTION
+diagnose_documentation_issues()  # just the .Rd files
+diagnose_general_issues()        # size, URLs
+diagnose_policy_violations()     # CRAN policy
 ```
 
-## Configuration
+## Turning down the volume
 
-Customize the package doctor’s behavior:
+[`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md)
+is chatty by design. In a script, quiet it once and every later call
+inherits the setting:
 
 ``` r
 
-# Set global preferences
-configure_doctor(
-  verbose_default = TRUE,
-  progress_default = TRUE, 
-  color = TRUE
-)
+configure_doctor(verbose_default = FALSE, progress_default = FALSE)
 
-# Use quiet mode for scripts
+# or per call
 results <- checktor(verbose = FALSE, progress = FALSE)
 ```
 
-## Common Treatment Examples
+## Where it fits
 
-### Fixing T/F Usage
-
-The package doctor commonly finds T/F usage issues:
+Run `checktor` in the gap between writing code and `R CMD check`:
 
 ``` r
 
-# Before treatment - problematic code
-result <- T
-flag <- F
-
-# After treatment - healthy code
-result <- TRUE
-flag <- FALSE
-```
-
-### Fixing Hardcoded Seeds
-
-Another common issue is hardcoded seeds:
-
-``` r
-
-# Before treatment - problematic code
-my_function <- function(data) {
-  set.seed(123)  # Hard-coded seed
-  sample(data, 10)
-}
-
-# After treatment - healthy code
-my_function <- function(data, seed = NULL) {
-  if (!is.null(seed)) {
-    set.seed(seed)
-  }
-  sample(data, 10)
-}
-```
-
-### Fixing Unsuppressable Output
-
-Console output should be suppressable by users:
-
-``` r
-
-# Before treatment - problematic code
-my_function <- function(data) {
-  print("Processing data...")  # Cannot be suppressed
-  process(data)
-}
-
-# After treatment - Option 1: Use message()
-my_function <- function(data) {
-  message("Processing data...")  # Can be suppressed with suppressMessages()
-  process(data)
-}
-
-# After treatment - Option 2: Add verbose parameter
-my_function <- function(data, verbose = TRUE) {
-  if (verbose) cat("Processing data...\n")
-  process(data)
-}
-```
-
-### Adding Missing Value Documentation
-
-Documentation should include return value descriptions:
-
-``` r
-
-# Before treatment - missing @return
-#' Process Data
-#' @param data Input data frame
-#' @export
-process_data <- function(data) {
-  return(processed_data)
-}
-
-# After treatment - includes @return
-#' Process Data
-#' @param data Input data frame
-#' @return A processed data frame with cleaned variables
-#' @export
-process_data <- function(data) {
-  return(processed_data)
-}
-```
-
-## Integration with Development Workflow
-
-Integrate `checktor` into your standard package development process:
-
-``` r
-
-# Standard development workflow
-devtools::load_all()
-devtools::test()
 devtools::document()
+devtools::test()
 
-# Add health check before R CMD check
-checktor()
+results <- checktor()  # the extra-CRAN checkup
+prescribe(results)     # apply the remedies
 
-# Apply any recommended treatments
-prescribe(results)
-
-# Run standard checks
-devtools::check()
-
-# Final health verification
-healthy <- checkup()
-if (healthy) {
-  message("Package is ready for CRAN submission!")
-}
-
-# Build and submit
-devtools::build()
+devtools::check()      # the standard checks
 ```
 
-## CI/CD Integration
+## Conclusion
 
-Add package health checks to your continuous integration:
+`checktor` is a checkup, not a cure-all. It complements `R CMD check`
+and [`lintr`](https://lintr.r-lib.org) rather than replacing either, and
+it cannot replace your judgment about whether a package is worth
+submitting. What it does do is the one thing those tools do not: it
+remembers the hand-enforced CRAN rules so you do not have to. Run the
+three together, treat the printed report as the conversation and the
+accessors as the data, and a reviewer should find nothing left to say.
+That is the entire point.
 
-``` yaml
-# Example GitHub Actions workflow
-name: Package Health Check
-on: [push, pull_request]
-jobs:
-  health-check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: r-lib/actions/setup-r@v2
-      - name: Install checktor
-        run: remotes::install_github('your-username/checktor')
-        shell: Rscript {0}
-      - name: Run health check
-        run: |
-          library(checktor)
-          if (!checkup()) {
-            stop('Package health check failed')
-          }
-        shell: Rscript {0}
-```
+## See also
 
-## Understanding the Output
-
-The package doctor uses clear, medical-themed language and formatting:
-
-- **Clean bill of health**: No issues found
-- **Requires treatment**: Issues that need fixing
-- **Treatment recommendations**: Specific guidance on fixes
-- **Diagnosis summary**: Overview of package health
-
-All output avoids medical emojis and uses professional, accessible
-language suitable for both beginners and experienced developers.
-
-## When to Use checktor
-
-Use `checktor` as part of your pre-submission checklist:
-
-1.  **Before initial CRAN submission**: Catch common issues early
-2.  **After major code changes**: Ensure no new issues introduced  
-3.  **In CI/CD pipelines**: Automated quality gates
-4.  **For package reviews**: Generate health reports for collaborators
-5.  **Learning tool**: Understand CRAN requirements better
-
-## Limitations
-
-`checktor` focuses on common, automatable checks. It does not replace:
-
-- Manual code review
-- Domain-specific validation
-- Performance testing
-- Standard `R CMD check`
-- Human judgment about package design
-
-Always run both `checktor` and `R CMD check` before CRAN submission.
-
-## Contributing
-
-Found a new CRAN diagnostic that should be included? The package is
-designed to be easily extensible. Please open an issue or submit a pull
-request!
-
-## Resources
-
-For more comprehensive information about CRAN submissions:
-
-- [Writing R
-  Extensions](https://cran.r-project.org/doc/manuals/R-exts.html)
-- [CRAN Repository
-  Policy](https://cran.r-project.org/web/packages/policies.html)
-- [CRAN Cookbook](https://contributor.r-project.org/cran-cookbook/)
-- [R Packages book](https://r-pkgs.org/)
-
-The package doctor is here to help keep your package healthy and ready
-for CRAN!
+- [checktor in Continuous
+  Integration](https://r-pkg.thecoatlessprofessor.com/checktor/articles/checktor-in-ci.md):
+  put
+  [`checkup()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checkup.md)
+  in charge of a GitHub Actions build as a quality gate.
+- [Writing Your Own
+  Checks](https://r-pkg.thecoatlessprofessor.com/checktor/articles/writing-checks.md):
+  add project-specific checks against the parsed syntax tree.
+- [Function
+  reference](https://r-pkg.thecoatlessprofessor.com/checktor/reference/index.html):
+  the full catalogue of diagnostics.

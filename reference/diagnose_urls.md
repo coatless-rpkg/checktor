@@ -29,6 +29,7 @@ with `passed`, `issues`, `message`.
 ``` r
 pkg_path <- example_diagnose_scenario("description_examples/bad_description.txt",
                                       show_content = FALSE)
-diagnose_urls(pkg_path, verbose = FALSE)$passed
-#> [1] FALSE
+issues(diagnose_urls(pkg_path, verbose = FALSE))
+#>   file line                                      location    message
+#> 1 <NA>   NA DESCRIPTION: http:// URL (should be https://) URLs check
 ```

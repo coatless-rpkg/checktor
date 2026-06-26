@@ -20,3 +20,18 @@
   via [`tools::parse_Rd()`](https://rdrr.io/r/tools/parse_Rd.html).
   DESCRIPTION is parsed with
   [`base::read.dcf()`](https://rdrr.io/r/base/dcf.html).
+- Added result accessors so you no longer navigate nested lists:
+  [`issues()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/issues.md)
+  (per-issue table),
+  [`tidy()`](https://generics.r-lib.org/reference/tidy.html) (per-check
+  table), [`summary()`](https://rdrr.io/r/base/summary.html)
+  (per-category), plus
+  [`passed()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/predicates.md),
+  [`is_healthy()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/predicates.md),
+  [`n_issues()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/predicates.md),
+  [`n_failed_checks()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/predicates.md),
+  and
+  [`failed_checks()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/predicates.md).
+  [`as.data.frame()`](https://rdrr.io/r/base/as.data.frame.html) on a
+  result is equivalent to
+  [`tidy()`](https://generics.r-lib.org/reference/tidy.html).

@@ -51,6 +51,10 @@ for complete package diagnostics
 pkg_path <- example_diagnose_scenario("documentation_examples/missing_value_tag.Rd",
                                       show_content = FALSE)
 doc_results <- diagnose_documentation_issues(pkg_path, verbose = FALSE)
-doc_results$value_tags$passed  # Should be FALSE
-#> [1] FALSE
+summary(doc_results)
+#>   checks passed failed issues
+#> 1      6      5      1      1
+issues(doc_results)
+#>        check file line             location          message
+#> 1 value_tags <NA>   NA missing_value_tag.Rd Value tags check
 ```

@@ -32,6 +32,7 @@ with `passed`, `issues`, `missing`, `message`.
 ``` r
 pkg_path <- example_diagnose_scenario("documentation_examples/missing_value_tag.Rd",
                                       show_content = FALSE)
-diagnose_value_tags(pkg_path, verbose = FALSE)$passed
-#> [1] FALSE
+issues(diagnose_value_tags(pkg_path, verbose = FALSE))
+#>   file line             location          message
+#> 1 <NA>   NA missing_value_tag.Rd Value tags check
 ```

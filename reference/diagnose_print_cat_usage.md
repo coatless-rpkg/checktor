@@ -36,6 +36,12 @@ with `passed`, `issues`, `message`.
 ``` r
 pkg <- example_diagnose_scenario("code_examples/print_cat_bad.R",
                                  show_content = FALSE)
-diagnose_print_cat_usage(pkg, verbose = FALSE)$passed
-#> [1] FALSE
+diagnose_print_cat_usage(pkg, verbose = FALSE)
+#> ✖ Print/cat usage check: FAILED
+#> Issues found:
+#> • print_cat_bad.R:6
+#> • print_cat_bad.R:14
+#> • print_cat_bad.R:21
+#> • print_cat_bad.R:24
+#> • print_cat_bad.R:26
 ```

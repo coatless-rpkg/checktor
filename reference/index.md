@@ -101,6 +101,34 @@ instead.
 - [`print(`*`<checktor_results>`*`)`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/print.checktor_results.md)
   : Print Method for checktor_results Objects
 
+## Result accessors
+
+Plain accessors over diagnostic results so you never navigate nested
+sublists. Work on a full
+[`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md)
+result, a single category, or a single check.
+
+- [`issues()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/issues.md)
+  : Extract issues, checks, or a per-category summary from checktor
+  results
+- [`tidy(`*`<checktor_results>`*`)`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/tidy.md)
+  [`tidy(`*`<checktor_category_result>`*`)`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/tidy.md)
+  [`as.data.frame(`*`<checktor_results>`*`)`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/tidy.md)
+  [`as.data.frame(`*`<checktor_category_result>`*`)`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/tidy.md)
+  : Tidy a checktor result into a per-check data frame
+- [`summary(`*`<checktor_category_result>`*`)`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor-summary.md)
+  [`summary(`*`<checktor_results>`*`)`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor-summary.md)
+  : Per-category summary of checktor results
+- [`passed()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/predicates.md)
+  [`is_healthy()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/predicates.md)
+  [`n_issues()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/predicates.md)
+  [`n_failed_checks()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/predicates.md)
+  [`failed_checks()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/predicates.md)
+  : Status predicates for checktor results
+- [`reexports`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/reexports.md)
+  [`tidy`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/reexports.md)
+  : Objects exported from other packages
+
 ## Example scenarios
 
 Helpers for building temporary packages with canned bad-pattern code,

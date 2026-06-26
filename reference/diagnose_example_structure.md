@@ -31,6 +31,6 @@ with `passed`, `issues`, `message`.
 ``` r
 pkg_path <- example_diagnose_scenario("network_examples/bad_network_example.Rd",
                                       show_content = FALSE)
-diagnose_example_structure(pkg_path, verbose = FALSE)$passed
-#> [1] TRUE
+diagnose_example_structure(pkg_path, verbose = FALSE)
+#> ✔ Example structure check: PASSED
 ```

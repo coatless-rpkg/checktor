@@ -119,14 +119,62 @@ recommendations, <code><a href="checkup.html">checkup()</a></code> for quick hea
 <span class="r-in"><span>                                 show_content <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu">checktor</span><span class="op">(</span><span class="va">pkg</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span>, progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Inspect the metadata</span></span></span>
-<span class="r-in"><span><span class="va">results</span><span class="op">$</span><span class="va">metadata</span><span class="op">$</span><span class="va">total_issues</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 10</span>
-<span class="r-in"><span><span class="va">results</span><span class="op">$</span><span class="va">metadata</span><span class="op">$</span><span class="va">failed_checks</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 4</span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Check whether a specific diagnostic passed</span></span></span>
-<span class="r-in"><span><span class="va">results</span><span class="op">$</span><span class="va">code_issues</span><span class="op">$</span><span class="va">tf_usage</span><span class="op">$</span><span class="va">passed</span></span></span>
+<span class="r-in"><span><span class="va">results</span>              <span class="co"># the diagnosis summary</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> ── Package Doctor - Diagnosis Summary ──────────────────────────────────────────</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> Patient: <span style="color: #0000BB;">examplepackage</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> Examined: 2026-06-26 03:43:17.35289</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> Doctor version: 0.1.0</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">CODE ISSUES</span>: 1 failing check</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">DESCRIPTION ISSUES</span>: 3 failing checks</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">DOCUMENTATION ISSUES</span>: HEALTHY</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">GENERAL ISSUES</span>: HEALTHY</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">POLICY ISSUES</span>: HEALTHY</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #BBBB00;">!</span> Overall health: NEEDS ATTENTION (10 issues)</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> Run `summary()`, `issues()`, or `prescribe()` for details</span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span>     <span class="co"># per-category overview</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>        category checks passed failed issues</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1          code     13     12      1      7</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2   description     14     11      3      3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 documentation      6      6      0      0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4       general      2      2      0      0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5        policy      4      4      0      0</span>
+<span class="r-in"><span><span class="fu"><a href="issues.html">issues</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span>      <span class="co"># every issue as a tidy data frame</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       category              check           file line</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1         code           tf_usage tf_usage_bad.R    8</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2         code           tf_usage tf_usage_bad.R   11</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3         code           tf_usage tf_usage_bad.R   15</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4         code           tf_usage tf_usage_bad.R   18</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5         code           tf_usage tf_usage_bad.R   22</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6         code           tf_usage tf_usage_bad.R   23</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7         code           tf_usage tf_usage_bad.R   26</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8  description            license           &lt;NA&gt;   NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9  description           cph_role           &lt;NA&gt;   NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 10 description description_length           &lt;NA&gt;   NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                                           location</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1                                                 tf_usage_bad.R:8</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2                                                tf_usage_bad.R:11</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3                                                tf_usage_bad.R:15</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4                                                tf_usage_bad.R:18</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5                                                tf_usage_bad.R:22</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6                                                tf_usage_bad.R:23</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7                                                tf_usage_bad.R:26</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8  MIT/BSD license requires '+ file LICENSE' for copyright holders</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9                Authors@R lacks any [cph] (copyright holder) role</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 10                    Description too short: 1 sentences, 18 words</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                     message</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1           T/F usage check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2           T/F usage check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3           T/F usage check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4           T/F usage check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5           T/F usage check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6           T/F usage check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7           T/F usage check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8             License check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9            cph role check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 10 Description length check</span>
+<span class="r-in"><span><span class="fu"><a href="predicates.html">is_healthy</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span>  <span class="co"># FALSE</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] FALSE</span>
 </code></pre></div>
     </div>

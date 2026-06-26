@@ -153,8 +153,8 @@ for running diagnostics, plus a basic <code>DESCRIPTION</code> file.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> === End of example ===</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Temporary package created at: /tmp/RtmpMlAZYN/checktor_example_20260626_015342_4331 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Example file copied to: /tmp/RtmpMlAZYN/checktor_example_20260626_015342_4331/R/tf_usage_bad.R </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Temporary package created at: /tmp/RtmpB5JkB8/checktor_example_20260626_034319_9943 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Example file copied to: /tmp/RtmpB5JkB8/checktor_example_20260626_034319_9943/R/tf_usage_bad.R </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="diagnose_tf_usage.html">diagnose_tf_usage</a></span><span class="op">(</span><span class="va">pkg_path</span>, verbose <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #BB0000;">✖</span> Found `T`/`F` usage (should use `TRUE`/`FALSE`)</span>
@@ -164,8 +164,40 @@ for running diagnostics, plus a basic <code>DESCRIPTION</code> file.</p>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> • tf_usage_bad.R:18</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> • tf_usage_bad.R:22</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="font-style: italic;">... and 2 more</span></span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Issues found:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">result</span><span class="op">$</span><span class="va">issues</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Issues found: 7</span>
+<span class="r-in"><span><span class="fu"><a href="issues.html">issues</a></span><span class="op">(</span><span class="fu"><a href="checktor.html">checktor</a></span><span class="op">(</span><span class="va">pkg_path</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span>, progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       category              check           file line</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1         code           tf_usage tf_usage_bad.R    8</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2         code           tf_usage tf_usage_bad.R   11</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3         code           tf_usage tf_usage_bad.R   15</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4         code           tf_usage tf_usage_bad.R   18</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5         code           tf_usage tf_usage_bad.R   22</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6         code           tf_usage tf_usage_bad.R   23</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7         code           tf_usage tf_usage_bad.R   26</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8  description            license           &lt;NA&gt;   NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9  description           cph_role           &lt;NA&gt;   NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 10 description description_length           &lt;NA&gt;   NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                                           location</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1                                                 tf_usage_bad.R:8</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2                                                tf_usage_bad.R:11</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3                                                tf_usage_bad.R:15</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4                                                tf_usage_bad.R:18</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5                                                tf_usage_bad.R:22</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6                                                tf_usage_bad.R:23</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7                                                tf_usage_bad.R:26</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8  MIT/BSD license requires '+ file LICENSE' for copyright holders</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9                Authors@R lacks any [cph] (copyright holder) role</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 10                    Description too short: 1 sentences, 18 words</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                     message</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1           T/F usage check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2           T/F usage check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3           T/F usage check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4           T/F usage check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5           T/F usage check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6           T/F usage check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7           T/F usage check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8             License check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9            cph role check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 10 Description length check</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Create scenario without showing file content</span></span></span>
 <span class="r-in"><span><span class="va">pkg_path</span> <span class="op">&lt;-</span> <span class="fu">example_diagnose_scenario</span><span class="op">(</span><span class="st">"code_examples/seed_setting_bad.R"</span>,</span></span>
@@ -189,8 +221,8 @@ for running diagnostics, plus a basic <code>DESCRIPTION</code> file.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> === End of example ===</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Temporary package created at: /tmp/RtmpMlAZYN/checktor_example_20260626_015342_7293 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Example file copied to: /tmp/RtmpMlAZYN/checktor_example_20260626_015342_7293/DESCRIPTION </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Temporary package created at: /tmp/RtmpB5JkB8/checktor_example_20260626_034319_2022 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Example file copied to: /tmp/RtmpB5JkB8/checktor_example_20260626_034319_2022/DESCRIPTION </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span><span class="va">desc_result</span> <span class="op">&lt;-</span> <span class="fu"><a href="diagnose_description_issues.html">diagnose_description_issues</a></span><span class="op">(</span><span class="va">pkg_path</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
@@ -257,8 +289,8 @@ for running diagnostics, plus a basic <code>DESCRIPTION</code> file.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> === End of example ===</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Temporary package created at: /tmp/RtmpMlAZYN/checktor_example_20260626_015342_2022 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Example file copied to: /tmp/RtmpMlAZYN/checktor_example_20260626_015342_2022/R/browser_calls_bad.R </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Temporary package created at: /tmp/RtmpB5JkB8/checktor_example_20260626_034319_2289 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Example file copied to: /tmp/RtmpB5JkB8/checktor_example_20260626_034319_2289/R/browser_calls_bad.R </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span><span class="co"># Cleanup happens automatically when R session ends</span></span></span>
 </code></pre></div>

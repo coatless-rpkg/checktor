@@ -43,6 +43,16 @@ for complete package diagnostics
 pkg <- example_diagnose_scenario("code_examples/browser_calls_bad.R",
                                  show_content = FALSE)
 policy <- diagnose_policy_violations(pkg, verbose = FALSE)
-policy$browser_calls$passed
-#> [1] FALSE
+summary(policy)
+#>   checks passed failed issues
+#> 1      4      3      1      3
+issues(policy)
+#>           check                file line               location
+#> 1 browser_calls browser_calls_bad.R    6  browser_calls_bad.R:6
+#> 2 browser_calls browser_calls_bad.R   11 browser_calls_bad.R:11
+#> 3 browser_calls browser_calls_bad.R   23 browser_calls_bad.R:23
+#>               message
+#> 1 Browser calls check
+#> 2 Browser calls check
+#> 3 Browser calls check
 ```

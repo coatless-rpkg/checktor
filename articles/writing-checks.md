@@ -1,14 +1,16 @@
-# Writing Your Own checktor Checks
+# Writing Your Own Checks
 
 ``` r
 
 library(checktor)
 ```
 
-`checktor` ships about thirty diagnostics, but every project has its own
-CRAN-style rules that aren’t worth upstreaming. This vignette walks
-through the helpers in `R/ast.R` and shows how to author a new check
-against the parsed AST in a few lines of XPath.
+`checktor` ships about thirty diagnostics, but every team has house
+rules too local to upstream: a function you have banned, a header you
+insist on, a habit you keep relapsing into. This vignette is for those.
+It walks through the handful of helpers in `R/ast.R` and shows how to
+author a new check against the parsed syntax tree in a few lines of
+XPath, with the orchestrator handling the bookkeeping.
 
 ## The shape of a check
 
@@ -28,14 +30,15 @@ diagnose_<name> <- function(path, verbose = TRUE, parsed = NULL) {
 The `parsed` argument is an optional parse-cache: when
 [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md)
 runs all code-side checks together it parses each file once and passes
-the cache to every check via this hidden argument, so 11 checks against
-a 200-file package mean 200 parses, not 2200.
+the cache to every check via this internal argument, so 13 checks
+against a 200-file package mean 200 parses, not 2600.
 
 ## Helpers in `R/ast.R`
 
 ### `read_r_xml(path)`
 
-Parses every `R/*.R` file in the package and returns a named list of
+Start here: this is what makes your sources queryable. It parses every
+`R/*.R` file in the package and returns a named list of
 `list(file, xml, error)`. A parse failure becomes an `error` slot
 instead of crashing the run.
 
@@ -56,9 +59,10 @@ Every parse-tree token is an XML element with `line1`, `col1`, `line2`,
 
 ### `xpath_lints(parsed, xpath, label = NULL)`
 
-Runs an XPath query against every parsed file and returns
-`"basename:line"` strings, suitable for assignment to a check result’s
-`$issues`. The optional `label` appears in parens after each hit.
+The workhorse. Give it an XPath query, get back `"basename:line"`
+strings for every match across every file, ready to hand to a check
+result’s `$issues`. The optional `label` appears in parens after each
+hit.
 
 ``` r
 
@@ -69,7 +73,7 @@ hits <- xpath_lints(parsed,
 
 ### `undesirable_function_check(parsed, funs, label = TRUE)`
 
-The most common pattern — “flag any call to function X” — has a canned
+The most common pattern, “flag any call to function X”, has a canned
 helper:
 
 ``` r
@@ -88,7 +92,7 @@ Returns an XPath predicate that restricts hits to nodes whose
 of `funs`. This is how `option_changes` enforces that
 [`options()`](https://rdrr.io/r/base/options.html) is guarded by a
 sibling [`on.exit()`](https://rdrr.io/r/base/on.exit.html) in the same
-function — and the “innermost” part is what makes it correct on nested
+function, and the “innermost” part is what makes it correct on nested
 functions where `on.exit` in the outer function wouldn’t cover an inner
 one.
 
@@ -120,7 +124,7 @@ Suppose we want a check that flags any
 enclosing function doesn’t also call `on.exit(Sys.unsetenv(...))` or
 [`withr::local_envvar()`](https://withr.r-lib.org/reference/with_envvar.html).
 This is the same shape as `diagnose_option_changes` and ships in
-checktor as `diagnose_sys_setenv_no_reset`. Here’s the implementation:
+checktor as `diagnose_sys_setenv_no_reset`. Here is the essential shape:
 
 ``` r
 
@@ -142,14 +146,16 @@ diagnose_sys_setenv_no_reset <- function(path, verbose = TRUE,
   )
   issues <- xpath_lints(parsed, xpath)
   passed <- length(issues) == 0L
+  # a shipped check also calls emit_issue_summary(issues, verbose, ...) here
+  # to print the cli summary when verbose = TRUE
   checktor_check_result(passed, issues, "Sys.setenv reset check")
 }
 ```
 
-Twenty lines. The interesting part is the XPath predicate — everything
+Twenty lines, and the interesting one is the XPath predicate. Everything
 else is bookkeeping shared with every other check.
 
-## The xmlparsedata XML, briefly
+## The xmlparsedata XML structure
 
 A call `fn(a, b = 1)` parses to:
 
@@ -174,7 +180,7 @@ When you anchor on a `SYMBOL_FUNCTION_CALL`:
 - the first positional arg is `parent::expr/following-sibling::expr[1]`
 - a named-arg name is `parent::expr/parent::expr/SYMBOL_SUB`
 
-A common bug is treating `parent::expr` as the call expr — it’s actually
+A common bug is treating `parent::expr` as the call expr; it is actually
 the function-name wrapper, which has only one child (the
 `SYMBOL_FUNCTION_CALL` itself).
 
@@ -193,15 +199,32 @@ xpath_lints(parsed,
 To plug a new check into
 [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md),
 add a `diagnose_<name>` function to the appropriate `R/diagnostics-*.R`
-file and add an entry to that file’s
-`run_checks(list(...), path, verbose)` call. The orchestrator handles
-parse-cache passing, error catching, and `$passed` bookkeeping for you.
+file and register it in that file’s
+`run_checks(list(...), path, verbose)` call as a closure that forwards
+the cache:
+`my_check = function(p, v) diagnose_my_check(p, v, parsed = parsed)`.
+That closure is what lets your check share the parse-once cache; the
+orchestrator handles error catching and `$passed` bookkeeping for you.
+
+## Conclusion
+
+Building on the parsed syntax tree buys the property that makes
+`checktor` trustworthy: a pattern sitting in a string literal or a
+comment is a different kind of node than a real call, so it never
+false-positives. Write the XPath, let `run_checks()` carry the rest, and
+your house rule is enforced as rigorously as the checks that ship in the
+box.
 
 ## See also
 
 - [Getting Started with
-  checktor](https://r-pkg.thecoatlessprofessor.com/checktor/articles/getting-started-with-checktor.md)
-  — end-to-end usage from a user’s perspective.
+  checktor](https://r-pkg.thecoatlessprofessor.com/checktor/articles/getting-started-with-checktor.md):
+  end-to-end usage from a user’s perspective.
+- [checktor in Continuous
+  Integration](https://r-pkg.thecoatlessprofessor.com/checktor/articles/checktor-in-ci.md):
+  run
+  [`checkup()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checkup.md)
+  as a build gate.
 - [`?xmlparsedata::xml_parse_data`](https://rdrr.io/pkg/xmlparsedata/man/xml_parse_data.html)
   and [the lintr docs on writing
   linters](https://lintr.r-lib.org/articles/creating_linters.html) for

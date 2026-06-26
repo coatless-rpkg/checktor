@@ -117,8 +117,8 @@ pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R")
 #> 
 #> === End of example ===
 #> 
-#> Temporary package created at: /tmp/RtmpMlAZYN/checktor_example_20260626_015342_4331 
-#> Example file copied to: /tmp/RtmpMlAZYN/checktor_example_20260626_015342_4331/R/tf_usage_bad.R 
+#> Temporary package created at: /tmp/RtmpB5JkB8/checktor_example_20260626_034319_9943 
+#> Example file copied to: /tmp/RtmpB5JkB8/checktor_example_20260626_034319_9943/R/tf_usage_bad.R 
 #> 
 result <- diagnose_tf_usage(pkg_path, verbose = TRUE)
 #> ✖ Found `T`/`F` usage (should use `TRUE`/`FALSE`)
@@ -128,8 +128,40 @@ result <- diagnose_tf_usage(pkg_path, verbose = TRUE)
 #> • tf_usage_bad.R:18
 #> • tf_usage_bad.R:22
 #> ... and 2 more
-cat("Issues found:", length(result$issues))
-#> Issues found: 7
+issues(checktor(pkg_path, verbose = FALSE, progress = FALSE))
+#>       category              check           file line
+#> 1         code           tf_usage tf_usage_bad.R    8
+#> 2         code           tf_usage tf_usage_bad.R   11
+#> 3         code           tf_usage tf_usage_bad.R   15
+#> 4         code           tf_usage tf_usage_bad.R   18
+#> 5         code           tf_usage tf_usage_bad.R   22
+#> 6         code           tf_usage tf_usage_bad.R   23
+#> 7         code           tf_usage tf_usage_bad.R   26
+#> 8  description            license           <NA>   NA
+#> 9  description           cph_role           <NA>   NA
+#> 10 description description_length           <NA>   NA
+#>                                                           location
+#> 1                                                 tf_usage_bad.R:8
+#> 2                                                tf_usage_bad.R:11
+#> 3                                                tf_usage_bad.R:15
+#> 4                                                tf_usage_bad.R:18
+#> 5                                                tf_usage_bad.R:22
+#> 6                                                tf_usage_bad.R:23
+#> 7                                                tf_usage_bad.R:26
+#> 8  MIT/BSD license requires '+ file LICENSE' for copyright holders
+#> 9                Authors@R lacks any [cph] (copyright holder) role
+#> 10                    Description too short: 1 sentences, 18 words
+#>                     message
+#> 1           T/F usage check
+#> 2           T/F usage check
+#> 3           T/F usage check
+#> 4           T/F usage check
+#> 5           T/F usage check
+#> 6           T/F usage check
+#> 7           T/F usage check
+#> 8             License check
+#> 9            cph role check
+#> 10 Description length check
 
 # Create scenario without showing file content
 pkg_path <- example_diagnose_scenario("code_examples/seed_setting_bad.R",
@@ -153,8 +185,8 @@ pkg_path <- example_diagnose_scenario("description_examples/bad_description.txt"
 #> 
 #> === End of example ===
 #> 
-#> Temporary package created at: /tmp/RtmpMlAZYN/checktor_example_20260626_015342_7293 
-#> Example file copied to: /tmp/RtmpMlAZYN/checktor_example_20260626_015342_7293/DESCRIPTION 
+#> Temporary package created at: /tmp/RtmpB5JkB8/checktor_example_20260626_034319_2022 
+#> Example file copied to: /tmp/RtmpB5JkB8/checktor_example_20260626_034319_2022/DESCRIPTION 
 #> 
 desc_result <- diagnose_description_issues(pkg_path)
 #> 
@@ -221,8 +253,8 @@ pkg_path <- example_diagnose_scenario("code_examples/browser_calls_bad.R",
 #> 
 #> === End of example ===
 #> 
-#> Temporary package created at: /tmp/RtmpMlAZYN/checktor_example_20260626_015342_2022 
-#> Example file copied to: /tmp/RtmpMlAZYN/checktor_example_20260626_015342_2022/R/browser_calls_bad.R 
+#> Temporary package created at: /tmp/RtmpB5JkB8/checktor_example_20260626_034319_2289 
+#> Example file copied to: /tmp/RtmpB5JkB8/checktor_example_20260626_034319_2289/R/browser_calls_bad.R 
 #> 
 # Cleanup happens automatically when R session ends
 ```
