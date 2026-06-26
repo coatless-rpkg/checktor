@@ -57,8 +57,8 @@ bad_pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R")
 #> 
 #> === End of example ===
 #> 
-#> Temporary package created at: /tmp/RtmpabDxRQ/checktor_example_20260625_230640_8804 
-#> Example file copied to: /tmp/RtmpabDxRQ/checktor_example_20260625_230640_8804/R/tf_usage_bad.R
+#> Temporary package created at: /tmp/RtmpNd5aAM/checktor_example_20260626_003507_7484 
+#> Example file copied to: /tmp/RtmpNd5aAM/checktor_example_20260626_003507_7484/R/tf_usage_bad.R
 
 checkup(bad_pkg)
 #> [1] FALSE

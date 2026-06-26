@@ -106,7 +106,7 @@ pkg_path <- example_diagnose_scenario(examples[1])
 #> 
 #> === End of example ===
 #> 
-#> Temporary package created at: /tmp/RtmpQT1Ijn/checktor_example_20260625_230638_3069 
-#> Example file copied to: /tmp/RtmpQT1Ijn/checktor_example_20260625_230638_3069/R/browser_calls_bad.R 
+#> Temporary package created at: /tmp/Rtmpo4vEI8/checktor_example_20260626_003505_3069 
+#> Example file copied to: /tmp/Rtmpo4vEI8/checktor_example_20260626_003505_3069/R/browser_calls_bad.R 
 #> 
 ```
