@@ -117,8 +117,8 @@ pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R")
 #> 
 #> === End of example ===
 #> 
-#> Temporary package created at: /tmp/Rtmpo4vEI8/checktor_example_20260626_003504_4331 
-#> Example file copied to: /tmp/Rtmpo4vEI8/checktor_example_20260626_003504_4331/R/tf_usage_bad.R 
+#> Temporary package created at: /tmp/RtmpMlAZYN/checktor_example_20260626_015342_4331 
+#> Example file copied to: /tmp/RtmpMlAZYN/checktor_example_20260626_015342_4331/R/tf_usage_bad.R 
 #> 
 result <- diagnose_tf_usage(pkg_path, verbose = TRUE)
 #> ✖ Found `T`/`F` usage (should use `TRUE`/`FALSE`)
@@ -153,8 +153,8 @@ pkg_path <- example_diagnose_scenario("description_examples/bad_description.txt"
 #> 
 #> === End of example ===
 #> 
-#> Temporary package created at: /tmp/Rtmpo4vEI8/checktor_example_20260626_003504_7293 
-#> Example file copied to: /tmp/Rtmpo4vEI8/checktor_example_20260626_003504_7293/DESCRIPTION 
+#> Temporary package created at: /tmp/RtmpMlAZYN/checktor_example_20260626_015342_7293 
+#> Example file copied to: /tmp/RtmpMlAZYN/checktor_example_20260626_015342_7293/DESCRIPTION 
 #> 
 desc_result <- diagnose_description_issues(pkg_path)
 #> 
@@ -221,8 +221,8 @@ pkg_path <- example_diagnose_scenario("code_examples/browser_calls_bad.R",
 #> 
 #> === End of example ===
 #> 
-#> Temporary package created at: /tmp/Rtmpo4vEI8/checktor_example_20260626_003504_2022 
-#> Example file copied to: /tmp/Rtmpo4vEI8/checktor_example_20260626_003504_2022/R/browser_calls_bad.R 
+#> Temporary package created at: /tmp/RtmpMlAZYN/checktor_example_20260626_015342_2022 
+#> Example file copied to: /tmp/RtmpMlAZYN/checktor_example_20260626_015342_2022/R/browser_calls_bad.R 
 #> 
 # Cleanup happens automatically when R session ends
 ```

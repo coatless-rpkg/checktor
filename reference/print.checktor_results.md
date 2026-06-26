@@ -41,8 +41,8 @@ pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 results <- checktor(pkg, verbose = FALSE, progress = FALSE)
 print(results)
 #> ── Package Doctor - Diagnosis Summary ──────────────────────────────────────────
-#> Patient: /tmp/Rtmpo4vEI8/checktor_example_20260626_003505_5275
-#> Examined: 2026-06-26 00:35:05.281169
+#> Patient: /tmp/RtmpMlAZYN/checktor_example_20260626_015343_5275
+#> Examined: 2026-06-26 01:53:43.218568
 #> Doctor version: 0.1.0
 #> 
 #> CODE ISSUES: 1 failing check
