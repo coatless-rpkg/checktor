@@ -165,3 +165,43 @@ test_that("acronym detection knows common abbreviations and reads continuations"
   expect_false("OS" %in% res$acronyms$issues)
   expect_false("HTTP" %in% res$acronyms$issues)
 })
+
+test_that("acronym check treats 'expansion (ACRONYM)' as explained (#5)", {
+  pkg <- make_temp_dir()
+  desc <- paste(
+    "Calculate and plot r2 coefficients between principal component",
+    "    analysis (PCA) components and covariates. The idea is to search",
+    "    for components which are explained by the covariates.",
+    sep = "\n"
+  )
+  write_pkg(pkg, description = desc)
+  res <- diagnose_description_issues(pkg, verbose = FALSE)
+  expect_true(res$acronyms$passed)
+  expect_false("PCA" %in% res$acronyms$issues)
+})
+
+test_that("acronym check treats 'ACRONYM (expansion)' as explained", {
+  pkg <- make_temp_dir()
+  desc <- paste(
+    "Runs PCA (principal component analysis) over supplied matrices and",
+    "    returns the resulting components for downstream modelling work.",
+    sep = "\n"
+  )
+  write_pkg(pkg, description = desc)
+  res <- diagnose_description_issues(pkg, verbose = FALSE)
+  expect_true(res$acronyms$passed)
+  expect_false("PCA" %in% res$acronyms$issues)
+})
+
+test_that("acronym check still flags genuinely unexplained acronyms", {
+  pkg <- make_temp_dir()
+  desc <- paste(
+    "Provides FOOBAR utilities for the analysis of tabular data and the",
+    "    production of summaries across many datasets and output formats.",
+    sep = "\n"
+  )
+  write_pkg(pkg, description = desc)
+  res <- diagnose_description_issues(pkg, verbose = FALSE)
+  expect_false(res$acronyms$passed)
+  expect_true("FOOBAR" %in% res$acronyms$issues)
+})
