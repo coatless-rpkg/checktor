@@ -36,4 +36,25 @@ prescribe(results)
 #> # After
 #> result <- TRUE
 #> 
+#> 
+#> ── License check 
+#> Issues found:
+#> • MIT/BSD license requires '+ file LICENSE' for copyright holders
+#> Treatment: Review the detailed diagnosis above; re-run `checktor(verbose =
+#> TRUE)` for specifics.
+#> 
+#> 
+#> ── cph role check 
+#> Issues found:
+#> • Authors@R lacks any [cph] (copyright holder) role
+#> Treatment: Review the detailed diagnosis above; re-run `checktor(verbose =
+#> TRUE)` for specifics.
+#> 
+#> 
+#> ── Description length check 
+#> Issues found:
+#> • Description too short: 1 sentences, 18 words
+#> Treatment: Review the detailed diagnosis above; re-run `checktor(verbose =
+#> TRUE)` for specifics.
+#> 
 ```

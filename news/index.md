@@ -2,6 +2,8 @@
 
 ## checktor 0.1.0
 
+CRAN release: 2026-07-02
+
 - Initial release.
 - Adds
   \[[`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md)\]

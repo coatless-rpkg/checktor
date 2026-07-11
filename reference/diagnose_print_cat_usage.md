@@ -3,7 +3,12 @@
 Flags [`print()`](https://rdrr.io/r/base/print.html) /
 [`cat()`](https://rdrr.io/r/base/cat.html) calls not guarded by an
 enclosing `if()`, `for()`, or `while()`. The check uses the ancestor
-axis, so guard detection is robust regardless of formatting.
+axis, so guard detection is robust regardless of formatting. Calls
+inside S3 `print.*` and `format.*` methods are exempt, since
+[`cat()`](https://rdrr.io/r/base/cat.html) is the required idiom there
+(base R's own
+[`print.default()`](https://rdrr.io/r/base/print.default.html) /
+`print.lm()` use it).
 
 ## Usage
 
