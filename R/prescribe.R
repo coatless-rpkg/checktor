@@ -25,15 +25,59 @@ prescribe <- function(results) {
   }
 
   cli::cli_rule("Treatment Recommendations")
-  for (rx in treatments) {
-    check <- results[[rx$category]][[rx$check]]
-    if (is.null(check) || isTRUE(check$passed)) next
-    cli::cli_h3(rx$title)
-    cli::cli_text("{.strong Treatment:} {rx$treatment}")
-    cli::cli_code(rx$example)
-    cli::cli_text()
+
+  # Index the curated treatments by "category::check" so any failed check can
+  # look up its rich remediation snippet in one step.
+  rx_index <- treatments
+  names(rx_index) <- vapply(
+    treatments,
+    function(rx) paste(rx$category, rx$check, sep = "::"),
+    character(1)
+  )
+
+  categories <- c("code_issues", "description_issues", "documentation_issues",
+                  "general_issues", "policy_issues")
+  for (cat in categories) {
+    cat_res <- results[[cat]]
+    if (is.null(cat_res) || is.null(cat_res$passed) ||
+        is.null(names(cat_res$passed))) {
+      next
+    }
+    failed <- names(cat_res$passed)[!cat_res$passed]
+    for (chk in failed) {
+      rx <- rx_index[[paste(cat, chk, sep = "::")]]
+      if (!is.null(rx)) {
+        # Curated treatment: heading, one-line remedy, worked example.
+        cli::cli_h3(rx$title)
+        cli::cli_text("{.strong Treatment:} {rx$treatment}")
+        cli::cli_code(rx$example)
+      } else {
+        # No curated snippet yet: still surface the check and the specific
+        # issues it found, so prescribe() never stays silent about a failure.
+        prescribe_generic(cat_res[[chk]], chk)
+      }
+      cli::cli_text()
+    }
   }
   invisible()
+}
+
+# Fallback treatment block for a failed check that has no curated entry: show
+# the check's own message as the heading and list the concrete issues found.
+prescribe_generic <- function(check, chk_name) {
+  title <- if (is.list(check) && !is.null(check$message)) check$message else chk_name
+  cli::cli_h3(title)
+  issues <- if (is.list(check)) check$issues else NULL
+  if (length(issues) > 0L) {
+    cli::cli_text("{.strong Issues found:}")
+    cli::cli_ul(utils::head(issues, 5L))
+    if (length(issues) > 5L) {
+      cli::cli_text("{.emph ... and {length(issues) - 5L} more}")
+    }
+  }
+  cli::cli_text(
+    "{.strong Treatment:} Review the detailed diagnosis above; re-run {.code checktor(verbose = TRUE)} for specifics."
+  )
 }
 
 # Treatment data indexed by (category, check). Adding a new treatment is just
