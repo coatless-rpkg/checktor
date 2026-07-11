@@ -181,7 +181,9 @@ diagnose_seed_setting <- function(path, verbose = TRUE, parsed = NULL) {
 #'
 #' Flags `print()` / `cat()` calls not guarded by an enclosing `if()`,
 #' `for()`, or `while()`. The check uses the ancestor axis, so guard
-#' detection is robust regardless of formatting.
+#' detection is robust regardless of formatting. Calls inside S3 `print.*`
+#' and `format.*` methods are exempt, since `cat()` is the required idiom
+#' there (base R's own `print.default()` / `print.lm()` use it).
 #'
 #' @inheritParams diagnose_tf_usage
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
@@ -199,6 +201,15 @@ diagnose_print_cat_usage <- function(path, verbose = TRUE, parsed = NULL) {
   xpath <- paste0(
     "//SYMBOL_FUNCTION_CALL[text() = 'print' or text() = 'cat'][",
     "  not(ancestor::expr[IF or FOR or WHILE])",
+    # cat()/print() are the correct, required idiom inside S3 print.*/format.*
+    # methods - base R's own print.default, print.lm, format.* all use cat(),
+    # as does essentially every S3 print method on CRAN. Exempt any call whose
+    # enclosing function is assigned to a name starting `print.`/`format.`.
+    "  and not(ancestor::expr[FUNCTION][",
+    "    parent::*/expr[1]/SYMBOL[",
+    "      starts-with(text(), 'print.') or starts-with(text(), 'format.')",
+    "    ]",
+    "  ])",
     "]"
   )
   issues <- xpath_lints(parsed, xpath)

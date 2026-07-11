@@ -20,7 +20,9 @@ from \code{path} on demand.}
 \description{
 Flags \code{print()} / \code{cat()} calls not guarded by an enclosing \verb{if()},
 \verb{for()}, or \verb{while()}. The check uses the ancestor axis, so guard
-detection is robust regardless of formatting.
+detection is robust regardless of formatting. Calls inside S3 \verb{print.*}
+and \verb{format.*} methods are exempt, since \code{cat()} is the required idiom
+there (base R's own \code{print.default()} / \code{print.lm()} use it).
 }
 \examples{
 pkg <- example_diagnose_scenario("code_examples/print_cat_bad.R",

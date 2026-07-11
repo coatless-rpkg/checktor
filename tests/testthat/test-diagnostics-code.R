@@ -71,6 +71,33 @@ test_that("diagnose_print_cat_usage ignores cat in strings and conditional cat",
   expect_false(diagnose_print_cat_usage(pkg2, verbose = FALSE)$passed)
 })
 
+test_that("diagnose_print_cat_usage exempts cat/print in S3 print/format methods (#6)", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, r_code = c(
+    "print.myclass <- function(x, ...) {",
+    "  cat(\"Object of class 'myclass'\\n\")",
+    "  cat(\"Value:\", x$value, \"\\n\")",
+    "  invisible(x)",
+    "}",
+    "format.myclass <- function(x, ...) {",
+    "  cat(format(x$value))",
+    "  invisible(x)",
+    "}"
+  ))
+  expect_true(diagnose_print_cat_usage(pkg, verbose = FALSE)$passed)
+})
+
+test_that("diagnose_print_cat_usage still flags cat in ordinary functions alongside a method", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, r_code = c(
+    "print.myclass <- function(x, ...) cat('exempt')",
+    "analyze <- function(data) cat('always flagged')"
+  ))
+  res <- diagnose_print_cat_usage(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_equal(length(res$issues), 1L)   # only the ordinary function's cat
+})
+
 # ---- option changes ----------------------------------------------------------
 
 test_that("diagnose_option_changes recognises on.exit and withr::local_*", {
