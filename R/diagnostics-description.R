@@ -121,7 +121,21 @@ diagnose_acronym_explanation <- function(desc, verbose) {
   common_abbrevs <- c("API", "SQL", "HTML", "CSS", "PDF", "XML", "JSON",
                       "URL", "HTTP", "HTTPS", "FTP", "GUI", "CLI", "CRAN",
                       "ID", "OS", "TLS", "SSL", "UTF", "ASCII")
-  unexplained <- setdiff(unique(acronyms), common_abbrevs)
+  candidates <- setdiff(unique(acronyms), common_abbrevs)
+
+  # An acronym is not "unexplained" when the Description spells it out with the
+  # conventional parenthetical gloss, in either order:
+  #   "principal component analysis (PCA)"  or  "PCA (principal component ...)".
+  # Whitespace is collapsed first so a line-wrapped gloss is still detected.
+  # The `word (ACRONYM)` pattern is anchored to a preceding word char so a bare
+  # "(PCA)" with no expansion in front of it is still flagged.
+  flat <- gsub("\\s+", " ", text)
+  explained <- vapply(candidates, function(a) {
+    expansion_then_acronym <- grepl(paste0("\\w\\s*\\(", a, "\\)"), flat, perl = TRUE)
+    acronym_then_expansion <- grepl(paste0("\\b", a, "\\b\\s*\\("), flat, perl = TRUE)
+    expansion_then_acronym || acronym_then_expansion
+  }, logical(1))
+  unexplained <- candidates[!explained]
 
   passed <- length(unexplained) == 0
   if (verbose) {

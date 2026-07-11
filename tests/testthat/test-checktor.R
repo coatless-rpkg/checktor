@@ -117,3 +117,30 @@ test_that("safe_read_lines handles missing files", {
   expect_equal(safe_read_lines(file.path(tempdir(), "definitely-missing.R")),
                character(0))
 })
+
+# ---- prescribe() -------------------------------------------------------------
+
+test_that("prescribe() surfaces failed checks that have no curated treatment", {
+  # A package whose only defect is a missing NEWS file. The news_file check has
+  # no entry in the curated `treatments` list, so before the fix prescribe()
+  # printed only its header and stayed silent about the actual problem (#4).
+  pkg <- make_temp_dir()
+  write_pkg(pkg, news = FALSE)
+
+  res <- checktor(pkg, verbose = FALSE, progress = FALSE)
+  expect_false(res$general_issues$passed[["news_file"]])   # sanity
+
+  out <- cli::cli_fmt(prescribe(res))
+  txt <- paste(out, collapse = "\n")
+  expect_match(txt, "NEWS")
+})
+
+test_that("prescribe() still emits curated treatments for known checks", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, r_code = "bad <- function() T")
+
+  res <- checktor(pkg, verbose = FALSE, progress = FALSE)
+  out <- cli::cli_fmt(prescribe(res))
+  txt <- paste(out, collapse = "\n")
+  expect_match(txt, "T/F Usage Issues")
+})
