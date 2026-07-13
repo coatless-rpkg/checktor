@@ -115,8 +115,8 @@ emit_issue_summary <- function(issues, verbose, success_msg, failure_msg,
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @export
 #' @examples
-#' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
-#'                                  show_content = FALSE)
+#' # show_content defaults to TRUE, so the offending file prints first
+#' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R")
 #' issues(diagnose_tf_usage(pkg, verbose = FALSE))
 diagnose_tf_usage <- function(path, verbose = TRUE, parsed = NULL) {
   if (is.null(parsed)) parsed <- read_r_xml(path)

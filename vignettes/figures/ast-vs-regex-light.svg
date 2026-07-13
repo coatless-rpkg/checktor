@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 3 626 152" width="626" height="152"
+     role="img" aria-labelledby="reg-t">
+  <title id="reg-t">What the parser types that a regex cannot</title>
+
+  <!-- The panels hold the code and the markers, nothing else. The counts live in
+       the header, so the 3-versus-1 contrast lands before you read a word. -->
+  <defs>
+    <clipPath id="cp-r"><rect x="322" y="28" width="298" height="98" rx="7"/></clipPath>
+  </defs>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+
+    <!-- headers, each carrying its own count -->
+    <g font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+       font-size="9" letter-spacing="1.2" font-weight="600">
+      <text x="6"   y="18" fill="#D97A34">WHAT A REGEX MATCHES</text>
+      <text x="322" y="18" fill="#0E2A47" fill-opacity="0.55">WHAT THE PARSE TREE TYPES</text>
+    </g>
+    <g font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+       font-size="7.5" letter-spacing="0.8" font-weight="700">
+      <rect x="242" y="7" width="62" height="16" rx="3" fill="#B4541F"/>
+      <text x="250" y="18" fill="#FFFFFF">3 MATCHES</text>
+      <rect x="568" y="7" width="52" height="16" rx="3" fill="#157F49"/>
+      <text x="576" y="18" fill="#FFFFFF">1 MATCH</text>
+    </g>
+
+    <rect x="6"   y="28" width="298" height="98" rx="7"
+          fill="#D97A34" fill-opacity="0.05" stroke="#D97A34" stroke-opacity="0.4"/>
+    <rect x="322" y="28" width="298" height="98" rx="7"
+          fill="#0E2A47" fill-opacity="0.04" stroke="#0E2A47" stroke-opacity="0.15"/>
+    <rect x="322" y="28" width="4" height="98" fill="#1FA45C" clip-path="url(#cp-r)"/>
+
+    <!-- LEFT: matched blindly, every T underlined -->
+    <g font-size="10.5" fill="#0E2A47">
+      <text x="20" y="52" fill-opacity="0.6">#&#160;returns&#160;T&#160;on&#160;success</text>
+      <text x="20" y="78">msg&#160;&lt;-&#160;"flag&#160;is&#160;T"</text>
+      <text x="20" y="104">ok&#160;&#160;&lt;-&#160;T</text>
+    </g>
+    <g fill="#D97A34">
+      <rect x="82"  y="56"  width="8" height="2" rx="1"/>
+      <rect x="120" y="82"  width="8" height="2" rx="1"/>
+      <rect x="63"  y="108" width="8" height="2" rx="1"/>
+    </g>
+
+    <!-- RIGHT: typed, so only the real one is reachable -->
+    <g font-size="10.5" fill="#0E2A47">
+      <text x="336" y="52" fill-opacity="0.6">#&#160;returns&#160;T&#160;on&#160;success</text>
+      <text x="336" y="78">msg&#160;&lt;-&#160;"flag&#160;is&#160;T"</text>
+      <text x="336" y="104">ok&#160;&#160;&lt;-&#160;T</text>
+    </g>
+    <rect x="379" y="108" width="8" height="2" rx="1" fill="#1FA45C"/>
+
+    <g font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+       font-size="7.5" letter-spacing="0.8" font-weight="700">
+      <rect x="528" y="40" width="74" height="16" rx="3" fill="#0E2A47" fill-opacity="0.1"/>
+      <text x="536" y="51" fill="#0E2A47" fill-opacity="0.6">COMMENT</text>
+
+      <rect x="528" y="66" width="74" height="16" rx="3" fill="#0E2A47" fill-opacity="0.1"/>
+      <text x="536" y="77" fill="#0E2A47" fill-opacity="0.6">STR_CONST</text>
+
+      <rect x="528" y="92" width="74" height="16" rx="3" fill="#157F49"/>
+      <text x="536" y="103" fill="#FFFFFF">SYMBOL</text>
+    </g>
+
+    <text x="6" y="148" font-size="9" fill="#0E2A47" fill-opacity="0.5"
+          font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">A pattern sitting in a string or a comment is a different kind of node, so it never reaches your XPath.</text>
+  </g>
+</svg>

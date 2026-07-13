@@ -24,7 +24,7 @@ the parsed AST, so \code{T} inside string literals or comments is not flagged
 (\code{f(T = 1)}) and \verb{$T} / \verb{@T} extractions are excluded.
 }
 \examples{
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
-                                 show_content = FALSE)
+# show_content defaults to TRUE, so the offending file prints first
+pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R")
 issues(diagnose_tf_usage(pkg, verbose = FALSE))
 }

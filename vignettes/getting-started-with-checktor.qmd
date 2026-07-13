@@ -16,13 +16,27 @@ knitr:
 library(checktor)
 ```
 
+<style>
+.ct-fig{display:block;margin:1.5rem auto;max-width:100%;height:auto}
+.ct-dark{display:none}
+@media (prefers-color-scheme:dark){.ct-light{display:none}.ct-dark{display:block}}
+[data-bs-theme=light] .ct-light{display:block}
+[data-bs-theme=light] .ct-dark{display:none}
+[data-bs-theme=dark] .ct-light{display:none}
+[data-bs-theme=dark] .ct-dark{display:block}
+</style>
+
 ## The gap checktor fills
 
-`R CMD check` answers one question well: does this package build and run? It is
-silent on the question that actually decides your submission: will a CRAN
+`R CMD check` answers one question well, whether this package builds and runs.
+The question that actually decides your submission goes unasked. Will a CRAN
 volunteer, reading by hand, send it back? Those are different questions, and the
-space between them is where afternoons disappear. A title that isn't in title
-case. A missing `\value{}` tag. A stray `T` where you meant `TRUE`.
+space between them is where afternoons disappear. A missing `\value{}` tag. A
+`set.seed()` left inside a function. A Description that never grew past one
+line. Nothing in the standard toolchain says a word about any of them.
+
+![Seven failure modes against the three tools that might catch them. `R CMD check` alone catches undocumented arguments. `lintr` alone catches a line over 80 characters, which checktor does not check. Both catch a bare `T`, and `R CMD check` also flags a Title that is not in title case. The last three rows, a `set.seed()` left in a function, a one-line Description, and a missing `\value{}` tag, are caught only by checktor.](figures/coverage-light.svg){.ct-fig .ct-light}
+![](figures/coverage-dark.svg){.ct-fig .ct-dark aria-hidden="true"}
 
 `checktor` is the specialist your build refers you to before that appointment.
 It runs the extra-CRAN checks that live in the Repository Policy and reviewers'
@@ -31,8 +45,9 @@ gives you a checkup, a diagnosis, and a prescription.
 
 ## Installation
 
-`checktor` lives on GitHub for now; once it reaches CRAN you will be able to
-`install.packages("checktor")`. Until then, install the development version:
+For now, `checktor` lives on GitHub. Once it reaches CRAN you will be able to
+`install.packages("checktor")`, but until then you install the development
+version.
 
 ```{r eval=FALSE}
 # install.packages("pak")
@@ -43,21 +58,42 @@ pak::pak("coatless-rpkg/checktor")
 
 `checktor()` examines a package directory. So we can watch it work without
 maiming your own package, we will point it at a throwaway package built around
-one deliberately bad file:
+one deliberately bad file.
 
 ```{r}
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)
+```
 
+Here is the file it was built around, bad habits and all.
+
+```{r}
+#| label: show-bad-file
+#| echo: false
+#| results: asis
+src <- readLines(file.path(pkg, "R", "tf_usage_bad.R"))
+cat("```r\n", paste(src, collapse = "\n"), "\n```\n", sep = "")
+```
+
+> Left to itself, `example_diagnose_scenario()` prints that file for you, because
+> `show_content` defaults to `TRUE`. We pass `FALSE` and render it above instead,
+> so it arrives as highlighted R rather than console output.
+
+Now the checkup itself.
+
+```{r}
+# verbose and progress are off here, which keeps the printout compact
 results <- checktor(pkg, verbose = FALSE, progress = FALSE)
 results
 ```
 
-That is the bedside summary: which of the five categories (code, DESCRIPTION,
-documentation, general, and CRAN policy) need attention, and an overall verdict.
-On your own package the call is just `checktor()`. For the full catalogue of
-what each category checks, see the
+That bedside summary names which of the five categories (code, DESCRIPTION,
+documentation, general, and CRAN policy) need attention, and gives an overall
+verdict. For the full catalogue of what each category checks, see the
 [function reference](https://r-pkg.thecoatlessprofessor.com/checktor/reference/index.html).
+
+> **On your own package**, the call is simply `checktor()`. Run from the
+> package root, it examines everything in place.
 
 ## Reading the results as data
 
@@ -65,6 +101,9 @@ The printed report is for humans. When you want to *compute* on the findings,
 filter them, count them, fold them into a report of your own, reach for the
 accessors. They return plain data frames, so you never spelunk through nested
 lists.
+
+![The one `checktor_results` object fans out into three plain data frames. `summary()` gives 5 rows, one per category. `issues()` gives 10 rows, one per issue, carrying the file and line. `tidy()` gives 45 rows, one per check, whether it passed or not.](figures/result-shapes-light.svg){.ct-fig .ct-light}
+![](figures/result-shapes-dark.svg){.ct-fig .ct-dark aria-hidden="true"}
 
 ```{r}
 summary(results)   # one row per category
@@ -95,16 +134,16 @@ diagnosis to a single verdict, `TRUE` when the package is clean:
 checkup(pkg)
 ```
 
-It is built to be the last word in a shell one-liner; the
-[checktor in Continuous Integration](checktor-in-ci.html) vignette puts it in
-charge of a GitHub Actions build.
+Built to be the last word in a shell one-liner, it takes charge of a GitHub
+Actions build in the
+[checktor in Continuous Integration](checktor-in-ci.html) vignette.
 
 ## From diagnosis to treatment
 
 A diagnosis you cannot act on is just bad news. `prescribe()` turns each finding
-into a concrete remedy:
+into a concrete remedy, with the before and after spelled out.
 
-```{r eval=FALSE}
+```{r}
 prescribe(results)
 ```
 
@@ -160,8 +199,8 @@ devtools::check()      # the standard checks
 `checktor` is a checkup, not a cure-all. It complements `R CMD check` and
 [`lintr`](https://lintr.r-lib.org) rather than replacing either, and it cannot
 replace your judgment about whether a package is worth submitting. What it does
-do is the one thing those tools do not: it remembers the hand-enforced CRAN
-rules so you do not have to. Run the three together, treat the printed report as
+do is the one thing those tools do not, remembering the hand-enforced CRAN rules
+so you do not have to. Run the three together, treat the printed report as
 the conversation and the accessors as the data, and a reviewer should find
 nothing left to say. That is the entire point.
 

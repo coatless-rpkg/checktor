@@ -49,7 +49,12 @@ prescribe <- function(results) {
       if (!is.null(rx)) {
         # Curated treatment: heading, one-line remedy, worked example.
         cli::cli_h3(rx$title)
-        cli::cli_text("{.strong Treatment:} {rx$treatment}")
+        # The treatment strings carry cli inline markup, so they have to reach
+        # cli as part of the format string. Interpolating them with
+        # {rx$treatment} passes them as a *value*, and cli deliberately does not
+        # re-parse markup inside interpolated values, so the braces would print
+        # literally.
+        cli::cli_text(paste0("{.strong Treatment:} ", rx$treatment))
         cli::cli_code(rx$example)
       } else {
         # No curated snippet yet: still surface the check and the specific

@@ -16,11 +16,19 @@ knitr:
 library(checktor)
 ```
 
-## Why bother
+<style>
+.ct-fig{display:block;margin:1.5rem auto;max-width:100%;height:auto}
+.ct-dark{display:none}
+@media (prefers-color-scheme:dark){.ct-light{display:none}.ct-dark{display:block}}
+[data-bs-theme=light] .ct-light{display:block}
+[data-bs-theme=light] .ct-dark{display:none}
+[data-bs-theme=dark] .ct-light{display:none}
+[data-bs-theme=dark] .ct-dark{display:block}
+</style>
 
 You already run `checktor` on your package. The trouble with running it by hand
 is that you do it when you remember to, which is not the same as every time it
-matters. A pipeline has no such lapses: it runs the check on every push, for
+matters. A pipeline has no such lapses, running the check on every push, for
 every contributor, whether or not anyone remembered to.
 
 Moving the check into continuous integration (CI) turns a good habit into an
@@ -34,7 +42,7 @@ full diagnosis and collapses it to one verdict: `TRUE` if the package is clean,
 
 ```{r}
 #| label: scenario
-# A throwaway package that (deliberately) uses T/F instead of TRUE/FALSE
+# A throwaway package that deliberately uses T/F instead of TRUE/FALSE
 bad_pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                      show_content = FALSE)
 
@@ -62,7 +70,7 @@ jobs:
   checktor:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: r-lib/actions/setup-r@v2
         with:
@@ -78,8 +86,10 @@ jobs:
 ```
 
 The job checks out your package, installs `checktor`, and exits non-zero the
-moment `checkup()` disagrees with you. (Once `checktor` is on CRAN, swap the
-`extra-packages:` line for `any::checktor`.)
+moment `checkup()` disagrees with you.
+
+> **Once `checktor` is on CRAN**, swap the `extra-packages:` line for
+> `any::checktor`, which needs no GitHub remote.
 
 ## Failing loudly, not silently
 
@@ -91,15 +101,15 @@ fails, you want the diagnosis in the log, not a scavenger hunt. Run the full
 results <- checktor::checktor()
 
 if (!checktor::is_healthy(results)) {
-  writeLines(checktor::health_report(results))
-  quit(status = 1)
+  writeLines(checktor::health_report(results))  # the diagnosis, in the log
+  quit(status = 1)                              # then fail the build
 }
 ```
 
 `health_report()` returns the findings as Markdown, so the failing log reads
-like a chart at the foot of a hospital bed: what is wrong, and where. Point its
-`file =` argument at a path and you can just as easily upload the report as a
-build artifact for the squeamish who prefer not to read CI logs.
+like a chart at the foot of a hospital bed, showing what is wrong and where.
+Point its `file =` argument at a path and you can just as easily upload the
+report as a build artifact for the squeamish who prefer not to read CI logs.
 
 ## Tuning the examination
 
@@ -132,6 +142,12 @@ Rscript -e 'if (!checktor::checkup()) quit(status = 1)'
 ```
 
 Now a commit that would have embarrassed you on CRAN never leaves your laptop.
+
+It is the same call in both places, and the only thing that changes is how long
+you wait to hear about it.
+
+![The same `checkup()` call at three latencies. In a `.git/hooks/pre-commit` hook on your laptop it answers in seconds. In GitHub Actions on the pull request it answers in minutes. If you skip both, the same finding reaches you from a CRAN reviewer weeks later.](figures/ci-gates-light.svg){.ct-fig .ct-light}
+![](figures/ci-gates-dark.svg){.ct-fig .ct-dark aria-hidden="true"}
 
 ## The takeaway
 

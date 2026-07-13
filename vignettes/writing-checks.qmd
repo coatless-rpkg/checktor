@@ -12,15 +12,35 @@ knitr:
 
 ```{r}
 #| label: setup
+#| include: false
 library(checktor)
 ```
 
-`checktor` ships about thirty diagnostics, but every team has house rules too
+<style>
+.ct-fig{display:block;margin:1.5rem auto;max-width:100%;height:auto}
+.ct-dark{display:none}
+@media (prefers-color-scheme:dark){.ct-light{display:none}.ct-dark{display:block}}
+[data-bs-theme=light] .ct-light{display:block}
+[data-bs-theme=light] .ct-dark{display:none}
+[data-bs-theme=dark] .ct-light{display:none}
+[data-bs-theme=dark] .ct-dark{display:block}
+</style>
+
+`checktor` ships more than forty diagnostics, but every team has house rules too
 local to upstream: a function you have banned, a header you insist on, a habit
 you keep relapsing into. This vignette is for those. It walks through the
 handful of helpers in `R/ast.R` and shows how to author a new check against the
 parsed syntax tree in a few lines of XPath, with the orchestrator handling the
 bookkeeping.
+
+Every check walks the same road. Your sources are parsed once into a syntax
+tree, an XPath query picks out the nodes you object to, and each match comes
+back as a `file:line` string inside a result that knows how to print itself.
+The figure traces that road for a check that ships in the box, the one that
+flags an `options()` call whose enclosing function never puts the setting back.
+
+![Four stages. Line 42 of `R/foo.R` calls `options(digits = 3)` inside a function that never resets it. `read_r_xml()` parses the file into a syntax tree, `xpath_lints()` queries that tree with an XPath anchored on the `SYMBOL_FUNCTION_CALL` node for `options`, and the match comes back as the string `foo.R:42` inside a `checktor_check_result` whose `passed` field is `FALSE`.](figures/check-pipeline-light.svg){.ct-fig .ct-light}
+![](figures/check-pipeline-dark.svg){.ct-fig .ct-dark aria-hidden="true"}
 
 ## The shape of a check
 
@@ -37,18 +57,24 @@ diagnose_<name> <- function(path, verbose = TRUE, parsed = NULL) {
 }
 ```
 
-The `parsed` argument is an optional parse-cache: when `checktor()` runs all
-code-side checks together it parses each file once and passes the cache to
-every check via this internal argument, so 13 checks against a 200-file
-package mean 200 parses, not 2600.
+> **Why the `parsed` argument?** It holds an optional parse-cache, so when
+> `checktor()` runs all code-side checks together, it parses each file once and
+> hands the cache to every check. Thirteen checks against a 200-file package
+> then mean 200 parses rather than 2,600.
 
 ## Helpers in `R/ast.R`
 
+`R/ast.R` holds six functions, and a check leans on them in roughly the order of
+the road above. `read_r_xml()` does the parsing and `xpath_lints()` does the
+querying, so between them they carry every check in the package. The rest are
+shorthands for patterns common enough to have earned a name. Learn the first two
+and you can already write a check.
+
 ### `read_r_xml(path)`
 
-Start here: this is what makes your sources queryable. It parses every
-`R/*.R` file in the package and returns a named list of `list(file, xml,
-error)`. A parse failure becomes an `error` slot instead of crashing the run.
+This is what makes your sources queryable. It parses every `R/*.R` file in the
+package and returns a named list of `list(file, xml, error)`. A parse failure
+becomes an `error` slot instead of crashing the run.
 
 ```r
 parsed <- read_r_xml(".")
@@ -125,6 +151,7 @@ essential shape:
 ```r
 diagnose_sys_setenv_no_reset <- function(path, verbose = TRUE,
                                          parsed = NULL) {
+  # reuse the parse-cache when checktor() supplies one, else parse fresh
   if (is.null(parsed)) parsed <- read_r_xml(path)
   if (length(parsed) == 0L) {
     return(checktor_check_result(TRUE, character(0),
@@ -132,6 +159,7 @@ diagnose_sys_setenv_no_reset <- function(path, verbose = TRUE,
   }
   xpath <- paste0(
     "//SYMBOL_FUNCTION_CALL[text() = 'Sys.setenv'][",
+    # keep only calls whose enclosing function never resets the variable
     "  ", not_under_fn_with_call_xpath(c(
         "on.exit",
         "Sys.unsetenv",
@@ -169,15 +197,19 @@ A call `fn(a, b = 1)` parses to:
 </expr>
 ```
 
-When you anchor on a `SYMBOL_FUNCTION_CALL`:
+Anchor on the `SYMBOL_FUNCTION_CALL` and every other node is one axis away. The
+amber card is the one that catches people out.
+
+![The parse tree for `fn(a, b = 1)`. Anchored on the `SYMBOL_FUNCTION_CALL` node, `parent::expr` reaches only the function-name wrapper, which is the trap. The call expr is `parent::expr/parent::expr`, and the first positional argument is `parent::expr/following-sibling::expr[1]`.](figures/xpath-axes-light.svg){.ct-fig .ct-light}
+![](figures/xpath-axes-dark.svg){.ct-fig .ct-dark aria-hidden="true"}
 
 - the call expr is `parent::expr/parent::expr`
-- the first positional arg is `parent::expr/following-sibling::expr[1]`
+- the first argument expr is `parent::expr/following-sibling::expr[1]`
 - a named-arg name is `parent::expr/parent::expr/SYMBOL_SUB`
 
-A common bug is treating `parent::expr` as the call expr; it is actually the
-function-name wrapper, which has only one child (the
-`SYMBOL_FUNCTION_CALL` itself).
+That middle one is the first *argument*, not the first *positional* argument.
+For `fn(b = 1, a)` the same axis lands on the value `1`, so reach for it only
+when you already know the shape of the call.
 
 ## Trying it out
 
@@ -194,16 +226,20 @@ To plug a new check into `checktor()`, add a `diagnose_<name>` function to the
 appropriate `R/diagnostics-*.R` file and register it in that file's
 `run_checks(list(...), path, verbose)` call as a closure that forwards the
 cache: `my_check = function(p, v) diagnose_my_check(p, v, parsed = parsed)`.
-That closure is what lets your check share the parse-once cache; the
+That closure is what lets your check share the parse-once cache, while the
 orchestrator handles error catching and `$passed` bookkeeping for you.
 
 ## Conclusion
 
 Building on the parsed syntax tree buys the property that makes `checktor`
-trustworthy: a pattern sitting in a string literal or a comment is a different
-kind of node than a real call, so it never false-positives. Write the XPath, let
-`run_checks()` carry the rest, and your house rule is enforced as rigorously as
-the checks that ship in the box.
+trustworthy, because a pattern sitting in a string literal or a comment is a
+different kind of node than a real call, so it never false-positives.
+
+![The same three lines of R seen two ways. A regex matches the letter `T` three times, in a comment, inside a string literal, and as a real symbol. The parse tree instead types each one as `COMMENT`, `STR_CONST` and `SYMBOL`, so only the `SYMBOL` is a bare `T` and only it is flagged.](figures/ast-vs-regex-light.svg){.ct-fig .ct-light}
+![](figures/ast-vs-regex-dark.svg){.ct-fig .ct-dark aria-hidden="true"}
+
+Write the XPath, let `run_checks()` carry the rest, and your house rule is
+enforced as rigorously as the checks that ship in the box.
 
 ## See also
 

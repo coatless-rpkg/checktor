@@ -3,6 +3,11 @@ url: https://r-pkg.thecoatlessprofessor.com/checktor
 template:
   bootstrap: 5
   light-switch: true
+  bslib:
+    # checktor brand green (the checkmark outline in the logo). It drives
+    # buttons, active states, and badges. Links use an AA-legible shade set in
+    # pkgdown/extra.scss so body-text links clear WCAG contrast.
+    primary: "#1FA45C"
   opengraph:
     twitter:
       creator: "@axiomsofxyz"
@@ -21,8 +26,11 @@ home:
 
 navbar:
   structure:
+    # `lightswitch` must be listed explicitly. Setting `light-switch: true`
+    # alone only enables the feature; pkgdown drops the toggle whenever
+    # `structure.right` is overridden, as it is here.
     left:  [intro, reference, articles, news]
-    right: [search, github]
+    right: [search, github, lightswitch]
   components:
     articles:
       text: Articles

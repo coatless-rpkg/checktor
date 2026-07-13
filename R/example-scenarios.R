@@ -142,12 +142,6 @@ example_diagnose_scenario <- function(example_path,
     defer_cleanup(temp_pkg, envir = parent.frame())
   }
 
-  # Inform user about temporary package location
-  if (show_content) {
-    cat("Temporary package created at:", temp_pkg, "\n")
-    cat("Example file copied to:", target_file, "\n\n")
-  }
-
   return(temp_pkg)
 }
 

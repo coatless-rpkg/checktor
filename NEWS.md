@@ -1,3 +1,65 @@
+# checktor 0.2.0
+
+## Bug fixes
+
+* `prescribe()` now surfaces every failed check. It previously walked only the
+  curated treatment list, so a check could fail and `prescribe()` would say
+  nothing about it. Failures without a curated remedy now fall back to a generic
+  block that names the check and lists the issues it found (#4, thanks
+  @january3).
+
+* `prescribe()` no longer prints raw `cli` markup. The stored treatment strings
+  carry inline markup such as `{.code TRUE}`, and it was reaching `cli` as an
+  interpolated value rather than as part of the format string. `cli` does not
+  re-parse markup inside interpolated values, so readers saw literal braces
+  instead of styled code.
+
+* The DESCRIPTION acronym check no longer flags an acronym that the text already
+  spells out. A conventional parenthetical gloss in either order, as in
+  `principal component analysis (PCA)` or `PCA (principal component analysis)`,
+  now counts as explained, and a line-wrapped gloss is detected too (#5, thanks
+  @january3).
+
+* `diagnose_print_cat_usage()` no longer flags `cat()` or `print()` inside S3
+  `print.*` and `format.*` methods, where `cat()` is the required idiom. Base R's
+  own `print.default()` and `print.lm()` use it (#6, thanks @jhelvy).
+
+* `example_diagnose_scenario()` no longer prints the temporary package path when
+  `show_content = TRUE`. It now shows the example file and nothing else, which
+  keeps machine-specific paths out of help examples and vignettes.
+
+## Documentation
+
+* The three vignettes gained figures. "Getting Started" now shows a coverage map
+  of what `R CMD check`, `lintr`, and `checktor` each catch, and a diagram of the
+  three data frames the accessors return. "checktor in Continuous Integration"
+  shows the same `checkup()` call running at three latencies. "Writing Your Own
+  Checks" shows the road from source to finding, the XPath axes around a
+  `SYMBOL_FUNCTION_CALL` anchor, and why the parse tree never trips over a
+  pattern in a string or a comment.
+
+* "Getting Started" now runs `prescribe()` rather than hiding it, so the remedy
+  the section promises is actually on the page.
+
+* Corrected two claims in "Getting Started". `R CMD check` does flag a `Title`
+  that is not in title case, and `lintr` does flag a bare `T`, so neither belongs
+  in the list of things only `checktor` catches.
+
+* Corrected the diagnostic count in "Writing Your Own Checks", and the parse-tree
+  figure there now shows all eight children of a call expression, including the
+  `OP-COMMA` that the prose had omitted.
+
+## Website
+
+* The pkgdown site picked up a theme drawn from the package logo, with a light
+  and dark mode toggle in the navbar.
+
+## Continuous integration
+
+* Bumped `actions/checkout` to v7 and `JamesIves/github-pages-deploy-action` to
+  v4.8.0, and added `quarto-dev/quarto-actions/setup` so the Quarto vignette
+  engine builds against a pinned Quarto rather than whatever the runner ships.
+
 # checktor 0.1.0
 
 * Initial release.

@@ -1,0 +1,164 @@
+// checktor pkgdown theme
+// -----------------------
+// Brand palette, lifted straight from the hexagon logo mark.
+//   #0E2A47  navy     ink, navbar band
+//   #1FA45C  green    deep accent (the checkmark's hex outline)
+//   #2FBF71  green+   bright accent (the checkmark's fill circle)
+//   #F6FAF9  paper    light tint
+//
+// Colours are set with plain hex (no Sass vars or interpolation) so the file
+// compiles identically whether pkgdown feeds it through sass or dart-sass.
+// Everything here is mode-aware. Light rules sit at :root, with dark overrides
+// under [data-bs-theme="dark"], so the `light-switch` toggle keeps working.
+
+// ---------------------------------------------------------------------------
+// Typography. Refined system stacks with zero network requests, keeping the
+// site fast and offline-friendly in the CRAN-clean spirit of the vignettes.
+// ---------------------------------------------------------------------------
+:root {
+  --bs-font-sans-serif: system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --bs-body-font-family: var(--bs-font-sans-serif);
+  --bs-font-monospace: ui-monospace, SFMono-Regular, "SF Mono",
+    "Cascadia Code", "Roboto Mono", Menlo, Consolas, "Liberation Mono",
+    monospace;
+}
+
+code, kbd, pre, samp {
+  font-family: var(--bs-font-monospace);
+}
+
+// ---------------------------------------------------------------------------
+// Links. Brand green, darkened enough to clear WCAG AA (>= 4.5:1) as body
+// text on each background. #127A45 on white is about 5.4:1, and #4ade8a on
+// the dark theme sits well above 7:1.
+// ---------------------------------------------------------------------------
+:root {
+  --bs-link-color: #127A45;
+  --bs-link-hover-color: #0d5f36;
+  --bs-link-color-rgb: 18, 122, 69;
+  --bs-link-hover-color-rgb: 13, 95, 54;
+}
+
+[data-bs-theme="dark"] {
+  --bs-link-color: #4ade8a;
+  --bs-link-hover-color: #74e6a3;
+  --bs-link-color-rgb: 74, 222, 138;
+  --bs-link-hover-color-rgb: 116, 230, 163;
+}
+
+// ---------------------------------------------------------------------------
+// Navbar. A navy brand band in both light and dark modes, underlined with the
+// accent green so it echoes the logo. Text and links are forced light so they
+// stay legible on navy regardless of the active colour mode.
+// ---------------------------------------------------------------------------
+.navbar {
+  --bs-navbar-color: rgba(246, 250, 249, 0.72);
+  --bs-navbar-hover-color: #ffffff;
+  --bs-navbar-active-color: #2FBF71;
+  --bs-navbar-brand-color: #F6FAF9;
+  --bs-navbar-brand-hover-color: #ffffff;
+  --bs-navbar-toggler-border-color: rgba(246, 250, 249, 0.25);
+  background-color: #0E2A47 !important;
+  border-bottom: 2px solid #1FA45C;
+}
+
+// The active article/nav item gets the bright accent underline.
+.navbar .nav-link.active,
+.navbar .nav-link:hover {
+  border-bottom: 2px solid #2FBF71;
+  margin-bottom: -2px;
+}
+
+// The light/dark switch sits beside the GitHub link. A glyph reads dimmer than
+// text at the same opacity, so it gets full strength against the navy band.
+// The dropdown itself needs no rules, since Bootstrap derives the active item's
+// background from `primary`, which is already the brand green.
+.navbar #dropdown-lightswitch {
+  color: #F6FAF9;
+}
+
+// ---------------------------------------------------------------------------
+// Headings. Navy ink in light mode, soft paper in dark. Only the colour is
+// touched, so sizing and weight stay with the Bootstrap defaults.
+// ---------------------------------------------------------------------------
+h1, h2, h3,
+.page-header h1 {
+  color: #0E2A47;
+}
+
+[data-bs-theme="dark"] h1,
+[data-bs-theme="dark"] h2,
+[data-bs-theme="dark"] h3,
+[data-bs-theme="dark"] .page-header h1 {
+  color: #e7eef5;
+}
+
+// ---------------------------------------------------------------------------
+// Blockquotes. The "aside" mechanism the vignettes use in place of Quarto
+// callouts (callouts degrade to bare blockquotes on the pkgdown side, so we
+// style blockquotes to read as intentional notes on both surfaces).
+// ---------------------------------------------------------------------------
+.contents blockquote,
+blockquote {
+  border-left: 0.3rem solid #1FA45C;
+  background: rgba(47, 191, 113, 0.06);
+  padding: 0.75rem 1rem;
+  margin: 1.25rem 0;
+  border-radius: 0 0.375rem 0.375rem 0;
+  font-size: inherit;
+  color: inherit;
+}
+
+[data-bs-theme="dark"] .contents blockquote,
+[data-bs-theme="dark"] blockquote {
+  border-left-color: #2FBF71;
+  background: rgba(47, 191, 113, 0.10);
+}
+
+// A leading strong (e.g. "**Note.**") in an aside picks up the deep green.
+.contents blockquote > p:first-child > strong:first-child {
+  color: #127A45;
+}
+
+[data-bs-theme="dark"] .contents blockquote > p:first-child > strong:first-child {
+  color: #4ade8a;
+}
+
+// ---------------------------------------------------------------------------
+// Vignette figures. An <img>-loaded SVG is an isolated document, so page CSS
+// cannot reach inside it to re-ink it. Each diagram therefore ships as a light
+// and a dark variant, and we swap them here, exactly as the logo does.
+// ---------------------------------------------------------------------------
+.ct-fig {
+  display: block;
+  margin: 1.5rem auto;
+  max-width: 100%;
+  height: auto;
+}
+
+.ct-dark {
+  display: none;
+}
+
+[data-bs-theme="dark"] .ct-light {
+  display: none;
+}
+
+[data-bs-theme="dark"] .ct-dark {
+  display: block;
+}
+
+// ---------------------------------------------------------------------------
+// Code blocks. A slim brand rule down the gutter so source stands apart from
+// prose without heavy chrome.
+// ---------------------------------------------------------------------------
+.contents div.sourceCode,
+.contents pre:not(.sourceCode) {
+  border-left: 0.2rem solid rgba(31, 164, 92, 0.35);
+}
+
+[data-bs-theme="dark"] .contents div.sourceCode,
+[data-bs-theme="dark"] .contents pre:not(.sourceCode) {
+  border-left-color: rgba(47, 191, 113, 0.40);
+}
