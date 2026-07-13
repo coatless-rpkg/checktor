@@ -91,6 +91,39 @@ diagnose_file_operations <- function(path, verbose = TRUE, parsed = NULL) {
   #       invocation, e.g. `saveRDS(x, tempfile())`)
   #   (b) earlier statements in the same scope (enclosing function body or
   #       same top-level exprlist), e.g. `p <- tempfile(); saveRDS(x, p)`
+  #
+  # It is also safe when the caller chose the destination, because CRAN's rule
+  # is about writing to the user's filespace *without permission*, and a path
+  # the caller passed in is permission:
+  #
+  #     health_report <- function(results, file) writeLines(report, file)
+  #
+  # Only the DESTINATION argument counts, not any argument. Matching any symbol
+  # against the formals would exempt `f <- function(x) writeLines(x, "~/a.csv")`
+  # on the strength of the data argument, which is precisely the write we want
+  # to catch. The destination is the second positional argument, or the value of
+  # a named `file =` / `con =`.
+  dest_is_formal <- "(
+       parent::expr/following-sibling::expr[2]/SYMBOL[
+         text() = ancestor::expr[FUNCTION][1]/SYMBOL_FORMALS/text()
+       ]
+       or
+       parent::expr/parent::expr/SYMBOL_SUB[text() = 'file' or text() = 'con']
+         /following-sibling::expr[1]/SYMBOL[
+           text() = ancestor::expr[FUNCTION][1]/SYMBOL_FORMALS/text()
+         ]
+     )"
+
+  # ...but a formal is only trustworthy if it does not default to the user's
+  # filespace. `function(path = \"~/data.csv\")` writes to $HOME when called with
+  # no arguments, so a `~`- or `/`-rooted string default forfeits the exemption.
+  has_unsafe_default <- "ancestor::expr[FUNCTION][1]/SYMBOL_FORMALS[
+       following-sibling::*[1][self::EQ_FORMALS]
+     ]/following-sibling::*[2][self::expr]/STR_CONST[
+       starts-with(text(), '\"~') or starts-with(text(), \"'~\") or
+       starts-with(text(), '\"/') or starts-with(text(), \"'/\")
+     ]"
+
   xpath <- sprintf(
     "//SYMBOL_FUNCTION_CALL[%s][
        not(parent::expr/following-sibling::expr//SYMBOL_FUNCTION_CALL[
@@ -100,8 +133,9 @@ diagnose_file_operations <- function(path, verbose = TRUE, parsed = NULL) {
          ancestor::expr[parent::expr/FUNCTION or parent::exprlist][1]
          //SYMBOL_FUNCTION_CALL[text() = 'tempfile' or text() = 'tempdir']
        )
+       and not( %s and not( %s ) )
      ]",
-    predicate
+    predicate, dest_is_formal, has_unsafe_default
   )
   issues <- xpath_per_file(parsed, xpath, function(file, nodes) {
     paste0(basename(file), ":",

@@ -142,10 +142,17 @@ diagnose_urls <- function(path, verbose = TRUE) {
 
   # Rd files: parse and collect prose text so URLs in macros/sections are
   # caught but Rd markup itself isn't matched.
+  #
+  # \verb{} and \code{} are literal spans. A package that *documents* the string
+  # `http://`, as this one does in ?diagnose_urls, is not linking to it, and
+  # flagging that is the same class of false positive the AST checks exist to
+  # avoid. Real links live in \url{}, \href{}, or plain prose, none of which are
+  # skipped here.
+  rd_literal_spans <- c("\\verb", "\\code")
   for (file in rd_files) {
     rd <- tryCatch(tools::parse_Rd(file), error = function(e) NULL)
     if (is.null(rd)) next
-    text <- collect_rd_text(rd)
+    text <- collect_rd_text(rd, skip = rd_literal_spans)
     if (!nzchar(text)) next
     if (grepl(http_re, text, perl = TRUE)) {
       issues <- c(issues,

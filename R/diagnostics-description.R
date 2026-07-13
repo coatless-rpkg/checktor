@@ -118,9 +118,12 @@ diagnose_acronym_explanation <- function(desc, verbose) {
   }
 
   acronyms <- regmatches(text, gregexpr("\\b[A-Z]{2,6}\\b", text))[[1]]
+  # "CMD" is here because it is not an acronym anyone expands, it is part of the
+  # literal command name `R CMD check`, which turns up in any Description that
+  # talks about the standard toolchain.
   common_abbrevs <- c("API", "SQL", "HTML", "CSS", "PDF", "XML", "JSON",
                       "URL", "HTTP", "HTTPS", "FTP", "GUI", "CLI", "CRAN",
-                      "ID", "OS", "TLS", "SSL", "UTF", "ASCII")
+                      "ID", "OS", "TLS", "SSL", "UTF", "ASCII", "CMD")
   candidates <- setdiff(unique(acronyms), common_abbrevs)
 
   # An acronym is not "unexplained" when the Description spells it out with the

@@ -232,6 +232,19 @@ diagnose_option_changes <- function(path, verbose = TRUE, parsed = NULL) {
 
   # options/par/setwd call whose innermost enclosing function body does NOT
   # contain an on.exit() or any withr::local_*/with_* helper.
+  #
+  # There is a second legitimate shape. options(), par() and setwd() all return
+  # their previous value, so a setter that captures it and hands it back is
+  # honouring the base R contract and leaves the caller able to restore:
+  #
+  #     configure <- function(x) { old <- options(digits = x); invisible(old) }
+  #
+  # The real leak is a bare `options(digits = 3)` whose old value is discarded,
+  # so a call that sits on the right-hand side of an assignment is exempt.
+  captured <- paste0(
+    "not(parent::expr/parent::expr/preceding-sibling::*[1]",
+    "[self::LEFT_ASSIGN or self::EQ_ASSIGN])"
+  )
   xpath <- paste0(
     "//SYMBOL_FUNCTION_CALL[text() = 'options' or text() = 'par' or text() = 'setwd'][",
     "  ", not_under_fn_with_call_xpath(c(
@@ -240,6 +253,7 @@ diagnose_option_changes <- function(path, verbose = TRUE, parsed = NULL) {
         "local_par",     "with_par",
         "local_dir",     "with_dir"
       )),
+    "  and ", captured,
     "]"
   )
   issues <- xpath_lints(parsed, xpath)

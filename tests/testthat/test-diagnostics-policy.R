@@ -89,3 +89,39 @@ test_that("diagnose_network_operations accepts \\dontrun-wrapped network code", 
   )))
   expect_true(diagnose_network_operations(pkg, verbose = FALSE)$passed)
 })
+
+test_that("file_operations exempts a write to a caller-supplied destination", {
+  # CRAN's rule is about writing without permission, and a path the caller
+  # passed in is permission.
+  pkg <- make_temp_dir()
+  write_pkg(pkg, r_code = c(
+    "report <- function(results, file) {",
+    "  writeLines(results, file)",
+    "}"
+  ))
+  expect_true(diagnose_file_operations(pkg, verbose = FALSE)$passed)
+})
+
+test_that("file_operations still flags a formal that defaults into the user's filespace", {
+  # The destination is a formal, but calling report() with no arguments writes
+  # to $HOME, so the exemption must not apply.
+  pkg <- make_temp_dir()
+  write_pkg(pkg, r_code = c(
+    'report <- function(results, file = "~/report.txt") {',
+    "  writeLines(results, file)",
+    "}"
+  ))
+  expect_false(diagnose_file_operations(pkg, verbose = FALSE)$passed)
+})
+
+test_that("file_operations does not exempt on the strength of a non-destination arg", {
+  # `x` is a formal, but it is the DATA argument. The destination is a literal
+  # home path and must still be flagged.
+  pkg <- make_temp_dir()
+  write_pkg(pkg, r_code = c(
+    "bad <- function(x) {",
+    '  writeLines(x, "~/data.csv")',
+    "}"
+  ))
+  expect_false(diagnose_file_operations(pkg, verbose = FALSE)$passed)
+})

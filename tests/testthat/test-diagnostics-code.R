@@ -258,3 +258,29 @@ test_that("diagnose_core_usage requires same-call core limit, not file-wide", {
   ))
   expect_true(diagnose_core_usage(pkg_ok, verbose = FALSE)$passed)
 })
+
+test_that("option_changes exempts a setter that captures and returns the old value", {
+  # options()/par()/setwd() return the previous value, so capturing it and
+  # handing it back is the base R setter contract, not a leak.
+  pkg <- make_temp_dir()
+  write_pkg(pkg, r_code = c(
+    "cfg <- function(x) {",
+    "  old <- options(digits = x)",
+    "  invisible(old)",
+    "}"
+  ))
+  expect_true(diagnose_option_changes(pkg, verbose = FALSE)$passed)
+})
+
+test_that("option_changes still flags a bare options() whose old value is discarded", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, r_code = c(
+    "leak <- function(x) {",
+    "  options(digits = x)",
+    "  invisible(NULL)",
+    "}"
+  ))
+  res <- diagnose_option_changes(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_equal(length(res$issues), 1L)
+})

@@ -28,6 +28,31 @@
   `show_content = TRUE`. It now shows the example file and nothing else, which
   keeps machine-specific paths out of help examples and vignettes.
 
+* `diagnose_urls()` no longer flags an `http://` that appears inside a `\verb{}`
+  or `\code{}` span in an `.Rd` file. Those are literal spans, so a package that
+  *documents* the string is not linking to it, and flagging it was the same class
+  of false positive the AST checks exist to prevent. Real links live in `\url{}`,
+  `\href{}`, or plain prose, none of which are skipped. checktor's own
+  `?diagnose_urls` page was tripping this.
+
+* `diagnose_option_changes()` no longer flags a setter that captures the previous
+  value and hands it back. `options()`, `par()` and `setwd()` all return their old
+  value, so `old <- options(digits = 3); invisible(old)` honours the base R
+  contract and leaves the caller able to restore. A bare `options(digits = 3)`
+  whose old value is discarded is still flagged.
+
+* `diagnose_file_operations()` no longer flags a write whose destination the
+  caller supplied, as in `function(results, file) writeLines(results, file)`.
+  CRAN's rule concerns writing to the user's filespace *without permission*, and
+  a path passed in by the caller is permission. The exemption looks only at the
+  destination argument, so a hardcoded `writeLines(x, "~/data.csv")` is still
+  flagged even when some other argument happens to be a formal, and a formal that
+  *defaults* into the user's filespace, as in `function(file = "~/report.txt")`,
+  is still flagged too.
+
+* The DESCRIPTION acronym check no longer flags `CMD`, which is not an acronym
+  anyone expands but part of the literal command name `R CMD check`.
+
 ## Documentation
 
 * The three vignettes gained figures. "Getting Started" now shows a coverage map
