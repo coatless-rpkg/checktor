@@ -6,12 +6,16 @@
 #' @details
 #' This function checks:
 #'
-#' - Package size — measured against the files that would ship in the
+#' - Package size, measured against the files that would ship in the
 #'   tarball (`.Rbuildignore` and standard scratch dirs are excluded), with
 #'   a 5 MB warning threshold matching CRAN's recommendation.
-#' - Invalid or problematic URLs in package files.
 #' - Presence of a `NEWS` file documenting user-facing changes.
 #' - Relative links in the `README` that would break on CRAN.
+#'
+#' URLs are deliberately **not** checked here. `R CMD check --as-cran` already
+#' fetches every URL in DESCRIPTION, the Rd files, `NEWS.md` and `README.md`,
+#' and reports status codes and redirect targets (`tools::check_package_urls()`).
+#' Duplicating it would only add noise.
 #'
 #' [diagnose_cran_comments_file()] is intentionally not part of this default
 #' run, since a `cran-comments.md` is a workflow convention rather than a CRAN
@@ -37,7 +41,6 @@ diagnose_general_issues <- function(path = ".", verbose = TRUE) {
 
   run_checks(list(
     package_size  = diagnose_package_size,
-    urls          = diagnose_urls,
     news_file     = diagnose_news_file,
     readme_links  = diagnose_readme_relative_links
   ), path, verbose)
@@ -90,88 +93,6 @@ diagnose_package_size <- function(path, verbose = TRUE) {
     }
   }
   checktor_check_result(passed, issues, "Package size check", size_mb = size_mb)
-}
-
-#' Diagnose URL Issues in Package Files
-#'
-#' Checks common package files for `http://` URLs (should usually be
-#' `https://`) and known URL shortener domains.
-#'
-#' @param path Character. Path to package directory
-#' @param verbose Logical. Print diagnostic messages
-#'
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @export
-#' @examples
-#' pkg_path <- example_diagnose_scenario("description_examples/bad_description.txt",
-#'                                       show_content = FALSE)
-#' issues(diagnose_urls(pkg_path, verbose = FALSE))
-diagnose_urls <- function(path, verbose = TRUE) {
-  rd_files <- list.files(file.path(path, "man"),
-                         pattern = "\\.Rd$", full.names = TRUE)
-  vignette_files <- list.files(file.path(path, "vignettes"),
-                               pattern = "\\.(Rmd|qmd|md)$", full.names = TRUE)
-  text_files <- c(
-    file.path(path, "DESCRIPTION"),
-    file.path(path, "README.md"),
-    file.path(path, "README.Rmd"),
-    vignette_files
-  )
-  text_files <- text_files[file.exists(text_files)]
-
-  if (length(text_files) == 0L && length(rd_files) == 0L) {
-    return(checktor_check_result(TRUE, character(0), "URLs check"))
-  }
-
-  http_re      <- "http://(?!localhost|127\\.0\\.0\\.1|0\\.0\\.0\\.0)"
-  shortener_re <- "\\b(bit\\.ly|tinyurl\\.com|goo\\.gl|t\\.co|ow\\.ly)\\b"
-
-  issues <- character(0)
-  for (file in text_files) {
-    content <- safe_read_lines(file)
-    if (length(content) == 0L) next
-    if (any(grepl(http_re, content, perl = TRUE))) {
-      issues <- c(issues,
-                  paste0(basename(file), ": http:// URL (should be https://)"))
-    }
-    if (any(grepl(shortener_re, content, perl = TRUE))) {
-      issues <- c(issues,
-                  paste0(basename(file), ": URL shortener (may redirect)"))
-    }
-  }
-
-  # Rd files: parse and collect prose text so URLs in macros/sections are
-  # caught but Rd markup itself isn't matched.
-  #
-  # \verb{} and \code{} are literal spans. A package that *documents* the string
-  # `http://`, as this one does in ?diagnose_urls, is not linking to it, and
-  # flagging that is the same class of false positive the AST checks exist to
-  # avoid. Real links live in \url{}, \href{}, or plain prose, none of which are
-  # skipped here.
-  rd_literal_spans <- c("\\verb", "\\code")
-  for (file in rd_files) {
-    rd <- tryCatch(tools::parse_Rd(file), error = function(e) NULL)
-    if (is.null(rd)) next
-    text <- collect_rd_text(rd, skip = rd_literal_spans)
-    if (!nzchar(text)) next
-    if (grepl(http_re, text, perl = TRUE)) {
-      issues <- c(issues,
-                  paste0(basename(file), ": http:// URL (should be https://)"))
-    }
-    if (grepl(shortener_re, text, perl = TRUE)) {
-      issues <- c(issues,
-                  paste0(basename(file), ": URL shortener (may redirect)"))
-    }
-  }
-
-  passed <- length(issues) == 0L
-  emit_issue_summary(
-    issues, verbose,
-    "No obvious URL issues found",
-    "Potential URL issues",
-    level = "warning"
-  )
-  checktor_check_result(passed, issues, "URLs check")
 }
 
 #' Diagnose a Missing NEWS File

@@ -53,8 +53,6 @@ diagnose_description_issues <- function(path = ".", verbose = TRUE) {
   checks <- list(
     software_names      = function(p, v) diagnose_software_names_formatting(desc, v),
     acronyms            = function(p, v) diagnose_acronym_explanation(desc, v),
-    license             = function(p, v) diagnose_license_formatting(desc, p, v),
-    title_case          = function(p, v) diagnose_title_case(desc, v),
     title_length        = function(p, v) diagnose_title_length(desc, v),
     title_starts_with_article = function(p, v) diagnose_title_starts_with_article(desc, v),
     title_redundant_phrases   = function(p, v) diagnose_title_redundant_phrases(desc, v),
@@ -63,10 +61,8 @@ diagnose_description_issues <- function(path = ".", verbose = TRUE) {
     cph_role            = function(p, v) diagnose_cph_role(desc, v),
     references          = function(p, v) diagnose_references_formatting(desc, v),
     description_length  = function(p, v) diagnose_description_length(desc, v),
-    description_starts_with   = function(p, v) diagnose_description_starts_with(desc, v),
     description_bare_r        = function(p, v) diagnose_description_bare_r(desc, v),
-    description_quoted_quotes = function(p, v) diagnose_description_quoted_quotes(desc, v),
-    license_year        = function(p, v) diagnose_license_year(p, v)
+    description_quoted_quotes = function(p, v) diagnose_description_quoted_quotes(desc, v)
   )
   run_checks(checks, path, verbose)
 }
@@ -154,114 +150,56 @@ diagnose_acronym_explanation <- function(desc, verbose) {
   checktor_check_result(passed, unexplained, "Acronyms check")
 }
 
-diagnose_license_formatting <- function(desc, path, verbose) {
-  license <- desc[["License"]]
-  if (is.null(license) || !nzchar(license)) {
-    if (verbose) cli::cli_alert_warning("No License field found")
-    return(checktor_check_result(FALSE, character(0), "License check"))
-  }
-
-  has_file_clause <- grepl("\\+\\s*file\\s+LICENSE", license)
-  license_file <- file.path(path, "LICENSE")
-
-  # MIT (and BSD) actually REQUIRE "+ file LICENSE" because the template
-  # encodes copyright holders in a LICENSE file. Standard variants that do
-  # not need a LICENSE file include GPL-2, GPL-3, AGPL-3, LGPL-*, Apache-2.0.
-  needs_license_file <- grepl("\\b(MIT|BSD_2_clause|BSD_3_clause)\\b", license)
-  no_license_file_ok <- grepl(
-    "^(GPL|AGPL|LGPL|Apache|Artistic|Unlimited|Mozilla)",
-    license
-  )
-
-  issues <- character(0)
-  if (needs_license_file && !has_file_clause) {
-    issues <- c(issues,
-                "MIT/BSD license requires '+ file LICENSE' for copyright holders")
-  } else if (needs_license_file && has_file_clause && !file.exists(license_file)) {
-    issues <- c(issues, "License declares '+ file LICENSE' but no LICENSE file found")
-  } else if (no_license_file_ok && has_file_clause && !file.exists(license_file)) {
-    issues <- c(issues,
-                "Standard license declares '+ file LICENSE' without a LICENSE file")
-  }
-
-  passed <- length(issues) == 0
-  emit_issue_summary(
-    issues, verbose,
-    "License formatting appears correct",
-    "License formatting issues",
-    level = "warning"
-  )
-  checktor_check_result(passed, issues, "License check", license = license)
-}
-
-diagnose_title_case <- function(desc, verbose) {
-  title <- desc[["Title"]]
-  if (is.null(title) || !nzchar(title)) {
-    if (verbose) cli::cli_alert_warning("No Title field found")
-    return(checktor_check_result(FALSE, character(0), "Title case check"))
-  }
-
-  words <- strsplit(title, "\\s+")[[1]]
-  # Lowercase-allowed words mid-title (articles, short prepositions, conjunctions)
-  small_words <- c("a", "an", "the", "and", "or", "but", "for", "nor",
-                   "of", "to", "in", "on", "at", "by", "with", "as",
-                   "from", "into", "vs", "via")
-
-  issues <- character(0)
-  for (i in seq_along(words)) {
-    word <- words[i]
-    if (!nzchar(word)) next
-    # Strip surrounding quotes/punctuation for the case check
-    bare <- gsub("[[:punct:]]", "", word)
-    if (!nzchar(bare)) next
-
-    if (i == 1L) {
-      if (!grepl("^[A-Z]", bare)) {
-        issues <- c(issues, paste("First word should be capitalized:", word))
-      }
-    } else {
-      is_small <- tolower(bare) %in% small_words
-      starts_caps <- grepl("^[A-Z]", bare)
-      # A capitalized small word right after a colon is correct (subtitle
-      # start), so only flag over-capitalized small words elsewhere.
-      after_colon <- grepl(":$", words[i - 1L])
-      if (!is_small && !starts_caps) {
-        issues <- c(issues, paste("Word should be capitalized:", word))
-      } else if (is_small && starts_caps && !after_colon) {
-        issues <- c(issues, paste("Small word should be lowercase:", word))
-      }
-    }
-  }
-
-  passed <- length(issues) == 0
-  emit_issue_summary(
-    issues, verbose,
-    "Title appears to be in Title Case",
-    "Potential Title Case issues",
-    level = "warning"
-  )
-  checktor_check_result(passed, issues, "Title case check")
-}
-
 diagnose_authors_field <- function(desc, verbose) {
+  # Two things are checked here, and only one of them overlaps with R.
+  #
+  # (a) A MISSING Authors@R. R CMD check does raise a CRAN-incoming NOTE for this,
+  #     but it is only a NOTE. checktor treats it as a failure, which is the
+  #     stricter and more useful signal before a submission, so it stays.
+  #
+  # (b) An unfilled usethis template, e.g.
+  #       person("First", "Last", , "you@example.com", role = c("aut", "cre"))
+  #     R CMD check says NOTHING about this: the field is present, so it passes.
+  #     A CRAN reviewer then rejects it. This is a genuine gap, and it is the one
+  #     that mattered in practice -- pcaR2 shipped exactly this and checktor's
+  #     presence-only check waved it through.
+  issues <- character(0)
+
   has_authors_r <- !is.null(desc[["Authors@R"]]) && nzchar(desc[["Authors@R"]])
-  has_legacy <- (!is.null(desc[["Author"]]) && nzchar(desc[["Author"]])) ||
-    (!is.null(desc[["Maintainer"]]) && nzchar(desc[["Maintainer"]]))
+  if (!has_authors_r) {
+    issues <- c(issues, "Missing Authors@R field")
+  }
 
-  passed <- has_authors_r
-  issues <- if (passed) character(0) else "Missing Authors@R field"
-
-  if (verbose) {
-    if (passed) {
-      cli::cli_alert_success("{.code Authors@R} field found")
-    } else {
-      cli::cli_alert_warning("No {.code Authors@R} field found")
-      if (has_legacy) {
-        cli::cli_text("{.emph Legacy Author/Maintainer fields detected}")
-      }
-      cli::cli_text("{.emph Treatment: Consider adding Authors@R field}")
+  placeholders <- c(
+    "First", "Last", "First Last", "Your Name", "YOUR NAME",
+    "you@example.com", "your@email.com", "first.last@example.com"
+  )
+  # One issue per field, listing the placeholders found. The same template leaks
+  # into Authors@R, Author and Maintainer at once, so reporting every (field,
+  # placeholder) pair would turn a single mistake into eight findings.
+  for (field in c("Authors@R", "Author", "Maintainer")) {
+    text <- desc[[field]]
+    if (is.null(text) || !nzchar(text)) next
+    hit <- placeholders[vapply(placeholders, function(ph) {
+      grepl(paste0("[\"']", ph, "[\"']"), text) ||
+        grepl(paste0("\\b", gsub("([.@])", "\\\\\\1", ph), "\\b"), text, perl = TRUE)
+    }, logical(1))]
+    if (length(hit) > 0L) {
+      issues <- c(issues, paste0(
+        field, ": unfilled template placeholder (",
+        paste(sprintf("\"%s\"", hit), collapse = ", "), ")"
+      ))
     }
   }
+  issues <- unique(issues)
+
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues, verbose,
+    "{.code Authors@R} present and filled in",
+    "Problems in the author fields",
+    "Treatment: Add Authors@R, and replace any usethis template placeholder with the real name and email"
+  )
   checktor_check_result(passed, issues, "Authors@R field check")
 }
 
@@ -336,39 +274,6 @@ diagnose_description_length <- function(desc, verbose) {
                         sentences = sentences, words = word_count)
 }
 
-# Description must not start with one of CRAN's forbidden phrases.
-diagnose_description_starts_with <- function(desc, verbose) {
-  text <- desc[["Description"]]
-  if (is.null(text) || !nzchar(text)) {
-    return(checktor_check_result(TRUE, character(0),
-                                 "Description starts-with check"))
-  }
-  flat <- trimws(gsub("\\s+", " ", text))
-  forbidden <- c("^This package\\b",
-                 "^Functions for\\b",
-                 sprintf("^%s\\b", desc[["Package"]] %||% "")
-  )
-  forbidden <- forbidden[nzchar(forbidden) & forbidden != "^\\b"]
-
-  issues <- character(0)
-  for (pat in forbidden) {
-    if (grepl(pat, flat, perl = TRUE)) {
-      issues <- c(issues,
-                  paste0("Description starts with forbidden phrase: '",
-                         gsub("\\^|\\\\b", "", pat), "'"))
-    }
-  }
-  passed <- length(issues) == 0L
-  emit_issue_summary(
-    issues, verbose,
-    "Description does not start with a forbidden phrase",
-    "Description starts with a CRAN-forbidden phrase",
-    "Treatment: Rephrase so Description leads with what the package does",
-    level = "warning"
-  )
-  checktor_check_result(passed, issues, "Description starts-with check")
-}
-
 # Bare 'R' (the language name) should be quoted as 'R' in Description.
 # Match 'R' as a standalone word, excluding cases already quoted or part of
 # acronyms like 'CRAN' / 'RStudio'.
@@ -419,26 +324,52 @@ diagnose_description_quoted_quotes <- function(desc, verbose) {
     return(checktor_check_result(TRUE, character(0),
                                  "Description double-quotes check"))
   }
+  # Writing R Extensions, verbatim: "double quotes should be used for quotations
+  # (including titles of books and articles), and single quotes for non-English
+  # usage, including names of other packages and external software."
+  #
+  # So the rule is about SOFTWARE NAMES in double quotes. The old test flagged any
+  # double-quoted phrase of three words or fewer, which caught ordinary scare-
+  # quoted jargon -- cbcTools ships "labeled", "no choice" and "alternative-
+  # specific designs" on CRAN today. Those ARE the quotations double quotes are
+  # reserved for. Only flag a double-quoted name we can actually recognise as
+  # software.
   issues <- character(0)
   for (q in quoted) {
-    body <- gsub("^\"|\"$", "", q)
-    # Publication titles tend to be multi-word; flag short non-title phrases.
-    if (nchar(body) < 80L &&
-        length(strsplit(body, "\\s+")[[1]]) <= 3L) {
-      issues <- c(issues,
-                  paste0("Suspicious double-quoted phrase: ", q,
-                         " (double quotes are for publication titles)"))
+    body <- trimws(gsub("^\"|\"$", "", q))
+    if (is_software_name(body)) {
+      issues <- c(issues, paste0(
+        "Software name in double quotes: ", q,
+        " (Writing R Extensions reserves double quotes for quotations; ",
+        "use single quotes for software and package names)"
+      ))
     }
   }
   passed <- length(issues) == 0L
   emit_issue_summary(
     issues, verbose,
     "Description double-quote usage looks OK",
-    "Description has double-quoted phrases that aren't publication titles",
-    "Treatment: Remove double quotes; use single quotes for software names",
+    "Description double-quotes a software name",
+    "Treatment: Use single quotes for software and package names",
     level = "warning"
   )
   checktor_check_result(passed, issues, "Description double-quotes check")
+}
+
+# Software and package names that Writing R Extensions requires to be in SINGLE
+# quotes. Deliberately a closed list: guessing from shape would re-introduce the
+# false positives on scare-quoted English that this check used to produce.
+SOFTWARE_NAMES <- c(
+  "R", "Python", "Java", "C", "C++", "Fortran", "JavaScript", "SQL", "HTML",
+  "CSS", "XML", "JSON", "Excel", "Stata", "SAS", "SPSS", "MATLAB", "Julia",
+  "Docker", "Git", "GitHub", "Quarto", "LaTeX", "Pandoc",
+  "shiny", "ggplot2", "dplyr", "tidyr", "knitr", "rmarkdown", "Rcpp",
+  "data.table", "Stan", "JAGS", "BUGS", "TensorFlow", "PyTorch", "Keras"
+)
+
+is_software_name <- function(x) {
+  if (!nzchar(x)) return(FALSE)
+  any(tolower(x) == tolower(SOFTWARE_NAMES))
 }
 
 # Title should not start with "A ", "An ", or "The ".
@@ -516,43 +447,6 @@ diagnose_cph_role <- function(desc, verbose) {
     level = "warning"
   )
   checktor_check_result(passed, issues, "cph role check")
-}
-
-# The LICENSE file (the package-specific copyright file referenced by
-# "License: MIT + file LICENSE" etc.) should carry a current year. LICENSE.md
-# is intentionally NOT checked: it's typically the verbatim license text,
-# whose own copyright year (FSF 2007 for AGPL, etc.) refers to the license
-# author rather than the package author.
-diagnose_license_year <- function(path, verbose) {
-  license_file <- file.path(path, "LICENSE")
-  if (!file.exists(license_file)) {
-    return(checktor_check_result(TRUE, character(0), "License year check"))
-  }
-
-  current_year <- as.integer(format(Sys.Date(), "%Y"))
-  content <- safe_read_lines(license_file)
-  if (length(content) == 0L) {
-    return(checktor_check_result(TRUE, character(0), "License year check"))
-  }
-  years <- as.integer(unlist(regmatches(
-    content, gregexpr("\\b(19|20)[0-9]{2}\\b", content, perl = TRUE)
-  )))
-  years <- years[!is.na(years) & years >= 1990L & years <= current_year + 1L]
-  issues <- character(0)
-  if (length(years) > 0L && max(years) < current_year) {
-    issues <- paste0("LICENSE: latest year is ", max(years),
-                     "; consider updating to ", current_year)
-  }
-
-  passed <- length(issues) == 0L
-  emit_issue_summary(
-    issues, verbose,
-    "LICENSE year looks current",
-    "LICENSE year is older than current year",
-    "Treatment: Bump the YEAR / copyright statement",
-    level = "warning"
-  )
-  checktor_check_result(passed, issues, "License year check")
 }
 
 # Title should stay under CRAN's ~65-character guideline.

@@ -86,3 +86,25 @@ test_that("collect_rd_text honours the skip argument", {
   expect_match(skipped, "visible_part")
   expect_false(grepl("hidden_part", skipped))
 })
+
+# ---- is_commented_out_code: prose vs disabled code ----------------------------
+
+test_that("is_commented_out_code separates prose from commented-out calls", {
+  prose <- c(
+    "# --- end",                                   # separator: parses as unary minus
+    "# --- welcome",
+    "# Simulate random choices (default)",
+    "# (Columns are attributes, rows are alternatives)",
+    "# Example 2: Named categorical priors (more explicit)",
+    "# TODO",
+    "#' roxygen line"
+  )
+  code <- c(
+    '# sd_copy_value(id = "name")',
+    "# all_params <- sd_get_url_pars()",
+    '# message("Age question answered!")',
+    "# foo(slow = TRUE)"
+  )
+  expect_false(any(vapply(prose, is_commented_out_code, logical(1))))
+  expect_true(all(vapply(code, is_commented_out_code, logical(1))))
+})

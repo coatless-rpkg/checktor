@@ -37,10 +37,8 @@ diagnose_documentation_issues <- function(path = ".", verbose = TRUE) {
   run_checks(list(
     value_tags                = diagnose_value_tags,
     missing_examples          = diagnose_missing_examples,
-    roxygen_usage             = diagnose_roxygen_usage,
     example_structure         = diagnose_example_structure,
     commented_examples        = diagnose_commented_examples,
-    unexported_example_ns     = diagnose_unexported_example_namespace,
     donttest_vs_dontrun       = diagnose_donttest_vs_dontrun,
     suggested_in_examples     = diagnose_suggested_in_examples
   ), path, verbose)
@@ -94,14 +92,29 @@ diagnose_value_tags <- function(path, verbose = TRUE) {
     return(checktor_check_result(TRUE, character(0), "Value tags check"))
   }
 
+  # Delegate to R's own engine rather than re-walking the Rd tree ourselves.
+  # tools::checkRdContents() is what `R CMD check`'s "checking Rd contents" step
+  # uses, and it already handles two things our hand-rolled version got wrong:
+  # it skips non-function topics, and it exempts \keyword{internal} pages (it
+  # keys off the keyword alone and never reads NAMESPACE). It returns an entry
+  # only for Rd files that have a problem.
+  #
+  # Note that `R CMD check` does NOT surface missing \value as a NOTE, so this
+  # remains an extra-CRAN check even though the engine behind it is base R's.
+  contents <- tryCatch(tools::checkRdContents(dir = path),
+                       error = function(e) NULL)
+  if (is.null(contents)) {
+    return(checktor_check_result(TRUE, character(0), "Value tags check"))
+  }
+
+  entries <- unclass(contents)
+  # checkRdContents() returns an empty list when nothing is wrong. names() on that
+  # is NULL, and NULL[logical(0)] is NULL, not character(0) -- which then fails the
+  # checktor_check_result() contract. Coerce explicitly.
   missing_value <- character(0)
-  for (file in rd_files) {
-    rd <- tryCatch(tools::parse_Rd(file), error = function(e) NULL)
-    if (is.null(rd)) next
-    if (is_non_function_rd_obj(rd)) next
-    if (is.null(extract_rd_section(rd, "\\value"))) {
-      missing_value <- c(missing_value, basename(file))
-    }
+  if (length(entries) > 0L) {
+    hit <- vapply(entries, function(e) isTRUE(e$missing_value), logical(1))
+    missing_value <- sort(as.character(names(entries)[hit]))
   }
 
   passed <- length(missing_value) == 0L
@@ -112,45 +125,6 @@ diagnose_value_tags <- function(path, verbose = TRUE) {
   )
   checktor_check_result(passed, missing_value, "Value tags check",
                         missing = missing_value)
-}
-
-#' Diagnose Roxygen2 Usage
-#'
-#' Informational check: reports whether the package appears to use roxygen2.
-#'
-#' @inheritParams diagnose_value_tags
-#' @return [checktor_check_result()] with `passed` (always `TRUE`),
-#'   `has_roxygen`, `message`.
-#' @export
-#' @examples
-#' diagnose_roxygen_usage(".", verbose = FALSE)$has_roxygen
-diagnose_roxygen_usage <- function(path, verbose = TRUE) {
-  r_files <- list_r_files(path)
-  if (length(r_files) == 0L) {
-    return(checktor_check_result(TRUE, character(0), "Roxygen usage check",
-                                 has_roxygen = FALSE))
-  }
-
-  has_roxygen <- FALSE
-  for (file in r_files) {
-    content <- safe_read_lines(file)
-    if (length(content) > 0L && any(grepl("^\\s*#'", content))) {
-      has_roxygen <- TRUE
-      break
-    }
-  }
-
-  if (verbose) {
-    if (has_roxygen) {
-      cli::cli_alert_info(
-        "Roxygen2 usage detected - ensure to run {.code roxygenize()} before submission"
-      )
-    } else {
-      cli::cli_alert_info("No Roxygen2 usage detected")
-    }
-  }
-  checktor_check_result(TRUE, character(0), "Roxygen usage check",
-                        has_roxygen = has_roxygen)
 }
 
 #' Diagnose Example Structure
@@ -236,8 +210,7 @@ diagnose_commented_examples <- function(path, verbose = TRUE) {
     text <- collect_rd_text(examples)
     lines <- strsplit(text, "\n", fixed = TRUE)[[1L]]
     for (i in seq_along(lines)) {
-      ln <- lines[i]
-      if (grepl("^\\s*#[^'#].*\\(", ln, perl = TRUE)) {
+      if (is_commented_out_code(lines[i])) {
         issues <- c(issues,
                     paste0(basename(file),
                            ": commented-out call in \\examples{}"))
@@ -303,63 +276,6 @@ rd_aliases <- function(rd) {
     }
   }
   out
-}
-
-# If an Rd file documents an unexported function and the \examples{} calls
-# the function by bare name, CRAN requires the call to use `pkg:::fn()`.
-diagnose_unexported_example_namespace <- function(path, verbose = TRUE) {
-  rd_files <- list.files(file.path(path, "man"),
-                         pattern = "\\.Rd$", full.names = TRUE)
-  if (length(rd_files) == 0L) {
-    return(checktor_check_result(TRUE, character(0),
-                                 "Unexported example-namespace check"))
-  }
-
-  exports <- c(read_exports(path), read_s3methods(path))
-  if (length(exports) == 0L) {
-    # No exports declared - either an empty package or NAMESPACE is missing;
-    # don't try to enforce.
-    return(checktor_check_result(TRUE, character(0),
-                                 "Unexported example-namespace check"))
-  }
-
-  issues <- character(0)
-  for (file in rd_files) {
-    rd <- tryCatch(tools::parse_Rd(file), error = function(e) NULL)
-    if (is.null(rd)) next
-    names <- c(rd_primary_name(rd), rd_aliases(rd))
-    names <- names[!is.na(names) & nzchar(names)]
-    if (length(names) == 0L) next
-    # If any documented name is exported, the topic is treated as exported.
-    if (any(names %in% exports)) next
-    examples <- extract_rd_section(rd, "\\examples")
-    if (is.null(examples)) next
-    text <- collect_rd_text(examples)
-    # Flag if a documented name appears as `name(` without preceding `:::`.
-    # R function names match [A-Za-z0-9._], so only `.` needs escaping.
-    for (nm in names) {
-      pat <- sprintf("(?<!:)\\b%s\\s*\\(", gsub(".", "\\.", nm, fixed = TRUE))
-      if (grepl(pat, text, perl = TRUE)) {
-        issues <- c(issues,
-                    paste0(basename(file),
-                           ": unexported '", nm,
-                           "()' called bare in \\examples; use ",
-                           "'pkg:::", nm, "()'"))
-        break
-      }
-    }
-  }
-
-  passed <- length(issues) == 0L
-  emit_issue_summary(
-    issues, verbose,
-    "Unexported examples use {.code :::} where needed",
-    "Unexported topics call themselves bare in {.code \\examples{}}",
-    "Treatment: Use {.code pkg:::name()} or add {.code @noRd}",
-    level = "warning"
-  )
-  checktor_check_result(passed, issues,
-                        "Unexported example-namespace check")
 }
 
 # Suggest \donttest{} for code that is only slow, not impossible to run.
@@ -442,6 +358,11 @@ diagnose_missing_examples <- function(path, verbose = TRUE) {
     rd <- tryCatch(tools::parse_Rd(file), error = function(e) NULL)
     if (is.null(rd)) next
     if (is_non_function_rd_obj(rd)) next
+    # \keyword{internal} pages are deprecated shims and other non-API topics that
+    # are deliberately hidden from the index. R's own checkRdContents exempts them
+    # from its Rd-content checks on the strength of the keyword alone, so requiring
+    # a runnable example of them is not a rule anyone enforces.
+    if (rd_is_internal(rd)) next
     names <- c(rd_primary_name(rd), rd_aliases(rd))
     names <- names[!is.na(names) & nzchar(names)]
     if (!any(names %in% exports)) next     # only exported function topics

@@ -198,21 +198,58 @@ diagnose_print_cat_usage <- function(path, verbose = TRUE, parsed = NULL) {
     return(checktor_check_result(TRUE, character(0), "Print/cat usage check"))
   }
 
-  xpath <- paste0(
-    "//SYMBOL_FUNCTION_CALL[text() = 'print' or text() = 'cat'][",
-    "  not(ancestor::expr[IF or FOR or WHILE])",
-    # cat()/print() are the correct, required idiom inside S3 print.*/format.*
-    # methods - base R's own print.default, print.lm, format.* all use cat(),
-    # as does essentially every S3 print method on CRAN. Exempt any call whose
-    # enclosing function is assigned to a name starting `print.`/`format.`.
-    "  and not(ancestor::expr[FUNCTION][",
-    "    parent::*/expr[1]/SYMBOL[",
-    "      starts-with(text(), 'print.') or starts-with(text(), 'format.')",
-    "    ]",
-    "  ])",
+  # Only a VERBOSITY gate is a guard. The previous rule was
+  # `not(ancestor::expr[IF or FOR or WHILE])`, which exempted a call under *any*
+  # enclosing control flow, so `if (x > 0) print("debug")` and
+  # `for (i in xs) print(i)` were silently let through. Those are exactly the
+  # unsuppressable output we are looking for.
+  # Names packages actually use for an output-control flag. `show` and `echo` are
+  # here because checktor's own example_diagnose_scenario() gates its cat() behind
+  # `if (show_content)`, and any package with show_*/echo/trace flags would
+  # otherwise be flagged for correctly guarding its output.
+  verbosity_words <- c("verbose", "quiet", "debug", "silent",
+                       "show", "echo", "trace", "progress")
+  lower <- "translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')"
+  verbosity <- paste(
+    sprintf("contains(%s, '%s')", lower, verbosity_words),
+    collapse = " or "
+  )
+  # The condition of an `if` is its first child <expr>; the body follows it.
+  guarded <- sprintf("ancestor::expr[IF][expr[1][.//SYMBOL[%s]]]", verbosity)
+
+  # cat()/print() are the required idiom inside S3 output methods. base R's own
+  # print.default/print.lm/format.* use cat(), and the CRAN policy sentence that
+  # states the rule ends with the literal parenthetical
+  # "(except for print, summary, interactive functions)" -- so summary.* counts too.
+  s3_method <- paste0(
+    "ancestor::expr[FUNCTION][",
+    "  parent::*/expr[1]/SYMBOL[",
+    "    starts-with(text(), 'print.') or starts-with(text(), 'format.')",
+    "    or starts-with(text(), 'summary.')",
+    "  ]",
     "]"
   )
-  issues <- xpath_lints(parsed, xpath)
+
+  xpath <- paste0(
+    "//SYMBOL_FUNCTION_CALL[text() = 'print' or text() = 'cat'][",
+    "  not(", guarded, ")",
+    "  and not(", s3_method, ")",
+    "]"
+  )
+
+  # An S3 print method may delegate its output to a helper. The helper is not
+  # itself a method, so the XPath above cannot see that its output is only ever
+  # reachable through one. Drop hits inside a function whose only callers are S3
+  # output methods -- behaviourally identical to inlining the helper into them.
+  delegates <- s3_output_delegates(parsed)
+  issues <- xpath_per_file(parsed, xpath, function(file, nodes) {
+    keep <- !vapply(nodes, function(n) {
+      enclosing_function_name(n) %in% delegates
+    }, logical(1))
+    nodes <- nodes[keep]
+    if (length(nodes) == 0L) return(character(0))
+    paste0(basename(file), ":", xml2::xml_attr(nodes, "line1"))
+  })
 
   passed <- length(issues) == 0L
   emit_issue_summary(
@@ -274,32 +311,43 @@ diagnose_home_writing <- function(path, verbose = TRUE, parsed = NULL) {
     return(checktor_check_result(TRUE, character(0), "Home writing check"))
   }
 
-  # Each rule = (function name, first-arg STR_CONST prefix to flag, label).
-  # STR_CONST text retains the surrounding quotes, hence the
-  # `"<prefix>` and `'<prefix>` alternation.
-  rules <- list(
-    list(fn = "path.expand",   prefix = "~",           label = "path.expand('~...')"),
-    list(fn = "normalizePath", prefix = "~",           label = "normalizePath('~...')"),
-    list(fn = "file.path",     prefix = "~",           label = "file.path('~', ...)"),
-    list(fn = "Sys.getenv",    prefix = "HOME",        label = "Sys.getenv('HOME')"),
-    list(fn = "Sys.getenv",    prefix = "USERPROFILE", label = "Sys.getenv('USERPROFILE')")
+  # The CRAN rule is about WRITING into the user's filespace. Earlier versions of
+  # this check inspected only path.expand()/normalizePath()/file.path()/Sys.getenv(),
+  # which are all *reads*: it flagged `Sys.getenv("HOME")` (which writes nothing)
+  # while missing `writeLines(x, "~/leaked.txt")`, the actual violation. So flag a
+  # WRITE whose destination resolves to the user's home.
+  write_funs <- c("write.csv", "write.csv2", "write.table", "writeLines",
+                  "saveRDS", "save", "file.create", "dir.create", "file.copy",
+                  "file.rename", "sink", "png", "pdf", "jpeg", "ggsave")
+  write_pred <- paste(sprintf("text() = '%s'", write_funs), collapse = " or ")
+
+  # An argument resolves to the user's home if it contains a `~`-rooted literal
+  # anywhere, or reads HOME / USERPROFILE from the environment. STR_CONST text
+  # retains its quotes, hence the "~ / '~ alternation.
+  home_pred <- paste0(
+    ".//STR_CONST[starts-with(text(), '\"~') or starts-with(text(), \"'~\")]",
+    " or .//SYMBOL_FUNCTION_CALL[text() = 'Sys.getenv']/parent::expr",
+    "/following-sibling::expr[1]/STR_CONST[",
+    "  starts-with(text(), '\"HOME') or starts-with(text(), \"'HOME\")",
+    "  or starts-with(text(), '\"USERPROFILE') or starts-with(text(), \"'USERPROFILE\")",
+    "]"
   )
 
-  issues <- character(0)
-  for (r in rules) {
-    xpath <- sprintf(
-      "//SYMBOL_FUNCTION_CALL[text() = '%s']/parent::expr/following-sibling::expr[1]/STR_CONST[starts-with(text(), '\"%s') or starts-with(text(), \"'%s\")]",
-      r$fn, r$prefix, r$prefix
-    )
-    issues <- c(issues, xpath_lints(parsed, xpath, label = r$label))
-  }
+  xpath <- sprintf(
+    "//SYMBOL_FUNCTION_CALL[%s][parent::expr/parent::expr[%s]]",
+    write_pred, home_pred
+  )
+  issues <- xpath_per_file(parsed, xpath, function(file, nodes) {
+    paste0(basename(file), ":", xml2::xml_attr(nodes, "line1"),
+           " (", xml2::xml_text(nodes), "() writes under the home directory)")
+  })
 
   passed <- length(issues) == 0L
   emit_issue_summary(
     issues, verbose,
-    "No obvious home directory writing detected",
-    "Potential home directory writing patterns",
-    "Treatment: Verify these don't write to the user's home directory"
+    "No home directory writing detected",
+    "Writes into the user's home directory",
+    "Treatment: Write to tempdir(), or to a path the caller supplies"
   )
   checktor_check_result(passed, issues, "Home writing check")
 }
@@ -367,23 +415,45 @@ diagnose_globalenv_modification <- function(path, verbose = TRUE, parsed = NULL)
                                  "GlobalEnv modification check"))
   }
 
-  xpath_op <- "//LEFT_ASSIGN[text() = '<<-'] | //RIGHT_ASSIGN[text() = '->>']"
-  xpath_globalenv_ref <- paste0(
-    "//SYMBOL[text() = '.GlobalEnv'] | ",
-    "//SYMBOL_FUNCTION_CALL[text() = 'globalenv']"
-  )
+  # `<<-` does NOT mean ".GlobalEnv". It walks the enclosing environments and
+  # assigns in the first one where the name is already bound, only reaching
+  # .GlobalEnv when the name is bound nowhere else. So a `<<-` is a global write
+  # only when its target binds in neither an enclosing function nor the package
+  # namespace. Flagging every `<<-` false-positives on the two commonest correct
+  # uses: a closure updating a variable in its parent frame, and the package-level
+  # memoisation idiom (`.cache <<- ...`).
+  #
+  # The `.GlobalEnv` / globalenv() *reference* rule is gone entirely. It flagged
+  # pure reads such as `exists(nm, envir = globalenv())`, and the one write form
+  # that matters, `assign(x, envir = .GlobalEnv)`, is already an R CMD check NOTE
+  # ("Found the following assignments to the global environment"), so duplicating
+  # it here would only add noise.
+  pkg_level <- package_level_names(parsed)
 
-  issues <- c(
-    xpath_lints(parsed, xpath_op),
-    xpath_lints(parsed, xpath_globalenv_ref)
-  )
+  issues <- character(0)
+  for (p in parsed) {
+    if (!is.null(p$error) || is.null(p$xml)) next
+    ops <- xml2::xml_find_all(
+      p$xml,
+      "//LEFT_ASSIGN[text() = '<<-'] | //RIGHT_ASSIGN[text() = '->>']"
+    )
+    for (op in ops) {
+      target <- superassign_target(op)
+      if (!nzchar(target)) next
+      if (target %in% pkg_level) next          # package-level binding, e.g. a cache
+      if (binds_in_enclosing_function(op, target)) next
+      issues <- c(issues, paste0(
+        basename(p$file), ":", xml2::xml_attr(op, "line1"), " (", target, ")"
+      ))
+    }
+  }
 
   passed <- length(issues) == 0L
   emit_issue_summary(
     issues, verbose,
     "No {.code .GlobalEnv} modification detected",
-    "Potential {.code .GlobalEnv} modification",
-    "Treatment: Avoid modifying the global environment"
+    "Assignment reaches the global environment",
+    "Treatment: Bind the name in the package or an enclosing function, or use a local cache environment"
   )
   checktor_check_result(passed, issues, "GlobalEnv modification check")
 }
@@ -467,29 +537,139 @@ diagnose_core_usage <- function(path, verbose = TRUE, parsed = NULL) {
     return(checktor_check_result(TRUE, character(0), "Core usage check"))
   }
 
-  xpath <- paste0(
-    "//SYMBOL_FUNCTION_CALL[",
-    "  text() = 'mclapply' or text() = 'parLapply' or text() = 'makeCluster'",
-    "  or text() = 'detectCores'",
-    "][",
-    "  not(parent::expr/parent::expr/SYMBOL_SUB[text() = 'mc.cores'])",
-    "]"
-  )
-  issues <- xpath_per_file(parsed, xpath, function(file, nodes) {
-    paste0(basename(file), ":",
-           xml2::xml_attr(nodes, "line1"),
-           " (", xml2::xml_text(nodes), "())")
-  })
+  # CRAN's rule is: "If running a package uses multiple threads/cores it must
+  # never use more than two simultaneously." The prohibition is on USING more
+  # than two, not on calling detectCores().
+  #
+  # The old rule required an `mc.cores` named argument on the call itself. But
+  # `mc.cores` is an argument of mclapply()/pvec() ONLY: detectCores() takes no
+  # arguments at all, makeCluster() takes `spec`, parLapply() takes a cluster. So
+  # detectCores() could never satisfy it and was flagged 100% of the time, while
+  # `makeCluster(2L)` -- explicitly CRAN-compliant -- was flagged too.
+  #
+  # What actually matters is the WORKER COUNT handed to each framework, measured
+  # under `_R_CHECK_LIMIT_CORES_=TRUE` (the CRAN check environment):
+  #
+  #     parallel::detectCores()        -> 12   ignores the CRAN limit
+  #     parallelly::availableCores()   ->  2   auto-caps
+  #     future::availableCores()       ->  2   auto-caps
+  #
+  # So a worker count is risky when it is a literal above 2, or is derived from
+  # detectCores(). It is safe when it comes from availableCores(), is capped at 2,
+  # or sits in a function that guards on the CRAN environment variables.
+  issues <- character(0)
+  for (p in parsed) {
+    if (!is.null(p$error) || is.null(p$xml)) next
+    calls <- xml2::xml_find_all(
+      p$xml,
+      sprintf("//SYMBOL_FUNCTION_CALL[%s]",
+              paste(sprintf("text() = '%s'", names(PARALLEL_WORKER_ARG)),
+                    collapse = " or "))
+    )
+    for (cl in calls) {
+      fn <- xml2::xml_text(cl)
+      w <- worker_count_expr(cl, PARALLEL_WORKER_ARG[[fn]])
+      if (is.null(w)) next                      # no explicit count: defaults are safe
+      if (!worker_count_is_risky(w)) next
+      if (has_cran_core_guard(cl)) next
+      issues <- c(issues, paste0(
+        basename(p$file), ":", xml2::xml_attr(cl, "line1"),
+        " (", fn, "() worker count is unbounded)"
+      ))
+    }
+  }
 
   passed <- length(issues) == 0L
   emit_issue_summary(
     issues, verbose,
-    "Core usage appears limited appropriately",
-    "Potential unlimited core usage",
-    "Treatment: Limit to 2 cores on CRAN (e.g., {.code mc.cores = 2L})",
+    "Core usage is bounded for CRAN",
+    "Worker count may exceed the two cores CRAN allows",
+    "Treatment: Use {.code parallelly::availableCores()}, which caps at 2 under {.envvar _R_CHECK_LIMIT_CORES_}, or guard the count yourself",
     max_show = 3L
   )
   checktor_check_result(passed, issues, "Core usage check")
+}
+
+# Worker-count argument per parallel framework. A name means a named argument;
+# `1L` means the first positional argument.
+PARALLEL_WORKER_ARG <- list(
+  # parallel / snow
+  mclapply            = "mc.cores",
+  mcmapply            = "mc.cores",
+  pvec                = "mc.cores",
+  makeCluster         = 1L,
+  makePSOCKcluster    = 1L,
+  makeForkCluster     = 1L,
+  # foreach backends
+  registerDoParallel  = "cores",
+  registerDoMC        = "cores",
+  registerDoSNOW      = 1L,
+  # future / furrr (furrr inherits the plan, so plan() is the control point)
+  plan                = "workers",
+  # mirai
+  daemons             = 1L,
+  # RcppParallel
+  setThreadOptions    = "numThreads",
+  # data.table
+  setDTthreads        = 1L,
+  # BiocParallel
+  MulticoreParam      = "workers",
+  SnowParam           = "workers"
+)
+
+# The expression supplying the worker count for a call, or NULL when none is
+# given (the framework defaults are all CRAN-safe).
+worker_count_expr <- function(call_node, arg) {
+  if (is.character(arg)) {
+    e <- xml2::xml_find_first(
+      call_node,
+      sprintf(
+        "parent::expr/parent::expr/SYMBOL_SUB[text() = '%s']/following-sibling::expr[1]",
+        arg
+      )
+    )
+  } else {
+    # First positional argument. A named argument's value is also an <expr>
+    # sibling, so require that it not be preceded by an EQ_SUB.
+    e <- xml2::xml_find_first(
+      call_node,
+      "parent::expr/following-sibling::expr[1][not(preceding-sibling::*[1][self::EQ_SUB])]"
+    )
+  }
+  if (inherits(e, "xml_missing")) NULL else e
+}
+
+# A worker count is risky when it is a numeric literal above 2, or is derived
+# from detectCores(). availableCores() already caps itself at 2 under the CRAN
+# check environment, so it is safe.
+worker_count_is_risky <- function(w) {
+  if (length(xml2::xml_find_all(w, ".//SYMBOL_FUNCTION_CALL[text() = 'availableCores']"))) {
+    return(FALSE)
+  }
+  if (length(xml2::xml_find_all(w, ".//SYMBOL_FUNCTION_CALL[text() = 'detectCores']"))) {
+    return(TRUE)
+  }
+  nums <- xml2::xml_find_all(w, "descendant-or-self::NUM_CONST")
+  if (length(nums) == 1L && length(xml2::xml_find_all(w, ".//SYMBOL_FUNCTION_CALL")) == 0L) {
+    n <- suppressWarnings(as.numeric(sub("L$", "", xml2::xml_text(nums))))
+    return(!is.na(n) && n > 2)
+  }
+  FALSE   # a bare variable: not resolvable statically, so do not guess
+}
+
+# TRUE when the enclosing function caps cores for CRAN, i.e. it mentions
+# _R_CHECK_LIMIT_CORES_ or NOT_CRAN. This is the guard both logitr and cbcTools
+# implement, and it is byte-for-byte R's own parallel:::.check_ncores predicate.
+has_cran_core_guard <- function(call_node) {
+  hits <- xml2::xml_find_all(
+    call_node,
+    paste0(
+      "ancestor::expr[FUNCTION]//STR_CONST[",
+      "  contains(text(), '_R_CHECK_LIMIT_CORES_') or contains(text(), 'NOT_CRAN')",
+      "]"
+    )
+  )
+  length(hits) > 0L
 }
 
 # library() / require() in package R/ code is almost always a mistake -

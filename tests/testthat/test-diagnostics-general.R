@@ -33,39 +33,6 @@ test_that("diagnose_package_size still flags genuinely large packages", {
 
 # ---- URLs --------------------------------------------------------------------
 
-test_that("diagnose_urls flags http:// in DESCRIPTION URL field", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg, extra = c("URL: http://example.com"))
-  res <- diagnose_urls(pkg, verbose = FALSE)
-  expect_false(res$passed)
-})
-
-test_that("diagnose_urls accepts https://", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg, extra = c("URL: https://example.com"))
-  res <- diagnose_urls(pkg, verbose = FALSE)
-  expect_true(res$passed)
-})
-
-test_that("diagnose_urls ignores http:// localhost", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  # Local references in a README:
-  writeLines(c("Run http://localhost:8000 to test."),
-             file.path(pkg, "README.md"))
-  res <- diagnose_urls(pkg, verbose = FALSE)
-  expect_true(res$passed)
-})
-
-test_that("diagnose_urls flags known URL shorteners", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  writeLines("See https://bit.ly/abcdef for details.",
-             file.path(pkg, "README.md"))
-  res <- diagnose_urls(pkg, verbose = FALSE)
-  expect_false(res$passed)
-})
-
 # ---- NEWS file ---------------------------------------------------------------
 
 test_that("diagnose_news_file flags a missing NEWS, accepts one present", {

@@ -50,60 +50,6 @@ test_that("software_names_formatting does NOT flag the bare letter R", {
   expect_true(res$software_names$passed)
 })
 
-test_that("license_formatting requires + file LICENSE for MIT", {
-  pkg_bad <- make_temp_dir()
-  write_pkg(pkg_bad, license = "MIT")
-  res_bad <- diagnose_description_issues(pkg_bad, verbose = FALSE)
-  expect_false(res_bad$license$passed)
-
-  pkg_ok <- make_temp_dir()
-  write_pkg(pkg_ok, license = "MIT + file LICENSE")
-  writeLines("YEAR: 2026\nCOPYRIGHT HOLDER: tests",
-             file.path(pkg_ok, "LICENSE"))
-  res_ok <- diagnose_description_issues(pkg_ok, verbose = FALSE)
-  expect_true(res_ok$license$passed)
-})
-
-test_that("license_formatting accepts GPL-3 without LICENSE file", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg, license = "GPL-3")
-  res <- diagnose_description_issues(pkg, verbose = FALSE)
-  expect_true(res$license$passed)
-})
-
-test_that("license_formatting flags GPL-3 with a missing referenced LICENSE", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg, license = "GPL-3 + file LICENSE")
-  res <- diagnose_description_issues(pkg, verbose = FALSE)
-  expect_false(res$license$passed)
-})
-
-test_that("title_case allows lowercase small words mid-title", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg, title = "Tools for the Analysis of Data")
-  res <- diagnose_description_issues(pkg, verbose = FALSE)
-  expect_true(res$title_case$passed)
-})
-
-test_that("title_case flags lowercase content words", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg, title = "tools for stuff")
-  res <- diagnose_description_issues(pkg, verbose = FALSE)
-  expect_false(res$title_case$passed)
-})
-
-test_that("title_case flags over-capitalized small words", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg, title = "Tools For The Analysis Of Data")
-  res <- diagnose_description_issues(pkg, verbose = FALSE)
-  expect_false(res$title_case$passed)
-
-  # A capitalized small word right after a colon (subtitle start) is fine.
-  pkg_ok <- make_temp_dir()
-  write_pkg(pkg_ok, title = "Analysis Toolkit: The Next Generation")
-  expect_true(diagnose_description_issues(pkg_ok, verbose = FALSE)$title_case$passed)
-})
-
 # ---- title_length ------------------------------------------------------------
 
 test_that("title_length flags titles of 65+ characters", {
@@ -204,4 +150,34 @@ test_that("acronym check still flags genuinely unexplained acronyms", {
   res <- diagnose_description_issues(pkg, verbose = FALSE)
   expect_false(res$acronyms$passed)
   expect_true("FOOBAR" %in% res$acronyms$issues)
+})
+
+# ---- authors: template placeholders (the pcaR2 false negative) ----------------
+
+test_that("authors_field flags an unfilled usethis template", {
+  # pcaR2 shipped exactly this and checktor's presence-only check passed it, even
+  # though it is a hard CRAN rejection. R CMD check says nothing: the field IS
+  # present, so it has nothing to complain about.
+  pkg <- make_temp_dir()
+  write_pkg(pkg, authors_r = paste0(
+    "person(\"First\", \"Last\", , \"january.weiner@gmail.com\", ",
+    "role = c(\"aut\", \"cre\", \"cph\"))"
+  ))
+  res <- diagnose_description_issues(pkg, verbose = FALSE)$authors
+  expect_false(res$passed)
+  expect_true(any(grepl("placeholder", res$issues)))
+})
+
+test_that("authors_field flags a placeholder email and Your Name", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, authors_r = paste0(
+    "person(\"Your Name\", , , \"you@example.com\", role = c(\"aut\", \"cre\"))"
+  ))
+  expect_false(diagnose_description_issues(pkg, verbose = FALSE)$authors$passed)
+})
+
+test_that("authors_field passes a real, filled-in Authors@R", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)   # helper default is a real name/email
+  expect_true(diagnose_description_issues(pkg, verbose = FALSE)$authors$passed)
 })

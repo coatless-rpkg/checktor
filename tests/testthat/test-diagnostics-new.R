@@ -2,23 +2,6 @@
 
 # ---- description_starts_with -------------------------------------------------
 
-test_that("description_starts_with flags forbidden lead phrases", {
-  for (bad in c("This package does stuff. It is helpful, really.",
-                "Functions for doing stuff with stuff stuff stuff.")) {
-    pkg <- make_temp_dir()
-    write_pkg(pkg, description = bad)
-    res <- diagnose_description_issues(pkg, verbose = FALSE)
-    expect_false(res$description_starts_with$passed, info = bad)
-  }
-
-  pkg_ok <- make_temp_dir()
-  write_pkg(pkg_ok,
-            description = paste("Provides utilities for foo.",
-                                "Wraps the 'bar' package."))
-  res <- diagnose_description_issues(pkg_ok, verbose = FALSE)
-  expect_true(res$description_starts_with$passed)
-})
-
 # ---- description_bare_r ------------------------------------------------------
 
 test_that("description_bare_r flags unquoted standalone R", {
@@ -37,13 +20,27 @@ test_that("description_bare_r flags unquoted standalone R", {
 
 # ---- description_quoted_quotes -----------------------------------------------
 
-test_that("description_quoted_quotes flags short double-quoted phrases", {
+test_that("description_quoted_quotes flags a double-quoted SOFTWARE name", {
+  # Writing R Extensions: double quotes are for quotations, single quotes for
+  # "names of other packages and external software".
   pkg <- make_temp_dir()
   write_pkg(pkg,
-            description = paste('A package with a "doctor" theme.',
+            description = paste('Builds dashboards with "shiny" and plots.',
                                 "It does things and more things."))
   res <- diagnose_description_issues(pkg, verbose = FALSE)
   expect_false(res$description_quoted_quotes$passed)
+  expect_true(any(grepl("shiny", res$description_quoted_quotes$issues)))
+})
+
+test_that("description_quoted_quotes does not flag scare-quoted jargon", {
+  # cbcTools ships "labeled" and "no choice" on CRAN today. Those ARE the
+  # quotations that double quotes are reserved for, not software names.
+  pkg <- make_temp_dir()
+  write_pkg(pkg,
+            description = paste('Supports "labeled" designs and a "no choice"',
+                                "alternative for conjoint experiments."))
+  res <- diagnose_description_issues(pkg, verbose = FALSE)
+  expect_true(res$description_quoted_quotes$passed)
 
   pkg_ok <- make_temp_dir()
   write_pkg(pkg_ok,
@@ -102,31 +99,6 @@ test_that("cph_role check accepts cph-bearing Authors@R and flags otherwise", {
 })
 
 # ---- license_year ------------------------------------------------------------
-
-test_that("license_year flags stale LICENSE year, passes when current", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  writeLines(c("YEAR: 2019",
-               "COPYRIGHT HOLDER: Test"),
-             file.path(pkg, "LICENSE"))
-  res <- diagnose_description_issues(pkg, verbose = FALSE)
-  expect_false(res$license_year$passed)
-
-  pkg_ok <- make_temp_dir()
-  write_pkg(pkg_ok)
-  writeLines(c(paste0("YEAR: ", format(Sys.Date(), "%Y")),
-               "COPYRIGHT HOLDER: Test"),
-             file.path(pkg_ok, "LICENSE"))
-  res2 <- diagnose_description_issues(pkg_ok, verbose = FALSE)
-  expect_true(res2$license_year$passed)
-})
-
-test_that("license_year skips packages without a LICENSE file", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  res <- diagnose_description_issues(pkg, verbose = FALSE)
-  expect_true(res$license_year$passed)
-})
 
 # ---- library_in_pkg_code -----------------------------------------------------
 
@@ -195,39 +167,6 @@ test_that("commented_examples accepts explanatory comments", {
 })
 
 # ---- unexported_example_namespace --------------------------------------------
-
-test_that("unexported_example_namespace flags bare call to unexported", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg, rd_files = list("internal_fn.Rd" = c(
-    "\\name{internal_fn}",
-    "\\alias{internal_fn}",
-    "\\title{internal_fn}",
-    "\\value{1}",
-    "\\examples{",
-    "internal_fn(1)",
-    "}"
-  )))
-  # Need a NAMESPACE that does NOT export internal_fn but exports something.
-  writeLines(c("export(other_fn)"), file.path(pkg, "NAMESPACE"))
-  res <- diagnose_unexported_example_namespace(pkg, verbose = FALSE)
-  expect_false(res$passed)
-})
-
-test_that("unexported_example_namespace accepts exported functions", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg, rd_files = list("pub_fn.Rd" = c(
-    "\\name{pub_fn}",
-    "\\alias{pub_fn}",
-    "\\title{pub_fn}",
-    "\\value{1}",
-    "\\examples{",
-    "pub_fn(1)",
-    "}"
-  )))
-  writeLines(c("export(pub_fn)"), file.path(pkg, "NAMESPACE"))
-  res <- diagnose_unexported_example_namespace(pkg, verbose = FALSE)
-  expect_true(res$passed)
-})
 
 # ---- donttest_vs_dontrun -----------------------------------------------------
 

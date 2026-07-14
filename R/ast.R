@@ -138,3 +138,160 @@ collect_rd_text <- function(node, skip = character(0)) {
   }
   ""
 }
+
+# The name of the innermost top-level function a node sits inside, or "" when the
+# node is not inside a named function. Used to attribute a hit to its function so
+# call-graph reasoning can act on it.
+enclosing_function_name <- function(node) {
+  fn <- xml2::xml_find_first(
+    node,
+    "ancestor::expr[FUNCTION][parent::*/expr[1]/SYMBOL][1]"
+  )
+  if (inherits(fn, "xml_missing")) return("")
+  sym <- xml2::xml_find_first(fn, "parent::*/expr[1]/SYMBOL")
+  if (inherits(sym, "xml_missing")) return("")
+  xml2::xml_text(sym)
+}
+
+# Names of functions whose output is only ever reachable through an S3 output
+# method, i.e. print-method delegates.
+#
+# An S3 print method may hand its cat()ing off to a helper (cbcTools does this
+# with print_structure_section() and friends). The helper is not itself a method,
+# so a name-based exemption cannot see it. But if EVERY caller of the helper is
+# an S3 print/format/summary method, its output is reachable only via one, which
+# is behaviourally identical to inlining it. Callers are resolved across all
+# parsed files. A helper with no callers, or with even one non-method caller, is
+# not a delegate.
+s3_output_delegates <- function(parsed) {
+  is_method <- function(nm) grepl("^(print|format|summary)\\.", nm)
+
+  defined <- character(0)   # every top-level function name
+  callers <- list()         # callee -> character vector of caller names
+
+  for (p in parsed) {
+    if (!is.null(p$error) || is.null(p$xml)) next
+    fns <- xml2::xml_find_all(
+      p$xml, "//expr[FUNCTION][parent::*/expr[1]/SYMBOL]"
+    )
+    for (fn in fns) {
+      sym <- xml2::xml_find_first(fn, "parent::*/expr[1]/SYMBOL")
+      if (inherits(sym, "xml_missing")) next
+      nm <- xml2::xml_text(sym)
+      defined <- c(defined, nm)
+      callees <- unique(xml2::xml_text(
+        xml2::xml_find_all(fn, ".//SYMBOL_FUNCTION_CALL")
+      ))
+      for (ce in callees) {
+        callers[[ce]] <- c(callers[[ce]], nm)
+      }
+    }
+  }
+  defined <- unique(defined)
+  if (length(defined) == 0L) return(character(0))
+
+  local_defs <- setdiff(defined, defined[is_method(defined)])
+  keep <- vapply(local_defs, function(nm) {
+    cs <- callers[[nm]]
+    length(cs) > 0L && all(is_method(cs))
+  }, logical(1))
+  local_defs[keep]
+}
+
+# The symbol a `<<-` / `->>` assigns to. For `x <<- v` the target sits to the
+# LEFT of the operator; for `v ->> x` it sits to the RIGHT.
+superassign_target <- function(op) {
+  side <- if (identical(xml2::xml_name(op), "RIGHT_ASSIGN")) {
+    "following-sibling::expr[1]"
+  } else {
+    "preceding-sibling::expr[1]"
+  }
+  e <- xml2::xml_find_first(op, side)
+  if (inherits(e, "xml_missing")) return("")
+  # `x <<- v` -> SYMBOL; `x$f <<- v` / `x[[i]] <<- v` -> the base symbol.
+  sym <- xml2::xml_find_first(e, "descendant-or-self::SYMBOL[1]")
+  if (inherits(sym, "xml_missing")) "" else xml2::xml_text(sym)
+}
+
+# Every name bound at package top level: `nm <- ...` at the file's top level.
+# A `<<-` to one of these writes into the package namespace, not .GlobalEnv.
+package_level_names <- function(parsed) {
+  out <- character(0)
+  for (p in parsed) {
+    if (!is.null(p$error) || is.null(p$xml)) next
+    syms <- xml2::xml_find_all(
+      p$xml,
+      "/exprlist/expr[LEFT_ASSIGN[text() = '<-'] or EQ_ASSIGN]/expr[1]/SYMBOL"
+    )
+    out <- c(out, xml2::xml_text(syms))
+  }
+  unique(out)
+}
+
+# TRUE when `target` is already bound somewhere in an enclosing function: as a
+# formal, or by an ordinary `<-` in that function's body. In that case `<<-`
+# rebinds THERE and never reaches .GlobalEnv.
+binds_in_enclosing_function <- function(op, target) {
+  fns <- xml2::xml_find_all(op, "ancestor::expr[FUNCTION]")
+  if (length(fns) == 0L) return(FALSE)
+  for (fn in fns) {
+    formals_hit <- xml2::xml_find_all(
+      fn, sprintf("SYMBOL_FORMALS[text() = '%s']", target)
+    )
+    if (length(formals_hit) > 0L) return(TRUE)
+    # `<<-` is itself a LEFT_ASSIGN token, so the operator text has to be pinned
+    # to `<-`. Without that, a super-assign matches as its own local binding and
+    # every global write exempts itself.
+    local_hit <- xml2::xml_find_all(
+      fn,
+      sprintf(
+        ".//expr[LEFT_ASSIGN[text() = '<-'] or EQ_ASSIGN]/expr[1]/SYMBOL[text() = '%s']",
+        target
+      )
+    )
+    if (length(local_hit) > 0L) return(TRUE)
+  }
+  FALSE
+}
+
+# TRUE when a comment line inside an \examples{} block is genuinely COMMENTED-OUT
+# CODE rather than explanatory prose.
+#
+# The old test was `grepl("^\\s*#[^'#].*\\(", ln)`, i.e. "a comment containing an
+# open paren". That flags ordinary English: "# Simulate random choices (default)"
+# and "# (Columns are attributes, rows are alternatives)" are prose, not disabled
+# calls. Explanatory comments in examples are idiomatic and appear throughout base
+# R's own Rd files.
+#
+# The reliable discriminator is R itself: strip the comment marker and try to
+# parse. Prose does not parse ("Simulate random choices (default)" is two symbols
+# juxtaposed). A disabled call does, and contains a call node.
+is_commented_out_code <- function(ln) {
+  if (!grepl("^\\s*#", ln, perl = TRUE)) return(FALSE)
+  if (grepl("^\\s*#'", ln, perl = TRUE)) return(FALSE)   # roxygen, not code
+  body <- sub("^\\s*#+\\s*", "", ln, perl = TRUE)
+  if (!nzchar(trimws(body))) return(FALSE)
+
+  # Require the SHAPE of a function call, an identifier immediately followed by
+  # `(`. Parsing alone is not enough: a decorative separator like `# --- end`
+  # parses as unary minus applied three times to a symbol, which is.call() calls
+  # a call. And prose alone is not enough either, since "# Simulate choices
+  # (default)" contains a paren but does not parse.
+  if (!grepl("[\\w.$@]\\s*\\(", body, perl = TRUE)) return(FALSE)
+
+  exprs <- tryCatch(parse(text = body), error = function(e) NULL)
+  if (is.null(exprs) || length(exprs) == 0L) return(FALSE)
+  any(vapply(as.list(exprs), is.call, logical(1)))
+}
+
+# TRUE when an Rd topic carries \keyword{internal}. R's own tools::checkRdContents
+# grants such pages substantive leniency (it skips the missing-\value and
+# undocumented-argument checks for them), keying off the keyword alone and never
+# reading NAMESPACE. It is not merely an index-hiding device.
+rd_is_internal <- function(rd) {
+  for (sec in rd) {
+    if (!identical(attr(sec, "Rd_tag"), "\\keyword")) next
+    if (identical(trimws(collect_rd_text(sec)), "internal")) return(TRUE)
+  }
+  FALSE
+}

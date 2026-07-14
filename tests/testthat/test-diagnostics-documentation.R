@@ -106,24 +106,6 @@ test_that("diagnose_example_structure extracts only the \\examples{} block", {
 
 # ---- roxygen usage -----------------------------------------------------------
 
-test_that("diagnose_roxygen_usage detects #' comments", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg, r_code = c(
-    "#' A function",
-    "#' @return TRUE",
-    "f <- function() TRUE"
-  ))
-  res <- diagnose_roxygen_usage(pkg, verbose = FALSE)
-  expect_true(res$has_roxygen)
-})
-
-test_that("diagnose_roxygen_usage reports FALSE when there are no #' lines", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg, r_code = "f <- function() TRUE")
-  res <- diagnose_roxygen_usage(pkg, verbose = FALSE)
-  expect_false(res$has_roxygen)
-})
-
 # ---- missing examples --------------------------------------------------------
 
 test_that("diagnose_missing_examples flags an exported topic without \\examples", {
@@ -221,4 +203,71 @@ test_that("diagnose_suggested_in_examples passes when the package has no Suggest
     "}"
   )))
   expect_true(diagnose_suggested_in_examples(pkg, verbose = FALSE)$passed)
+})
+
+# ---- commented_examples: prose vs commented-out code --------------------------
+
+test_that("commented_examples does not flag ordinary prose comments", {
+  # The old rule was "a comment containing an open paren", which flags English.
+  # All 41 comment lines across the 9 Rd files this fired on in the wild were
+  # prose; not one was a disabled call.
+  pkg <- make_temp_dir()
+  write_pkg(pkg, rd_files = list("foo.Rd" = c(
+    "\\name{foo}", "\\alias{foo}", "\\title{Foo}", "\\usage{foo()}",
+    "\\description{d}", "\\value{x}",
+    "\\examples{",
+    "# Simulate random choices (default)",
+    "# (Columns are attributes, rows are alternatives)",
+    "# Example 2: Named categorical priors (more explicit)",
+    "foo()",
+    "}"
+  )))
+  expect_true(diagnose_commented_examples(pkg, verbose = FALSE)$passed)
+})
+
+test_that("commented_examples still flags a genuinely disabled call", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, rd_files = list("foo.Rd" = c(
+    "\\name{foo}", "\\alias{foo}", "\\title{Foo}", "\\usage{foo()}",
+    "\\description{d}", "\\value{x}",
+    "\\examples{",
+    "# foo(slow = TRUE)",
+    "foo()",
+    "}"
+  )))
+  expect_false(diagnose_commented_examples(pkg, verbose = FALSE)$passed)
+})
+
+# ---- missing_examples honours \keyword{internal} ------------------------------
+
+test_that("missing_examples exempts \\keyword{internal} topics", {
+  # R's own checkRdContents grants keyword-internal pages substantive leniency,
+  # keying off the keyword alone and never reading NAMESPACE.
+  pkg <- make_temp_dir()
+  write_pkg(pkg,
+    r_code = "deprecated_fn <- function() TRUE",
+    rd_files = list("deprecated_fn.Rd" = c(
+      "\\name{deprecated_fn}", "\\alias{deprecated_fn}", "\\title{Old}",
+      "\\usage{deprecated_fn()}", "\\description{Superseded.}", "\\value{x}",
+      "\\keyword{internal}"
+    )))
+  writeLines("export(deprecated_fn)", file.path(pkg, "NAMESPACE"))
+  expect_true(diagnose_missing_examples(pkg, verbose = FALSE)$passed)
+})
+
+# ---- value_tags delegates to tools::checkRdContents ---------------------------
+
+test_that("value_tags flags a missing \\value and exempts internal topics", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg,
+    r_code = "f <- function() TRUE",
+    rd_files = list(
+      "f.Rd" = c("\\name{f}", "\\alias{f}", "\\title{F}", "\\usage{f()}",
+                 "\\description{d}"),                       # missing \value
+      "g.Rd" = c("\\name{g}", "\\alias{g}", "\\title{G}", "\\usage{g()}",
+                 "\\description{d}", "\\keyword{internal}") # internal: exempt
+    ))
+  res <- diagnose_value_tags(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_equal(res$issues, "f.Rd")
 })

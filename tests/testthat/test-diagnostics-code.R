@@ -57,12 +57,12 @@ test_that("diagnose_seed_setting flags hardcoded set.seed and ignores parameteri
 
 # ---- print/cat ---------------------------------------------------------------
 
-test_that("diagnose_print_cat_usage ignores cat in strings and conditional cat", {
+test_that("diagnose_print_cat_usage ignores cat in strings and verbosity-gated cat", {
   pkg <- make_temp_dir()
   write_pkg(pkg, r_code = c(
-    "msg <- 'cat(...)'",                # cat inside string
-    "f <- function(v) if (v) cat('x')", # guarded
-    "g <- function(v) { if (v) cat('y'); invisible() }"
+    "msg <- 'cat(...)'",                            # cat inside a string
+    "f <- function(verbose) if (verbose) cat('x')", # gated on verbosity
+    "g <- function(quiet) { if (!quiet) cat('y'); invisible() }"
   ))
   expect_true(diagnose_print_cat_usage(pkg, verbose = FALSE)$passed)
 
@@ -132,16 +132,29 @@ test_that("diagnose_home_writing does NOT flag formula tildes", {
   expect_true(diagnose_home_writing(pkg, verbose = FALSE)$passed)
 })
 
-test_that("diagnose_home_writing flags explicit ~ paths and HOME env", {
+test_that("diagnose_home_writing flags WRITES into the home directory", {
   pkg <- make_temp_dir()
   write_pkg(pkg, r_code = c(
-    "f <- function() file.path('~', 'data.csv')",
-    "g <- function() Sys.getenv('HOME')",
-    "h <- function() path.expand('~/notes')"
+    'f <- function(x) writeLines(x, "~/leaked.txt")',
+    'g <- function(x) saveRDS(x, "~/.myapp/cache.rds")',
+    'h <- function(x) write.csv(x, file = file.path(Sys.getenv("HOME"), "o.csv"))'
   ))
   res <- diagnose_home_writing(pkg, verbose = FALSE)
   expect_false(res$passed)
-  expect_gte(length(res$issues), 3L)
+  expect_equal(length(res$issues), 3L)
+})
+
+test_that("diagnose_home_writing does not flag reads of the home path", {
+  # The old check inspected only path.expand/normalizePath/file.path/Sys.getenv,
+  # which are all reads: it flagged these while MISSING the writes above.
+  pkg <- make_temp_dir()
+  write_pkg(pkg, r_code = c(
+    "f <- function() path.expand('~')",
+    "g <- function() Sys.getenv('HOME')",
+    "h <- function() normalizePath('~')",
+    "i <- function() file.path('~', 'data.csv')"
+  ))
+  expect_true(diagnose_home_writing(pkg, verbose = FALSE)$passed)
 })
 
 # ---- temp cleanup ------------------------------------------------------------
@@ -183,15 +196,36 @@ test_that("diagnose_temp_cleanup ignores .Rd files (they are not R)", {
 
 # ---- globalenv modification --------------------------------------------------
 
-test_that("diagnose_globalenv_modification flags <<- and .GlobalEnv assigns", {
+test_that("diagnose_globalenv_modification flags a <<- that binds nowhere", {
   pkg <- make_temp_dir()
   write_pkg(pkg, r_code = c(
-    "x <<- 1",
-    "assign('y', 1, envir = .GlobalEnv)"
+    "leaky <- function() {",
+    "  undeclared_global <<- 1",
+    "  invisible(NULL)",
+    "}"
   ))
   res <- diagnose_globalenv_modification(pkg, verbose = FALSE)
   expect_false(res$passed)
-  expect_gte(length(res$issues), 2L)
+  expect_equal(length(res$issues), 1L)
+})
+
+test_that("diagnose_globalenv_modification exempts closures and package-level caches", {
+  # `<<-` walks the enclosing environments and assigns in the first frame where
+  # the name is already bound; it only reaches .GlobalEnv when the name is bound
+  # nowhere else. Flagging every `<<-` false-positives on both correct idioms.
+  pkg <- make_temp_dir()
+  write_pkg(pkg, r_code = c(
+    ".cache <- NULL",
+    "memoise <- function(x) { .cache <<- x; .cache }",   # package-level cache
+    "validate <- function(d) {",
+    "  results <- list(errors = character(0))",
+    "  add_error <- function(msg) results$errors <<- c(results$errors, msg)",
+    "  add_error('boom')",
+    "  results",
+    "}",
+    "reader <- function(nm) exists(nm, envir = globalenv())"  # a pure READ
+  ))
+  expect_true(diagnose_globalenv_modification(pkg, verbose = FALSE)$passed)
 })
 
 # ---- installed.packages ------------------------------------------------------
@@ -241,24 +275,6 @@ test_that("diagnose_software_installation flags install.packages/devtools::insta
 
 # ---- core usage --------------------------------------------------------------
 
-test_that("diagnose_core_usage requires same-call core limit, not file-wide", {
-  # Old check exempted a file as long as ANY `2` appeared; verify that's gone.
-  pkg <- make_temp_dir()
-  write_pkg(pkg, r_code = c(
-    "x <- 2",                                  # bare 2 elsewhere - irrelevant
-    "f <- function() parallel::mclapply(1:10, fn)"  # not bounded
-  ))
-  res <- diagnose_core_usage(pkg, verbose = FALSE)
-  expect_false(res$passed)
-  expect_gte(length(res$issues), 1L)
-
-  pkg_ok <- make_temp_dir()
-  write_pkg(pkg_ok, r_code = c(
-    "f <- function() parallel::mclapply(1:10, fn, mc.cores = 2L)"
-  ))
-  expect_true(diagnose_core_usage(pkg_ok, verbose = FALSE)$passed)
-})
-
 test_that("option_changes exempts a setter that captures and returns the old value", {
   # options()/par()/setwd() return the previous value, so capturing it and
   # handing it back is the base R setter contract, not a leak.
@@ -283,4 +299,55 @@ test_that("option_changes still flags a bare options() whose old value is discar
   res <- diagnose_option_changes(pkg, verbose = FALSE)
   expect_false(res$passed)
   expect_equal(length(res$issues), 1L)
+})
+
+# ---- core usage (redesigned) --------------------------------------------------
+
+test_that("diagnose_core_usage flags an unbounded worker count across frameworks", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, r_code = c(
+    "a <- function(x) parallel::mclapply(x, f, mc.cores = parallel::detectCores())",
+    "b <- function(x) parallel::makeCluster(8)",
+    "c1 <- function(x) doParallel::registerDoParallel(cores = detectCores())",
+    "d <- function() future::plan(future::multisession, workers = 12)",
+    "e <- function() mirai::daemons(6)",
+    "f1 <- function() RcppParallel::setThreadOptions(numThreads = detectCores())",
+    "g <- function() data.table::setDTthreads(16)",
+    "h <- function() BiocParallel::MulticoreParam(workers = detectCores())",
+    "i1 <- function() doMC::registerDoMC(cores = 8)"
+  ))
+  res <- diagnose_core_usage(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_equal(length(res$issues), 9L)
+})
+
+test_that("diagnose_core_usage exempts a CRAN-guarded worker count", {
+  # This is logitr's and cbcTools' real guard, and it is byte-for-byte R's own
+  # parallel:::.check_ncores predicate. The old check flagged it anyway, because
+  # it demanded an `mc.cores` argument on the detectCores() call itself, which
+  # detectCores() can never carry.
+  pkg <- make_temp_dir()
+  write_pkg(pkg, r_code = c(
+    "set_num_cores <- function(n) {",
+    "  chk <- tolower(Sys.getenv('_R_CHECK_LIMIT_CORES_', ''))",
+    "  if (nzchar(chk) && (chk != 'false')) return(2L)",
+    "  cores <- parallel::detectCores()",
+    "  parallel::makeCluster(cores - 1)",
+    "}"
+  ))
+  expect_true(diagnose_core_usage(pkg, verbose = FALSE)$passed)
+})
+
+test_that("diagnose_core_usage exempts availableCores, a <=2 literal, and defaults", {
+  # Measured under _R_CHECK_LIMIT_CORES_=TRUE: detectCores() returns 12 while
+  # parallelly/future availableCores() return 2, so availableCores() is the safe idiom.
+  pkg <- make_temp_dir()
+  write_pkg(pkg, r_code = c(
+    "a <- function() future::plan(future::multisession, workers = parallelly::availableCores())",
+    "b <- function(x) parallel::makeCluster(2L)",
+    "c1 <- function(x) parallel::mclapply(x, f, mc.cores = 2L)",
+    "d <- function(x) parallel::mclapply(x, f)",          # default mc.cores is 2L
+    "e <- function() parallel::makeCluster(cl_spec)"      # unresolvable: do not guess
+  ))
+  expect_true(diagnose_core_usage(pkg, verbose = FALSE)$passed)
 })

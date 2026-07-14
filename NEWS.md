@@ -1,5 +1,99 @@
 # checktor 0.2.0
 
+## Checks removed
+
+checktor exists to run the checks `R CMD check` does not. Seven checks failed that
+test and have been removed. Each was verified by running `R CMD check --as-cran` on
+a fixture that violates the rule.
+
+* `urls`, `license`, `title_case`, `authors` (the presence half),
+  `description_starts_with` and `unexported_example_ns` all duplicated
+  `R CMD check`, and in each case R's version is better. R *fetches* every URL and
+  reports status codes and redirect targets; R's title-case check restores
+  single-quoted spans before comparing, which is why it does not flag `'shiny'`
+  and ours did; R's missing-`Authors@R` NOTE even prints the `person()` call to
+  paste in; and a bare call to an unexported function in `\examples` is already a
+  hard ERROR.
+
+* `roxygen_usage` could not fail. All three of its return paths passed a literal
+  `TRUE`. It only inflated the check count.
+
+* `license_year` has no authority behind it. A `LICENSE` reading `YEAR: 1999`
+  passes `R CMD check --as-cran` in silence, and `tools:::.check_package_license()`
+  only checks that the field exists. It fired on every package not touched in the
+  current calendar year.
+
+The default run is now 38 checks rather than 45.
+
+## Checks corrected
+
+Two checks did the opposite of their job.
+
+* `home_writing` was inverted. It inspected only `path.expand()`,
+  `normalizePath()`, `file.path()` and `Sys.getenv()`, which are all *reads*, so it
+  flagged `Sys.getenv("HOME")` (which writes nothing) while missing
+  `writeLines(x, "~/leaked.txt")`, the actual CRAN violation. It now flags a WRITE
+  whose destination resolves to the user's home.
+
+* `print_cat_usage` missed most real violations. Its guard was "not inside any
+  `if`/`for`/`while`", which exempted a call under *any* enclosing control flow, so
+  `if (x > 0) print("debug")` and `for (i in xs) print(i)` were let through. Only a
+  verbosity gate counts as a guard now. The S3 exemption also covers `summary.*`
+  methods (CRAN's own sentence ends "except for print, summary, interactive
+  functions") and print-method *delegates*, i.e. helpers whose only callers are S3
+  output methods.
+
+* `globalenv_mod` flagged every `<<-`. But `<<-` assigns in the first enclosing
+  frame where the name is already bound, and only reaches `.GlobalEnv` when the
+  name is bound nowhere else, so it false-positived on both correct idioms: a
+  closure updating its parent frame, and the package-level cache
+  (`.cache <<- ...`). It now flags a `<<-` only when its target binds in neither an
+  enclosing function nor the package. The `.GlobalEnv`/`globalenv()` *reference*
+  rule is gone, since it flagged pure reads and the one write form that matters,
+  `assign(x, envir = .GlobalEnv)`, is already an `R CMD check` NOTE.
+
+* `core_usage` was rebuilt and widened. It required an `mc.cores` argument on the
+  call, but `mc.cores` belongs to `mclapply()`/`pvec()` only: `detectCores()` takes
+  no arguments, so it was flagged 100% of the time, and `makeCluster(2L)` --
+  explicitly CRAN-compliant -- was flagged too. CRAN's rule is about *using* more
+  than two cores, not about calling `detectCores()`.
+
+  The check now inspects the worker count itself, and understands **parallel**,
+  **snow**, **foreach** (`doParallel`, `doMC`, `doSNOW`), **future** and **furrr**,
+  **mirai**, **RcppParallel**, **data.table** and **BiocParallel**. A count is safe
+  when it comes from `availableCores()` (which caps itself at 2 under
+  `_R_CHECK_LIMIT_CORES_`, where `detectCores()` does not), when it is capped at 2,
+  or when the enclosing function guards on the CRAN environment variables.
+
+* `commented_examples` flagged any comment containing an open parenthesis, so it
+  reported ordinary English: "Simulate random choices (default)" and "(Columns are
+  attributes, rows are alternatives)". A comment is now reported only when it has
+  the shape of a call *and* parses as R.
+
+* `missing_examples` now honours `\keyword{internal}`. R's own
+  `tools::checkRdContents()` grants such pages substantive leniency, keying off the
+  keyword alone and never reading NAMESPACE, so requiring a runnable example of a
+  deprecated shim is not a rule anyone enforces.
+
+* `description_quoted_quotes` asserted that "double quotes are for publication
+  titles" and flagged any short double-quoted phrase, which caught scare-quoted
+  jargon. Writing R Extensions actually reserves double quotes for quotations and
+  requires single quotes for *software names*, so only a recognised software name
+  is flagged now.
+
+* `value_tags` now delegates to `tools::checkRdContents()`, which is the engine
+  behind `R CMD check`'s "checking Rd contents" step and already skips non-function
+  topics and `\keyword{internal}` pages.
+
+## Checks added
+
+* `authors` now detects an unfilled `usethis` template, e.g.
+  `person("First", "Last", , "you@example.com", ...)`. `R CMD check` says nothing
+  about this, because the field is present, and a CRAN reviewer then rejects it.
+  The missing-`Authors@R` half is kept deliberately: R only raises a NOTE, while
+  checktor treats it as a failure, which is the more useful signal before a
+  submission.
+
 ## Bug fixes
 
 * `prescribe()` now surfaces every failed check. It previously walked only the

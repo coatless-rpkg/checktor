@@ -15,7 +15,7 @@ test_that("issues() returns a tidy per-issue frame at each level", {
   di <- issues(r)
   expect_s3_class(di, "data.frame")
   expect_identical(names(di), c("category","check","file","line","location","message"))
-  expect_equal(nrow(di), 10L)                       # total_issues
+  expect_equal(nrow(di), 9L)                       # total_issues
   expect_equal(sum(di$check == "tf_usage"), 7L)
   expect_type(di$line, "integer")
 
@@ -44,8 +44,8 @@ test_that("predicates report status without sublist navigation", {
   r <- checktor(pkg, verbose = FALSE, progress = FALSE)
 
   expect_false(is_healthy(r))
-  expect_equal(n_issues(r), 10L)
-  expect_equal(n_failed_checks(r), 4L)
+  expect_equal(n_issues(r), 9L)
+  expect_equal(n_failed_checks(r), 3L)
 
   expect_true("code.tf_usage" %in% failed_checks(r))
   expect_type(failed_checks(r), "character")
@@ -66,7 +66,7 @@ test_that("tidy() is per-check and summary() is per-category", {
 
   td <- tidy(r)
   expect_identical(names(td), c("category","check","passed","n_issues","message"))
-  expect_equal(nrow(td), 45L)                        # all checks
+  expect_equal(nrow(td), 38L)                        # all checks
   expect_equal(td$n_issues[td$check == "tf_usage"], 7L)
   expect_identical(as.data.frame(r), td)             # as.data.frame == tidy
 
@@ -74,7 +74,7 @@ test_that("tidy() is per-check and summary() is per-category", {
   expect_identical(names(s), c("category","checks","passed","failed","issues"))
   expect_equal(nrow(s), 5L)
   expect_equal(s$issues[s$category == "code"], 7L)
-  expect_equal(s$failed[s$category == "description"], 3L)
+  expect_equal(s$failed[s$category == "description"], 2L)
 })
 
 test_that("accessors are robust to early-return categories (no R/ dir)", {

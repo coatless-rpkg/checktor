@@ -83,7 +83,6 @@ reference:
   - diagnose_documentation_issues
   - diagnose_value_tags
   - diagnose_missing_examples
-  - diagnose_roxygen_usage
   - diagnose_example_structure
   - diagnose_suggested_in_examples
 
@@ -94,7 +93,6 @@ reference:
   contents:
   - diagnose_general_issues
   - diagnose_package_size
-  - diagnose_urls
   - diagnose_news_file
   - diagnose_readme_relative_links
   - diagnose_cran_comments_file

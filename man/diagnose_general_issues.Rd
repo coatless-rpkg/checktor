@@ -21,13 +21,17 @@ into specific code, documentation, or DESCRIPTION categories.
 \details{
 This function checks:
 \itemize{
-\item Package size — measured against the files that would ship in the
+\item Package size, measured against the files that would ship in the
 tarball (\code{.Rbuildignore} and standard scratch dirs are excluded), with
 a 5 MB warning threshold matching CRAN's recommendation.
-\item Invalid or problematic URLs in package files.
 \item Presence of a \code{NEWS} file documenting user-facing changes.
 \item Relative links in the \code{README} that would break on CRAN.
 }
+
+URLs are deliberately \strong{not} checked here. \verb{R CMD check --as-cran} already
+fetches every URL in DESCRIPTION, the Rd files, \code{NEWS.md} and \code{README.md},
+and reports status codes and redirect targets (\code{tools::check_package_urls()}).
+Duplicating it would only add noise.
 
 \code{\link[=diagnose_cran_comments_file]{diagnose_cran_comments_file()}} is intentionally not part of this default
 run, since a \code{cran-comments.md} is a workflow convention rather than a CRAN
