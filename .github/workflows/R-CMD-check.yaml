@@ -53,3 +53,12 @@ jobs:
         with:
           upload-snapshots: true
           build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
+
+      # Dogfood: run checktor on its own sources so a regression that the tool
+      # would flag fails the build on every platform.
+      - name: checktor on itself
+        shell: Rscript {0}
+        run: |
+          if (!isTRUE(checktor::checkup("."))) {
+            stop("checktor reported issues in its own sources")
+          }
