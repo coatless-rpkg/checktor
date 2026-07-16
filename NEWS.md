@@ -1,183 +1,246 @@
 # checktor 0.2.0
 
-## Checks removed
+Every check now carries a severity tier, so a clean bill of health means something
+precise: your package is submission-ready, and nothing here will crash a user. New
+checks widen that ground, bringing part of CRAN's incoming filter offline: the
+`Date`, `Encoding` and `Version` fields, `Authors@R` structure, ORCID and ROR
+identifiers, a `detectCores()` that can return `NA`, and a scan for a leaked
+credential. Many existing checks are sharper and quieter. Every diagnostic is now
+exported and callable on its own, and a package can tune checktor from
+`Config/checktor/*` fields in its own DESCRIPTION.
 
-checktor exists to run the checks `R CMD check` does not. Seven checks failed that
-test and have been removed. Each was verified by running `R CMD check --as-cran` on
-a fixture that violates the rule.
+## Breaking changes
 
-* `urls`, `license`, `title_case`, `authors` (the presence half),
-  `description_starts_with` and `unexported_example_ns` all duplicated
-  `R CMD check`, and in each case R's version is better. R *fetches* every URL and
-  reports status codes and redirect targets; R's title-case check restores
-  single-quoted spans before comparing, which is why it does not flag `'shiny'`
-  and ours did; R's missing-`Authors@R` NOTE even prints the `person()` call to
-  paste in; and a bare call to an unexported function in `\examples` is already a
-  hard ERROR.
+* **Severity tiers.** Every check carries one, and `checktor()` gained a
+  `severity` argument that says which tiers the verdict is about. It defaults to
+  `c("policy", "robustness")`.
 
-* `roxygen_usage` could not fail. All three of its return paths passed a literal
-  `TRUE`. It only inflated the check count.
+  - `policy` is a citable CRAN Repository Policy or Writing R Extensions
+    violation.
+  - `robustness` is a real defect that CRAN will nonetheless let you ship, such as
+    a `detectCores()` that may return `NA`.
+  - `opinion` is a convention with no authority behind it.
 
-* `license_year` has no authority behind it. A `LICENSE` reading `YEAR: 1999`
-  passes `R CMD check --as-cran` in silence, and `tools:::.check_package_license()`
-  only checks that the field exists. It fired on every package not touched in the
-  current calendar year.
+  Every check still runs and every finding is still reported with its tier. What
+  the tier decides is whether a finding counts against a clean bill of health, so
+  `0 issues` now means *your package is submission-ready, and nothing here will
+  crash a user*. `checkup()` follows the same default, so a missing `NEWS.md` no
+  longer fails a build. A check's tier is where its authority sits, not how much we
+  like it, which is why `value_tags` and `missing_examples` are `opinion`: no
+  `R CMD check` equivalent exists for either.
 
-The default run is now 38 checks rather than 45.
+* **Every `diagnose_*` function is now exported.** The old split was accidental:
+  `diagnose_tf_usage()` was public while `diagnose_option_changes()` was not. The
+  DESCRIPTION checks took a pre-parsed `DESCRIPTION` as their first argument, which
+  is not something a caller has; they now take `(path, verbose, desc = NULL)` like
+  every other check.
 
-## Checks corrected
+* **`issues()` and `tidy()` gained a `severity` column.**
 
-Two checks did the opposite of their job.
+* **Three checks were dropped from the default run** because no authority supports
+  them. Each stays exported and callable for anyone who wants it.
 
-* `home_writing` was inverted. It inspected only `path.expand()`,
-  `normalizePath()`, `file.path()` and `Sys.getenv()`, which are all *reads*, so it
-  flagged `Sys.getenv("HOME")` (which writes nothing) while missing
-  `writeLines(x, "~/leaked.txt")`, the actual CRAN violation. It now flags a WRITE
-  whose destination resolves to the user's home.
+  - `description_bare_r` demanded that every bare `R` in the `Description` be
+    single-quoted. Writing R Extensions reserves single quotes for *other*
+    packages and external software, and R is the host language. Across CRAN, about
+    92% of the packages that mention R in their `Description` write it bare, and
+    packages first published in 2026 are no different.
+  - `title_starts_with_article` was a mis-transplant of CRAN's real rule, which
+    applies to the `Description` field and requires the literal word "package"
+    after the article. `jsonlite` ("A Simple and Robust JSON Parser and Generator
+    for R") and `curl` ("A Modern and Flexible Web Client for R") are both on CRAN.
+  - `description_function_quotes` asserted that single quotes are reserved for
+    software names. Writing R Extensions says single quotes are for non-English
+    usage *including* other packages: an inclusive list, so a quoted function name
+    breaks no rule.
 
-* `print_cat_usage` missed most real violations. Its guard was "not inside any
-  `if`/`for`/`while`", which exempted a call under *any* enclosing control flow, so
-  `if (x > 0) print("debug")` and `for (i in xs) print(i)` were let through. Only a
-  verbosity gate counts as a guard now. The S3 exemption also covers `summary.*`
-  methods (CRAN's own sentence ends "except for print, summary, interactive
-  functions") and print-method *delegates*, i.e. helpers whose only callers are S3
-  output methods.
+## New checks
 
-* `globalenv_mod` flagged every `<<-`. But `<<-` assigns in the first enclosing
-  frame where the name is already bound, and only reaches `.GlobalEnv` when the
-  name is bound nowhere else, so it false-positived on both correct idioms: a
-  closure updating its parent frame, and the package-level cache
-  (`.cache <<- ...`). It now flags a `<<-` only when its target binds in neither an
-  enclosing function nor the package. The `.GlobalEnv`/`globalenv()` *reference*
-  rule is gone, since it flagged pure reads and the one write form that matters,
-  `assign(x, envir = .GlobalEnv)`, is already an `R CMD check` NOTE.
+* `detect_cores_robustness` flags a `detectCores()` result used without an `NA`
+  guard. `?detectCores` says it plainly, *"An integer, `NA` if the answer is
+  unknown"*, and `NA - 1` is `NA`, so the next comparison dies with `missing value
+  where TRUE/FALSE needed`. `logitr` and `cbcTools` both ship this. The fix is
+  `parallelly::availableCores()`, which never returns `NA`.
 
-* `core_usage` was rebuilt and widened. It required an `mc.cores` argument on the
-  call, but `mc.cores` belongs to `mclapply()`/`pvec()` only: `detectCores()` takes
-  no arguments, so it was flagged 100% of the time, and `makeCluster(2L)` --
-  explicitly CRAN-compliant -- was flagged too. CRAN's rule is about *using* more
-  than two cores, not about calling `detectCores()`.
+* A family of new checks mirrors CRAN's incoming filter, the run that happens
+  under `R CMD check --as-cran` against a built tarball, so you see the same
+  findings offline against your sources before you submit:
 
-  The check now inspects the worker count itself, and understands **parallel**,
-  **snow**, **foreach** (`doParallel`, `doMC`, `doSNOW`), **future** and **furrr**,
-  **mirai**, **RcppParallel**, **data.table** and **BiocParallel**. A count is safe
-  when it comes from `availableCores()` (which caps itself at 2 under
-  `_R_CHECK_LIMIT_CORES_`, where `detectCores()` does not), when it is capped at 2,
-  or when the enclosing function guards on the CRAN environment variables.
+  - `date_format` flags a `Date` field that is not ISO 8601 `yyyy-mm-dd`, is over
+    a month old, or lies in the future.
+  - `version_format` flags a `Version` component with a leading zero or a
+    suspiciously large one (a calendar-year version is exempt).
+  - `encoding_utf8` flags a non-portable `Encoding`, one outside the `UTF-8`,
+    `latin1` and `latin2` that Writing R Extensions names as portable.
+  - `identifier_format` validates the ORCID and ROR identifiers in `Authors@R`,
+    ORCID against its checksum and ROR against its shape.
 
-* `commented_examples` flagged any comment containing an open parenthesis, so it
-  reported ordinary English: "Simulate random choices (default)" and "(Columns are
-  attributes, rows are alternatives)". A comment is now reported only when it has
-  the shape of a call *and* parses as R.
+* `hardcoded_credentials` scans string literals in `R/` for a leaked secret:
+  tokens and keys from providers such as GitHub, AWS, Google, OpenAI, Anthropic
+  and Stripe, plus PEM private keys and JSON Web Tokens, each keyed on its
+  published prefix. `R CMD check` does not look for these, and a token published
+  to CRAN is public and must be revoked. Only string literals are examined, so the
+  same text in a comment never matches. See `?diagnose_hardcoded_credentials` for
+  the full list.
 
-* `missing_examples` now honours `\keyword{internal}`. R's own
-  `tools::checkRdContents()` grants such pages substantive leniency, keying off the
-  keyword alone and never reading NAMESPACE, so requiring a runnable example of a
-  deprecated shim is not a rule anyone enforces.
+## Configuration and extension
 
-* `description_quoted_quotes` asserted that "double quotes are for publication
-  titles" and flagged any short double-quoted phrase, which caught scare-quoted
-  jargon. Writing R Extensions actually reserves double quotes for quotations and
-  requires single quotes for *software names*, so only a recognised software name
-  is flagged now.
+* A package can now configure checktor from `Config/checktor/*` fields in its own
+  DESCRIPTION. `disable` skips a check; `allow` mutes reviewed findings (a whole
+  check, or `check:substring`), the escape hatch a green `checkup()` gate needs;
+  and `software_names` and `acronyms` extend those checks' vocabularies. A package
+  with no such fields is unaffected.
 
-* `value_tags` now delegates to `tools::checkRdContents()`, which is the engine
-  behind `R CMD check`'s "checking Rd contents" step and already skips non-function
-  topics and `\keyword{internal}` pages.
+* `register_check()` adds a custom diagnostic to every `checktor()` run without
+  editing checktor's source. You give it a name, a function returning a
+  `checktor_check_result()`, a category, and a severity tier; the check then runs
+  alongside the built-ins, appears in `issues()` and `tidy()`, and counts toward
+  the verdict at its tier. `unregister_check()` and `registered_checks()` manage
+  the registry.
 
-## Checks added
+* The AST toolkit the built-in checks use is now exported, so a registered check
+  has the same tools: `read_r_xml()`, `xpath_lints()`, `xpath_per_file()`,
+  `undesirable_function_check()`, `not_under_fn_with_call_xpath()`, and the `.Rd`
+  walkers `extract_rd_section()` and `collect_rd_text()`. The *Writing Your Own
+  Checks* vignette walks through building and registering one.
 
-* `authors` now detects an unfilled `usethis` template, e.g.
-  `person("First", "Last", , "you@example.com", ...)`. `R CMD check` says nothing
-  about this, because the field is present, and a CRAN reviewer then rejects it.
-  The missing-`Authors@R` half is kept deliberately: R only raises a NOTE, while
-  checktor treats it as a failure, which is the more useful signal before a
-  submission.
+## Checks improved
+
+Several checks are now substantially more accurate, and a few delegate to R's own
+engines instead of reimplementing them.
+
+* `home_writing` now flags a write whose destination resolves to the user's home,
+  such as `writeLines(x, "~/leaked.txt")` or `saveRDS(x, "~/.cache/x.rds")`. It
+  previously looked only at reads like `Sys.getenv("HOME")`, so the writes that
+  matter slipped past.
+
+* `globalenv_mod` now flags a `<<-` only when its target genuinely reaches
+  `.GlobalEnv`, that is, binds in neither an enclosing function nor the package. The
+  two correct idioms, a closure updating its parent frame and the package-level
+  cache (`.cache <<- ...`), come out clean.
+
+* `core_usage` now inspects the worker count itself and understands **parallel**,
+  **snow**, **foreach**, **future**, **furrr**, **mirai**, **RcppParallel**,
+  **data.table** and **BiocParallel**. It no longer keys off an `mc.cores` argument
+  (which belongs to `mclapply()` alone), so `detectCores()` and a compliant
+  `makeCluster(2L)` are no longer flagged.
+
+* `roxygen_usage` now detects roxygen that never reached `NAMESPACE`, a function
+  tagged `@export` that is not exported, which is the real cost of a forgotten
+  `devtools::document()` and which `R CMD check` cannot see. It reads `NAMESPACE`
+  rather than file timestamps, so it behaves the same in CI, where `git` does not
+  preserve mtimes.
+
+* `license_year` now flags a genuinely unfilled `LICENSE` template (`<YEAR>` /
+  `<COPYRIGHT HOLDER>`), the thing CRAN asks you to complete, rather than a valid
+  but non-current year.
+
+* `authors` now catches an unfilled `usethis` template, such as
+  `person("First", "Last", , "you@example.com", ...)`, which `R CMD check` passes
+  because the field is present but a CRAN reviewer sends back. It also validates
+  the field's structure: a person with no name, a person with no role, an
+  `Authors@R` that does not parse, or no maintainer (`cre`).
+
+* `value_tags`, `title_case` and `license` now delegate to R's own engines
+  (`tools::checkRdContents()`, `tools::toTitleCase()`, `tools::analyze_license()`),
+  so they match R's own behaviour, for instance `title_case` handles quoted package
+  names and punctuation the way R does. `license` also flags a bare `MIT`, which
+  needs `MIT + file LICENSE` pointing at a file that exists.
+
+* `print_cat_usage` now flags unsuppressable console output only from a function
+  that also returns a value, and treats a verbosity gate as the guard rather than
+  any enclosing `if`/`for`/`while`.
+
+## Understands more of R
+
+checktor reads far more of the ways R is actually written, so a clean run reflects the code you wrote.
+
+**It now understands more ways of writing R.**
+
+* `NAMESPACE` is parsed with R's own `base::parseNamespaceFile()`, so a multi-line `export()` block, an `exportPattern()`, and a method under a quoted non-syntactic generic (`S3method("[", foo)`) all read correctly. Every "is this exported?" check now sees `digest`'s nine exports, not one.
+
+* An `=` assignment is read as an assignment, and a classic `"print.foo" <- function(x)` definition, whose name parses as a `STR_CONST`, is visible to every name-based exemption. `geoR` writes 201 of its 208 functions that way.
+
+* An S4 `setMethod("show", ...)` is an output method where `cat()` is the required idiom, `app$cat(...)` is a method call rather than `base::cat`, and a verbosity flag named `messages` counts as a gate.
+
+* A `<<-` inside `local()`, `setRefClass()` or `R6Class()` binds in that scope rather than `.GlobalEnv`, a call in a default argument is scoped to that argument rather than the function body (preserving the `on.exit()` that `option_changes`, `temp_cleanup` and `sys_setenv` rely on), and only the R chunks of a vignette are parsed, so its prose stays prose.
+
+**It now tells a read from a write, and a package's own state from the user's.**
+
+* `options()` and `par()` both read and write, and only a named argument makes the call a write, so `par("usr")[3]` and `withr`'s own `reset_options()` stay clean.
+
+* A package's own namespaced option (`options(datatable.verbose = ...)`) is its own state, and a `setwd()` or `options()` inside a `callr` subprocess cannot reach the calling session.
+
+* `file_operations` proves where a write lands: `writeLines(x, "out.csv")` is flagged, `writeLines(x, out_file)` is trusted to the caller who passed the path, and a formal that defaults into `~` is still caught.
+
+* `package_size` measures the gzipped tarball CRAN actually limits: `billboarder` is 6.3 MB on disk and 2.93 MB packed.
+
+* A `Sys.setenv()` setter that captures the prior state and hands it back (`old <- get_path(); Sys.setenv(...); invisible(old)`) honours the same restore contract `option_changes` already follows. `withr`'s own path and env-var setters are shaped that way.
+
+**It now recognises the guards CRAN sanctions.**
+
+* `if (require("pkgB"))` and roxygen's `@examplesIf` both count as the conditional-Suggests guard in an example; `interactive()` does not, because it does not make the package available. A `system()` call inside an OS branch is the platform check the fix asks for, and an `install.packages()` behind a consent prompt is consent.
+
+* `set.seed(123)` inside `if (FALSE)` cannot reach the RNG, and `T`/`F` inside `quote()`, `expression()` or `substitute()` are language tokens rather than logicals.
+
+* `commented_examples` fires only when an entire `\examples{}` block is commented out, `example_structure` accepts a database, prompt or Shiny reactive context as justifying `\dontrun{}`, and `library_in_pkg` exempts code sent to a parallel worker, whose search path starts empty.
+
+* `software_names` flags only R-package and software-product names, which CRAN consistently requires quoted (`ggplot2` is quoted in 96% of the Descriptions that mention it). Programming languages and markup (`Python`, `Java`, `SQL`, `HTML`) are quoted only 20-57% of the time across CRAN, a coin flip rather than a convention, so they were dropped.
+
+* Smaller sharpenings: `description_quoted_quotes` flags only a recognised software name rather than scare-quoted jargon, `description_length` counts words, `description_starts_with` gained its initial-capital rule, `acronyms` no longer flags `CMD`, and `urls` names the offending URL while skipping fenced code and `\verb{}` spans.
 
 ## Bug fixes
 
+* `package_size` now honours a bare directory entry in `.Rbuildignore`, such as
+  the `^docs$` a pkgdown package uses. R CMD build excludes a matched directory's
+  whole subtree, so an untracked `docs/` or `.quarto` cache never reaches the
+  tarball. `package_size` matched only leaf paths, so it counted those trees and
+  could report a package many times its real tarball size. It now tests each
+  file's ancestor directories too, case-insensitively, as R does.
+
+* `mean(x, na.rm = T)`, the most common bare `T` in R, is now reported. An argument
+  name parses as `SYMBOL_SUB` rather than `SYMBOL`, so a guard meant to skip
+  `f(T = 1)` was inadvertently skipping the argument *value* too.
+
 * `prescribe()` now surfaces every failed check. It previously walked only the
-  curated treatment list, so a check could fail and `prescribe()` would say
-  nothing about it. Failures without a curated remedy now fall back to a generic
-  block that names the check and lists the issues it found (#4, thanks
-  @january3).
+  curated treatment list, so a check could fail and `prescribe()` would say nothing
+  (#4, thanks @january3).
 
-* `prescribe()` no longer prints raw `cli` markup. The stored treatment strings
-  carry inline markup such as `{.code TRUE}`, and it was reaching `cli` as an
-  interpolated value rather than as part of the format string. `cli` does not
-  re-parse markup inside interpolated values, so readers saw literal braces
-  instead of styled code.
+* `prescribe()` no longer prints raw `cli` markup. Treatment strings carry inline
+  markup such as `{.code TRUE}`, and it reached `cli` as an interpolated value
+  rather than as part of the format string.
 
-* The DESCRIPTION acronym check no longer flags an acronym that the text already
-  spells out. A conventional parenthetical gloss in either order, as in
-  `principal component analysis (PCA)` or `PCA (principal component analysis)`,
-  now counts as explained, and a line-wrapped gloss is detected too (#5, thanks
-  @january3).
+* `diagnose_print_cat_usage()` no longer flags `cat()` inside S3 `print.*` and
+  `format.*` methods, where it is the required idiom. Base R's own
+  `print.default()` uses it (#6, thanks @jhelvy).
 
-* `diagnose_print_cat_usage()` no longer flags `cat()` or `print()` inside S3
-  `print.*` and `format.*` methods, where `cat()` is the required idiom. Base R's
-  own `print.default()` and `print.lm()` use it (#6, thanks @jhelvy).
+* The `acronyms` check treats `principal component analysis (PCA)` and
+  `PCA (principal component analysis)` alike as explained, and detects a
+  line-wrapped gloss (#5, thanks @january3).
 
-* `example_diagnose_scenario()` no longer prints the temporary package path when
-  `show_content = TRUE`. It now shows the example file and nothing else, which
-  keeps machine-specific paths out of help examples and vignettes.
+* `example_diagnose_scenario()` no longer prints the temporary package path,
+  keeping machine-specific paths out of help pages.
 
-* `diagnose_urls()` no longer flags an `http://` that appears inside a `\verb{}`
-  or `\code{}` span in an `.Rd` file. Those are literal spans, so a package that
-  *documents* the string is not linking to it, and flagging it was the same class
-  of false positive the AST checks exist to prevent. Real links live in `\url{}`,
-  `\href{}`, or plain prose, none of which are skipped. checktor's own
-  `?diagnose_urls` page was tripping this.
+## Documentation and website
 
-* `diagnose_option_changes()` no longer flags a setter that captures the previous
-  value and hands it back. `options()`, `par()` and `setwd()` all return their old
-  value, so `old <- options(digits = 3); invisible(old)` honours the base R
-  contract and leaves the caller able to restore. A bare `options(digits = 3)`
-  whose old value is discarded is still flagged.
+* The three vignettes gained figures: a coverage map of what `R CMD check`,
+  `lintr` and `checktor` each catch; the three data frames the accessors return;
+  `checkup()` running at three latencies in CI; and, for "Writing Your Own Checks",
+  the road from source to finding and the XPath axes around a
+  `SYMBOL_FUNCTION_CALL` anchor.
 
-* `diagnose_file_operations()` no longer flags a write whose destination the
-  caller supplied, as in `function(results, file) writeLines(results, file)`.
-  CRAN's rule concerns writing to the user's filespace *without permission*, and
-  a path passed in by the caller is permission. The exemption looks only at the
-  destination argument, so a hardcoded `writeLines(x, "~/data.csv")` is still
-  flagged even when some other argument happens to be a formal, and a formal that
-  *defaults* into the user's filespace, as in `function(file = "~/report.txt")`,
-  is still flagged too.
+* Corrected two claims in "Getting Started": `R CMD check` *does* flag a `Title`
+  that is not in title case, and `lintr` *does* flag a bare `T`, so neither belongs
+  in the list of things only checktor catches.
 
-* The DESCRIPTION acronym check no longer flags `CMD`, which is not an acronym
-  anyone expands but part of the literal command name `R CMD check`.
-
-## Documentation
-
-* The three vignettes gained figures. "Getting Started" now shows a coverage map
-  of what `R CMD check`, `lintr`, and `checktor` each catch, and a diagram of the
-  three data frames the accessors return. "checktor in Continuous Integration"
-  shows the same `checkup()` call running at three latencies. "Writing Your Own
-  Checks" shows the road from source to finding, the XPath axes around a
-  `SYMBOL_FUNCTION_CALL` anchor, and why the parse tree never trips over a
-  pattern in a string or a comment.
-
-* "Getting Started" now runs `prescribe()` rather than hiding it, so the remedy
-  the section promises is actually on the page.
-
-* Corrected two claims in "Getting Started". `R CMD check` does flag a `Title`
-  that is not in title case, and `lintr` does flag a bare `T`, so neither belongs
-  in the list of things only `checktor` catches.
-
-* Corrected the diagnostic count in "Writing Your Own Checks", and the parse-tree
-  figure there now shows all eight children of a call expression, including the
-  `OP-COMMA` that the prose had omitted.
-
-## Website
-
-* The pkgdown site picked up a theme drawn from the package logo, with a light
-  and dark mode toggle in the navbar.
+* The pkgdown site picked up a theme drawn from the package logo, with a light and
+  dark toggle in the navbar.
 
 ## Continuous integration
 
 * Bumped `actions/checkout` to v7 and `JamesIves/github-pages-deploy-action` to
-  v4.8.0, and added `quarto-dev/quarto-actions/setup` so the Quarto vignette
-  engine builds against a pinned Quarto rather than whatever the runner ships.
+  v4.8.0, and added `quarto-dev/quarto-actions/setup` so the Quarto vignette engine
+  builds against a pinned Quarto.
 
 # checktor 0.1.0
 

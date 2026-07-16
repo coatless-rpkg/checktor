@@ -19,7 +19,16 @@ prescribe <- function(results) {
     cli::cli_abort("Input must be a checktor_results object")
   }
 
-  if (results$metadata$total_issues == 0) {
+  # `total_issues` is the VERDICT, and it counts only the severity tiers the run
+  # was a verdict about. A package can therefore be submission-clean and still
+  # have advisory findings worth acting on. Prescribing for the verdict alone
+  # would silently withhold the remedy for every one of them, so prescribe for
+  # anything that failed, whatever its tier.
+  advisory <- results$metadata$advisory_issues
+  if (
+    results$metadata$total_issues == 0 &&
+      (is.null(advisory) || advisory == 0L)
+  ) {
     cli::cli_alert_success("No treatment needed - patient is healthy!")
     return(invisible())
   }
@@ -35,12 +44,20 @@ prescribe <- function(results) {
     character(1)
   )
 
-  categories <- c("code_issues", "description_issues", "documentation_issues",
-                  "general_issues", "policy_issues")
+  categories <- c(
+    "code_issues",
+    "description_issues",
+    "documentation_issues",
+    "general_issues",
+    "policy_issues"
+  )
   for (cat in categories) {
     cat_res <- results[[cat]]
-    if (is.null(cat_res) || is.null(cat_res$passed) ||
-        is.null(names(cat_res$passed))) {
+    if (
+      is.null(cat_res) ||
+        is.null(cat_res$passed) ||
+        is.null(names(cat_res$passed))
+    ) {
       next
     }
     failed <- names(cat_res$passed)[!cat_res$passed]
@@ -70,7 +87,11 @@ prescribe <- function(results) {
 # Fallback treatment block for a failed check that has no curated entry: show
 # the check's own message as the heading and list the concrete issues found.
 prescribe_generic <- function(check, chk_name) {
-  title <- if (is.list(check) && !is.null(check$message)) check$message else chk_name
+  title <- if (is.list(check) && !is.null(check$message)) {
+    check$message
+  } else {
+    chk_name
+  }
   cli::cli_h3(title)
   issues <- if (is.list(check)) check$issues else NULL
   if (length(issues) > 0L) {
@@ -89,11 +110,11 @@ prescribe_generic <- function(check, chk_name) {
 # appending an entry here - no need to edit prescribe()'s control flow.
 treatments <- list(
   list(
-    category  = "code_issues",
-    check     = "tf_usage",
-    title     = "T/F Usage Issues",
+    category = "code_issues",
+    check = "tf_usage",
+    title = "T/F Usage Issues",
     treatment = "Replace {.code T} with {.code TRUE} and {.code F} with {.code FALSE}",
-    example   = c(
+    example = c(
       "# Before",
       "result <- T",
       "",
@@ -102,11 +123,11 @@ treatments <- list(
     )
   ),
   list(
-    category  = "code_issues",
-    check     = "seed_setting",
-    title     = "Hardcoded Seed Issues",
+    category = "code_issues",
+    check = "seed_setting",
+    title = "Hardcoded Seed Issues",
     treatment = "Add a seed parameter so callers control randomness",
-    example   = c(
+    example = c(
       "# Before",
       "my_function <- function(data) {",
       "  set.seed(123)",
@@ -121,11 +142,11 @@ treatments <- list(
     )
   ),
   list(
-    category  = "code_issues",
-    check     = "print_cat_usage",
-    title     = "Unsuppressable Output Issues",
+    category = "code_issues",
+    check = "print_cat_usage",
+    title = "Unsuppressable Output Issues",
     treatment = "Use {.code message()} or gate output on a verbose parameter",
-    example   = c(
+    example = c(
       "# Before",
       "print('Processing...')",
       "",
@@ -139,11 +160,11 @@ treatments <- list(
     )
   ),
   list(
-    category  = "documentation_issues",
-    check     = "value_tags",
-    title     = "Missing \\value Tags",
+    category = "documentation_issues",
+    check = "value_tags",
+    title = "Missing \\value Tags",
     treatment = "Add {.code @return} tags to your roxygen documentation",
-    example   = c(
+    example = c(
       "#' My Function",
       "#' @param x A parameter",
       "#' @return A character vector with results",

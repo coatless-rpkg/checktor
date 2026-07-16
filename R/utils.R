@@ -3,6 +3,11 @@
 #' Runs [checktor()] with minimal output, suitable for CI/CD pipelines.
 #'
 #' @param path Character. Path to the R package directory. Default: `"."`.
+#' @param severity Character. Which severity tiers count toward the result: any
+#'   of `"policy"`, `"robustness"`, `"opinion"`. Defaults to
+#'   `getOption("checktor.severity", c("policy", "robustness"))`, so a build is
+#'   not failed by a convention nobody enforces. Pass all three to hold the
+#'   package to the conventions as well. See [checktor()].
 #'
 #' @return
 #' Logical. `TRUE` if no issues were found, `FALSE` otherwise.
@@ -13,8 +18,16 @@
 #' pkg_bad <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                      show_content = FALSE)
 #' checkup(pkg_bad)
-checkup <- function(path = ".") {
-  results <- checktor(path, verbose = FALSE, progress = FALSE)
+checkup <- function(
+  path = ".",
+  severity = getOption("checktor.severity", DEFAULT_SEVERITY)
+) {
+  results <- checktor(
+    path,
+    verbose = FALSE,
+    progress = FALSE,
+    severity = severity
+  )
   results$metadata$total_issues == 0L
 }
 
@@ -41,13 +54,15 @@ checkup <- function(path = ".") {
 #'
 #' configure_doctor(verbose_default = FALSE)
 #' getOption("checktor.verbose")
-configure_doctor <- function(verbose_default = TRUE,
-                             progress_default = TRUE,
-                             color = TRUE) {
+configure_doctor <- function(
+  verbose_default = TRUE,
+  progress_default = TRUE,
+  color = TRUE
+) {
   old <- options(
-    checktor.verbose  = verbose_default,
+    checktor.verbose = verbose_default,
     checktor.progress = progress_default,
-    cli.num_colors    = if (isTRUE(color)) NULL else 1L
+    cli.num_colors = if (isTRUE(color)) NULL else 1L
   )
 
   cli::cli_alert_success("Package doctor configuration updated")
@@ -66,7 +81,9 @@ safe_read_lines <- function(file) {
 # Lists R source files under <path>/R/. Returns character(0) if R/ is absent.
 list_r_files <- function(path) {
   r_dir <- file.path(path, "R")
-  if (!dir.exists(r_dir)) return(character(0))
+  if (!dir.exists(r_dir)) {
+    return(character(0))
+  }
   list.files(r_dir, pattern = "\\.R$", full.names = TRUE, recursive = TRUE)
 }
 
@@ -74,8 +91,13 @@ list_r_files <- function(path) {
 # that's TRUE when the path matches any ignore pattern. The always-skip set
 # (.git, .Rproj.user, .DS_Store, etc.) is applied unconditionally.
 build_ignore_matcher <- function(path) {
-  always_skip <- c("^\\.git(/|$)", "^\\.Rproj\\.user(/|$)",
-                   "^\\.Rhistory$", "^\\.RData$", "^\\.DS_Store$")
+  always_skip <- c(
+    "^\\.git(/|$)",
+    "^\\.Rproj\\.user(/|$)",
+    "^\\.Rhistory$",
+    "^\\.RData$",
+    "^\\.DS_Store$"
+  )
 
   rbi <- file.path(path, ".Rbuildignore")
   patterns <- if (file.exists(rbi)) {
@@ -87,12 +109,33 @@ build_ignore_matcher <- function(path) {
   }
   patterns <- c(patterns, always_skip)
 
+  # A path is ignored if it, OR any of its ancestor directories, matches a
+  # pattern. R CMD build lists directory entries (`dir(include.dirs = TRUE)`) and
+  # unlinks a matched directory's whole subtree, so a top-level `^docs$` excludes
+  # every file under `docs/`. Testing only the leaf path missed that and counted
+  # ignored trees such as a pkgdown `docs/` or a `.quarto` cache against the size
+  # limit. Matching is Perl and case-insensitive, as in `tools:::inRbuildignore()`.
   function(rel_path) {
-    keep <- logical(length(rel_path))
-    for (pat in patterns) {
-      keep <- keep | grepl(pat, rel_path, perl = TRUE)
-    }
-    keep
+    vapply(
+      rel_path,
+      function(f) {
+        parts <- strsplit(f, "/", fixed = TRUE)[[1]]
+        candidates <- vapply(
+          seq_along(parts),
+          function(k) paste(parts[seq_len(k)], collapse = "/"),
+          character(1)
+        )
+        any(vapply(
+          patterns,
+          function(pat) {
+            any(grepl(pat, candidates, perl = TRUE, ignore.case = TRUE))
+          },
+          logical(1)
+        ))
+      },
+      logical(1),
+      USE.NAMES = FALSE
+    )
   }
 }
 
@@ -101,10 +144,13 @@ build_ignore_matcher <- function(path) {
 defer_cleanup <- function(path, envir = parent.frame()) {
   do.call(
     base::on.exit,
-    list(substitute(
-      if (dir.exists(p)) unlink(p, recursive = TRUE),
-      list(p = path)
-    ), add = TRUE),
+    list(
+      substitute(
+        if (dir.exists(p)) unlink(p, recursive = TRUE),
+        list(p = path)
+      ),
+      add = TRUE
+    ),
     envir = envir
   )
   invisible(path)
@@ -125,7 +171,12 @@ summarise_passed <- function(results) {
 # `checks` is a (name -> function(path, verbose)) pair. Any error becomes a
 # failing checktor_check_result with the error message as its single issue,
 # so errors surface in reports rather than being silently swallowed.
-run_checks <- function(checks, path, verbose) {
+run_checks <- function(checks, path, verbose, severity = SEVERITY_LEVELS) {
+  # A check whose tier the caller did not ask for is not run at all. Running it
+  # and hiding the result would still pay for the parse and still let it error.
+  wanted <- names(checks)[check_severity(names(checks)) %in% severity]
+  checks <- checks[wanted]
+
   results <- list()
   for (nm in names(checks)) {
     results[[nm]] <- tryCatch(
@@ -141,8 +192,63 @@ run_checks <- function(checks, path, verbose) {
         )
       }
     )
+    # Tag the result so accessors and print methods can group by tier without
+    # consulting the registry again.
+    results[[nm]]$severity <- check_severity(nm)
   }
   results$passed <- summarise_passed(results[names(checks)])
   class(results) <- "checktor_category_result"
   results
+}
+
+# The R code inside a vignette, with the prose thrown away.
+#
+# Vignettes are mostly English. Scanning them line by line means every narrative
+# mention of a function reads as a call, which is exactly the mistake the AST
+# rewrite exists to prevent. Pull out the fenced R chunks and hand back just the
+# code, so it can be parsed like any other R.
+#
+# A chunk marked `eval = FALSE` is skipped: it never runs, so it cannot do anything
+# a policy check should care about.
+vignette_r_code <- function(file) {
+  lines <- safe_read_lines(file)
+  if (length(lines) == 0L) {
+    return("")
+  }
+
+  open_re <- "^\\s*```+\\s*\\{\\s*r\\b" # ```{r ...}
+  close_re <- "^\\s*```+\\s*$"
+
+  out <- character(0)
+  i <- 1L
+  while (i <= length(lines)) {
+    if (grepl(open_re, lines[[i]], perl = TRUE)) {
+      header <- lines[[i]]
+      j <- i + 1L
+      chunk <- character(0)
+      while (j <= length(lines) && !grepl(close_re, lines[[j]], perl = TRUE)) {
+        chunk <- c(chunk, lines[[j]])
+        j <- j + 1L
+      }
+      # `eval=FALSE` chunks never execute.
+      if (!grepl("eval\\s*=\\s*F", header, perl = TRUE)) {
+        out <- c(out, chunk)
+      }
+      i <- j + 1L
+    } else {
+      i <- i + 1L
+    }
+  }
+  paste(out, collapse = "\n")
+}
+
+# The package's own name, for recognising options it owns (`datatable.verbose`,
+# `cli.width`, `knitr.progress`). Empty string when DESCRIPTION is unreadable.
+own_option_prefix <- function(path) {
+  f <- file.path(path, "DESCRIPTION")
+  if (!file.exists(f)) {
+    return("")
+  }
+  nm <- tryCatch(read.dcf(f, fields = "Package")[1, 1], error = function(e) NA)
+  if (is.na(nm)) "" else as.character(nm)
 }

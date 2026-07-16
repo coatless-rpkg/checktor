@@ -5,9 +5,9 @@ library(parallel)
 #' Parallel Processing
 #' @param data Input data
 parallel_process <- function(data) {
-  num_cores <- detectCores()  # Issue: using all available cores
-  cl <- makeCluster(num_cores)  # Issue: no core limit
-  
+  num_cores <- detectCores() # Issue: using all available cores
+  cl <- makeCluster(num_cores) # Issue: no core limit
+
   result <- parLapply(cl, data, function(x) x^2)
   stopCluster(cl)
   return(result)

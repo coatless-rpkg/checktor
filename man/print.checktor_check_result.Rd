@@ -17,3 +17,7 @@ Returns \code{x} invisibly
 \description{
 Print Method for checktor_check_result Objects
 }
+\examples{
+res <- checktor_check_result(FALSE, c("foo.R:3", "bar.R:9"), "T/F usage")
+print(res)
+}

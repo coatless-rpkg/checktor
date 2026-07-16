@@ -17,3 +17,8 @@ Returns \code{x} invisibly
 \description{
 Print Method for checktor_category_result Objects
 }
+\examples{
+pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+                                 show_content = FALSE)
+print(diagnose_code_issues(pkg, verbose = FALSE))
+}

@@ -4,7 +4,7 @@
 #' @param n Sample size
 #' @return Random sample
 generate_sample <- function(n = 100) {
-  set.seed(12345)  # Issue: hardcoded seed
+  set.seed(12345) # Issue: hardcoded seed
   return(rnorm(n))
 }
 
@@ -12,7 +12,7 @@ generate_sample <- function(n = 100) {
 #' @param data Input data
 #' @param iterations Number of bootstrap iterations
 bootstrap_analysis <- function(data, iterations = 1000) {
-  set.seed(42)  # Issue: hardcoded seed
+  set.seed(42) # Issue: hardcoded seed
   results <- replicate(iterations, {
     sample_data <- sample(data, replace = TRUE)
     mean(sample_data)

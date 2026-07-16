@@ -122,6 +122,9 @@ checktor_category_result <- function(...) {
 #' Returns `x` invisibly
 #'
 #' @export
+#' @examples
+#' res <- checktor_check_result(FALSE, c("foo.R:3", "bar.R:9"), "T/F usage")
+#' print(res)
 print.checktor_check_result <- function(x, ...) {
   if (x$passed) {
     cli::cli_alert_success("{x$message}: PASSED")
@@ -147,6 +150,10 @@ print.checktor_check_result <- function(x, ...) {
 #' Returns `x` invisibly
 #'
 #' @export
+#' @examples
+#' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+#'                                  show_content = FALSE)
+#' print(diagnose_code_issues(pkg, verbose = FALSE))
 print.checktor_category_result <- function(x, ...) {
   if ("passed" %in% names(x)) {
     total_checks <- length(x$passed)
@@ -163,7 +170,11 @@ print.checktor_category_result <- function(x, ...) {
       failed_names <- names(x$passed)[!x$passed]
       cli::cli_text("Failed checks:")
       for (check_name in failed_names) {
-        if (check_name %in% names(x) && inherits(x[[check_name]], "checktor_check_result")) {
+        if (
+          check_name %in%
+            names(x) &&
+            inherits(x[[check_name]], "checktor_check_result")
+        ) {
           issue_count <- length(x[[check_name]]$issues)
           cli::cli_text("  {check_name}: {issue_count} issue{?s}")
         }

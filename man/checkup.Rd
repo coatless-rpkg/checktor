@@ -4,10 +4,19 @@
 \alias{checkup}
 \title{Quick Health Check}
 \usage{
-checkup(path = ".")
+checkup(
+  path = ".",
+  severity = getOption("checktor.severity", DEFAULT_SEVERITY)
+)
 }
 \arguments{
 \item{path}{Character. Path to the R package directory. Default: \code{"."}.}
+
+\item{severity}{Character. Which severity tiers count toward the result: any
+of \code{"policy"}, \code{"robustness"}, \code{"opinion"}. Defaults to
+\code{getOption("checktor.severity", c("policy", "robustness"))}, so a build is
+not failed by a convention nobody enforces. Pass all three to hold the
+package to the conventions as well. See \code{\link[=checktor]{checktor()}}.}
 }
 \value{
 Logical. \code{TRUE} if no issues were found, \code{FALSE} otherwise.

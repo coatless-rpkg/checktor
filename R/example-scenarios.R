@@ -71,13 +71,18 @@
 #' pkg_path <- example_diagnose_scenario("code_examples/browser_calls_bad.R",
 #'                                       cleanup = TRUE)
 #' # Cleanup happens automatically when R session ends
-example_diagnose_scenario <- function(example_path,
-                                      show_content = TRUE,
-                                      description_type = "minimal",
-                                      cleanup = FALSE) {
-
+example_diagnose_scenario <- function(
+  example_path,
+  show_content = TRUE,
+  description_type = "minimal",
+  cleanup = FALSE
+) {
   # Validate input
-  if (missing(example_path) || !is.character(example_path) || length(example_path) != 1) {
+  if (
+    missing(example_path) ||
+      !is.character(example_path) ||
+      length(example_path) != 1
+  ) {
     stop("example_path must be a single character string")
   }
 
@@ -90,9 +95,14 @@ example_diagnose_scenario <- function(example_path,
   }
 
   # Create temporary package directory
-  temp_pkg <- file.path(tempdir(), paste0("checktor_example_",
-                                          format(Sys.time(), "%Y%m%d_%H%M%S_"),
-                                          sample(1000:9999, 1)))
+  temp_pkg <- file.path(
+    tempdir(),
+    paste0(
+      "checktor_example_",
+      format(Sys.time(), "%Y%m%d_%H%M%S_"),
+      sample(1000:9999, 1)
+    )
+  )
 
   # Create package structure
   dir.create(temp_pkg, recursive = TRUE)
@@ -105,7 +115,9 @@ example_diagnose_scenario <- function(example_path,
     # DESCRIPTION files go to package root
     target_file <- file.path(temp_pkg, "DESCRIPTION")
     file.copy(example_file, target_file)
-  } else if (grepl("documentation_examples", example_path, ignore.case = TRUE)) {
+  } else if (
+    grepl("documentation_examples", example_path, ignore.case = TRUE)
+  ) {
     # .Rd files go to man/
     target_file <- file.path(temp_pkg, "man", basename(example_file))
     file.copy(example_file, target_file)
@@ -123,10 +135,14 @@ example_diagnose_scenario <- function(example_path,
 
   # Standard CRAN-prep files so the scenario isolates the single injected
   # issue (the general NEWS/cran-comments checks would otherwise also fire).
-  writeLines(c("# examplepackage 0.1.0", "", "* Initial scenario."),
-             file.path(temp_pkg, "NEWS.md"))
-  writeLines(c("## Test environments", "* local"),
-             file.path(temp_pkg, "cran-comments.md"))
+  writeLines(
+    c("# examplepackage 0.1.0", "", "* Initial scenario."),
+    file.path(temp_pkg, "NEWS.md")
+  )
+  writeLines(
+    c("## Test environments", "* local"),
+    file.path(temp_pkg, "cran-comments.md")
+  )
 
   # Show file content if requested
   if (show_content) {
@@ -147,57 +163,63 @@ example_diagnose_scenario <- function(example_path,
 
 # Helper function to create different types of DESCRIPTION files
 create_example_description <- function(desc_path, type = "minimal") {
+  desc_content <- switch(
+    type,
+    "minimal" = c(
+      "Package: examplepackage",
+      "Title: Example Package for Diagnostic Testing",
+      "Version: 0.1.0",
+      "Authors@R: person('Test', 'User', email = 'test@example.com', role = c('aut', 'cre'))",
+      "Description: This is a temporary package created for testing checktor",
+      "    diagnostic functions with example code that contains known issues.",
+      # A bare `MIT` is not a valid CRAN license. MIT is a template
+      # licence with no copyright holder of its own, so CRAN requires
+      # `MIT + file LICENSE`. GPL stands alone, which keeps this
+      # fixture self-contained (no LICENSE file to write).
+      "License: GPL (>= 3)",
+      "Encoding: UTF-8",
+      "Depends: R (>= 3.5.0)"
+    ),
 
-  desc_content <- switch(type,
-                         "minimal" = c(
-                           "Package: examplepackage",
-                           "Title: Example Package for Diagnostic Testing",
-                           "Version: 0.1.0",
-                           "Authors@R: person('Test', 'User', email = 'test@example.com', role = c('aut', 'cre'))",
-                           "Description: This is a temporary package created for testing checktor",
-                           "    diagnostic functions with example code that contains known issues.",
-                           "License: MIT",
-                           "Encoding: UTF-8",
-                           "Depends: R (>= 3.5.0)"
-                         ),
+    "bad" = c(
+      "Package: badexample",
+      "Title: example package for testing", # Issues: not title case
+      "Version: 0.1.0",
+      "Author: Test User <test@example.com>", # Issue: should use Authors@R
+      "Maintainer: Test User <test@example.com>",
+      "Description: This package works with ggplot2 and provides API access.", # Issues: no quotes, short, forbidden opener
+      "License: Free to use", # Issue: not a standardizable CRAN license
+      "Encoding: UTF-8",
+      "URL: http://example.com" # Issue: should be https
+    ),
 
-                         "bad" = c(
-                           "Package: badexample",
-                           "Title: example package for testing",  # Issues: not title case
-                           "Version: 0.1.0",
-                           "Author: Test User <test@example.com>",  # Issue: should use Authors@R
-                           "Maintainer: Test User <test@example.com>",
-                           "Description: This package works with ggplot2 and provides API access.",  # Issues: no quotes, short
-                           "License: MIT + file LICENSE",  # Issue: unnecessary for standard MIT
-                           "Encoding: UTF-8",
-                           "URL: http://example.com"  # Issue: should be https
-                         ),
+    "good" = c(
+      "Package: goodexample",
+      "Title: Example Package for Comprehensive Diagnostic Testing",
+      "Version: 0.1.0",
+      "Authors@R: person('Test', 'User', email = 'test@example.com', role = c('aut', 'cre'))",
+      # Must not open with "This package": CRAN rejects it, and so
+      # does diagnose_description_starts_with().
+      "Description: Demonstrates proper formatting for CRAN submission.",
+      "    It works with 'ggplot2' and provides Application Programming Interface (API)",
+      "    access. The package serves as an example of best practices for R package",
+      "    development and CRAN compliance.",
+      "License: GPL (>= 3)",
+      "Encoding: UTF-8",
+      "URL: https://example.com",
+      "BugReports: https://github.com/user/pkg/issues"
+    ),
 
-                         "good" = c(
-                           "Package: goodexample",
-                           "Title: Example Package for Comprehensive Diagnostic Testing",
-                           "Version: 0.1.0",
-                           "Authors@R: person('Test', 'User', email = 'test@example.com', role = c('aut', 'cre'))",
-                           "Description: This package demonstrates proper formatting for CRAN submission.",
-                           "    It works with 'ggplot2' and provides Application Programming Interface (API)",
-                           "    access. The package serves as an example of best practices for R package",
-                           "    development and CRAN compliance.",
-                           "License: MIT",
-                           "Encoding: UTF-8",
-                           "URL: https://example.com",
-                           "BugReports: https://github.com/user/pkg/issues"
-                         ),
-
-                         # Default to minimal
-                         c(
-                           "Package: examplepackage",
-                           "Title: Example Package for Diagnostic Testing",
-                           "Version: 0.1.0",
-                           "Authors@R: person('Test', 'User', email = 'test@example.com', role = c('aut', 'cre'))",
-                           "Description: Temporary package for testing diagnostics.",
-                           "License: MIT",
-                           "Encoding: UTF-8"
-                         )
+    # Default to minimal
+    c(
+      "Package: examplepackage",
+      "Title: Example Package for Diagnostic Testing",
+      "Version: 0.1.0",
+      "Authors@R: person('Test', 'User', email = 'test@example.com', role = c('aut', 'cre'))",
+      "Description: Temporary package for testing diagnostics.",
+      "License: GPL (>= 3)",
+      "Encoding: UTF-8"
+    )
   )
 
   writeLines(desc_content, desc_path)
@@ -236,7 +258,6 @@ create_example_description <- function(desc_path, type = "minimal") {
 #' examples <- show_example_files("code")
 #' pkg_path <- example_diagnose_scenario(examples[1])
 show_example_files <- function(category = "all", pattern = NULL) {
-
   base_path <- system.file("diagnose", package = "checktor")
 
   if (!dir.exists(base_path)) {
@@ -249,13 +270,14 @@ show_example_files <- function(category = "all", pattern = NULL) {
 
   # Filter by category if specified
   if (category != "all") {
-    category_pattern <- switch(category,
-                               "code" = "^code_examples/",
-                               "description" = "^description_examples/",
-                               "documentation" = "^documentation_examples/",
-                               "network" = "^network_examples/",
-                               "temp" = "^temp_examples/",
-                               ".*"  # Default: include all
+    category_pattern <- switch(
+      category,
+      "code" = "^code_examples/",
+      "description" = "^description_examples/",
+      "documentation" = "^documentation_examples/",
+      "network" = "^network_examples/",
+      "temp" = "^temp_examples/",
+      ".*" # Default: include all
     )
     all_files <- all_files[grepl(category_pattern, all_files)]
   }

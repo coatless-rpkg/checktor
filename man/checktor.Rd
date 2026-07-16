@@ -7,7 +7,8 @@
 checktor(
   path = ".",
   verbose = getOption("checktor.verbose", TRUE),
-  progress = getOption("checktor.progress", verbose)
+  progress = getOption("checktor.progress", verbose),
+  severity = getOption("checktor.severity", DEFAULT_SEVERITY)
 )
 }
 \arguments{
@@ -19,6 +20,21 @@ console. Defaults to \code{getOption("checktor.verbose", TRUE)}.}
 
 \item{progress}{Logical. Whether to show progress bars during diagnostics.
 Defaults to \code{getOption("checktor.progress", verbose)}.}
+
+\item{severity}{Character. Which severity tiers count toward the verdict:
+any of \code{"policy"}, \code{"robustness"}, \code{"opinion"}. Defaults to
+\code{getOption("checktor.severity", c("policy", "robustness"))}.
+
+Every check still runs, and every finding stays in the result and appears in
+\code{\link[=issues]{issues()}} with its tier. What this argument decides is which findings count
+against a clean bill of health. \code{"policy"} is a citable CRAN Repository
+Policy or Writing R Extensions violation. \code{"robustness"} is a real defect
+that CRAN will nonetheless let you ship, such as a \code{detectCores()} that may
+return \code{NA}. \code{"opinion"} is a convention with no authority behind it.
+
+The default therefore makes "0 issues" mean \emph{nothing here will get you
+rejected, and nothing here will crash a user}. Pass all three tiers to hold
+yourself to the conventions as well.}
 }
 \value{
 A \code{checktor_results} object (list) containing:
@@ -53,6 +69,20 @@ The \code{metadata$total_issues} figure counts the total number of distinct
 issues found across all checks (e.g., 80 lines using \code{T}/\code{F} count as 80,
 not 1). The \code{metadata$failed_checks} figure counts how many individual
 checks reported any issue at all.
+
+A package can configure checktor from \verb{Config/checktor/*} fields in its own
+\code{DESCRIPTION} (comma-separated lists):
+\itemize{
+\item \code{Config/checktor/disable}: check names to skip entirely. A disabled check
+does not run and is not counted anywhere in the results.
+\item \code{Config/checktor/allow}: \code{check} to mute a whole check, or \code{check:substring}
+to mute only findings whose text contains \code{substring}. The check still
+runs; muted findings are dropped from the results and tallied in
+\code{metadata$suppressed}, while a \code{disable}d check is removed entirely and
+never counted there.
+\item \code{Config/checktor/software_names}, \code{Config/checktor/acronyms}: names appended
+to those checks' vocabularies.
+}
 }
 \examples{
 # Run against a synthetic package with known T/F issues

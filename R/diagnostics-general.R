@@ -9,13 +9,11 @@
 #' - Package size, measured against the files that would ship in the
 #'   tarball (`.Rbuildignore` and standard scratch dirs are excluded), with
 #'   a 5 MB warning threshold matching CRAN's recommendation.
+#' - `http://` URLs and URL shorteners, offline. `R CMD check --as-cran` does
+#'   fetch every URL, but only with a network and only under `--as-cran`; this
+#'   is the fast local pass.
 #' - Presence of a `NEWS` file documenting user-facing changes.
 #' - Relative links in the `README` that would break on CRAN.
-#'
-#' URLs are deliberately **not** checked here. `R CMD check --as-cran` already
-#' fetches every URL in DESCRIPTION, the Rd files, `NEWS.md` and `README.md`,
-#' and reports status codes and redirect targets (`tools::check_package_urls()`).
-#' Duplicating it would only add noise.
 #'
 #' [diagnose_cran_comments_file()] is intentionally not part of this default
 #' run, since a `cran-comments.md` is a workflow convention rather than a CRAN
@@ -39,11 +37,19 @@ diagnose_general_issues <- function(path = ".", verbose = TRUE) {
     cli::cli_h2("General Health Check")
   }
 
-  run_checks(list(
-    package_size  = diagnose_package_size,
-    news_file     = diagnose_news_file,
-    readme_links  = diagnose_readme_relative_links
-  ), path, verbose)
+  run_checks(
+    c(
+      list(
+        package_size = diagnose_package_size,
+        urls = diagnose_urls,
+        news_file = diagnose_news_file,
+        readme_links = diagnose_readme_relative_links
+      ),
+      registered_checks_for("general")
+    ),
+    path,
+    verbose
+  )
 }
 
 #' Diagnose Package Size
@@ -63,20 +69,54 @@ diagnose_general_issues <- function(path = ".", verbose = TRUE) {
 #'                                       show_content = FALSE)
 #' diagnose_package_size(pkg_path, verbose = FALSE)$size_mb
 diagnose_package_size <- function(path, verbose = TRUE) {
-  all_files <- list.files(path, recursive = TRUE, full.names = FALSE,
-                          all.files = TRUE, no.. = TRUE)
+  all_files <- list.files(
+    path,
+    recursive = TRUE,
+    full.names = FALSE,
+    all.files = TRUE,
+    no.. = TRUE
+  )
   ignore <- build_ignore_matcher(path)
   keep <- !ignore(all_files)
   all_files <- all_files[keep]
 
   full <- file.path(path, all_files)
-  info <- file.info(full)
-  size_mb <- sum(info$size, na.rm = TRUE) / (1024^2)
+
+  # CRAN's 5 MB limit is on the GZIPPED TARBALL, not the source tree. Summing raw
+  # bytes over-reports any package whose bulk is compressible text -- built vignette
+  # HTML, minified JS, SVG, CSV -- by two or three times. Measured against the real
+  # tarballs CRAN ships: billboarder is 6.3 MB on disk and 2.93 MB as a tarball,
+  # readepi 5.9 MB and 1.57 MB. Every package_size finding in the audit was a false
+  # positive produced by this one mistake.
+  #
+  # Compressing each file independently still misses the cross-file redundancy that
+  # a real tar.gz exploits, so this remains a slight OVER-estimate. That is the safe
+  # direction for a limit check, and it is far closer than the raw sum.
+  compressed_size <- function(f) {
+    n <- file.size(f)
+    if (is.na(n) || n == 0) {
+      return(0)
+    }
+    raw_bytes <- tryCatch(readBin(f, what = "raw", n = n), error = function(e) {
+      NULL
+    })
+    if (is.null(raw_bytes)) {
+      return(n)
+    }
+    length(memCompress(raw_bytes, type = "gzip"))
+  }
+  size_mb <- sum(vapply(full, compressed_size, numeric(1))) / (1024^2)
 
   passed <- size_mb <= 5
-  issues <- if (passed) character(0) else paste0(
-    "Package size ", round(size_mb, 2), " MB exceeds 5 MB"
-  )
+  issues <- if (passed) {
+    character(0)
+  } else {
+    paste0(
+      "Package size ",
+      round(size_mb, 2),
+      " MB (compressed) exceeds 5 MB"
+    )
+  }
 
   if (verbose) {
     if (passed) {
@@ -114,14 +154,22 @@ diagnose_package_size <- function(path, verbose = TRUE) {
 diagnose_news_file <- function(path, verbose = TRUE) {
   candidates <- file.path(
     path,
-    c("NEWS.md", "NEWS", "NEWS.Rd",
-      file.path("inst", c("NEWS.md", "NEWS", "NEWS.Rd")))
+    c(
+      "NEWS.md",
+      "NEWS",
+      "NEWS.Rd",
+      file.path("inst", c("NEWS.md", "NEWS", "NEWS.Rd"))
+    )
   )
   has_news <- any(file.exists(candidates))
-  issues <- if (has_news) character(0) else
+  issues <- if (has_news) {
+    character(0)
+  } else {
     "No NEWS file found (add NEWS.md to document user-facing changes)"
+  }
   emit_issue_summary(
-    issues, verbose,
+    issues,
+    verbose,
     "NEWS file found",
     "No NEWS file found",
     "Treatment: Add a NEWS.md documenting changes per version (usethis::use_news_md())",
@@ -152,10 +200,14 @@ diagnose_news_file <- function(path, verbose = TRUE) {
 #' issues(diagnose_cran_comments_file(pkg_path, verbose = FALSE))
 diagnose_cran_comments_file <- function(path, verbose = TRUE) {
   has_it <- file.exists(file.path(path, "cran-comments.md"))
-  issues <- if (has_it) character(0) else
+  issues <- if (has_it) {
+    character(0)
+  } else {
     "No cran-comments.md file with submission notes"
+  }
   emit_issue_summary(
-    issues, verbose,
+    issues,
+    verbose,
     "cran-comments.md found",
     "No cran-comments.md found",
     "Treatment: Add cran-comments.md with submission notes (usethis::use_cran_comments())",
@@ -170,7 +222,7 @@ extract_link_targets <- function(text) {
   md <- regmatches(text, gregexpr("\\]\\([^)]+\\)", text, perl = TRUE))[[1L]]
   md <- sub("^\\]\\(", "", md)
   md <- sub("\\)$", "", md)
-  md <- sub("\\s+[\"'].*$", "", md)          # strip optional link title
+  md <- sub("\\s+[\"'].*$", "", md) # strip optional link title
   html <- regmatches(
     text,
     gregexpr("(?:href|src)\\s*=\\s*[\"'][^\"']+[\"']", text, perl = TRUE)
@@ -212,39 +264,170 @@ diagnose_readme_relative_links <- function(path, verbose = TRUE) {
   readmes <- file.path(path, c("README.md", "README.Rmd"))
   readmes <- readmes[file.exists(readmes)]
   if (length(readmes) == 0L) {
-    return(checktor_check_result(TRUE, character(0),
-                                 "README relative-links check"))
+    return(checktor_check_result(
+      TRUE,
+      character(0),
+      "README relative-links check"
+    ))
   }
 
   ignore <- build_ignore_matcher(path)
   issues <- character(0)
   for (file in readmes) {
     content <- safe_read_lines(file)
-    if (length(content) == 0L) next
+    if (length(content) == 0L) {
+      next
+    }
     text <- paste(content, collapse = "\n")
     for (tgt in extract_link_targets(text)) {
-      if (is_external_or_anchor(tgt)) next
-      rel <- trimws(sub("[#?].*$", "", tgt))   # drop fragment/query
-      if (!nzchar(rel)) next
+      if (is_external_or_anchor(tgt)) {
+        next
+      }
+      rel <- trimws(sub("[#?].*$", "", tgt)) # drop fragment/query
+      if (!nzchar(rel)) {
+        next
+      }
       local <- file.path(path, rel)
       if (!file.exists(local) && !dir.exists(local)) {
-        issues <- c(issues, paste0(basename(file),
-                                   ": relative link to missing file '", rel, "'"))
+        issues <- c(
+          issues,
+          paste0(basename(file), ": relative link to missing file '", rel, "'")
+        )
       } else if (isTRUE(ignore(rel))) {
-        issues <- c(issues, paste0(basename(file),
-                                   ": relative link to .Rbuildignore'd file '",
-                                   rel, "' (won't ship to CRAN)"))
+        issues <- c(
+          issues,
+          paste0(
+            basename(file),
+            ": relative link to .Rbuildignore'd file '",
+            rel,
+            "' (won't ship to CRAN)"
+          )
+        )
       }
     }
   }
 
   passed <- length(issues) == 0L
   emit_issue_summary(
-    issues, verbose,
+    issues,
+    verbose,
     "README relative links resolve to shipped files",
     "README has relative links that may break on CRAN",
     "Treatment: Use full URLs, or ensure the target ships (not in .Rbuildignore)",
     level = "warning"
   )
   checktor_check_result(passed, issues, "README relative-links check")
+}
+
+#' Diagnose URL Issues in Package Files
+#'
+#' Flags `http://` URLs (which should almost always be `https://`) and known URL
+#' shortener domains, across DESCRIPTION, README, vignettes and the `.Rd` files.
+#'
+#' This is a fast, **offline** pre-flight. `R CMD check --as-cran` does fetch every
+#' URL and report status codes and redirect targets, but only with a network and
+#' only under `--as-cran`, which is the slow end of the loop. This catches the two
+#' problems you can find without leaving the room, before you spend ten minutes on
+#' a full check.
+#'
+#' Literal spans are skipped, so documenting the string `http://` inside `\verb{}`,
+#' `\code{}` or a fenced markdown block is not mistaken for linking to it.
+#'
+#' @param path Character. Path to package directory
+#' @param verbose Logical. Print diagnostic messages
+#'
+#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
+#' @export
+#' @examples
+#' pkg_path <- example_diagnose_scenario("description_examples/bad_description.txt",
+#'                                       show_content = FALSE)
+#' issues(diagnose_urls(pkg_path, verbose = FALSE))
+diagnose_urls <- function(path, verbose = TRUE) {
+  rd_files <- list.files(
+    file.path(path, "man"),
+    pattern = "\\.Rd$",
+    full.names = TRUE
+  )
+  vignette_files <- list.files(
+    file.path(path, "vignettes"),
+    pattern = "\\.(Rmd|qmd|md)$",
+    full.names = TRUE
+  )
+  text_files <- c(
+    file.path(path, "DESCRIPTION"),
+    file.path(path, "README.md"),
+    file.path(path, "README.Rmd"),
+    vignette_files
+  )
+  text_files <- text_files[file.exists(text_files)]
+
+  if (length(text_files) == 0L && length(rd_files) == 0L) {
+    return(checktor_check_result(TRUE, character(0), "URLs check"))
+  }
+
+  http_re <- "http://(?!localhost|127\\.0\\.0\\.1|0\\.0\\.0\\.0)[^\\s\"'>)\\]]*"
+  shortener_re <- "\\bhttps?://(bit\\.ly|tinyurl\\.com|goo\\.gl|t\\.co|ow\\.ly)/[^\\s\"'>)\\]]*"
+
+  report <- function(file, text) {
+    out <- character(0)
+    http <- unlist(regmatches(text, gregexpr(http_re, text, perl = TRUE)))
+    for (u in unique(http)) {
+      out <- c(out, paste0(basename(file), ": ", u, " (use https://)"))
+    }
+    short <- unlist(regmatches(text, gregexpr(shortener_re, text, perl = TRUE)))
+    for (u in unique(short)) {
+      out <- c(
+        out,
+        paste0(basename(file), ": ", u, " (URL shortener; use the real target)")
+      )
+    }
+    out
+  }
+
+  issues <- character(0)
+  for (file in text_files) {
+    content <- safe_read_lines(file)
+    if (length(content) == 0L) {
+      next
+    }
+    # A fenced code block in a README or vignette is a literal span, exactly like
+    # \verb{} in Rd: a package that DOCUMENTS `http://` is not linking to it.
+    content <- drop_fenced_code(content)
+    issues <- c(issues, report(file, paste(content, collapse = "\n")))
+  }
+
+  rd_literal_spans <- c("\\verb", "\\code")
+  for (file in rd_files) {
+    rd <- tryCatch(tools::parse_Rd(file), error = function(e) NULL)
+    if (is.null(rd)) {
+      next
+    }
+    text <- collect_rd_text(rd, skip = rd_literal_spans)
+    if (!nzchar(text)) {
+      next
+    }
+    issues <- c(issues, report(file, text))
+  }
+
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues,
+    verbose,
+    "No obvious URL issues found",
+    "Potential URL issues",
+    "Treatment: Switch to https://, and replace shorteners with the real target",
+    level = "warning"
+  )
+  checktor_check_result(passed, issues, "URLs check")
+}
+
+# Drop fenced code blocks (``` ... ```) from markdown-ish text. They are literal
+# spans: text inside them is being shown, not linked.
+drop_fenced_code <- function(lines) {
+  fence <- grepl("^\\s*```", lines)
+  if (!any(fence)) {
+    return(lines)
+  }
+  inside <- cumsum(fence) %% 2L == 1L
+  lines[!(inside | fence)]
 }
