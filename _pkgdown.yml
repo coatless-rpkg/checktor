@@ -69,12 +69,44 @@ reference:
   - diagnose_tf_usage
   - diagnose_seed_setting
   - diagnose_print_cat_usage
+  - diagnose_detect_cores_robustness
+  - diagnose_option_changes
+  - diagnose_home_writing
+  - diagnose_temp_cleanup
+  - diagnose_globalenv_modification
+  - diagnose_installed_packages_usage
+  - diagnose_warn_option
+  - diagnose_software_installation
+  - diagnose_core_usage
+  - diagnose_library_in_pkg_code
+  - diagnose_sys_setenv_no_reset
+  - diagnose_hardcoded_credentials
 
 - title: DESCRIPTION-field diagnostics
   desc: >
     Checks against the DESCRIPTION file, parsed via `base::read.dcf()`.
   contents:
   - diagnose_description_issues
+  - diagnose_software_names_formatting
+  - diagnose_acronym_explanation
+  - diagnose_license_formatting
+  - diagnose_license_year
+  - diagnose_title_case
+  - diagnose_title_length
+  - diagnose_title_starts_with_article
+  - diagnose_title_redundant_phrases
+  - diagnose_description_function_quotes
+  - diagnose_authors_field
+  - diagnose_identifier_format
+  - diagnose_cph_role
+  - diagnose_references_formatting
+  - diagnose_date_format
+  - diagnose_encoding_utf8
+  - diagnose_version_format
+  - diagnose_description_length
+  - diagnose_description_starts_with
+  - diagnose_description_quoted_quotes
+  - diagnose_description_bare_r
 
 - title: Documentation diagnostics
   desc: >
@@ -83,7 +115,11 @@ reference:
   - diagnose_documentation_issues
   - diagnose_value_tags
   - diagnose_missing_examples
+  - diagnose_roxygen_usage
   - diagnose_example_structure
+  - diagnose_unexported_example_namespace
+  - diagnose_commented_examples
+  - diagnose_donttest_vs_dontrun
   - diagnose_suggested_in_examples
 
 - title: General-purpose diagnostics
@@ -93,6 +129,7 @@ reference:
   contents:
   - diagnose_general_issues
   - diagnose_package_size
+  - diagnose_urls
   - diagnose_news_file
   - diagnose_readme_relative_links
   - diagnose_cran_comments_file
@@ -103,6 +140,10 @@ reference:
     raw shell calls, file/network access).
   contents:
   - diagnose_policy_violations
+  - diagnose_browser_calls
+  - diagnose_system_calls
+  - diagnose_file_operations
+  - diagnose_network_operations
 
 - title: Result classes
   desc: >
@@ -135,6 +176,22 @@ reference:
   contents:
   - example_diagnose_scenario
   - show_example_files
+
+- title: Extending checktor
+  desc: >
+    Register a custom check with `checktor()`, plus the AST toolkit the built-in
+    checks use to inspect parsed sources and `.Rd` files.
+  contents:
+  - register_check
+  - unregister_check
+  - registered_checks
+  - read_r_xml
+  - xpath_lints
+  - xpath_per_file
+  - undesirable_function_check
+  - not_under_fn_with_call_xpath
+  - extract_rd_section
+  - collect_rd_text
 
 development:
   mode: auto

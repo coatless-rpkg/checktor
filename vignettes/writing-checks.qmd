@@ -59,16 +59,16 @@ diagnose_<name> <- function(path, verbose = TRUE, parsed = NULL) {
 
 > **Why the `parsed` argument?** It holds an optional parse-cache, so when
 > `checktor()` runs all code-side checks together, it parses each file once and
-> hands the cache to every check. Thirteen checks against a 200-file package
-> then mean 200 parses rather than 2,600.
+> hands the cache to every check. Fifteen code-side checks against a 200-file
+> package then mean 200 parses rather than 3,000.
 
 ## Helpers in `R/ast.R`
 
-`R/ast.R` holds six functions, and a check leans on them in roughly the order of
-the road above. `read_r_xml()` does the parsing and `xpath_lints()` does the
-querying, so between them they carry every check in the package. The rest are
-shorthands for patterns common enough to have earned a name. Learn the first two
-and you can already write a check.
+`R/ast.R` collects the shared machinery, and a check leans on the handful below in
+roughly the order of the road above. `read_r_xml()` does the parsing and
+`xpath_lints()` does the querying, so between them they carry every check in the
+package. The rest are shorthands for patterns common enough to have earned a name.
+Learn the first two and you can already write a check.
 
 ### `read_r_xml(path)`
 
@@ -176,7 +176,11 @@ diagnose_sys_setenv_no_reset <- function(path, verbose = TRUE,
 ```
 
 Twenty lines, and the interesting one is the XPath predicate. Everything else
-is bookkeeping shared with every other check.
+is bookkeeping shared with every other check. The version that ships adds one
+refinement, exempting a setter that captures the old value and hands it back
+(`old <- get_env(); Sys.setenv(...); invisible(old)`), since that is a restore
+contract rather than a leak. Refinements like that are where a real check earns
+its keep, but the skeleton is exactly this.
 
 ## The xmlparsedata XML structure
 
@@ -222,12 +226,79 @@ xpath_lints(parsed,
             "//SYMBOL_FUNCTION_CALL[text() = 'install.packages']")
 ```
 
-To plug a new check into `checktor()`, add a `diagnose_<name>` function to the
-appropriate `R/diagnostics-*.R` file and register it in that file's
-`run_checks(list(...), path, verbose)` call as a closure that forwards the
-cache: `my_check = function(p, v) diagnose_my_check(p, v, parsed = parsed)`.
-That closure is what lets your check share the parse-once cache, while the
-orchestrator handles error catching and `$passed` bookkeeping for you.
+## Wiring it into `checktor()`
+
+A finished `diagnose_*` function does nothing until `checktor()` knows to call
+it. `register_check()` connects the two at run time, with no edit to checktor's
+own source:
+
+```r
+diagnose_my_check <- function(path, verbose = TRUE, parsed = NULL) {
+  if (is.null(parsed)) parsed <- read_r_xml(path)
+  issues <- undesirable_function_check(parsed, "banned")
+  checktor_check_result(length(issues) == 0L, issues, "no banned()")
+}
+
+register_check("my_check", diagnose_my_check,
+               category = "code", severity = "policy")
+```
+
+From then on every `checktor()` run includes `my_check`. It appears in
+`issues()`, `tidy()` and the printed report under that name, and counts toward
+the verdict at the tier you gave it.
+
+A few things worth knowing:
+
+- The function returns a `checktor_check_result()`, the same shape as every
+  shipped check, so `run_checks()` handles its error catching and `$passed`
+  bookkeeping.
+- checktor calls it as `fn(path, verbose)`. If the function also declares a
+  `parsed` argument (for `code` and `policy` checks) or a `desc` argument (for
+  `description` checks), checktor forwards its shared cache, so your check reuses
+  the one parse instead of re-reading the sources.
+- `category` is one of `code`, `description`, `documentation`, `general` or
+  `policy`; the check runs alongside that category's built-ins.
+- `severity` is `policy`, `robustness` or `opinion`, and decides whether a
+  finding counts against a clean bill of health under `checktor()`'s `severity`
+  argument.
+
+`registered_checks()` lists what is currently registered, and
+`unregister_check("my_check")` (or `unregister_check()` for all) removes it. The
+registry is session-scoped, so call `register_check()` somewhere it runs before
+your check is needed: a project `.Rprofile`, your own package's `.onLoad()`, or
+the top of a CI script.
+
+The helpers the example leans on are exported too, so a check you register has
+the same toolkit the built-ins use: `read_r_xml()`, `xpath_lints()`,
+`xpath_per_file()`, `undesirable_function_check()`,
+`not_under_fn_with_call_xpath()`, and the `.Rd` walkers `extract_rd_section()`
+and `collect_rd_text()`.
+
+> Contributing a check to checktor itself? Then skip the registry and wire it the
+> way the shipped checks are: drop `diagnose_my_check()` into the right
+> `R/diagnostics-*.R` file, add one line to that file's
+> `diagnose_<category>_issues()` function inside its `run_checks(list(...))` call
+> (`my_check = function(p, v) diagnose_my_check(p, v, parsed = parsed)`), and give
+> it a tier in `CHECK_SEVERITY` (`R/severity.R`).
+
+## Without writing code
+
+Some house rules need no new check at all. A package configures checktor from
+`Config/checktor/*` fields in its own `DESCRIPTION`:
+
+```
+Config/checktor/software_names: brms, cmdstanr   # flag these names when unquoted
+Config/checktor/acronyms: MCMC, GLMM             # these domain acronyms are fine
+Config/checktor/allow: urls:README.md            # mute a finding you have reviewed
+Config/checktor/disable: news_file               # turn a check off entirely
+```
+
+`software_names` and `acronyms` extend the vocabularies those checks already use;
+`allow` mutes a specific finding (a whole check, or `check:substring`), which is
+the escape hatch a green `checkup()` gate needs; and `disable` skips a check
+outright. Reach for a hand-written check when the rule is genuinely yours; reach
+for `Config/checktor/*` when you only need to teach or quiet a check that already
+ships.
 
 ## Conclusion
 
