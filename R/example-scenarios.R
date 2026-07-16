@@ -178,7 +178,7 @@ create_example_description <- function(desc_path, type = "minimal") {
       # fixture self-contained (no LICENSE file to write).
       "License: GPL (>= 3)",
       "Encoding: UTF-8",
-      "Depends: R (>= 3.5.0)"
+      "Depends: R (>= 4.4.0)"
     ),
 
     "bad" = c(
