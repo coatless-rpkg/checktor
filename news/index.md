@@ -180,15 +180,17 @@ to R’s own engines instead of reimplementing them.
   name, a person with no role, an `Authors@R` that does not parse, or no
   maintainer (`cre`).
 
-- `value_tags`, `title_case` and `license` now delegate to R’s own
-  engines
-  ([`tools::checkRdContents()`](https://rdrr.io/r/tools/QC.html),
-  [`tools::toTitleCase()`](https://rdrr.io/r/tools/toTitleCase.html),
+- `title_case` and `license` now delegate to R’s own engines
+  ([`tools::toTitleCase()`](https://rdrr.io/r/tools/toTitleCase.html)
+  and
   [`tools::analyze_license()`](https://rdrr.io/r/tools/licensetools.html)),
   so they match R’s own behaviour, for instance `title_case` handles
   quoted package names and punctuation the way R does. `license` also
   flags a bare `MIT`, which needs `MIT + file LICENSE` pointing at a
-  file that exists.
+  file that exists. `value_tags` walks each `.Rd` with
+  [`tools::parse_Rd()`](https://rdrr.io/r/tools/parse_Rd.html),
+  exempting data, class, package and `\keyword{internal}` topics, so its
+  verdict does not depend on the R version.
 
 - `print_cat_usage` now flags unsuppressable console output only from a
   function that also returns a value, and treats a verbosity gate as the

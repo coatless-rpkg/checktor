@@ -58,5 +58,5 @@ pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                       show_content = FALSE)
 general_results <- diagnose_general_issues(pkg_path, verbose = FALSE)
 general_results$package_size$size_mb
-#> [1] 0.0006456375
+#> [1] 0.0006465912
 ```
