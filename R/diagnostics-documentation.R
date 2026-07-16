@@ -106,31 +106,50 @@ diagnose_value_tags <- function(path, verbose = TRUE) {
     return(checktor_check_result(TRUE, character(0), "Value tags check"))
   }
 
-  # Delegate to R's own engine rather than re-walking the Rd tree ourselves.
-  # tools::checkRdContents() is what `R CMD check`'s "checking Rd contents" step
-  # uses, and it already handles two things our hand-rolled version got wrong:
-  # it skips non-function topics, and it exempts \keyword{internal} pages (it
-  # keys off the keyword alone and never reads NAMESPACE). It returns an entry
-  # only for Rd files that have a problem.
-  #
-  # Note that `R CMD check` does NOT surface missing \value as a NOTE, so this
-  # remains an extra-CRAN check even though the engine behind it is base R's.
-  contents <- tryCatch(tools::checkRdContents(dir = path), error = function(e) {
-    NULL
-  })
-  if (is.null(contents)) {
-    return(checktor_check_result(TRUE, character(0), "Value tags check"))
+  # Walk each .Rd with tools::parse_Rd() rather than tools::checkRdContents(),
+  # whose `missing_value` output postdates checktor's R floor: a diagnostic must
+  # not change its verdict with the R version running it. A topic needs a \value
+  # only if it documents a function, meaning it has a \usage or \arguments
+  # section and is not a data, class or package topic, nor a \keyword{internal}
+  # or graphics topic. R CMD check does NOT surface missing \value as a NOTE, so
+  # this stays an extra-CRAN check.
+  skip_keywords <- c("internal", "aplot", "hplot", "device", "dynamic")
+  rd_tags <- function(rd) {
+    vapply(
+      rd,
+      function(x) {
+        tag <- attr(x, "Rd_tag")
+        if (is.null(tag)) "" else tag
+      },
+      character(1)
+    )
+  }
+  needs_value <- function(rd_file) {
+    rd <- tryCatch(tools::parse_Rd(rd_file), error = function(e) NULL)
+    if (is.null(rd)) {
+      return(FALSE)
+    }
+    tags <- rd_tags(rd)
+    doctype <- tolower(trimws(
+      collect_rd_text(extract_rd_section(rd, "\\docType"))
+    ))
+    if (doctype %in% c("data", "class", "package")) {
+      return(FALSE)
+    }
+    keywords <- tolower(trimws(vapply(
+      rd[tags == "\\keyword"],
+      function(k) collect_rd_text(k),
+      character(1)
+    )))
+    if (any(keywords %in% skip_keywords)) {
+      return(FALSE)
+    }
+    documents_function <- any(tags %in% c("\\usage", "\\arguments"))
+    documents_function && !("\\value" %in% tags)
   }
 
-  entries <- unclass(contents)
-  # checkRdContents() returns an empty list when nothing is wrong. names() on that
-  # is NULL, and NULL[logical(0)] is NULL, not character(0) -- which then fails the
-  # checktor_check_result() contract. Coerce explicitly.
-  missing_value <- character(0)
-  if (length(entries) > 0L) {
-    hit <- vapply(entries, function(e) isTRUE(e$missing_value), logical(1))
-    missing_value <- sort(as.character(names(entries)[hit]))
-  }
+  hit <- vapply(rd_files, needs_value, logical(1))
+  missing_value <- sort(basename(rd_files[hit]))
 
   passed <- length(missing_value) == 0L
   emit_issue_summary(

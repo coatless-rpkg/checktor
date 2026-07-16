@@ -141,11 +141,13 @@ engines instead of reimplementing them.
   the field's structure: a person with no name, a person with no role, an
   `Authors@R` that does not parse, or no maintainer (`cre`).
 
-* `value_tags`, `title_case` and `license` now delegate to R's own engines
-  (`tools::checkRdContents()`, `tools::toTitleCase()`, `tools::analyze_license()`),
-  so they match R's own behaviour, for instance `title_case` handles quoted package
-  names and punctuation the way R does. `license` also flags a bare `MIT`, which
-  needs `MIT + file LICENSE` pointing at a file that exists.
+* `title_case` and `license` now delegate to R's own engines
+  (`tools::toTitleCase()` and `tools::analyze_license()`), so they match R's own
+  behaviour, for instance `title_case` handles quoted package names and
+  punctuation the way R does. `license` also flags a bare `MIT`, which needs
+  `MIT + file LICENSE` pointing at a file that exists. `value_tags` walks each
+  `.Rd` with `tools::parse_Rd()`, exempting data, class, package and
+  `\keyword{internal}` topics, so its verdict does not depend on the R version.
 
 * `print_cat_usage` now flags unsuppressable console output only from a function
   that also returns a value, and treats a verbosity gate as the guard rather than
