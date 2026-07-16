@@ -9,7 +9,7 @@ into specific code, documentation, or DESCRIPTION categories."><meta name="twitt
 
     <a class="navbar-brand me-2" href="../index.html">checktor</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -28,6 +28,12 @@ into specific code, documentation, or DESCRIPTION categories."><meta name="twitt
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/coatless-rpkg/checktor/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-lightswitch" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-label="Light switch"><span class="fa fa-sun"></span></button>
+  <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdown-lightswitch"><li><button class="dropdown-item" data-bs-theme-value="light"><span class="fa fa-sun"></span> Light</button></li>
+    <li><button class="dropdown-item" data-bs-theme-value="dark"><span class="fa fa-moon"></span> Dark</button></li>
+    <li><button class="dropdown-item" data-bs-theme-value="auto"><span class="fa fa-adjust"></span> Auto</button></li>
+  </ul></li>
       </ul></div>
 
 
@@ -69,10 +75,12 @@ into specific code, documentation, or DESCRIPTION categories.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>This function checks:</p><ul><li><p>Package size — measured against the files that would ship in the
+    <p>This function checks:</p><ul><li><p>Package size, measured against the files that would ship in the
 tarball (<code>.Rbuildignore</code> and standard scratch dirs are excluded), with
 a 5 MB warning threshold matching CRAN's recommendation.</p></li>
-<li><p>Invalid or problematic URLs in package files.</p></li>
+<li><p><code>http://</code> URLs and URL shorteners, offline. <code>R CMD check --as-cran</code> does
+fetch every URL, but only with a network and only under <code>--as-cran</code>; this
+is the fast local pass.</p></li>
 <li><p>Presence of a <code>NEWS</code> file documenting user-facing changes.</p></li>
 <li><p>Relative links in the <code>README</code> that would break on CRAN.</p></li>
 </ul><p><code><a href="diagnose_cran_comments_file.html">diagnose_cran_comments_file()</a></code> is intentionally not part of this default
@@ -90,7 +98,7 @@ requirement; call it directly to opt in.</p>
 <span class="r-in"><span>                                      show_content <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">general_results</span> <span class="op">&lt;-</span> <span class="fu">diagnose_general_issues</span><span class="op">(</span><span class="va">pkg_path</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">general_results</span><span class="op">$</span><span class="va">package_size</span><span class="op">$</span><span class="va">size_mb</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.001089096</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.0006456375</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

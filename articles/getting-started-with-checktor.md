@@ -2,12 +2,22 @@
 
 ## The gap checktor fills
 
-`R CMD check` answers one question well: does this package build and
-run? It is silent on the question that actually decides your submission:
-will a CRAN volunteer, reading by hand, send it back? Those are
+`R CMD check` answers one question well, whether this package builds and
+runs. The question that actually decides your submission goes unasked.
+Will a CRAN volunteer, reading by hand, send it back? Those are
 different questions, and the space between them is where afternoons
-disappear. A title that isn’t in title case. A missing `\value{}` tag. A
-stray `T` where you meant `TRUE`.
+disappear. A missing `\value{}` tag. A
+[`set.seed()`](https://rdrr.io/r/base/Random.html) left inside a
+function. A Description that never grew past one line. Nothing in the
+standard toolchain says a word about any of them.
+
+![Seven failure modes against the three tools that might catch them. R
+CMD check alone catches undocumented arguments. lintr alone catches a
+line over 80 characters, which checktor does not check. Both catch a
+bare T, and R CMD check also flags a Title that is not in title case.
+The last three rows, a set.seed() left in a function, a one-line
+Description, and a missing \value{} tag, are caught only by
+checktor.](figures/coverage-light.svg)![](figures/coverage-dark.svg)
 
 `checktor` is the specialist your build refers you to before that
 appointment. It runs the extra-CRAN checks that live in the Repository
@@ -17,9 +27,9 @@ and a prescription.
 
 ## Installation
 
-`checktor` lives on GitHub for now; once it reaches CRAN you will be
-able to `install.packages("checktor")`. Until then, install the
-development version:
+For now, `checktor` lives on GitHub. Once it reaches CRAN you will be
+able to `install.packages("checktor")`, but until then you install the
+development version.
 
 ``` r
 
@@ -32,36 +42,87 @@ pak::pak("coatless-rpkg/checktor")
 [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md)
 examines a package directory. So we can watch it work without maiming
 your own package, we will point it at a throwaway package built around
-one deliberately bad file:
+one deliberately bad file.
 
 ``` r
 
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)
+```
 
+Here is the file it was built around, bad habits and all.
+
+``` r
+
+# Example file showing T/F usage issues
+
+#' Process Data Function
+#' @param data A data frame
+#' @return Logical indicating success
+process_data <- function(data) {
+  if (is.null(data)) {
+    return(F) # Issue: should be FALSE
+  }
+
+  has_complete_cases <- T # Issue: should be TRUE
+
+  if (has_complete_cases) {
+    cleaned_data <- data[complete.cases(data), ]
+    return(T) # Issue: should be TRUE
+  }
+
+  return(F) # Issue: should be FALSE
+}
+
+# Another function with T/F issues
+validate_input <- function(x, strict = T) {
+  # Issue: should be TRUE
+  if (length(x) == 0) {
+    return(F)
+  } # Issue: should be FALSE
+
+  valid <- all(is.numeric(x))
+  return(valid && strict == T) # Issue: should be TRUE
+}
+```
+
+> Left to itself,
+> [`example_diagnose_scenario()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/example_diagnose_scenario.md)
+> prints that file for you, because `show_content` defaults to `TRUE`.
+> We pass `FALSE` and render it above instead, so it arrives as
+> highlighted R rather than console output.
+
+Now the checkup itself.
+
+``` r
+
+# verbose and progress are off here, which keeps the printout compact
 results <- checktor(pkg, verbose = FALSE, progress = FALSE)
 results
 #> ── Package Doctor - Diagnosis Summary ──────────────────────────────────────────
 #> Patient: examplepackage
-#> Examined: 2026-07-11 17:21:39.534683
-#> Doctor version: 0.1.0
+#> Examined: 2026-07-16 05:44:14.130163
+#> Doctor version: 0.2.0
 #> 
 #> CODE ISSUES: 1 failing check
-#> DESCRIPTION ISSUES: 3 failing checks
+#> DESCRIPTION ISSUES: 1 failing check
 #> DOCUMENTATION ISSUES: HEALTHY
 #> GENERAL ISSUES: HEALTHY
 #> POLICY ISSUES: HEALTHY
 #> 
-#> ! Overall health: NEEDS ATTENTION (10 issues)
+#> ! Overall health: NEEDS ATTENTION (7 issues)
 #> Run `summary()`, `issues()`, or `prescribe()` for details
 ```
 
-That is the bedside summary: which of the five categories (code,
+That bedside summary names which of the five categories (code,
 DESCRIPTION, documentation, general, and CRAN policy) need attention,
-and an overall verdict. On your own package the call is just
-[`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md).
-For the full catalogue of what each category checks, see the [function
+and gives an overall verdict. For the full catalogue of what each
+category checks, see the [function
 reference](https://r-pkg.thecoatlessprofessor.com/checktor/reference/index.html).
+
+> **On your own package**, the call is simply
+> [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md).
+> Run from the package root, it examines everything in place.
 
 ## Reading the results as data
 
@@ -70,12 +131,18 @@ findings, filter them, count them, fold them into a report of your own,
 reach for the accessors. They return plain data frames, so you never
 spelunk through nested lists.
 
+![The one checktor_results object fans out into three plain data frames.
+summary() gives 5 rows, one per category. issues() gives 10 rows, one
+per issue, carrying the file and line. tidy() gives 46 rows, one per
+check, whether it passed or
+not.](figures/result-shapes-light.svg)![](figures/result-shapes-dark.svg)
+
 ``` r
 
 summary(results)   # one row per category
 #>        category checks passed failed issues
-#> 1          code     13     12      1      7
-#> 2   description     16     13      3      3
+#> 1          code     15     14      1      7
+#> 2   description     17     16      1      1
 #> 3 documentation      8      8      0      0
 #> 4       general      4      4      0      0
 #> 5        policy      4      4      0      0
@@ -84,39 +151,24 @@ summary(results)   # one row per category
 ``` r
 
 issues(results)    # one row per issue, with file and line
-#>       category              check           file line
-#> 1         code           tf_usage tf_usage_bad.R    8
-#> 2         code           tf_usage tf_usage_bad.R   11
-#> 3         code           tf_usage tf_usage_bad.R   15
-#> 4         code           tf_usage tf_usage_bad.R   18
-#> 5         code           tf_usage tf_usage_bad.R   22
-#> 6         code           tf_usage tf_usage_bad.R   23
-#> 7         code           tf_usage tf_usage_bad.R   26
-#> 8  description            license           <NA>   NA
-#> 9  description           cph_role           <NA>   NA
-#> 10 description description_length           <NA>   NA
-#>                                                           location
-#> 1                                                 tf_usage_bad.R:8
-#> 2                                                tf_usage_bad.R:11
-#> 3                                                tf_usage_bad.R:15
-#> 4                                                tf_usage_bad.R:18
-#> 5                                                tf_usage_bad.R:22
-#> 6                                                tf_usage_bad.R:23
-#> 7                                                tf_usage_bad.R:26
-#> 8  MIT/BSD license requires '+ file LICENSE' for copyright holders
-#> 9                Authors@R lacks any [cph] (copyright holder) role
-#> 10                    Description too short: 1 sentences, 18 words
-#>                     message
-#> 1           T/F usage check
-#> 2           T/F usage check
-#> 3           T/F usage check
-#> 4           T/F usage check
-#> 5           T/F usage check
-#> 6           T/F usage check
-#> 7           T/F usage check
-#> 8             License check
-#> 9            cph role check
-#> 10 Description length check
+#>      category    check   severity           file line
+#> 1        code tf_usage robustness tf_usage_bad.R    8
+#> 2        code tf_usage robustness tf_usage_bad.R   11
+#> 3        code tf_usage robustness tf_usage_bad.R   15
+#> 4        code tf_usage robustness tf_usage_bad.R   18
+#> 5        code tf_usage robustness tf_usage_bad.R   22
+#> 6        code tf_usage robustness tf_usage_bad.R   25
+#> 7        code tf_usage robustness tf_usage_bad.R   29
+#> 8 description cph_role    opinion           <NA>   NA
+#>                                            location         message
+#> 1                                  tf_usage_bad.R:8 T/F usage check
+#> 2                                 tf_usage_bad.R:11 T/F usage check
+#> 3                                 tf_usage_bad.R:15 T/F usage check
+#> 4                                 tf_usage_bad.R:18 T/F usage check
+#> 5                                 tf_usage_bad.R:22 T/F usage check
+#> 6                                 tf_usage_bad.R:25 T/F usage check
+#> 7                                 tf_usage_bad.R:29 T/F usage check
+#> 8 Authors@R lacks any [cph] (copyright holder) role  cph role check
 ```
 
 `tidy(results)` gives one row per check, passed or not, and
@@ -128,10 +180,9 @@ alias. Three predicates answer the yes/no questions directly:
 is_healthy(results)
 #> [1] FALSE
 n_issues(results)
-#> [1] 10
+#> [1] 7
 failed_checks(results)
-#> [1] "code.tf_usage"                  "description.license"           
-#> [3] "description.cph_role"           "description.description_length"
+#> [1] "code.tf_usage"        "description.cph_role"
 ```
 
 Each accessor also works on a single category, as in
@@ -150,20 +201,36 @@ checkup(pkg)
 #> [1] FALSE
 ```
 
-It is built to be the last word in a shell one-liner; the [checktor in
-Continuous
+Built to be the last word in a shell one-liner, it takes charge of a
+GitHub Actions build in the [checktor in Continuous
 Integration](https://r-pkg.thecoatlessprofessor.com/checktor/articles/checktor-in-ci.md)
-vignette puts it in charge of a GitHub Actions build.
+vignette.
 
 ## From diagnosis to treatment
 
 A diagnosis you cannot act on is just bad news.
 [`prescribe()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/prescribe.md)
-turns each finding into a concrete remedy:
+turns each finding into a concrete remedy, with the before and after
+spelled out.
 
 ``` r
 
 prescribe(results)
+#> ── Treatment Recommendations ───────────────────────────────────────────────────
+#> 
+#> ── T/F Usage Issues
+#> Treatment: Replace `T` with `TRUE` and `F` with `FALSE`
+#> # Before
+#> result <- T
+#> # After
+#> result <- TRUE
+#> 
+#> ── cph role check
+#> Issues found:
+#> • Authors@R lacks any [cph] (copyright holder) role
+#> Treatment: Review the detailed diagnosis above; re-run `checktor(verbose =
+#> TRUE)` for specifics.
+#> 
 ```
 
 [`health_report()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/health_report.md)
@@ -224,8 +291,8 @@ devtools::check()      # the standard checks
 `checktor` is a checkup, not a cure-all. It complements `R CMD check`
 and [`lintr`](https://lintr.r-lib.org) rather than replacing either, and
 it cannot replace your judgment about whether a package is worth
-submitting. What it does do is the one thing those tools do not: it
-remembers the hand-enforced CRAN rules so you do not have to. Run the
+submitting. What it does do is the one thing those tools do not,
+remembering the hand-enforced CRAN rules so you do not have to. Run the
 three together, treat the printed report as the conversation and the
 accessors as the data, and a reviewer should find nothing left to say.
 That is the entire point.

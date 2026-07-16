@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">checktor</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -26,6 +26,12 @@
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/coatless-rpkg/checktor/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-lightswitch" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-label="Light switch"><span class="fa fa-sun"></span></button>
+  <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdown-lightswitch"><li><button class="dropdown-item" data-bs-theme-value="light"><span class="fa fa-sun"></span> Light</button></li>
+    <li><button class="dropdown-item" data-bs-theme-value="dark"><span class="fa fa-moon"></span> Dark</button></li>
+    <li><button class="dropdown-item" data-bs-theme-value="auto"><span class="fa fa-adjust"></span> Auto</button></li>
+  </ul></li>
       </ul></div>
 
 
@@ -134,6 +140,90 @@
 
         </dt>
         <dd>Diagnose Print/Cat Usage in Functions</dd>
+
+        <dt>
+
+          <code><a href="diagnose_detect_cores_robustness.html">diagnose_detect_cores_robustness()</a></code>
+
+        </dt>
+        <dd>Diagnose Unguarded <code>detectCores()</code></dd>
+
+        <dt>
+
+          <code><a href="diagnose_option_changes.html">diagnose_option_changes()</a></code>
+
+        </dt>
+        <dd>Diagnose Unrestored Option Changes</dd>
+
+        <dt>
+
+          <code><a href="diagnose_home_writing.html">diagnose_home_writing()</a></code>
+
+        </dt>
+        <dd>Diagnose Writes to the User's Home Directory</dd>
+
+        <dt>
+
+          <code><a href="diagnose_temp_cleanup.html">diagnose_temp_cleanup()</a></code>
+
+        </dt>
+        <dd>Diagnose Missing Temp-File Cleanup</dd>
+
+        <dt>
+
+          <code><a href="diagnose_globalenv_modification.html">diagnose_globalenv_modification()</a></code>
+
+        </dt>
+        <dd>Diagnose Writes to the Global Environment</dd>
+
+        <dt>
+
+          <code><a href="diagnose_installed_packages_usage.html">diagnose_installed_packages_usage()</a></code>
+
+        </dt>
+        <dd>Diagnose installed.packages() Usage</dd>
+
+        <dt>
+
+          <code><a href="diagnose_warn_option.html">diagnose_warn_option()</a></code>
+
+        </dt>
+        <dd>Diagnose Changes to options(warn=)</dd>
+
+        <dt>
+
+          <code><a href="diagnose_software_installation.html">diagnose_software_installation()</a></code>
+
+        </dt>
+        <dd>Diagnose Package Installation From Package Code</dd>
+
+        <dt>
+
+          <code><a href="diagnose_core_usage.html">diagnose_core_usage()</a></code>
+
+        </dt>
+        <dd>Diagnose Parallel Core Usage</dd>
+
+        <dt>
+
+          <code><a href="diagnose_library_in_pkg_code.html">diagnose_library_in_pkg_code()</a></code>
+
+        </dt>
+        <dd>Diagnose library() in Package Code</dd>
+
+        <dt>
+
+          <code><a href="diagnose_sys_setenv_no_reset.html">diagnose_sys_setenv_no_reset()</a></code>
+
+        </dt>
+        <dd>Diagnose Unrestored Environment Variables</dd>
+
+        <dt>
+
+          <code><a href="diagnose_hardcoded_credentials.html">diagnose_hardcoded_credentials()</a></code>
+
+        </dt>
+        <dd>Diagnose Hardcoded Credentials in Package Code</dd>
       </dl></div><div class="section level2">
       <h2 id="description-field-diagnostics">DESCRIPTION-field diagnostics<a class="anchor" aria-label="anchor" href="#description-field-diagnostics"></a></h2>
 
@@ -150,6 +240,146 @@
 
         </dt>
         <dd>Diagnose DESCRIPTION File Issues</dd>
+
+        <dt>
+
+          <code><a href="diagnose_software_names_formatting.html">diagnose_software_names_formatting()</a></code>
+
+        </dt>
+        <dd>Diagnose Unquoted Software Names in DESCRIPTION</dd>
+
+        <dt>
+
+          <code><a href="diagnose_acronym_explanation.html">diagnose_acronym_explanation()</a></code>
+
+        </dt>
+        <dd>Diagnose Unexplained Acronyms in DESCRIPTION</dd>
+
+        <dt>
+
+          <code><a href="diagnose_license_formatting.html">diagnose_license_formatting()</a></code>
+
+        </dt>
+        <dd>Diagnose the License Field</dd>
+
+        <dt>
+
+          <code><a href="diagnose_license_year.html">diagnose_license_year()</a></code>
+
+        </dt>
+        <dd>Diagnose an Unfilled LICENSE Template</dd>
+
+        <dt>
+
+          <code><a href="diagnose_title_case.html">diagnose_title_case()</a></code>
+
+        </dt>
+        <dd>Diagnose Title Case in DESCRIPTION</dd>
+
+        <dt>
+
+          <code><a href="diagnose_title_length.html">diagnose_title_length()</a></code>
+
+        </dt>
+        <dd>Diagnose Title Length</dd>
+
+        <dt>
+
+          <code><a href="diagnose_title_starts_with_article.html">diagnose_title_starts_with_article()</a></code>
+
+        </dt>
+        <dd>Diagnose Title Starting With an Article</dd>
+
+        <dt>
+
+          <code><a href="diagnose_title_redundant_phrases.html">diagnose_title_redundant_phrases()</a></code>
+
+        </dt>
+        <dd>Diagnose Redundant Phrases in Title</dd>
+
+        <dt>
+
+          <code><a href="diagnose_description_function_quotes.html">diagnose_description_function_quotes()</a></code>
+
+        </dt>
+        <dd>Diagnose Single-Quoted Function Names</dd>
+
+        <dt>
+
+          <code><a href="diagnose_authors_field.html">diagnose_authors_field()</a></code>
+
+        </dt>
+        <dd>Diagnose the Authors@R Field</dd>
+
+        <dt>
+
+          <code><a href="diagnose_identifier_format.html">diagnose_identifier_format()</a></code>
+
+        </dt>
+        <dd>Diagnose Author Identifier Formatting</dd>
+
+        <dt>
+
+          <code><a href="diagnose_cph_role.html">diagnose_cph_role()</a></code>
+
+        </dt>
+        <dd>Diagnose a Missing Copyright-Holder Role</dd>
+
+        <dt>
+
+          <code><a href="diagnose_references_formatting.html">diagnose_references_formatting()</a></code>
+
+        </dt>
+        <dd>Diagnose Reference Formatting in DESCRIPTION</dd>
+
+        <dt>
+
+          <code><a href="diagnose_date_format.html">diagnose_date_format()</a></code>
+
+        </dt>
+        <dd>Diagnose the DESCRIPTION Date Field</dd>
+
+        <dt>
+
+          <code><a href="diagnose_encoding_utf8.html">diagnose_encoding_utf8()</a></code>
+
+        </dt>
+        <dd>Diagnose a Non-Portable DESCRIPTION Encoding</dd>
+
+        <dt>
+
+          <code><a href="diagnose_version_format.html">diagnose_version_format()</a></code>
+
+        </dt>
+        <dd>Diagnose the DESCRIPTION Version Field</dd>
+
+        <dt>
+
+          <code><a href="diagnose_description_length.html">diagnose_description_length()</a></code>
+
+        </dt>
+        <dd>Diagnose Description Length</dd>
+
+        <dt>
+
+          <code><a href="diagnose_description_starts_with.html">diagnose_description_starts_with()</a></code>
+
+        </dt>
+        <dd>Diagnose the Description Opening</dd>
+
+        <dt>
+
+          <code><a href="diagnose_description_quoted_quotes.html">diagnose_description_quoted_quotes()</a></code>
+
+        </dt>
+        <dd>Diagnose Double-Quoted Software Names</dd>
+
+        <dt>
+
+          <code><a href="diagnose_description_bare_r.html">diagnose_description_bare_r()</a></code>
+
+        </dt>
+        <dd>Diagnose a Bare R in DESCRIPTION</dd>
       </dl></div><div class="section level2">
       <h2 id="documentation-diagnostics">Documentation diagnostics<a class="anchor" aria-label="anchor" href="#documentation-diagnostics"></a></h2>
 
@@ -186,7 +416,7 @@
           <code><a href="diagnose_roxygen_usage.html">diagnose_roxygen_usage()</a></code>
 
         </dt>
-        <dd>Diagnose Roxygen2 Usage</dd>
+        <dd>Diagnose Stale Generated Documentation</dd>
 
         <dt>
 
@@ -194,6 +424,27 @@
 
         </dt>
         <dd>Diagnose Example Structure</dd>
+
+        <dt>
+
+          <code><a href="diagnose_unexported_example_namespace.html">diagnose_unexported_example_namespace()</a></code>
+
+        </dt>
+        <dd>Diagnose Bare Calls to Unexported Functions in Examples</dd>
+
+        <dt>
+
+          <code><a href="diagnose_commented_examples.html">diagnose_commented_examples()</a></code>
+
+        </dt>
+        <dd>Diagnose Examples That Run Nothing</dd>
+
+        <dt>
+
+          <code><a href="diagnose_donttest_vs_dontrun.html">diagnose_donttest_vs_dontrun()</a></code>
+
+        </dt>
+        <dd>Diagnose dontrun Where donttest Belongs</dd>
 
         <dt>
 
@@ -268,6 +519,34 @@
 
         </dt>
         <dd>Check for Common CRAN Policy Violations</dd>
+
+        <dt>
+
+          <code><a href="diagnose_browser_calls.html">diagnose_browser_calls()</a></code>
+
+        </dt>
+        <dd>Diagnose Leftover browser() Calls</dd>
+
+        <dt>
+
+          <code><a href="diagnose_system_calls.html">diagnose_system_calls()</a></code>
+
+        </dt>
+        <dd>Diagnose System Calls</dd>
+
+        <dt>
+
+          <code><a href="diagnose_file_operations.html">diagnose_file_operations()</a></code>
+
+        </dt>
+        <dd>Diagnose Writes to the User's Filespace</dd>
+
+        <dt>
+
+          <code><a href="diagnose_network_operations.html">diagnose_network_operations()</a></code>
+
+        </dt>
+        <dd>Diagnose Unguarded Network Access</dd>
       </dl></div><div class="section level2">
       <h2 id="result-classes">Result classes<a class="anchor" aria-label="anchor" href="#result-classes"></a></h2>
 
@@ -379,6 +658,85 @@
 
         </dt>
         <dd>Show Available Example Files</dd>
+      </dl></div><div class="section level2">
+      <h2 id="extending-checktor">Extending checktor<a class="anchor" aria-label="anchor" href="#extending-checktor"></a></h2>
+
+      <div class="section-desc"><p>Register a custom check with <code><a href="../reference/checktor.html">checktor()</a></code>, plus the AST toolkit the built-in checks use to inspect parsed sources and <code>.Rd</code> files.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="register_check.html">register_check()</a></code>
+
+        </dt>
+        <dd>Register a Custom Check with <code><a href="../reference/checktor.html">checktor()</a></code></dd>
+
+        <dt>
+
+          <code><a href="unregister_check.html">unregister_check()</a></code>
+
+        </dt>
+        <dd>Remove Registered Checks</dd>
+
+        <dt>
+
+          <code><a href="registered_checks.html">registered_checks()</a></code>
+
+        </dt>
+        <dd>List Registered Checks</dd>
+
+        <dt>
+
+          <code><a href="read_r_xml.html">read_r_xml()</a></code>
+
+        </dt>
+        <dd>Parse a Package's R Sources into Queryable XML</dd>
+
+        <dt>
+
+          <code><a href="xpath_lints.html">xpath_lints()</a></code>
+
+        </dt>
+        <dd>Collect XPath Matches as <code>file:line</code> Strings</dd>
+
+        <dt>
+
+          <code><a href="xpath_per_file.html">xpath_per_file()</a></code>
+
+        </dt>
+        <dd>Summarise XPath Matches per File</dd>
+
+        <dt>
+
+          <code><a href="undesirable_function_check.html">undesirable_function_check()</a></code>
+
+        </dt>
+        <dd>Flag Every Call to a Named Function</dd>
+
+        <dt>
+
+          <code><a href="not_under_fn_with_call_xpath.html">not_under_fn_with_call_xpath()</a></code>
+
+        </dt>
+        <dd>XPath Predicate: Not Guarded by a Sibling Call</dd>
+
+        <dt>
+
+          <code><a href="extract_rd_section.html">extract_rd_section()</a></code>
+
+        </dt>
+        <dd>Extract One Section from a Parsed <code>.Rd</code> File</dd>
+
+        <dt>
+
+          <code><a href="collect_rd_text.html">collect_rd_text()</a></code>
+
+        </dt>
+        <dd>Flatten a Parsed <code>.Rd</code> Node to Text</dd>
       </dl></div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>

@@ -50,14 +50,14 @@ pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 code_results <- diagnose_code_issues(pkg, verbose = FALSE)
 summary(code_results)   # per-category overview
 #>   checks passed failed issues
-#> 1     13     12      1      7
+#> 1     15     14      1      7
 issues(code_results)    # the issues found
-#>      check           file line          location         message
-#> 1 tf_usage tf_usage_bad.R    8  tf_usage_bad.R:8 T/F usage check
-#> 2 tf_usage tf_usage_bad.R   11 tf_usage_bad.R:11 T/F usage check
-#> 3 tf_usage tf_usage_bad.R   15 tf_usage_bad.R:15 T/F usage check
-#> 4 tf_usage tf_usage_bad.R   18 tf_usage_bad.R:18 T/F usage check
-#> 5 tf_usage tf_usage_bad.R   22 tf_usage_bad.R:22 T/F usage check
-#> 6 tf_usage tf_usage_bad.R   23 tf_usage_bad.R:23 T/F usage check
-#> 7 tf_usage tf_usage_bad.R   26 tf_usage_bad.R:26 T/F usage check
+#>      check   severity           file line          location         message
+#> 1 tf_usage robustness tf_usage_bad.R    8  tf_usage_bad.R:8 T/F usage check
+#> 2 tf_usage robustness tf_usage_bad.R   11 tf_usage_bad.R:11 T/F usage check
+#> 3 tf_usage robustness tf_usage_bad.R   15 tf_usage_bad.R:15 T/F usage check
+#> 4 tf_usage robustness tf_usage_bad.R   18 tf_usage_bad.R:18 T/F usage check
+#> 5 tf_usage robustness tf_usage_bad.R   22 tf_usage_bad.R:22 T/F usage check
+#> 6 tf_usage robustness tf_usage_bad.R   25 tf_usage_bad.R:25 T/F usage check
+#> 7 tf_usage robustness tf_usage_bad.R   29 tf_usage_bad.R:29 T/F usage check
 ```

@@ -36,8 +36,8 @@ pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 results <- checktor(pkg, verbose = FALSE, progress = FALSE)
 summary(results)
 #>        category checks passed failed issues
-#> 1          code     13     12      1      7
-#> 2   description     16     13      3      3
+#> 1          code     15     14      1      7
+#> 2   description     17     16      1      1
 #> 3 documentation      8      8      0      0
 #> 4       general      4      4      0      0
 #> 5        policy      4      4      0      0

@@ -15,7 +15,7 @@ checks use tools::parse_Rd() for the same reason."><meta name="twitter:card" con
 
     <a class="navbar-brand me-2" href="../index.html">checktor</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,12 @@ checks use tools::parse_Rd() for the same reason."><meta name="twitter:card" con
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/coatless-rpkg/checktor/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-lightswitch" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-label="Light switch"><span class="fa fa-sun"></span></button>
+  <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdown-lightswitch"><li><button class="dropdown-item" data-bs-theme-value="light"><span class="fa fa-sun"></span> Light</button></li>
+    <li><button class="dropdown-item" data-bs-theme-value="dark"><span class="fa fa-moon"></span> Dark</button></li>
+    <li><button class="dropdown-item" data-bs-theme-value="auto"><span class="fa fa-adjust"></span> Auto</button></li>
+  </ul></li>
       </ul></div>
 
 
@@ -91,10 +97,10 @@ vector summarizing pass/fail per check.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   checks passed failed issues</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1      4      3      1      3</span>
 <span class="r-in"><span><span class="fu"><a href="issues.html">issues</a></span><span class="op">(</span><span class="va">policy</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>           check                file line               location</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1 browser_calls browser_calls_bad.R    6  browser_calls_bad.R:6</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2 browser_calls browser_calls_bad.R   11 browser_calls_bad.R:11</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3 browser_calls browser_calls_bad.R   23 browser_calls_bad.R:23</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>           check severity                file line               location</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 browser_calls   policy browser_calls_bad.R    6  browser_calls_bad.R:6</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2 browser_calls   policy browser_calls_bad.R   11 browser_calls_bad.R:11</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 browser_calls   policy browser_calls_bad.R   23 browser_calls_bad.R:23</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>               message</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1 Browser calls check</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 2 Browser calls check</span>

@@ -11,7 +11,7 @@ Title are inspected in full, not just their first physical line."><meta name="tw
 
     <a class="navbar-brand me-2" href="../index.html">checktor</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -30,6 +30,12 @@ Title are inspected in full, not just their first physical line."><meta name="tw
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/coatless-rpkg/checktor/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-lightswitch" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-label="Light switch"><span class="fa fa-sun"></span></button>
+  <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdown-lightswitch"><li><button class="dropdown-item" data-bs-theme-value="light"><span class="fa fa-sun"></span> Light</button></li>
+    <li><button class="dropdown-item" data-bs-theme-value="dark"><span class="fa fa-moon"></span> Dark</button></li>
+    <li><button class="dropdown-item" data-bs-theme-value="auto"><span class="fa fa-adjust"></span> Auto</button></li>
+  </ul></li>
       </ul></div>
 
 
@@ -82,42 +88,30 @@ least <code>passed</code>, <code>issues</code>, and <code>message</code> (see <c
 <span class="r-in"><span>                                      show_content <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu">diagnose_description_issues</span><span class="op">(</span><span class="va">pkg_path</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="issues.html">issues</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span>     <span class="co"># description-field problems, if any</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                      check file line</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1           software_names &lt;NA&gt;   NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2                 acronyms &lt;NA&gt;   NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3                  license &lt;NA&gt;   NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4               title_case &lt;NA&gt;   NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5               title_case &lt;NA&gt;   NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6               title_case &lt;NA&gt;   NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7               title_case &lt;NA&gt;   NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 8                  authors &lt;NA&gt;   NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 9                 cph_role &lt;NA&gt;   NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 10      description_length &lt;NA&gt;   NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 11 description_starts_with &lt;NA&gt;   NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                                                       location</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1              Description: ggplot2 should be in single quotes</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2                                                           ML</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3  License declares '+ file LICENSE' but no LICENSE file found</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4                    First word should be capitalized: example</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5                          Word should be capitalized: package</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6                             Word should be capitalized: data</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7                         Word should be capitalized: analysis</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 8                                      Missing Authors@R field</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 9                                            Authors@R missing</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 10                Description too short: 2 sentences, 16 words</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 11    Description starts with forbidden phrase: 'This package'</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                          message</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1           Software names check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2                 Acronyms check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3                  License check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4               Title case check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5               Title case check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6               Title case check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7               Title case check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 8          Authors@R field check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 9                 cph role check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 10      Description length check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 11 Description starts-with check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                     check severity file line</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1          software_names   policy &lt;NA&gt;   NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2                acronyms  opinion &lt;NA&gt;   NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3                 license   policy &lt;NA&gt;   NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4              title_case   policy &lt;NA&gt;   NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5                 authors   policy &lt;NA&gt;   NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6                cph_role  opinion &lt;NA&gt;   NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7 description_starts_with   policy &lt;NA&gt;   NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                                                             location</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1                                    Description: ggplot2 should be in single quotes</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2                                                                                 ML</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3                               License points at a LICENSE file that does not exist</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4 Title is not in title case. R would write it as: Example Package for Data Analysis</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5                                                            Missing Authors@R field</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6                                                                  Authors@R missing</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7    Description should not start with "This package"; describe what it does instead</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                     message</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1      Software names check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2            Acronyms check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3             License check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4          Title case check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5     Authors@R field check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6            cph role check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7 Description opening check</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

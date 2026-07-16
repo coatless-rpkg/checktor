@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">checktor</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -26,6 +26,12 @@
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/coatless-rpkg/checktor/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-lightswitch" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-label="Light switch"><span class="fa fa-sun"></span></button>
+  <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdown-lightswitch"><li><button class="dropdown-item" data-bs-theme-value="light"><span class="fa fa-sun"></span> Light</button></li>
+    <li><button class="dropdown-item" data-bs-theme-value="dark"><span class="fa fa-moon"></span> Dark</button></li>
+    <li><button class="dropdown-item" data-bs-theme-value="auto"><span class="fa fa-adjust"></span> Auto</button></li>
+  </ul></li>
       </ul></div>
 
 
@@ -82,52 +88,55 @@ only), <code>check</code>, <code>passed</code>, <code>n_issues</code>, <code>mes
 <span class="r-in"><span>                                 show_content <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="checktor.html">checktor</a></span><span class="op">(</span><span class="va">pkg</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span>, progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         category                       check passed n_issues</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1           code                    tf_usage  FALSE        7</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2           code                seed_setting   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3           code             print_cat_usage   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4           code              option_changes   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5           code                home_writing   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6           code                temp_cleanup   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7           code               globalenv_mod   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 8           code          installed_packages   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 9           code                 warn_option   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 10          code            software_install   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 11          code                  core_usage   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 12          code              library_in_pkg   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 13          code                  sys_setenv   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 14   description              software_names   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 15   description                    acronyms   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 16   description                     license  FALSE        1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 17   description                  title_case   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 18   description                title_length   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 19   description   title_starts_with_article   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 20   description     title_redundant_phrases   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 21   description description_function_quotes   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 22   description                     authors   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 23   description                    cph_role  FALSE        1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 24   description                  references   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 25   description          description_length  FALSE        1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 26   description     description_starts_with   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 27   description          description_bare_r   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 28   description   description_quoted_quotes   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 29   description                license_year   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 30 documentation                  value_tags   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 31 documentation            missing_examples   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 32 documentation               roxygen_usage   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 33 documentation           example_structure   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 34 documentation          commented_examples   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 35 documentation       unexported_example_ns   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 36 documentation         donttest_vs_dontrun   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 37 documentation       suggested_in_examples   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 38       general                package_size   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 39       general                        urls   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 40       general                   news_file   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 41       general                readme_links   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 42        policy               browser_calls   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 43        policy                system_calls   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 44        policy             file_operations   TRUE        0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 45        policy          network_operations   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         category                     check   severity passed n_issues</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1           code                  tf_usage robustness  FALSE        7</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2           code              seed_setting     policy   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3           code           print_cat_usage     policy   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4           code            option_changes     policy   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5           code              home_writing     policy   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6           code              temp_cleanup    opinion   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7           code             globalenv_mod     policy   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8           code        installed_packages     policy   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9           code               warn_option     policy   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 10          code          software_install     policy   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 11          code                core_usage     policy   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 12          code            library_in_pkg robustness   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 13          code   detect_cores_robustness robustness   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 14          code                sys_setenv     policy   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 15          code     hardcoded_credentials robustness   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 16   description            software_names     policy   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 17   description                  acronyms    opinion   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 18   description                   license     policy   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 19   description                title_case     policy   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 20   description              title_length    opinion   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 21   description   title_redundant_phrases    opinion   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 22   description                   authors     policy   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 23   description         identifier_format     policy   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 24   description                  cph_role    opinion  FALSE        1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 25   description                references     policy   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 26   description               date_format     policy   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 27   description             encoding_utf8     policy   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 28   description            version_format     policy   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 29   description        description_length    opinion   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 30   description   description_starts_with     policy   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 31   description description_quoted_quotes     policy   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 32   description              license_year robustness   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 33 documentation                value_tags    opinion   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 34 documentation          missing_examples    opinion   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 35 documentation             roxygen_usage robustness   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 36 documentation         example_structure    opinion   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 37 documentation        commented_examples    opinion   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 38 documentation       donttest_vs_dontrun    opinion   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 39 documentation     unexported_example_ns robustness   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 40 documentation     suggested_in_examples     policy   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 41       general              package_size     policy   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 42       general                      urls    opinion   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 43       general                 news_file    opinion   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 44       general              readme_links robustness   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 45        policy             browser_calls     policy   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 46        policy              system_calls robustness   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 47        policy           file_operations     policy   TRUE        0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 48        policy        network_operations     policy   TRUE        0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                               message</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1                     T/F usage check</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 2                  Seed setting check</span>
@@ -141,39 +150,42 @@ only), <code>check</code>, <code>passed</code>, <code>n_issues</code>, <code>mes
 <span class="r-out co"><span class="r-pr">#&gt;</span> 10        Software installation check</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 11                   Core usage check</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 12        library() in pkg code check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 13             Sys.setenv reset check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 14               Software names check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 15                     Acronyms check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 16                      License check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 17                   Title case check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 18                 Title length check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 19    Title starts-with-article check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 20      Title redundant-phrases check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 21  Description function-quotes check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 13             detectCores() NA check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 14             Sys.setenv reset check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 15         Hardcoded credential check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 16               Software names check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 17                     Acronyms check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 18                      License check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 19                   Title case check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 20                 Title length check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 21      Title redundant-phrases check</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 22              Authors@R field check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 23                     cph role check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 24                   References check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 25           Description length check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 26      Description starts-with check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 27           Description bare-R check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 28    Description double-quotes check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 29                 License year check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 30                   Value tags check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 31             Missing examples check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 32                Roxygen usage check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 33            Example structure check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 34       Commented-out examples check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 35 Unexported example-namespace check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 36          donttest vs dontrun check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 37   Suggested-package examples check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 38                 Package size check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 39                         URLs check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 40                    NEWS file check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 41        README relative-links check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 42                Browser calls check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 43                 System calls check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 44              File operations check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 45           Network operations check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 23            Author identifier check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 24                     cph role check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 25                   References check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 26                   Date field check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 27               Encoding field check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 28                Version field check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 29           Description length check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 30          Description opening check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 31    Description double-quotes check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 32                 License file check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 33                   Value tags check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 34             Missing examples check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 35            Roxygen freshness check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 36            Example structure check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 37       Commented-out examples check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 38          donttest vs dontrun check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 39 Unexported example-namespace check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 40   Suggested-package examples check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 41                 Package size check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 42                         URLs check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 43                    NEWS file check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 44        README relative-links check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 45                Browser calls check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 46                 System calls check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 47              File operations check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 48           Network operations check</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

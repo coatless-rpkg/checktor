@@ -30,7 +30,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">checktor</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -55,6 +55,14 @@
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json">
 </form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/coatless-rpkg/checktor/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-lightswitch" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-label="Light switch"><span class="fa fa-sun"></span></button>
+  <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdown-lightswitch">
+<li><button class="dropdown-item" data-bs-theme-value="light"><span class="fa fa-sun"></span> Light</button></li>
+    <li><button class="dropdown-item" data-bs-theme-value="dark"><span class="fa fa-moon"></span> Dark</button></li>
+    <li><button class="dropdown-item" data-bs-theme-value="auto"><span class="fa fa-adjust"></span> Auto</button></li>
+  </ul>
+</li>
       </ul>
 </div>
 
@@ -78,16 +86,23 @@
 
 
 
-    <section class="level2"><h2 id="why-bother">Why bother<a class="anchor" aria-label="anchor" href="#why-bother"></a>
-</h2>
-<p>You already run <code>checktor</code> on your package. The trouble with running it by hand is that you do it when you remember to, which is not the same as every time it matters. A pipeline has no such lapses: it runs the check on every push, for every contributor, whether or not anyone remembered to.</p>
+    <style>
+.ct-fig{display:block;margin:1.5rem auto;max-width:100%;height:auto}
+.ct-dark{display:none}
+@media (prefers-color-scheme:dark){.ct-light{display:none}.ct-dark{display:block}}
+[data-bs-theme=light] .ct-light{display:block}
+[data-bs-theme=light] .ct-dark{display:none}
+[data-bs-theme=dark] .ct-light{display:none}
+[data-bs-theme=dark] .ct-dark{display:block}
+</style>
+<p>You already run <code>checktor</code> on your package. The trouble with running it by hand is that you do it when you remember to, which is not the same as every time it matters. A pipeline has no such lapses, running the check on every push, for every contributor, whether or not anyone remembered to.</p>
 <p>Moving the check into continuous integration (CI) turns a good habit into an unconditional one, in about as many lines of YAML as it takes to describe.</p>
-</section><section class="level2"><h2 id="the-one-function-ci-needs">The one function CI needs<a class="anchor" aria-label="anchor" href="#the-one-function-ci-needs"></a>
+<section class="level2"><h2 id="the-one-function-ci-needs">The one function CI needs<a class="anchor" aria-label="anchor" href="#the-one-function-ci-needs"></a>
 </h2>
 <p>Everything in this article rests on a single function. <code><a href="../reference/checkup.html">checkup()</a></code> runs the full diagnosis and collapses it to one verdict: <code>TRUE</code> if the package is clean, <code>FALSE</code> if anything wants attention.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># A throwaway package that (deliberately) uses T/F instead of TRUE/FALSE</span></span>
+<code class="sourceCode R"><span><span class="co"># A throwaway package that deliberately uses T/F instead of TRUE/FALSE</span></span>
 <span><span class="va">bad_pkg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/example_diagnose_scenario.html">example_diagnose_scenario</a></span><span class="op">(</span><span class="st">"code_examples/tf_usage_bad.R"</span>,</span>
 <span>                                     show_content <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span></span>
@@ -109,7 +124,7 @@
 <span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">checktor</span><span class="kw">:</span></span>
 <span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">runs-on</span><span class="kw">:</span><span class="at"> ubuntu-latest</span></span>
 <span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">steps</span><span class="kw">:</span></span>
-<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> actions/checkout@v4</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> actions/checkout@v7</span></span>
 <span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> r-lib/actions/setup-r@v2</span></span>
 <span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">with</span><span class="kw">:</span></span>
@@ -122,7 +137,10 @@
 <span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> Run extra-CRAN checks</span></span>
 <span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">run</span><span class="kw">:</span><span class="at"> if (!checktor::checkup()) quit(status = 1)</span></span>
 <span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">shell</span><span class="kw">:</span><span class="at"> Rscript {0}</span></span></code></pre></div>
-<p>The job checks out your package, installs <code>checktor</code>, and exits non-zero the moment <code><a href="../reference/checkup.html">checkup()</a></code> disagrees with you. (Once <code>checktor</code> is on CRAN, swap the <code>extra-packages:</code> line for <code>any::checktor</code>.)</p>
+<p>The job checks out your package, installs <code>checktor</code>, and exits non-zero the moment <code><a href="../reference/checkup.html">checkup()</a></code> disagrees with you.</p>
+<blockquote>
+<p><strong>Once <code>checktor</code> is on CRAN</strong>, swap the <code>extra-packages:</code> line for <code>any::checktor</code>, which needs no GitHub remote.</p>
+</blockquote>
 </section><section class="level2"><h2 id="failing-loudly-not-silently">Failing loudly, not silently<a class="anchor" aria-label="anchor" href="#failing-loudly-not-silently"></a>
 </h2>
 <p>A red X that says only “exit code 1” is a riddle, not a report. When a build fails, you want the diagnosis in the log, not a scavenger hunt. Run the full <code><a href="../reference/checktor.html">checktor()</a></code> once and print the report before you quit:</p>
@@ -130,10 +148,10 @@
 <code class="sourceCode R"><span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu">checktor</span><span class="fu">::</span><span class="fu"><a href="../reference/checktor.html">checktor</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu">checktor</span><span class="fu">::</span><span class="fu"><a href="../reference/predicates.html">is_healthy</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/writeLines.html" class="external-link">writeLines</a></span><span class="op">(</span><span class="fu">checktor</span><span class="fu">::</span><span class="fu"><a href="../reference/health_report.html">health_report</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/quit.html" class="external-link">quit</a></span><span class="op">(</span>status <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/writeLines.html" class="external-link">writeLines</a></span><span class="op">(</span><span class="fu">checktor</span><span class="fu">::</span><span class="fu"><a href="../reference/health_report.html">health_report</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span><span class="op">)</span>  <span class="co"># the diagnosis, in the log</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/quit.html" class="external-link">quit</a></span><span class="op">(</span>status <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>                              <span class="co"># then fail the build</span></span>
 <span><span class="op">}</span></span></code></pre></div>
-<p><code><a href="../reference/health_report.html">health_report()</a></code> returns the findings as Markdown, so the failing log reads like a chart at the foot of a hospital bed: what is wrong, and where. Point its <code>file =</code> argument at a path and you can just as easily upload the report as a build artifact for the squeamish who prefer not to read CI logs.</p>
+<p><code><a href="../reference/health_report.html">health_report()</a></code> returns the findings as Markdown, so the failing log reads like a chart at the foot of a hospital bed, showing what is wrong and where. Point its <code>file =</code> argument at a path and you can just as easily upload the report as a build artifact for the squeamish who prefer not to read CI logs.</p>
 </section><section class="level2"><h2 id="tuning-the-examination">Tuning the examination<a class="anchor" aria-label="anchor" href="#tuning-the-examination"></a>
 </h2>
 <p>CI is chatty by nature, so quiet the doctor down. <code><a href="../reference/configure_doctor.html">configure_doctor()</a></code> sets the verbosity and progress defaults once, at the top of a script, and every later call inherits them:</p>
@@ -150,6 +168,8 @@
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="co">#!/usr/bin/env bash</span></span>
 <span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">'if (!checktor::checkup()) quit(status = 1)'</span></span></code></pre></div>
 <p>Now a commit that would have embarrassed you on CRAN never leaves your laptop.</p>
+<p>It is the same call in both places, and the only thing that changes is how long you wait to hear about it.</p>
+<p><img src="figures/ci-gates-light.svg" class="ct-fig ct-light" alt="The same checkup() call at three latencies. In a .git/hooks/pre-commit hook on your laptop it answers in seconds. In GitHub Actions on the pull request it answers in minutes. If you skip both, the same finding reaches you from a CRAN reviewer weeks later."><img src="figures/ci-gates-dark.svg" class="ct-fig ct-dark" aria-hidden="true"></p>
 </section><section class="level2"><h2 id="the-takeaway">The takeaway<a class="anchor" aria-label="anchor" href="#the-takeaway"></a>
 </h2>
 <p>Wire <code><a href="../reference/checkup.html">checkup()</a></code> into CI once and the rules stop living in your head, where they were never safe anyway. The best submission is the one where the reviewer finds nothing to say, and the surest way there is to have already said it to yourself, automatically, on every push.</p>

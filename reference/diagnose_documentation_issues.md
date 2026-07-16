@@ -59,6 +59,6 @@ summary(doc_results)
 #>   checks passed failed issues
 #> 1      8      7      1      1
 issues(doc_results)
-#>        check file line             location          message
-#> 1 value_tags <NA>   NA missing_value_tag.Rd Value tags check
+#>        check severity file line             location          message
+#> 1 value_tags  opinion <NA>   NA missing_value_tag.Rd Value tags check
 ```

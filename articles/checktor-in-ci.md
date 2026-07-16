@@ -1,10 +1,8 @@
 # checktor in Continuous Integration
 
-## Why bother
-
 You already run `checktor` on your package. The trouble with running it
 by hand is that you do it when you remember to, which is not the same as
-every time it matters. A pipeline has no such lapses: it runs the check
+every time it matters. A pipeline has no such lapses, running the check
 on every push, for every contributor, whether or not anyone remembered
 to.
 
@@ -21,7 +19,7 @@ package is clean, `FALSE` if anything wants attention.
 
 ``` r
 
-# A throwaway package that (deliberately) uses T/F instead of TRUE/FALSE
+# A throwaway package that deliberately uses T/F instead of TRUE/FALSE
 bad_pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                      show_content = FALSE)
 
@@ -51,7 +49,7 @@ jobs:
   checktor:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: r-lib/actions/setup-r@v2
         with:
@@ -69,8 +67,10 @@ jobs:
 The job checks out your package, installs `checktor`, and exits non-zero
 the moment
 [`checkup()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checkup.md)
-disagrees with you. (Once `checktor` is on CRAN, swap the
-`extra-packages:` line for `any::checktor`.)
+disagrees with you.
+
+> **Once `checktor` is on CRAN**, swap the `extra-packages:` line for
+> `any::checktor`, which needs no GitHub remote.
 
 ## Failing loudly, not silently
 
@@ -85,16 +85,17 @@ once and print the report before you quit:
 results <- checktor::checktor()
 
 if (!checktor::is_healthy(results)) {
-  writeLines(checktor::health_report(results))
-  quit(status = 1)
+  writeLines(checktor::health_report(results))  # the diagnosis, in the log
+  quit(status = 1)                              # then fail the build
 }
 ```
 
 [`health_report()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/health_report.md)
 returns the findings as Markdown, so the failing log reads like a chart
-at the foot of a hospital bed: what is wrong, and where. Point its
-`file =` argument at a path and you can just as easily upload the report
-as a build artifact for the squeamish who prefer not to read CI logs.
+at the foot of a hospital bed, showing what is wrong and where. Point
+its `file =` argument at a path and you can just as easily upload the
+report as a build artifact for the squeamish who prefer not to read CI
+logs.
 
 ## Tuning the examination
 
@@ -131,6 +132,15 @@ Rscript -e 'if (!checktor::checkup()) quit(status = 1)'
 
 Now a commit that would have embarrassed you on CRAN never leaves your
 laptop.
+
+It is the same call in both places, and the only thing that changes is
+how long you wait to hear about it.
+
+![The same checkup() call at three latencies. In a .git/hooks/pre-commit
+hook on your laptop it answers in seconds. In GitHub Actions on the pull
+request it answers in minutes. If you skip both, the same finding
+reaches you from a CRAN reviewer weeks
+later.](figures/ci-gates-light.svg)![](figures/ci-gates-dark.svg)
 
 ## The takeaway
 

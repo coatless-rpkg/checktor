@@ -45,8 +45,9 @@ diagnose_print_cat_usage(pkg, verbose = FALSE)
 #> ✖ Print/cat usage check: FAILED
 #> Issues found:
 #> • print_cat_bad.R:6
+#> • print_cat_bad.R:9
 #> • print_cat_bad.R:14
 #> • print_cat_bad.R:21
 #> • print_cat_bad.R:24
-#> • print_cat_bad.R:26
+#> ... and 1 more
 ```

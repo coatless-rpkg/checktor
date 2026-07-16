@@ -29,11 +29,13 @@ objects plus a `passed` summary.
 
 This function checks:
 
-- Package size — measured against the files that would ship in the
+- Package size, measured against the files that would ship in the
   tarball (`.Rbuildignore` and standard scratch dirs are excluded), with
   a 5 MB warning threshold matching CRAN's recommendation.
 
-- Invalid or problematic URLs in package files.
+- `http://` URLs and URL shorteners, offline. `R CMD check --as-cran`
+  does fetch every URL, but only with a network and only under
+  `--as-cran`; this is the fast local pass.
 
 - Presence of a `NEWS` file documenting user-facing changes.
 
@@ -56,5 +58,5 @@ pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                       show_content = FALSE)
 general_results <- diagnose_general_issues(pkg_path, verbose = FALSE)
 general_results$package_size$size_mb
-#> [1] 0.001089096
+#> [1] 0.0006456375
 ```

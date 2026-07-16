@@ -11,7 +11,7 @@ examples to demonstrate diagnostic capabilities with known problematic code."><m
 
     <a class="navbar-brand me-2" href="../index.html">checktor</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -30,6 +30,12 @@ examples to demonstrate diagnostic capabilities with known problematic code."><m
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/coatless-rpkg/checktor/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-lightswitch" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-label="Light switch"><span class="fa fa-sun"></span></button>
+  <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdown-lightswitch"><li><button class="dropdown-item" data-bs-theme-value="light"><span class="fa fa-sun"></span> Light</button></li>
+    <li><button class="dropdown-item" data-bs-theme-value="dark"><span class="fa fa-moon"></span> Dark</button></li>
+    <li><button class="dropdown-item" data-bs-theme-value="auto"><span class="fa fa-adjust"></span> Auto</button></li>
+  </ul></li>
       </ul></div>
 
 
@@ -131,31 +137,31 @@ for running diagnostics, plus a basic <code>DESCRIPTION</code> file.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> #' @return Logical indicating success</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> process_data &lt;- function(data) {</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   if (is.null(data)) {</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     return(F)  # Issue: should be FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     return(F) # Issue: should be FALSE</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   }</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   has_complete_cases &lt;- T  # Issue: should be TRUE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   has_complete_cases &lt;- T # Issue: should be TRUE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   if (has_complete_cases) {</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     cleaned_data &lt;- data[complete.cases(data), ]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     return(T)  # Issue: should be TRUE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     return(T) # Issue: should be TRUE</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   }</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   return(F)  # Issue: should be FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   return(F) # Issue: should be FALSE</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> # Another function with T/F issues</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> validate_input &lt;- function(x, strict = T) {  # Issue: should be TRUE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   if (length(x) == 0) return(F)  # Issue: should be FALSE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> validate_input &lt;- function(x, strict = T) {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   # Issue: should be TRUE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   if (length(x) == 0) {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     return(F)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   } # Issue: should be FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   valid &lt;- all(is.numeric(x))</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   return(valid &amp;&amp; strict == T)  # Issue: should be TRUE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   return(valid &amp;&amp; strict == T) # Issue: should be TRUE</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> === End of example ===</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Temporary package created at: /tmp/RtmpRJ2xxA/checktor_example_20260711_172134_3069 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Example file copied to: /tmp/RtmpRJ2xxA/checktor_example_20260711_172134_3069/R/tf_usage_bad.R </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="diagnose_tf_usage.html">diagnose_tf_usage</a></span><span class="op">(</span><span class="va">pkg_path</span>, verbose <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #BB0000;">✖</span> Found `T`/`F` usage (should use `TRUE`/`FALSE`)</span>
@@ -166,39 +172,24 @@ for running diagnostics, plus a basic <code>DESCRIPTION</code> file.</p>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> • tf_usage_bad.R:22</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="font-style: italic;">... and 2 more</span></span>
 <span class="r-in"><span><span class="fu"><a href="issues.html">issues</a></span><span class="op">(</span><span class="fu"><a href="checktor.html">checktor</a></span><span class="op">(</span><span class="va">pkg_path</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span>, progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       category              check           file line</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1         code           tf_usage tf_usage_bad.R    8</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2         code           tf_usage tf_usage_bad.R   11</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3         code           tf_usage tf_usage_bad.R   15</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4         code           tf_usage tf_usage_bad.R   18</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5         code           tf_usage tf_usage_bad.R   22</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6         code           tf_usage tf_usage_bad.R   23</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7         code           tf_usage tf_usage_bad.R   26</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 8  description            license           &lt;NA&gt;   NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 9  description           cph_role           &lt;NA&gt;   NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 10 description description_length           &lt;NA&gt;   NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                                                           location</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1                                                 tf_usage_bad.R:8</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2                                                tf_usage_bad.R:11</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3                                                tf_usage_bad.R:15</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4                                                tf_usage_bad.R:18</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5                                                tf_usage_bad.R:22</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6                                                tf_usage_bad.R:23</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7                                                tf_usage_bad.R:26</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 8  MIT/BSD license requires '+ file LICENSE' for copyright holders</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 9                Authors@R lacks any [cph] (copyright holder) role</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 10                    Description too short: 1 sentences, 18 words</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                     message</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1           T/F usage check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2           T/F usage check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3           T/F usage check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4           T/F usage check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5           T/F usage check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6           T/F usage check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7           T/F usage check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 8             License check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 9            cph role check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 10 Description length check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      category    check   severity           file line</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1        code tf_usage robustness tf_usage_bad.R    8</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2        code tf_usage robustness tf_usage_bad.R   11</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3        code tf_usage robustness tf_usage_bad.R   15</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4        code tf_usage robustness tf_usage_bad.R   18</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5        code tf_usage robustness tf_usage_bad.R   22</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6        code tf_usage robustness tf_usage_bad.R   25</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7        code tf_usage robustness tf_usage_bad.R   29</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8 description cph_role    opinion           &lt;NA&gt;   NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                            location         message</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1                                  tf_usage_bad.R:8 T/F usage check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2                                 tf_usage_bad.R:11 T/F usage check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3                                 tf_usage_bad.R:15 T/F usage check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4                                 tf_usage_bad.R:18 T/F usage check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5                                 tf_usage_bad.R:22 T/F usage check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6                                 tf_usage_bad.R:25 T/F usage check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7                                 tf_usage_bad.R:29 T/F usage check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8 Authors@R lacks any [cph] (copyright holder) role  cph role check</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Create scenario without showing file content</span></span></span>
 <span class="r-in"><span><span class="va">pkg_path</span> <span class="op">&lt;-</span> <span class="fu">example_diagnose_scenario</span><span class="op">(</span><span class="st">"code_examples/seed_setting_bad.R"</span>,</span></span>
@@ -222,9 +213,6 @@ for running diagnostics, plus a basic <code>DESCRIPTION</code> file.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> === End of example ===</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Temporary package created at: /tmp/RtmpRJ2xxA/checktor_example_20260711_172134_5274 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Example file copied to: /tmp/RtmpRJ2xxA/checktor_example_20260711_172134_5274/DESCRIPTION </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span><span class="va">desc_result</span> <span class="op">&lt;-</span> <span class="fu"><a href="diagnose_description_issues.html">diagnose_description_issues</a></span><span class="op">(</span><span class="va">pkg_path</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> ── <span style="font-weight: bold;">DESCRIPTION File Health Check</span> ──</span>
@@ -233,27 +221,30 @@ for running diagnostics, plus a basic <code>DESCRIPTION</code> file.</p>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> • Description: ggplot2 should be in single quotes</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #BBBB00;">!</span> Potential unexplained acronyms: <span style="color: #0000BB;">"ML"</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="font-style: italic;">Treatment: Consider explaining these acronyms</span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #BBBB00;">!</span> License formatting issues</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> • License declares '+ file LICENSE' but no LICENSE file found</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #BBBB00;">!</span> Potential Title Case issues</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> • First word should be capitalized: example</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> • Word should be capitalized: package</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> • Word should be capitalized: data</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> • Word should be capitalized: analysis</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #BB0000;">✖</span> License field problems</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> • License points at a LICENSE file that does not exist</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="font-style: italic;">Treatment: Use a standardizable license, and add '+ file LICENSE' for MIT/BSD</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #BBBB00;">!</span> Title is not in title case</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> • Title is not in title case. R would write it as: Example Package for Data</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> Analysis</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="font-style: italic;">Treatment: Use the capitalisation tools::toTitleCase() proposes</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Title length is within the 65-character guideline</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Title does not start with an article</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Title is free of redundant phrases</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> No single-quoted function names in Title/Description</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #BBBB00;">!</span> No `Authors@R` field found</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="font-style: italic;">Legacy Author/Maintainer fields detected</span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="font-style: italic;">Treatment: Consider adding Authors@R field</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #BB0000;">✖</span> Problems in the author fields</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> • Missing Authors@R field</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="font-style: italic;">Treatment: Add Authors@R, replace any usethis template placeholder with the</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="font-style: italic;">real name and email, and give every person a name and role with one maintainer</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="font-style: italic;">(cre)</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Author identifiers are well formed</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> No references found in Description</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #BBBB00;">!</span> Description may be too short: <span style="color: #0000BB;">2</span> sentences, <span style="color: #0000BB;">16</span> words</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="font-style: italic;">Treatment: Consider expanding to 2+ sentences, 20+ words</span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #BBBB00;">!</span> Description starts with a CRAN-forbidden phrase</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> • Description starts with forbidden phrase: 'This package'</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="font-style: italic;">Treatment: Rephrase so Description leads with what the package does</span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Description quotes 'R' properly</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> <span style="color: #00BB00;">Date</span> field is absent or current</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> <span style="color: #00BB00;">Encoding</span> is portable or unset</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> <span style="color: #00BB00;">Version</span> is well formed</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Description length appears adequate</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #BBBB00;">!</span> Description opening needs work</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> • Description should not start with "This package"; describe what it does</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> instead</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="font-style: italic;">Treatment: Start with a capital letter and say what the package does</span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Manual cleanup when done</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/unlink.html" class="external-link">unlink</a></span><span class="op">(</span><span class="va">pkg_path</span>, recursive <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
@@ -267,33 +258,30 @@ for running diagnostics, plus a basic <code>DESCRIPTION</code> file.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> #' Debug Function</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> #' @param data Input data</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> debug_function &lt;- function(data) {</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   browser()  # Issue: debugging call left in code</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   browser() # Issue: debugging call left in code</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   processed &lt;- process_data(data)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   if (is.null(processed)) {</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     browser()  # Issue: another debugging call</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     browser() # Issue: another debugging call</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     stop("Processing failed")</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   }</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   return(processed)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> #' Analysis with Debug</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> analyze_with_debug &lt;- function(x) {</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   result &lt;- mean(x, na.rm = TRUE)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   if (is.na(result)) {</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     browser()  # Issue: debugging call for troubleshooting</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     browser() # Issue: debugging call for troubleshooting</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   }</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   return(result)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> === End of example ===</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Temporary package created at: /tmp/RtmpRJ2xxA/checktor_example_20260711_172134_7829 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Example file copied to: /tmp/RtmpRJ2xxA/checktor_example_20260711_172134_7829/R/browser_calls_bad.R </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span><span class="co"># Cleanup happens automatically when R session ends</span></span></span>
 </code></pre></div>

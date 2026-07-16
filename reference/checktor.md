@@ -13,7 +13,8 @@ rejections.
 checktor(
   path = ".",
   verbose = getOption("checktor.verbose", TRUE),
-  progress = getOption("checktor.progress", verbose)
+  progress = getOption("checktor.progress", verbose),
+  severity = getOption("checktor.severity", DEFAULT_SEVERITY)
 )
 ```
 
@@ -33,6 +34,26 @@ checktor(
 
   Logical. Whether to show progress bars during diagnostics. Defaults to
   `getOption("checktor.progress", verbose)`.
+
+- severity:
+
+  Character. Which severity tiers count toward the verdict: any of
+  `"policy"`, `"robustness"`, `"opinion"`. Defaults to
+  `getOption("checktor.severity", c("policy", "robustness"))`.
+
+  Every check still runs, and every finding stays in the result and
+  appears in
+  [`issues()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/issues.md)
+  with its tier. What this argument decides is which findings count
+  against a clean bill of health. `"policy"` is a citable CRAN
+  Repository Policy or Writing R Extensions violation. `"robustness"` is
+  a real defect that CRAN will nonetheless let you ship, such as a
+  `detectCores()` that may return `NA`. `"opinion"` is a convention with
+  no authority behind it.
+
+  The default therefore makes "0 issues" mean *nothing here will get you
+  rejected, and nothing here will crash a user*. Pass all three tiers to
+  hold yourself to the conventions as well.
 
 ## Value
 
@@ -71,6 +92,21 @@ issues found across all checks (e.g., 80 lines using `T`/`F` count as
 80, not 1). The `metadata$failed_checks` figure counts how many
 individual checks reported any issue at all.
 
+A package can configure checktor from `Config/checktor/*` fields in its
+own `DESCRIPTION` (comma-separated lists):
+
+- `Config/checktor/disable`: check names to skip entirely. A disabled
+  check does not run and is not counted anywhere in the results.
+
+- `Config/checktor/allow`: `check` to mute a whole check, or
+  `check:substring` to mute only findings whose text contains
+  `substring`. The check still runs; muted findings are dropped from the
+  results and tallied in `metadata$suppressed`, while a `disable`d check
+  is removed entirely and never counted there.
+
+- `Config/checktor/software_names`, `Config/checktor/acronyms`: names
+  appended to those checks' vocabularies.
+
 ## See also
 
 [`health_report()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/health_report.md)
@@ -91,58 +127,43 @@ results <- checktor(pkg, verbose = FALSE, progress = FALSE)
 results              # the diagnosis summary
 #> ── Package Doctor - Diagnosis Summary ──────────────────────────────────────────
 #> Patient: examplepackage
-#> Examined: 2026-07-11 17:21:30.725505
-#> Doctor version: 0.1.0
+#> Examined: 2026-07-16 05:43:57.343472
+#> Doctor version: 0.2.0
 #> 
 #> CODE ISSUES: 1 failing check
-#> DESCRIPTION ISSUES: 3 failing checks
+#> DESCRIPTION ISSUES: 1 failing check
 #> DOCUMENTATION ISSUES: HEALTHY
 #> GENERAL ISSUES: HEALTHY
 #> POLICY ISSUES: HEALTHY
 #> 
-#> ! Overall health: NEEDS ATTENTION (10 issues)
+#> ! Overall health: NEEDS ATTENTION (7 issues)
 #> Run `summary()`, `issues()`, or `prescribe()` for details
 summary(results)     # per-category overview
 #>        category checks passed failed issues
-#> 1          code     13     12      1      7
-#> 2   description     16     13      3      3
+#> 1          code     15     14      1      7
+#> 2   description     17     16      1      1
 #> 3 documentation      8      8      0      0
 #> 4       general      4      4      0      0
 #> 5        policy      4      4      0      0
 issues(results)      # every issue as a tidy data frame
-#>       category              check           file line
-#> 1         code           tf_usage tf_usage_bad.R    8
-#> 2         code           tf_usage tf_usage_bad.R   11
-#> 3         code           tf_usage tf_usage_bad.R   15
-#> 4         code           tf_usage tf_usage_bad.R   18
-#> 5         code           tf_usage tf_usage_bad.R   22
-#> 6         code           tf_usage tf_usage_bad.R   23
-#> 7         code           tf_usage tf_usage_bad.R   26
-#> 8  description            license           <NA>   NA
-#> 9  description           cph_role           <NA>   NA
-#> 10 description description_length           <NA>   NA
-#>                                                           location
-#> 1                                                 tf_usage_bad.R:8
-#> 2                                                tf_usage_bad.R:11
-#> 3                                                tf_usage_bad.R:15
-#> 4                                                tf_usage_bad.R:18
-#> 5                                                tf_usage_bad.R:22
-#> 6                                                tf_usage_bad.R:23
-#> 7                                                tf_usage_bad.R:26
-#> 8  MIT/BSD license requires '+ file LICENSE' for copyright holders
-#> 9                Authors@R lacks any [cph] (copyright holder) role
-#> 10                    Description too short: 1 sentences, 18 words
-#>                     message
-#> 1           T/F usage check
-#> 2           T/F usage check
-#> 3           T/F usage check
-#> 4           T/F usage check
-#> 5           T/F usage check
-#> 6           T/F usage check
-#> 7           T/F usage check
-#> 8             License check
-#> 9            cph role check
-#> 10 Description length check
+#>      category    check   severity           file line
+#> 1        code tf_usage robustness tf_usage_bad.R    8
+#> 2        code tf_usage robustness tf_usage_bad.R   11
+#> 3        code tf_usage robustness tf_usage_bad.R   15
+#> 4        code tf_usage robustness tf_usage_bad.R   18
+#> 5        code tf_usage robustness tf_usage_bad.R   22
+#> 6        code tf_usage robustness tf_usage_bad.R   25
+#> 7        code tf_usage robustness tf_usage_bad.R   29
+#> 8 description cph_role    opinion           <NA>   NA
+#>                                            location         message
+#> 1                                  tf_usage_bad.R:8 T/F usage check
+#> 2                                 tf_usage_bad.R:11 T/F usage check
+#> 3                                 tf_usage_bad.R:15 T/F usage check
+#> 4                                 tf_usage_bad.R:18 T/F usage check
+#> 5                                 tf_usage_bad.R:22 T/F usage check
+#> 6                                 tf_usage_bad.R:25 T/F usage check
+#> 7                                 tf_usage_bad.R:29 T/F usage check
+#> 8 Authors@R lacks any [cph] (copyright holder) role  cph role check
 is_healthy(results)  # FALSE
 #> [1] FALSE
 ```

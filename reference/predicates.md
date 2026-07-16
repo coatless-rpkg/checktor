@@ -83,6 +83,5 @@ results <- checktor(pkg, verbose = FALSE, progress = FALSE)
 is_healthy(results)
 #> [1] FALSE
 failed_checks(results)
-#> [1] "code.tf_usage"                  "description.license"           
-#> [3] "description.cph_role"           "description.description_length"
+#> [1] "code.tf_usage"        "description.cph_role"
 ```

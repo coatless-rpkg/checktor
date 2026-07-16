@@ -3,7 +3,7 @@
 Provides automated checks for common Comprehensive R Archive Network
 (CRAN) submission issues that are not caught by standard 'R CMD check'.
 Consolidates ad-hoc requirements that CRAN reviewers enforce but
-standard checks do not surface, helping 'R' package maintainers identify
+standard checks do not surface, helping R package maintainers identify
 and fix issues before submission to reduce rejection rates. Covers
 code-pattern issues, DESCRIPTION-field formatting, documentation
 problems, and general package structure concerns.

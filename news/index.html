@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">checktor</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -26,6 +26,12 @@
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/coatless-rpkg/checktor/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-lightswitch" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-label="Light switch"><span class="fa fa-sun"></span></button>
+  <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdown-lightswitch"><li><button class="dropdown-item" data-bs-theme-value="light"><span class="fa fa-sun"></span> Light</button></li>
+    <li><button class="dropdown-item" data-bs-theme-value="dark"><span class="fa fa-moon"></span> Dark</button></li>
+    <li><button class="dropdown-item" data-bs-theme-value="auto"><span class="fa fa-adjust"></span> Auto</button></li>
+  </ul></li>
       </ul></div>
 
 
@@ -39,6 +45,109 @@
     </div>
 
     <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.2.0" id="checktor-020">checktor 0.2.0<a class="anchor" aria-label="anchor" href="#checktor-020"></a></h2>
+<p>Every check now carries a severity tier, so a clean bill of health means something precise: your package is submission-ready, and nothing here will crash a user. New checks widen that ground, bringing part of CRAN’s incoming filter offline: the <code>Date</code>, <code>Encoding</code> and <code>Version</code> fields, <code>Authors@R</code> structure, ORCID and ROR identifiers, a <code>detectCores()</code> that can return <code>NA</code>, and a scan for a leaked credential. Many existing checks are sharper and quieter. Every diagnostic is now exported and callable on its own, and a package can tune checktor from <code>Config/checktor/*</code> fields in its own DESCRIPTION.</p>
+<div class="section level3">
+<h3 id="breaking-changes-0-2-0">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-0-2-0"></a></h3>
+<ul><li>
+<p><strong>Severity tiers.</strong> Every check carries one, and <code><a href="../reference/checktor.html">checktor()</a></code> gained a <code>severity</code> argument that says which tiers the verdict is about. It defaults to <code>c("policy", "robustness")</code>.</p>
+<ul><li>
+<code>policy</code> is a citable CRAN Repository Policy or Writing R Extensions violation.</li>
+<li>
+<code>robustness</code> is a real defect that CRAN will nonetheless let you ship, such as a <code>detectCores()</code> that may return <code>NA</code>.</li>
+<li>
+<code>opinion</code> is a convention with no authority behind it.</li>
+</ul><p>Every check still runs and every finding is still reported with its tier. What the tier decides is whether a finding counts against a clean bill of health, so <code>0 issues</code> now means <em>your package is submission-ready, and nothing here will crash a user</em>. <code><a href="../reference/checkup.html">checkup()</a></code> follows the same default, so a missing <code>NEWS.md</code> no longer fails a build. A check’s tier is where its authority sits, not how much we like it, which is why <code>value_tags</code> and <code>missing_examples</code> are <code>opinion</code>: no <code>R CMD check</code> equivalent exists for either.</p>
+</li>
+<li><p><strong>Every <code>diagnose_*</code> function is now exported.</strong> The old split was accidental: <code><a href="../reference/diagnose_tf_usage.html">diagnose_tf_usage()</a></code> was public while <code><a href="../reference/diagnose_option_changes.html">diagnose_option_changes()</a></code> was not. The DESCRIPTION checks took a pre-parsed <code>DESCRIPTION</code> as their first argument, which is not something a caller has; they now take <code>(path, verbose, desc = NULL)</code> like every other check.</p></li>
+<li><p><strong><code><a href="../reference/issues.html">issues()</a></code> and <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code> gained a <code>severity</code> column.</strong></p></li>
+<li>
+<p><strong>Three checks were dropped from the default run</strong> because no authority supports them. Each stays exported and callable for anyone who wants it.</p>
+<ul><li>
+<code>description_bare_r</code> demanded that every bare <code>R</code> in the <code>Description</code> be single-quoted. Writing R Extensions reserves single quotes for <em>other</em> packages and external software, and R is the host language. Across CRAN, about 92% of the packages that mention R in their <code>Description</code> write it bare, and packages first published in 2026 are no different.</li>
+<li>
+<code>title_starts_with_article</code> was a mis-transplant of CRAN’s real rule, which applies to the <code>Description</code> field and requires the literal word “package” after the article. <code>jsonlite</code> (“A Simple and Robust JSON Parser and Generator for R”) and <code>curl</code> (“A Modern and Flexible Web Client for R”) are both on CRAN.</li>
+<li>
+<code>description_function_quotes</code> asserted that single quotes are reserved for software names. Writing R Extensions says single quotes are for non-English usage <em>including</em> other packages: an inclusive list, so a quoted function name breaks no rule.</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="new-checks-0-2-0">New checks<a class="anchor" aria-label="anchor" href="#new-checks-0-2-0"></a></h3>
+<ul><li><p><code>detect_cores_robustness</code> flags a <code>detectCores()</code> result used without an <code>NA</code> guard. <code>?detectCores</code> says it plainly, <em>“An integer, <code>NA</code> if the answer is unknown”</em>, and <code>NA - 1</code> is <code>NA</code>, so the next comparison dies with <code>missing value where TRUE/FALSE needed</code>. <code>logitr</code> and <code>cbcTools</code> both ship this. The fix is <code>parallelly::availableCores()</code>, which never returns <code>NA</code>.</p></li>
+<li>
+<p>A family of new checks mirrors CRAN’s incoming filter, the run that happens under <code>R CMD check --as-cran</code> against a built tarball, so you see the same findings offline against your sources before you submit:</p>
+<ul><li>
+<code>date_format</code> flags a <code>Date</code> field that is not ISO 8601 <code>yyyy-mm-dd</code>, is over a month old, or lies in the future.</li>
+<li>
+<code>version_format</code> flags a <code>Version</code> component with a leading zero or a suspiciously large one (a calendar-year version is exempt).</li>
+<li>
+<code>encoding_utf8</code> flags a non-portable <code>Encoding</code>, one outside the <code>UTF-8</code>, <code>latin1</code> and <code>latin2</code> that Writing R Extensions names as portable.</li>
+<li>
+<code>identifier_format</code> validates the ORCID and ROR identifiers in <code>Authors@R</code>, ORCID against its checksum and ROR against its shape.</li>
+</ul></li>
+<li><p><code>hardcoded_credentials</code> scans string literals in <code>R/</code> for a leaked secret: tokens and keys from providers such as GitHub, AWS, Google, OpenAI, Anthropic and Stripe, plus PEM private keys and JSON Web Tokens, each keyed on its published prefix. <code>R CMD check</code> does not look for these, and a token published to CRAN is public and must be revoked. Only string literals are examined, so the same text in a comment never matches. See <code><a href="../reference/diagnose_hardcoded_credentials.html">?diagnose_hardcoded_credentials</a></code> for the full list.</p></li>
+</ul></div>
+<div class="section level3">
+<h3 id="configuration-and-extension-0-2-0">Configuration and extension<a class="anchor" aria-label="anchor" href="#configuration-and-extension-0-2-0"></a></h3>
+<ul><li><p>A package can now configure checktor from <code>Config/checktor/*</code> fields in its own DESCRIPTION. <code>disable</code> skips a check; <code>allow</code> mutes reviewed findings (a whole check, or <code>check:substring</code>), the escape hatch a green <code><a href="../reference/checkup.html">checkup()</a></code> gate needs; and <code>software_names</code> and <code>acronyms</code> extend those checks’ vocabularies. A package with no such fields is unaffected.</p></li>
+<li><p><code><a href="../reference/register_check.html">register_check()</a></code> adds a custom diagnostic to every <code><a href="../reference/checktor.html">checktor()</a></code> run without editing checktor’s source. You give it a name, a function returning a <code><a href="../reference/checktor_check_result.html">checktor_check_result()</a></code>, a category, and a severity tier; the check then runs alongside the built-ins, appears in <code><a href="../reference/issues.html">issues()</a></code> and <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code>, and counts toward the verdict at its tier. <code><a href="../reference/unregister_check.html">unregister_check()</a></code> and <code><a href="../reference/registered_checks.html">registered_checks()</a></code> manage the registry.</p></li>
+<li><p>The AST toolkit the built-in checks use is now exported, so a registered check has the same tools: <code><a href="../reference/read_r_xml.html">read_r_xml()</a></code>, <code><a href="../reference/xpath_lints.html">xpath_lints()</a></code>, <code><a href="../reference/xpath_per_file.html">xpath_per_file()</a></code>, <code><a href="../reference/undesirable_function_check.html">undesirable_function_check()</a></code>, <code><a href="../reference/not_under_fn_with_call_xpath.html">not_under_fn_with_call_xpath()</a></code>, and the <code>.Rd</code> walkers <code><a href="../reference/extract_rd_section.html">extract_rd_section()</a></code> and <code><a href="../reference/collect_rd_text.html">collect_rd_text()</a></code>. The <em>Writing Your Own Checks</em> vignette walks through building and registering one.</p></li>
+</ul></div>
+<div class="section level3">
+<h3 id="checks-improved-0-2-0">Checks improved<a class="anchor" aria-label="anchor" href="#checks-improved-0-2-0"></a></h3>
+<p>Several checks are now substantially more accurate, and a few delegate to R’s own engines instead of reimplementing them.</p>
+<ul><li><p><code>home_writing</code> now flags a write whose destination resolves to the user’s home, such as <code>writeLines(x, "~/leaked.txt")</code> or <code>saveRDS(x, "~/.cache/x.rds")</code>. It previously looked only at reads like <code>Sys.getenv("HOME")</code>, so the writes that matter slipped past.</p></li>
+<li><p><code>globalenv_mod</code> now flags a <code>&lt;&lt;-</code> only when its target genuinely reaches <code>.GlobalEnv</code>, that is, binds in neither an enclosing function nor the package. The two correct idioms, a closure updating its parent frame and the package-level cache (<code>.cache &lt;&lt;- ...</code>), come out clean.</p></li>
+<li><p><code>core_usage</code> now inspects the worker count itself and understands <strong>parallel</strong>, <strong>snow</strong>, <strong>foreach</strong>, <strong>future</strong>, <strong>furrr</strong>, <strong>mirai</strong>, <strong>RcppParallel</strong>, <strong>data.table</strong> and <strong>BiocParallel</strong>. It no longer keys off an <code>mc.cores</code> argument (which belongs to <code>mclapply()</code> alone), so <code>detectCores()</code> and a compliant <code>makeCluster(2L)</code> are no longer flagged.</p></li>
+<li><p><code>roxygen_usage</code> now detects roxygen that never reached <code>NAMESPACE</code>, a function tagged <code>@export</code> that is not exported, which is the real cost of a forgotten <code>devtools::document()</code> and which <code>R CMD check</code> cannot see. It reads <code>NAMESPACE</code> rather than file timestamps, so it behaves the same in CI, where <code>git</code> does not preserve mtimes.</p></li>
+<li><p><code>license_year</code> now flags a genuinely unfilled <code>LICENSE</code> template (<code>&lt;YEAR&gt;</code> / <code>&lt;COPYRIGHT HOLDER&gt;</code>), the thing CRAN asks you to complete, rather than a valid but non-current year.</p></li>
+<li><p><code>authors</code> now catches an unfilled <code>usethis</code> template, such as <code>person("First", "Last", , "you@example.com", ...)</code>, which <code>R CMD check</code> passes because the field is present but a CRAN reviewer sends back. It also validates the field’s structure: a person with no name, a person with no role, an <code>Authors@R</code> that does not parse, or no maintainer (<code>cre</code>).</p></li>
+<li><p><code>value_tags</code>, <code>title_case</code> and <code>license</code> now delegate to R’s own engines (<code><a href="https://rdrr.io/r/tools/QC.html" class="external-link">tools::checkRdContents()</a></code>, <code><a href="https://rdrr.io/r/tools/toTitleCase.html" class="external-link">tools::toTitleCase()</a></code>, <code><a href="https://rdrr.io/r/tools/licensetools.html" class="external-link">tools::analyze_license()</a></code>), so they match R’s own behaviour, for instance <code>title_case</code> handles quoted package names and punctuation the way R does. <code>license</code> also flags a bare <code>MIT</code>, which needs <code>MIT + file LICENSE</code> pointing at a file that exists.</p></li>
+<li><p><code>print_cat_usage</code> now flags unsuppressable console output only from a function that also returns a value, and treats a verbosity gate as the guard rather than any enclosing <code>if</code>/<code>for</code>/<code>while</code>.</p></li>
+</ul></div>
+<div class="section level3">
+<h3 id="understands-more-of-r-0-2-0">Understands more of R<a class="anchor" aria-label="anchor" href="#understands-more-of-r-0-2-0"></a></h3>
+<p>checktor reads far more of the ways R is actually written, so a clean run reflects the code you wrote.</p>
+<p><strong>It now understands more ways of writing R.</strong></p>
+<ul><li><p><code>NAMESPACE</code> is parsed with R’s own <code><a href="https://rdrr.io/r/base/ns-internal.html" class="external-link">base::parseNamespaceFile()</a></code>, so a multi-line <code>export()</code> block, an <code>exportPattern()</code>, and a method under a quoted non-syntactic generic (<code>S3method("[", foo)</code>) all read correctly. Every “is this exported?” check now sees <code>digest</code>’s nine exports, not one.</p></li>
+<li><p>An <code>=</code> assignment is read as an assignment, and a classic <code>"print.foo" &lt;- function(x)</code> definition, whose name parses as a <code>STR_CONST</code>, is visible to every name-based exemption. <code>geoR</code> writes 201 of its 208 functions that way.</p></li>
+<li><p>An S4 <code>setMethod("show", ...)</code> is an output method where <code><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat()</a></code> is the required idiom, <code>app$cat(...)</code> is a method call rather than <code><a href="https://rdrr.io/r/base/cat.html" class="external-link">base::cat</a></code>, and a verbosity flag named <code>messages</code> counts as a gate.</p></li>
+<li><p>A <code>&lt;&lt;-</code> inside <code><a href="https://rdrr.io/r/base/eval.html" class="external-link">local()</a></code>, <code>setRefClass()</code> or <code>R6Class()</code> binds in that scope rather than <code>.GlobalEnv</code>, a call in a default argument is scoped to that argument rather than the function body (preserving the <code><a href="https://rdrr.io/r/base/on.exit.html" class="external-link">on.exit()</a></code> that <code>option_changes</code>, <code>temp_cleanup</code> and <code>sys_setenv</code> rely on), and only the R chunks of a vignette are parsed, so its prose stays prose.</p></li>
+</ul><p><strong>It now tells a read from a write, and a package’s own state from the user’s.</strong></p>
+<ul><li><p><code><a href="https://rdrr.io/r/base/options.html" class="external-link">options()</a></code> and <code><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par()</a></code> both read and write, and only a named argument makes the call a write, so <code>par("usr")[3]</code> and <code>withr</code>’s own <code>reset_options()</code> stay clean.</p></li>
+<li><p>A package’s own namespaced option (<code>options(datatable.verbose = ...)</code>) is its own state, and a <code><a href="https://rdrr.io/r/base/getwd.html" class="external-link">setwd()</a></code> or <code><a href="https://rdrr.io/r/base/options.html" class="external-link">options()</a></code> inside a <code>callr</code> subprocess cannot reach the calling session.</p></li>
+<li><p><code>file_operations</code> proves where a write lands: <code>writeLines(x, "out.csv")</code> is flagged, <code>writeLines(x, out_file)</code> is trusted to the caller who passed the path, and a formal that defaults into <code>~</code> is still caught.</p></li>
+<li><p><code>package_size</code> measures the gzipped tarball CRAN actually limits: <code>billboarder</code> is 6.3 MB on disk and 2.93 MB packed.</p></li>
+<li><p>A <code><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.setenv()</a></code> setter that captures the prior state and hands it back (<code>old &lt;- get_path(); Sys.setenv(...); invisible(old)</code>) honours the same restore contract <code>option_changes</code> already follows. <code>withr</code>’s own path and env-var setters are shaped that way.</p></li>
+</ul><p><strong>It now recognises the guards CRAN sanctions.</strong></p>
+<ul><li><p><code>if (require("pkgB"))</code> and roxygen’s <code>@examplesIf</code> both count as the conditional-Suggests guard in an example; <code><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive()</a></code> does not, because it does not make the package available. A <code><a href="https://rdrr.io/r/base/system.html" class="external-link">system()</a></code> call inside an OS branch is the platform check the fix asks for, and an <code><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages()</a></code> behind a consent prompt is consent.</p></li>
+<li><p><code>set.seed(123)</code> inside <code>if (FALSE)</code> cannot reach the RNG, and <code>T</code>/<code>F</code> inside <code><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote()</a></code>, <code><a href="https://rdrr.io/r/base/expression.html" class="external-link">expression()</a></code> or <code><a href="https://rdrr.io/r/base/substitute.html" class="external-link">substitute()</a></code> are language tokens rather than logicals.</p></li>
+<li><p><code>commented_examples</code> fires only when an entire <code>\examples{}</code> block is commented out, <code>example_structure</code> accepts a database, prompt or Shiny reactive context as justifying <code>\dontrun{}</code>, and <code>library_in_pkg</code> exempts code sent to a parallel worker, whose search path starts empty.</p></li>
+<li><p><code>software_names</code> flags only R-package and software-product names, which CRAN consistently requires quoted (<code>ggplot2</code> is quoted in 96% of the Descriptions that mention it). Programming languages and markup (<code>Python</code>, <code>Java</code>, <code>SQL</code>, <code>HTML</code>) are quoted only 20-57% of the time across CRAN, a coin flip rather than a convention, so they were dropped.</p></li>
+<li><p>Smaller sharpenings: <code>description_quoted_quotes</code> flags only a recognised software name rather than scare-quoted jargon, <code>description_length</code> counts words, <code>description_starts_with</code> gained its initial-capital rule, <code>acronyms</code> no longer flags <code>CMD</code>, and <code>urls</code> names the offending URL while skipping fenced code and <code>\verb{}</code> spans.</p></li>
+</ul></div>
+<div class="section level3">
+<h3 id="bug-fixes-0-2-0">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-2-0"></a></h3>
+<ul><li><p><code>package_size</code> now honours a bare directory entry in <code>.Rbuildignore</code>, such as the <code>^docs$</code> a pkgdown package uses. R CMD build excludes a matched directory’s whole subtree, so an untracked <code>docs/</code> or <code>.quarto</code> cache never reaches the tarball. <code>package_size</code> matched only leaf paths, so it counted those trees and could report a package many times its real tarball size. It now tests each file’s ancestor directories too, case-insensitively, as R does.</p></li>
+<li><p><code>mean(x, na.rm = T)</code>, the most common bare <code>T</code> in R, is now reported. An argument name parses as <code>SYMBOL_SUB</code> rather than <code>SYMBOL</code>, so a guard meant to skip <code>f(T = 1)</code> was inadvertently skipping the argument <em>value</em> too.</p></li>
+<li><p><code><a href="../reference/prescribe.html">prescribe()</a></code> now surfaces every failed check. It previously walked only the curated treatment list, so a check could fail and <code><a href="../reference/prescribe.html">prescribe()</a></code> would say nothing (<a href="https://github.com/coatless-rpkg/checktor/issues/4" class="external-link">#4</a>, thanks <a href="https://github.com/january3" class="external-link">@january3</a>).</p></li>
+<li><p><code><a href="../reference/prescribe.html">prescribe()</a></code> no longer prints raw <code>cli</code> markup. Treatment strings carry inline markup such as <code>{.code TRUE}</code>, and it reached <code>cli</code> as an interpolated value rather than as part of the format string.</p></li>
+<li><p><code><a href="../reference/diagnose_print_cat_usage.html">diagnose_print_cat_usage()</a></code> no longer flags <code><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat()</a></code> inside S3 <code>print.*</code> and <code>format.*</code> methods, where it is the required idiom. Base R’s own <code><a href="https://rdrr.io/r/base/print.default.html" class="external-link">print.default()</a></code> uses it (<a href="https://github.com/coatless-rpkg/checktor/issues/6" class="external-link">#6</a>, thanks <a href="https://github.com/jhelvy" class="external-link">@jhelvy</a>).</p></li>
+<li><p>The <code>acronyms</code> check treats <code>principal component analysis (PCA)</code> and <code>PCA (principal component analysis)</code> alike as explained, and detects a line-wrapped gloss (<a href="https://github.com/coatless-rpkg/checktor/issues/5" class="external-link">#5</a>, thanks <a href="https://github.com/january3" class="external-link">@january3</a>).</p></li>
+<li><p><code><a href="../reference/example_diagnose_scenario.html">example_diagnose_scenario()</a></code> no longer prints the temporary package path, keeping machine-specific paths out of help pages.</p></li>
+</ul></div>
+<div class="section level3">
+<h3 id="documentation-and-website-0-2-0">Documentation and website<a class="anchor" aria-label="anchor" href="#documentation-and-website-0-2-0"></a></h3>
+<ul><li><p>The three vignettes gained figures: a coverage map of what <code>R CMD check</code>, <code>lintr</code> and <code>checktor</code> each catch; the three data frames the accessors return; <code><a href="../reference/checkup.html">checkup()</a></code> running at three latencies in CI; and, for “Writing Your Own Checks”, the road from source to finding and the XPath axes around a <code>SYMBOL_FUNCTION_CALL</code> anchor.</p></li>
+<li><p>Corrected two claims in “Getting Started”: <code>R CMD check</code> <em>does</em> flag a <code>Title</code> that is not in title case, and <code>lintr</code> <em>does</em> flag a bare <code>T</code>, so neither belongs in the list of things only checktor catches.</p></li>
+<li><p>The pkgdown site picked up a theme drawn from the package logo, with a light and dark toggle in the navbar.</p></li>
+</ul></div>
+<div class="section level3">
+<h3 id="continuous-integration-0-2-0">Continuous integration<a class="anchor" aria-label="anchor" href="#continuous-integration-0-2-0"></a></h3>
+<ul><li>Bumped <code>actions/checkout</code> to v7 and <code>JamesIves/github-pages-deploy-action</code> to v4.8.0, and added <code>quarto-dev/quarto-actions/setup</code> so the Quarto vignette engine builds against a pinned Quarto.</li>
+</ul></div>
+</div>
+    <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.0" id="checktor-010">checktor 0.1.0<a class="anchor" aria-label="anchor" href="#checktor-010"></a></h2><p class="text-muted">CRAN release: 2026-07-02</p>
 <ul><li>Initial release.</li>
 <li>Adds [<code><a href="../reference/checktor.html">checktor()</a></code>] as the top-level orchestrator, running five categories of diagnostics (code, DESCRIPTION, documentation, general, CRAN policy) against an R package directory.</li>
@@ -51,7 +160,8 @@
 <li>Documentation: flags exported functions whose <code>.Rd</code> lacks an <code>\examples</code> section (<code><a href="../reference/diagnose_missing_examples.html">diagnose_missing_examples()</a></code>) and examples that use a Suggested package without a <code><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace()</a></code> / <code>@examplesIf</code> guard (<code><a href="../reference/diagnose_suggested_in_examples.html">diagnose_suggested_in_examples()</a></code>).</li>
 </ul></li>
 </ul></div>
-  </main></div>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">

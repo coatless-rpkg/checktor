@@ -94,31 +94,31 @@ pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R")
 #> #' @return Logical indicating success
 #> process_data <- function(data) {
 #>   if (is.null(data)) {
-#>     return(F)  # Issue: should be FALSE
+#>     return(F) # Issue: should be FALSE
 #>   }
-#>   
-#>   has_complete_cases <- T  # Issue: should be TRUE
-#>   
+#> 
+#>   has_complete_cases <- T # Issue: should be TRUE
+#> 
 #>   if (has_complete_cases) {
 #>     cleaned_data <- data[complete.cases(data), ]
-#>     return(T)  # Issue: should be TRUE
+#>     return(T) # Issue: should be TRUE
 #>   }
-#>   
-#>   return(F)  # Issue: should be FALSE
+#> 
+#>   return(F) # Issue: should be FALSE
 #> }
 #> 
 #> # Another function with T/F issues
-#> validate_input <- function(x, strict = T) {  # Issue: should be TRUE
-#>   if (length(x) == 0) return(F)  # Issue: should be FALSE
-#>   
+#> validate_input <- function(x, strict = T) {
+#>   # Issue: should be TRUE
+#>   if (length(x) == 0) {
+#>     return(F)
+#>   } # Issue: should be FALSE
+#> 
 #>   valid <- all(is.numeric(x))
-#>   return(valid && strict == T)  # Issue: should be TRUE
+#>   return(valid && strict == T) # Issue: should be TRUE
 #> }
 #> 
 #> === End of example ===
-#> 
-#> Temporary package created at: /tmp/RtmpRJ2xxA/checktor_example_20260711_172134_3069 
-#> Example file copied to: /tmp/RtmpRJ2xxA/checktor_example_20260711_172134_3069/R/tf_usage_bad.R 
 #> 
 result <- diagnose_tf_usage(pkg_path, verbose = TRUE)
 #> ✖ Found `T`/`F` usage (should use `TRUE`/`FALSE`)
@@ -129,39 +129,24 @@ result <- diagnose_tf_usage(pkg_path, verbose = TRUE)
 #> • tf_usage_bad.R:22
 #> ... and 2 more
 issues(checktor(pkg_path, verbose = FALSE, progress = FALSE))
-#>       category              check           file line
-#> 1         code           tf_usage tf_usage_bad.R    8
-#> 2         code           tf_usage tf_usage_bad.R   11
-#> 3         code           tf_usage tf_usage_bad.R   15
-#> 4         code           tf_usage tf_usage_bad.R   18
-#> 5         code           tf_usage tf_usage_bad.R   22
-#> 6         code           tf_usage tf_usage_bad.R   23
-#> 7         code           tf_usage tf_usage_bad.R   26
-#> 8  description            license           <NA>   NA
-#> 9  description           cph_role           <NA>   NA
-#> 10 description description_length           <NA>   NA
-#>                                                           location
-#> 1                                                 tf_usage_bad.R:8
-#> 2                                                tf_usage_bad.R:11
-#> 3                                                tf_usage_bad.R:15
-#> 4                                                tf_usage_bad.R:18
-#> 5                                                tf_usage_bad.R:22
-#> 6                                                tf_usage_bad.R:23
-#> 7                                                tf_usage_bad.R:26
-#> 8  MIT/BSD license requires '+ file LICENSE' for copyright holders
-#> 9                Authors@R lacks any [cph] (copyright holder) role
-#> 10                    Description too short: 1 sentences, 18 words
-#>                     message
-#> 1           T/F usage check
-#> 2           T/F usage check
-#> 3           T/F usage check
-#> 4           T/F usage check
-#> 5           T/F usage check
-#> 6           T/F usage check
-#> 7           T/F usage check
-#> 8             License check
-#> 9            cph role check
-#> 10 Description length check
+#>      category    check   severity           file line
+#> 1        code tf_usage robustness tf_usage_bad.R    8
+#> 2        code tf_usage robustness tf_usage_bad.R   11
+#> 3        code tf_usage robustness tf_usage_bad.R   15
+#> 4        code tf_usage robustness tf_usage_bad.R   18
+#> 5        code tf_usage robustness tf_usage_bad.R   22
+#> 6        code tf_usage robustness tf_usage_bad.R   25
+#> 7        code tf_usage robustness tf_usage_bad.R   29
+#> 8 description cph_role    opinion           <NA>   NA
+#>                                            location         message
+#> 1                                  tf_usage_bad.R:8 T/F usage check
+#> 2                                 tf_usage_bad.R:11 T/F usage check
+#> 3                                 tf_usage_bad.R:15 T/F usage check
+#> 4                                 tf_usage_bad.R:18 T/F usage check
+#> 5                                 tf_usage_bad.R:22 T/F usage check
+#> 6                                 tf_usage_bad.R:25 T/F usage check
+#> 7                                 tf_usage_bad.R:29 T/F usage check
+#> 8 Authors@R lacks any [cph] (copyright holder) role  cph role check
 
 # Create scenario without showing file content
 pkg_path <- example_diagnose_scenario("code_examples/seed_setting_bad.R",
@@ -185,9 +170,6 @@ pkg_path <- example_diagnose_scenario("description_examples/bad_description.txt"
 #> 
 #> === End of example ===
 #> 
-#> Temporary package created at: /tmp/RtmpRJ2xxA/checktor_example_20260711_172134_5274 
-#> Example file copied to: /tmp/RtmpRJ2xxA/checktor_example_20260711_172134_5274/DESCRIPTION 
-#> 
 desc_result <- diagnose_description_issues(pkg_path)
 #> 
 #> ── DESCRIPTION File Health Check ──
@@ -196,27 +178,30 @@ desc_result <- diagnose_description_issues(pkg_path)
 #> • Description: ggplot2 should be in single quotes
 #> ! Potential unexplained acronyms: "ML"
 #> Treatment: Consider explaining these acronyms
-#> ! License formatting issues
-#> • License declares '+ file LICENSE' but no LICENSE file found
-#> ! Potential Title Case issues
-#> • First word should be capitalized: example
-#> • Word should be capitalized: package
-#> • Word should be capitalized: data
-#> • Word should be capitalized: analysis
+#> ✖ License field problems
+#> • License points at a LICENSE file that does not exist
+#> Treatment: Use a standardizable license, and add '+ file LICENSE' for MIT/BSD
+#> ! Title is not in title case
+#> • Title is not in title case. R would write it as: Example Package for Data
+#> Analysis
+#> Treatment: Use the capitalisation tools::toTitleCase() proposes
 #> ✔ Title length is within the 65-character guideline
-#> ✔ Title does not start with an article
 #> ✔ Title is free of redundant phrases
-#> ✔ No single-quoted function names in Title/Description
-#> ! No `Authors@R` field found
-#> Legacy Author/Maintainer fields detected
-#> Treatment: Consider adding Authors@R field
+#> ✖ Problems in the author fields
+#> • Missing Authors@R field
+#> Treatment: Add Authors@R, replace any usethis template placeholder with the
+#> real name and email, and give every person a name and role with one maintainer
+#> (cre)
+#> ✔ Author identifiers are well formed
 #> ℹ No references found in Description
-#> ! Description may be too short: 2 sentences, 16 words
-#> Treatment: Consider expanding to 2+ sentences, 20+ words
-#> ! Description starts with a CRAN-forbidden phrase
-#> • Description starts with forbidden phrase: 'This package'
-#> Treatment: Rephrase so Description leads with what the package does
-#> ✔ Description quotes 'R' properly
+#> ✔ Date field is absent or current
+#> ✔ Encoding is portable or unset
+#> ✔ Version is well formed
+#> ✔ Description length appears adequate
+#> ! Description opening needs work
+#> • Description should not start with "This package"; describe what it does
+#> instead
+#> Treatment: Start with a capital letter and say what the package does
 
 # Manual cleanup when done
 unlink(pkg_path, recursive = TRUE)
@@ -230,33 +215,30 @@ pkg_path <- example_diagnose_scenario("code_examples/browser_calls_bad.R",
 #> #' Debug Function
 #> #' @param data Input data
 #> debug_function <- function(data) {
-#>   browser()  # Issue: debugging call left in code
-#>   
+#>   browser() # Issue: debugging call left in code
+#> 
 #>   processed <- process_data(data)
-#>   
+#> 
 #>   if (is.null(processed)) {
-#>     browser()  # Issue: another debugging call
+#>     browser() # Issue: another debugging call
 #>     stop("Processing failed")
 #>   }
-#>   
+#> 
 #>   return(processed)
 #> }
 #> 
 #> #' Analysis with Debug
 #> analyze_with_debug <- function(x) {
 #>   result <- mean(x, na.rm = TRUE)
-#>   
+#> 
 #>   if (is.na(result)) {
-#>     browser()  # Issue: debugging call for troubleshooting
+#>     browser() # Issue: debugging call for troubleshooting
 #>   }
-#>   
+#> 
 #>   return(result)
 #> }
 #> 
 #> === End of example ===
-#> 
-#> Temporary package created at: /tmp/RtmpRJ2xxA/checktor_example_20260711_172134_7829 
-#> Example file copied to: /tmp/RtmpRJ2xxA/checktor_example_20260711_172134_7829/R/browser_calls_bad.R 
 #> 
 # Cleanup happens automatically when R session ends
 ```
