@@ -4,18 +4,34 @@
 
 # ---- description_bare_r ------------------------------------------------------
 
-test_that("description_bare_r flags unquoted standalone R", {
+test_that("description_bare_r is NOT part of a default run", {
+  # It demanded that every bare `R` be single-quoted, which no authority supports:
+  # Writing R Extensions reserves single quotes for OTHER software, and R is the
+  # host language. Measured against the installed library, 115 packages write R
+  # bare and 25 quote it. The check stays callable; it is not run.
   pkg <- make_temp_dir()
-  write_pkg(pkg, description = "A tool for R users to do things.")
+  write_pkg(
+    pkg,
+    description = "A tool for R users to do things and more things."
+  )
   res <- diagnose_description_issues(pkg, verbose = FALSE)
-  expect_false(res$description_bare_r$passed)
+  expect_null(res$description_bare_r)
+  expect_false("description_bare_r" %in% names(res$passed))
+})
 
-  pkg_ok <- make_temp_dir()
-  write_pkg(pkg_ok,
-            description = paste("A tool for 'R' users.",
-                                "Wraps 'ggplot2' and 'dplyr' for plotting."))
-  res2 <- diagnose_description_issues(pkg_ok, verbose = FALSE)
-  expect_true(res2$description_bare_r$passed)
+test_that("description_bare_r still works when called directly", {
+  expect_false(
+    diagnose_description_bare_r(
+      verbose = FALSE,
+      desc = c(Description = "A tool for R users.")
+    )$passed
+  )
+  expect_true(
+    diagnose_description_bare_r(
+      verbose = FALSE,
+      desc = c(Description = "A tool for 'R' users.")
+    )$passed
+  )
 })
 
 # ---- description_quoted_quotes -----------------------------------------------
@@ -24,9 +40,13 @@ test_that("description_quoted_quotes flags a double-quoted SOFTWARE name", {
   # Writing R Extensions: double quotes are for quotations, single quotes for
   # "names of other packages and external software".
   pkg <- make_temp_dir()
-  write_pkg(pkg,
-            description = paste('Builds dashboards with "shiny" and plots.',
-                                "It does things and more things."))
+  write_pkg(
+    pkg,
+    description = paste(
+      'Builds dashboards with "shiny" and plots.',
+      "It does things and more things."
+    )
+  )
   res <- diagnose_description_issues(pkg, verbose = FALSE)
   expect_false(res$description_quoted_quotes$passed)
   expect_true(any(grepl("shiny", res$description_quoted_quotes$issues)))
@@ -36,66 +56,89 @@ test_that("description_quoted_quotes does not flag scare-quoted jargon", {
   # cbcTools ships "labeled" and "no choice" on CRAN today. Those ARE the
   # quotations that double quotes are reserved for, not software names.
   pkg <- make_temp_dir()
-  write_pkg(pkg,
-            description = paste('Supports "labeled" designs and a "no choice"',
-                                "alternative for conjoint experiments."))
+  write_pkg(
+    pkg,
+    description = paste(
+      'Supports "labeled" designs and a "no choice"',
+      "alternative for conjoint experiments."
+    )
+  )
   res <- diagnose_description_issues(pkg, verbose = FALSE)
   expect_true(res$description_quoted_quotes$passed)
 
   pkg_ok <- make_temp_dir()
-  write_pkg(pkg_ok,
-            description = paste("A package that does helpful things.",
-                                "No quoted phrases here at all."))
+  write_pkg(
+    pkg_ok,
+    description = paste(
+      "A package that does helpful things.",
+      "No quoted phrases here at all."
+    )
+  )
   res2 <- diagnose_description_issues(pkg_ok, verbose = FALSE)
   expect_true(res2$description_quoted_quotes$passed)
 })
 
 # ---- title_starts_with_article -----------------------------------------------
 
-test_that("title_starts_with_article flags leading A/An/The", {
-  for (bad in c("A Tool for Stats", "An Implementation of X", "The Thing")) {
-    pkg <- make_temp_dir()
-    write_pkg(pkg, title = bad)
-    res <- diagnose_description_issues(pkg, verbose = FALSE)
-    expect_false(res$title_starts_with_article$passed, info = bad)
-  }
+test_that("title_starts_with_article is NOT part of a default run", {
+  # A mis-transplant of CRAN's real rule, whose source requires the literal noun
+  # "package" after the article AND applies to the Description field, not the
+  # Title. jsonlite ("A Simple and Robust JSON Parser and Generator for R") and
+  # curl ("A Modern and Flexible Web Client for R") are on CRAN with such titles.
+  pkg <- make_temp_dir()
+  write_pkg(pkg, title = "A Modern and Flexible Web Client")
+  res <- diagnose_description_issues(pkg, verbose = FALSE)
+  expect_null(res$title_starts_with_article)
 
-  pkg_ok <- make_temp_dir()
-  write_pkg(pkg_ok, title = "Implements Things")
-  expect_true(diagnose_description_issues(pkg_ok, verbose = FALSE)$
-              title_starts_with_article$passed)
+  # Still callable directly.
+  expect_false(
+    diagnose_title_starts_with_article(pkg, verbose = FALSE)$passed
+  )
 })
 
 # ---- title_redundant_phrases -------------------------------------------------
 
 test_that("title_redundant_phrases flags 'for R' and 'Tools for' patterns", {
-  for (bad in c("Statistical Models for R",
-                "A Toolkit for Imaging",
-                "Tools for Reproducible Reporting")) {
+  for (bad in c(
+    "Statistical Models for R",
+    "A Toolkit for Imaging",
+    "Tools for Reproducible Reporting"
+  )) {
     pkg <- make_temp_dir()
     write_pkg(pkg, title = bad)
-    expect_false(diagnose_description_issues(pkg, verbose = FALSE)$
-                 title_redundant_phrases$passed, info = bad)
+    expect_false(
+      diagnose_description_issues(
+        pkg,
+        verbose = FALSE
+      )$title_redundant_phrases$passed,
+      info = bad
+    )
   }
 
   pkg_ok <- make_temp_dir()
   write_pkg(pkg_ok, title = "Statistical Modeling")
-  expect_true(diagnose_description_issues(pkg_ok, verbose = FALSE)$
-              title_redundant_phrases$passed)
+  expect_true(
+    diagnose_description_issues(
+      pkg_ok,
+      verbose = FALSE
+    )$title_redundant_phrases$passed
+  )
 })
 
 # ---- cph_role ----------------------------------------------------------------
 
 test_that("cph_role check accepts cph-bearing Authors@R and flags otherwise", {
   pkg <- make_temp_dir()
-  write_pkg(pkg,
-            authors_r = "person('A','B', role = c('aut','cre'))")
-  expect_false(diagnose_description_issues(pkg, verbose = FALSE)$cph_role$passed)
+  write_pkg(pkg, authors_r = "person('A','B', role = c('aut','cre'))")
+  expect_false(
+    diagnose_description_issues(pkg, verbose = FALSE)$cph_role$passed
+  )
 
   pkg_ok <- make_temp_dir()
-  write_pkg(pkg_ok,
-            authors_r = "person('A','B', role = c('aut','cre','cph'))")
-  expect_true(diagnose_description_issues(pkg_ok, verbose = FALSE)$cph_role$passed)
+  write_pkg(pkg_ok, authors_r = "person('A','B', role = c('aut','cre','cph'))")
+  expect_true(
+    diagnose_description_issues(pkg_ok, verbose = FALSE)$cph_role$passed
+  )
 })
 
 # ---- license_year ------------------------------------------------------------
@@ -104,13 +147,16 @@ test_that("cph_role check accepts cph-bearing Authors@R and flags otherwise", {
 
 test_that("library_in_pkg_code flags library()/require() but not pkg::fn", {
   pkg <- make_temp_dir()
-  write_pkg(pkg, r_code = c(
-    "f <- function() {",
-    "  library(stats)",
-    "  require(stats)",
-    "  utils::head(1:5)",
-    "}"
-  ))
+  write_pkg(
+    pkg,
+    r_code = c(
+      "f <- function() {",
+      "  library(stats)",
+      "  require(stats)",
+      "  utils::head(1:5)",
+      "}"
+    )
+  )
   res <- diagnose_library_in_pkg_code(pkg, verbose = FALSE)
   expect_false(res$passed)
   expect_equal(length(res$issues), 2L)
@@ -124,44 +170,59 @@ test_that("sys_setenv_no_reset flags naked Sys.setenv and accepts cleanup", {
   expect_false(diagnose_sys_setenv_no_reset(pkg_bad, verbose = FALSE)$passed)
 
   pkg_ok <- make_temp_dir()
-  write_pkg(pkg_ok, r_code = c(
-    "f <- function() {",
-    "  Sys.setenv(FOO = 1)",
-    "  on.exit(Sys.unsetenv('FOO'))",
-    "}",
-    "g <- function() withr::local_envvar(c(BAR = 1))"
-  ))
+  write_pkg(
+    pkg_ok,
+    r_code = c(
+      "f <- function() {",
+      "  Sys.setenv(FOO = 1)",
+      "  on.exit(Sys.unsetenv('FOO'))",
+      "}",
+      "g <- function() withr::local_envvar(c(BAR = 1))"
+    )
+  )
   expect_true(diagnose_sys_setenv_no_reset(pkg_ok, verbose = FALSE)$passed)
 })
 
 # ---- commented_examples ------------------------------------------------------
 
-test_that("commented_examples flags commented-out calls in \\examples", {
+test_that("commented_examples flags an \\examples block that runs nothing", {
+  # A commented-out call is only a defect when it is ALL the example has. Beside
+  # live code it is illustration, which is why the live `actual_call()` this
+  # fixture used to carry made it a false positive.
   pkg <- make_temp_dir()
-  write_pkg(pkg, rd_files = list("fn.Rd" = c(
-    "\\name{fn}",
-    "\\title{fn}",
-    "\\value{1}",
-    "\\examples{",
-    "# my_function(x)   # commented-out call",
-    "actual_call()",
-    "}"
-  )))
+  write_pkg(
+    pkg,
+    rd_files = list(
+      "fn.Rd" = c(
+        "\\name{fn}",
+        "\\title{fn}",
+        "\\value{1}",
+        "\\examples{",
+        "# my_function(x)   # the only 'example' here",
+        "}"
+      )
+    )
+  )
   res <- diagnose_commented_examples(pkg, verbose = FALSE)
   expect_false(res$passed)
 })
 
 test_that("commented_examples accepts explanatory comments", {
   pkg <- make_temp_dir()
-  write_pkg(pkg, rd_files = list("fn.Rd" = c(
-    "\\name{fn}",
-    "\\title{fn}",
-    "\\value{1}",
-    "\\examples{",
-    "# Prepare data",
-    "x <- 1",
-    "}"
-  )))
+  write_pkg(
+    pkg,
+    rd_files = list(
+      "fn.Rd" = c(
+        "\\name{fn}",
+        "\\title{fn}",
+        "\\value{1}",
+        "\\examples{",
+        "# Prepare data",
+        "x <- 1",
+        "}"
+      )
+    )
+  )
   res <- diagnose_commented_examples(pkg, verbose = FALSE)
   expect_true(res$passed)
 })
@@ -172,33 +233,43 @@ test_that("commented_examples accepts explanatory comments", {
 
 test_that("donttest_vs_dontrun suggests \\donttest{} for slow-only code", {
   pkg <- make_temp_dir()
-  write_pkg(pkg, rd_files = list("slow.Rd" = c(
-    "\\name{slow}",
-    "\\title{slow}",
-    "\\value{1}",
-    "\\examples{",
-    "\\dontrun{",
-    "Sys.sleep(60)",
-    "}",
-    "}"
-  )))
+  write_pkg(
+    pkg,
+    rd_files = list(
+      "slow.Rd" = c(
+        "\\name{slow}",
+        "\\title{slow}",
+        "\\value{1}",
+        "\\examples{",
+        "\\dontrun{",
+        "Sys.sleep(60)",
+        "}",
+        "}"
+      )
+    )
+  )
   res <- diagnose_donttest_vs_dontrun(pkg, verbose = FALSE)
   expect_false(res$passed)
 })
 
 test_that("donttest_vs_dontrun accepts \\dontrun for justified cases", {
   pkg <- make_temp_dir()
-  write_pkg(pkg, rd_files = list("net.Rd" = c(
-    "\\name{net}",
-    "\\title{net}",
-    "\\value{1}",
-    "\\examples{",
-    "\\dontrun{",
-    "# Requires API token",
-    "download.file('https://example.com/', '/tmp/x')",
-    "}",
-    "}"
-  )))
+  write_pkg(
+    pkg,
+    rd_files = list(
+      "net.Rd" = c(
+        "\\name{net}",
+        "\\title{net}",
+        "\\value{1}",
+        "\\examples{",
+        "\\dontrun{",
+        "# Requires API token",
+        "download.file('https://example.com/', '/tmp/x')",
+        "}",
+        "}"
+      )
+    )
+  )
   res <- diagnose_donttest_vs_dontrun(pkg, verbose = FALSE)
   expect_true(res$passed)
 })

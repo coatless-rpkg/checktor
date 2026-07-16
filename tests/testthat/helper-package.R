@@ -11,19 +11,21 @@ make_temp_dir <- function(envir = parent.frame()) {
 
 # Writes a minimal but valid package skeleton under `path`. Optional fields
 # override the defaults; r_code adds a single R/test.R file.
-write_pkg <- function(path,
-                      package = "testpkg",
-                      title = "Test Package for Health Checks",
-                      description = NULL,
-                      authors_r = "person('A', 'Tester', email = 'a@example.com', role = c('aut','cre','cph'))",
-                      license = "GPL-3",
-                      author = NULL,
-                      maintainer = NULL,
-                      r_code = "test_fn <- function() TRUE",
-                      rd_files = NULL,
-                      news = TRUE,
-                      cran_comments = TRUE,
-                      extra = NULL) {
+write_pkg <- function(
+  path,
+  package = "testpkg",
+  title = "Test Package for Health Checks",
+  description = NULL,
+  authors_r = "person('A', 'Tester', email = 'a@example.com', role = c('aut','cre','cph'))",
+  license = "GPL-3",
+  author = NULL,
+  maintainer = NULL,
+  r_code = "test_fn <- function() TRUE",
+  rd_files = NULL,
+  news = TRUE,
+  cran_comments = TRUE,
+  extra = NULL
+) {
   dir.create(file.path(path, "R"), recursive = TRUE, showWarnings = FALSE)
   dir.create(file.path(path, "man"), recursive = TRUE, showWarnings = FALSE)
 
@@ -55,7 +57,9 @@ write_pkg <- function(path,
     paste0("License: ", license),
     "Encoding: UTF-8"
   )
-  if (!is.null(extra)) lines <- c(lines, extra)
+  if (!is.null(extra)) {
+    lines <- c(lines, extra)
+  }
 
   writeLines(lines, file.path(path, "DESCRIPTION"))
 
@@ -78,12 +82,16 @@ write_pkg <- function(path,
   # Standard CRAN-prep files (on by default) so a baseline fixture is clean
   # for the general NEWS/cran-comments checks. Pass FALSE to omit them.
   if (isTRUE(news)) {
-    writeLines(c("# testpkg 0.0.1", "", "* Initial release."),
-               file.path(path, "NEWS.md"))
+    writeLines(
+      c("# testpkg 0.0.1", "", "* Initial release."),
+      file.path(path, "NEWS.md")
+    )
   }
   if (isTRUE(cran_comments)) {
-    writeLines(c("## Test environments", "* local"),
-               file.path(path, "cran-comments.md"))
+    writeLines(
+      c("## Test environments", "* local"),
+      file.path(path, "cran-comments.md")
+    )
   }
 
   invisible(path)

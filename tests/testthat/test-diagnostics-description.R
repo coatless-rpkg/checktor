@@ -45,7 +45,10 @@ test_that("software_names_formatting accepts properly quoted names", {
 
 test_that("software_names_formatting does NOT flag the bare letter R", {
   pkg <- make_temp_dir()
-  write_pkg(pkg, description = "A package for R users that integrates with 'ggplot2'.")
+  write_pkg(
+    pkg,
+    description = "A package for R users that integrates with 'ggplot2'."
+  )
   res <- diagnose_description_issues(pkg, verbose = FALSE)
   expect_true(res$software_names$passed)
 })
@@ -54,52 +57,79 @@ test_that("software_names_formatting does NOT flag the bare letter R", {
 
 test_that("title_length flags titles of 65+ characters", {
   pkg <- make_temp_dir()
-  write_pkg(pkg, title = paste(rep("Word", 20), collapse = " "))  # > 65 chars
+  write_pkg(pkg, title = paste(rep("Word", 20), collapse = " ")) # > 65 chars
   res <- diagnose_description_issues(pkg, verbose = FALSE)
   expect_false(res$title_length$passed)
 
   pkg_ok <- make_temp_dir()
   write_pkg(pkg_ok, title = "Concise Package Title")
-  expect_true(diagnose_description_issues(pkg_ok, verbose = FALSE)$title_length$passed)
+  expect_true(
+    diagnose_description_issues(pkg_ok, verbose = FALSE)$title_length$passed
+  )
 })
 
 # ---- description_function_quotes ---------------------------------------------
 
 test_that("description_function_quotes flags single-quoted function names", {
   pkg <- make_temp_dir()
-  write_pkg(pkg,
-            description = paste("Wraps the 'lm()' interface for users.",
-                                "It does a number of helpful things here."))
-  res <- diagnose_description_issues(pkg, verbose = FALSE)
-  expect_false(res$description_function_quotes$passed)
+  write_pkg(
+    pkg,
+    description = paste(
+      "Wraps the 'lm()' interface for users.",
+      "It does a number of helpful things here."
+    )
+  )
+  # Not part of a run any more: WRE says single quotes are for non-English usage
+  # INCLUDING other packages, an inclusive list, so a quoted function name breaks
+  # no rule. Still callable directly.
+  expect_false(
+    diagnose_description_function_quotes(pkg, verbose = FALSE)$passed
+  )
+  expect_null(
+    diagnose_description_issues(
+      pkg,
+      verbose = FALSE
+    )$description_function_quotes
+  )
 })
 
 test_that("description_function_quotes accepts quoted software names", {
   pkg <- make_temp_dir()
-  write_pkg(pkg,
-            description = paste("Provides an interface to 'ggplot2' graphics.",
-                                "It does a number of helpful things here."))
-  res <- diagnose_description_issues(pkg, verbose = FALSE)
-  expect_true(res$description_function_quotes$passed)
+  write_pkg(
+    pkg,
+    description = paste(
+      "Provides an interface to 'ggplot2' graphics.",
+      "It does a number of helpful things here."
+    )
+  )
+  expect_true(
+    diagnose_description_function_quotes(pkg, verbose = FALSE)$passed
+  )
 })
 
 test_that("authors_field is OK when Authors@R is present, fails otherwise", {
   pkg_ok <- make_temp_dir()
   write_pkg(pkg_ok)
-  expect_true(diagnose_description_issues(pkg_ok, verbose = FALSE)$authors$passed)
+  expect_true(
+    diagnose_description_issues(pkg_ok, verbose = FALSE)$authors$passed
+  )
 
   pkg_legacy <- make_temp_dir()
-  write_pkg(pkg_legacy,
-            authors_r = NULL,
-            author    = "A. Tester",
-            maintainer = "A. Tester <a@example.com>")
-  expect_false(diagnose_description_issues(pkg_legacy, verbose = FALSE)$authors$passed)
+  write_pkg(
+    pkg_legacy,
+    authors_r = NULL,
+    author = "A. Tester",
+    maintainer = "A. Tester <a@example.com>"
+  )
+  expect_false(
+    diagnose_description_issues(pkg_legacy, verbose = FALSE)$authors$passed
+  )
 })
 
 test_that("acronym detection knows common abbreviations and reads continuations", {
   pkg <- make_temp_dir()
   desc <- paste(
-    "Provides bindings to the OS for HTTP work.",     # OS in unexplained set
+    "Provides bindings to the OS for HTTP work.", # OS in unexplained set
     "    Includes XYZ helpers for fun.",
     sep = "\n"
   )
@@ -159,10 +189,13 @@ test_that("authors_field flags an unfilled usethis template", {
   # though it is a hard CRAN rejection. R CMD check says nothing: the field IS
   # present, so it has nothing to complain about.
   pkg <- make_temp_dir()
-  write_pkg(pkg, authors_r = paste0(
-    "person(\"First\", \"Last\", , \"january.weiner@gmail.com\", ",
-    "role = c(\"aut\", \"cre\", \"cph\"))"
-  ))
+  write_pkg(
+    pkg,
+    authors_r = paste0(
+      "person(\"First\", \"Last\", , \"january.weiner@gmail.com\", ",
+      "role = c(\"aut\", \"cre\", \"cph\"))"
+    )
+  )
   res <- diagnose_description_issues(pkg, verbose = FALSE)$authors
   expect_false(res$passed)
   expect_true(any(grepl("placeholder", res$issues)))
@@ -170,14 +203,441 @@ test_that("authors_field flags an unfilled usethis template", {
 
 test_that("authors_field flags a placeholder email and Your Name", {
   pkg <- make_temp_dir()
-  write_pkg(pkg, authors_r = paste0(
-    "person(\"Your Name\", , , \"you@example.com\", role = c(\"aut\", \"cre\"))"
-  ))
+  write_pkg(
+    pkg,
+    authors_r = paste0(
+      "person(\"Your Name\", , , \"you@example.com\", role = c(\"aut\", \"cre\"))"
+    )
+  )
   expect_false(diagnose_description_issues(pkg, verbose = FALSE)$authors$passed)
 })
 
 test_that("authors_field passes a real, filled-in Authors@R", {
   pkg <- make_temp_dir()
-  write_pkg(pkg)   # helper default is a real name/email
+  write_pkg(pkg) # helper default is a real name/email
   expect_true(diagnose_description_issues(pkg, verbose = FALSE)$authors$passed)
+})
+
+# --- title_case (restored, now delegating to tools::toTitleCase) ------------
+
+test_that("diagnose_title_case does not flag a quoted software name", {
+  # This is the false positive that made the homegrown word-loop unusable.
+  # R's own engine restores single-quoted spans before comparing, so 'shiny'
+  # keeps its lowercase s.
+  desc <- c(Title = "Extra Diagnostics for 'shiny' and 'rmarkdown' Packages")
+  expect_true(diagnose_title_case(verbose = FALSE, desc = desc)$passed)
+})
+
+test_that("diagnose_title_case flags a genuinely non-title-case Title", {
+  desc <- c(Title = "A package for running extra checks")
+  res <- diagnose_title_case(verbose = FALSE, desc = desc)
+  expect_false(res$passed)
+  # The suggestion must carry the corrected string so it can be pasted in.
+  expect_match(res$issues, "Running Extra Checks", fixed = TRUE, all = FALSE)
+})
+
+test_that("diagnose_title_case accepts a correct Title", {
+  desc <- c(Title = "Extra CRAN Diagnostics for R Packages")
+  expect_true(diagnose_title_case(verbose = FALSE, desc = desc)$passed)
+})
+
+# --- license (restored, now delegating to tools::analyze_license) -----------
+
+test_that("diagnose_license_formatting accepts a standardizable license", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  # `MIT + file LICENSE` is only valid when the file it points at exists.
+  writeLines(
+    c("YEAR: 2026", "COPYRIGHT HOLDER: Jane Doe"),
+    file.path(pkg, "LICENSE")
+  )
+  expect_true(
+    diagnose_license_formatting(
+      pkg,
+      verbose = FALSE,
+      desc = c(License = "MIT + file LICENSE")
+    )$passed
+  )
+  expect_true(
+    diagnose_license_formatting(
+      pkg,
+      verbose = FALSE,
+      desc = c(License = "GPL (>= 3)")
+    )$passed
+  )
+})
+
+test_that("diagnose_license_formatting flags a non-standardizable license", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  res <- diagnose_license_formatting(
+    pkg,
+    verbose = FALSE,
+    desc = c(License = "Do whatever you like")
+  )
+  expect_false(res$passed)
+})
+
+test_that("diagnose_license_formatting flags a missing referenced LICENSE file", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg) # no LICENSE file written
+  res <- diagnose_license_formatting(
+    pkg,
+    verbose = FALSE,
+    desc = c(License = "MIT + file LICENSE")
+  )
+  expect_false(res$passed)
+  expect_match(res$issues, "LICENSE", all = FALSE)
+})
+
+# --- description_starts_with (restored, broadened) --------------------------
+
+test_that("diagnose_description_starts_with flags CRAN's forbidden openers", {
+  for (bad in c(
+    "This package provides tools for X.",
+    "A package that does X.",
+    "In this package we do X."
+  )) {
+    res <- diagnose_description_starts_with(
+      verbose = FALSE,
+      desc = c(Description = bad)
+    )
+    expect_false(res$passed, info = bad)
+  }
+})
+
+test_that("diagnose_description_starts_with flags a lowercase initial", {
+  # R's own descr_bad_initial rule, which checktor previously lacked.
+  res <- diagnose_description_starts_with(
+    verbose = FALSE,
+    desc = c(Description = "runs extra diagnostics on R packages.")
+  )
+  expect_false(res$passed)
+})
+
+test_that("diagnose_description_starts_with accepts a well-formed Description", {
+  expect_true(
+    diagnose_description_starts_with(
+      verbose = FALSE,
+      desc = c(Description = "Runs extra diagnostics on R packages.")
+    )$passed
+  )
+})
+
+# --- license_year (rebuilt: template placeholders, not year staleness) ------
+
+test_that("diagnose_license_year flags an unfilled LICENSE template", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  writeLines(
+    c("YEAR: <YEAR>", "COPYRIGHT HOLDER: <COPYRIGHT HOLDER>"),
+    file.path(pkg, "LICENSE")
+  )
+  res <- diagnose_license_year(pkg, verbose = FALSE)
+  expect_false(res$passed)
+})
+
+test_that("diagnose_license_year does not flag an old but filled-in year", {
+  # The old rule fired on every package not touched this calendar year. A
+  # LICENSE reading `YEAR: 1999` passes R CMD check --as-cran in silence.
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  writeLines(
+    c("YEAR: 1999", "COPYRIGHT HOLDER: Jane Doe"),
+    file.path(pkg, "LICENSE")
+  )
+  expect_true(diagnose_license_year(pkg, verbose = FALSE)$passed)
+})
+
+test_that("diagnose_license_year passes when there is no LICENSE file", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  expect_true(diagnose_license_year(pkg, verbose = FALSE)$passed)
+})
+
+test_that("description_length measures words, not sentences", {
+  # renderthis ships a complete 31-word single-sentence Description. Demanding
+  # "2+ sentences" has no authority and flagged it.
+  one_sentence <- paste(
+    "Render slides to different formats, including 'html', 'pdf', 'png', 'gif',",
+    "'pptx', and 'mp4', as well as a 'social' output, a 'png' of the first slide",
+    "re-sized for sharing on social media."
+  )
+  expect_true(
+    diagnose_description_length(
+      verbose = FALSE,
+      desc = c(Description = one_sentence)
+    )$passed
+  )
+})
+
+test_that("description_length still flags a Description that says nothing", {
+  res <- diagnose_description_length(
+    verbose = FALSE,
+    desc = c(Description = "Does stuff.")
+  )
+  expect_false(res$passed)
+})
+
+# ---- date_format -------------------------------------------------------------
+
+test_that("date_format passes when Date is absent (the preferred case)", {
+  expect_true(
+    diagnose_date_format(verbose = FALSE, desc = list(Package = "x"))$passed
+  )
+})
+
+test_that("date_format passes on a current ISO-8601 date", {
+  today <- format(Sys.Date())
+  expect_true(
+    diagnose_date_format(verbose = FALSE, desc = list(Date = today))$passed
+  )
+})
+
+test_that("date_format flags a non-ISO-8601 Date", {
+  res <- diagnose_date_format(verbose = FALSE, desc = list(Date = "Jan 2020"))
+  expect_false(res$passed)
+  expect_true(any(grepl("ISO 8601", res$issues)))
+})
+
+test_that("date_format flags a stale Date read from the package file", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, extra = "Date: 2000-01-01")
+  res <- diagnose_description_issues(pkg, verbose = FALSE)$date_format
+  expect_false(res$passed)
+  expect_true(any(grepl("month old", res$issues)))
+})
+
+test_that("date_format flags a future Date", {
+  expect_false(
+    diagnose_date_format(
+      verbose = FALSE,
+      desc = list(Date = "2999-01-01")
+    )$passed
+  )
+})
+
+# ---- encoding_utf8 -----------------------------------------------------------
+
+test_that("encoding_utf8 accepts the portable set (UTF-8, latin1, latin2) or none", {
+  for (enc in c("UTF-8", "utf-8", "latin1", "latin2")) {
+    expect_true(
+      diagnose_encoding_utf8(
+        verbose = FALSE,
+        desc = list(Encoding = enc)
+      )$passed,
+      info = enc
+    )
+  }
+  expect_true(
+    diagnose_encoding_utf8(verbose = FALSE, desc = list(Package = "x"))$passed
+  )
+})
+
+test_that("encoding_utf8 flags a non-portable Encoding", {
+  res <- diagnose_encoding_utf8(
+    verbose = FALSE,
+    desc = list(Encoding = "KOI8-R")
+  )
+  expect_false(res$passed)
+  expect_true(any(grepl("portable", res$issues)))
+})
+
+# ---- version_format ----------------------------------------------------------
+
+test_that("version_format passes on ordinary versions and dated ones", {
+  expect_true(
+    diagnose_version_format(
+      verbose = FALSE,
+      desc = list(Version = "0.2.0")
+    )$passed
+  )
+  dated <- paste0(format(Sys.Date(), "%Y"), ".1")
+  expect_true(
+    diagnose_version_format(
+      verbose = FALSE,
+      desc = list(Version = dated)
+    )$passed
+  )
+})
+
+test_that("version_format flags a leading-zero component", {
+  res <- diagnose_version_format(
+    verbose = FALSE,
+    desc = list(Version = "0.02.0")
+  )
+  expect_false(res$passed)
+  expect_true(any(grepl("leading zero", res$issues)))
+})
+
+test_that("version_format flags a suspiciously large component", {
+  expect_false(
+    diagnose_version_format(
+      verbose = FALSE,
+      desc = list(Version = "9999.1")
+    )$passed
+  )
+})
+
+test_that("version_format flags an unparseable version", {
+  res <- diagnose_version_format(
+    verbose = FALSE,
+    desc = list(Version = "not.a.version")
+  )
+  expect_false(res$passed)
+  expect_true(any(grepl("not a valid", res$issues)))
+})
+
+test_that("version_format exempts dated (prior-year, zero-padded) and dev versions", {
+  # a calendar-versioned package from a prior year, a zero-padded month, and the
+  # ubiquitous .9000 development suffix are all legitimate, not oversized.
+  expect_true(
+    diagnose_version_format(
+      verbose = FALSE,
+      desc = list(Version = "2025.4")
+    )$passed
+  )
+  expect_true(
+    diagnose_version_format(
+      verbose = FALSE,
+      desc = list(Version = "2026.01")
+    )$passed
+  )
+  expect_true(
+    diagnose_version_format(
+      verbose = FALSE,
+      desc = list(Version = "0.2.0.9000")
+    )$passed
+  )
+})
+
+# ---- authors_field structural validity ---------------------------------------
+
+test_that("authors_field passes a well-formed Authors@R", {
+  aar <- "person('Jane', 'Doe', email = 'jane@example.org', role = c('aut', 'cre'))"
+  expect_true(
+    diagnose_authors_field(
+      verbose = FALSE,
+      desc = list(`Authors@R` = aar)
+    )$passed
+  )
+})
+
+test_that("authors_field flags Authors@R with no maintainer (cre)", {
+  aar <- "person('Jane', 'Doe', role = 'aut')"
+  res <- diagnose_authors_field(verbose = FALSE, desc = list(`Authors@R` = aar))
+  expect_false(res$passed)
+  expect_true(any(grepl("cre", res$issues)))
+})
+
+test_that("authors_field flags a person with no name", {
+  aar <- "person(role = c('aut', 'cre'))"
+  res <- diagnose_authors_field(verbose = FALSE, desc = list(`Authors@R` = aar))
+  expect_false(res$passed)
+  expect_true(any(grepl("no name", res$issues)))
+})
+
+test_that("authors_field flags an Authors@R that does not parse", {
+  res <- diagnose_authors_field(
+    verbose = FALSE,
+    desc = list(`Authors@R` = "person('Jane',,")
+  )
+  expect_false(res$passed)
+  expect_true(any(grepl("does not parse", res$issues)))
+})
+
+# ---- identifier_format -------------------------------------------------------
+
+test_that("identifier_format passes a valid ORCID and no-identifier case", {
+  ok <- "person('J', 'D', role = 'cre', comment = c(ORCID = '0000-0002-1825-0097'))"
+  expect_true(
+    diagnose_identifier_format(
+      verbose = FALSE,
+      desc = list(`Authors@R` = ok)
+    )$passed
+  )
+  none <- "person('J', 'D', role = 'cre')"
+  expect_true(
+    diagnose_identifier_format(
+      verbose = FALSE,
+      desc = list(`Authors@R` = none)
+    )$passed
+  )
+})
+
+test_that("identifier_format flags an ORCID that fails its checksum", {
+  bad <- "person('J', 'D', role = 'cre', comment = c(ORCID = '0000-0002-1825-0090'))"
+  res <- diagnose_identifier_format(
+    verbose = FALSE,
+    desc = list(`Authors@R` = bad)
+  )
+  expect_false(res$passed)
+  expect_true(any(grepl("ORCID", res$issues)))
+})
+
+test_that("identifier_format accepts an X check-digit and a URL-wrapped ORCID", {
+  xd <- "person('J', 'D', role = 'cre', comment = c(ORCID = '0000-0002-1694-233X'))"
+  expect_true(
+    diagnose_identifier_format(
+      verbose = FALSE,
+      desc = list(`Authors@R` = xd)
+    )$passed
+  )
+  url <- "person('J', 'D', role = 'cre', comment = c(ORCID = 'https://orcid.org/0000-0002-1694-233X'))"
+  expect_true(
+    diagnose_identifier_format(
+      verbose = FALSE,
+      desc = list(`Authors@R` = url)
+    )$passed
+  )
+})
+
+test_that("identifier_format validates ROR ids and ignores free-text comments", {
+  good <- "person('J', 'D', role = 'cre', comment = c(ROR = '05dxps055'))"
+  expect_true(
+    diagnose_identifier_format(
+      verbose = FALSE,
+      desc = list(`Authors@R` = good)
+    )$passed
+  )
+  bad <- "person('J', 'D', role = 'cre', comment = c(ROR = 'nope'))"
+  res <- diagnose_identifier_format(
+    verbose = FALSE,
+    desc = list(`Authors@R` = bad)
+  )
+  expect_false(res$passed)
+  expect_true(any(grepl("ROR", res$issues)))
+  free <- "person('J', 'D', role = 'cre', comment = 'maintainer since 2020')"
+  expect_true(
+    diagnose_identifier_format(
+      verbose = FALSE,
+      desc = list(`Authors@R` = free)
+    )$passed
+  )
+})
+
+test_that("authors_field flags a person with no role", {
+  aar <- "c(person('Jane', 'Doe', role = 'cre'), person('No', 'Role'))"
+  res <- diagnose_authors_field(verbose = FALSE, desc = list(`Authors@R` = aar))
+  expect_false(res$passed)
+  expect_true(any(grepl("no role", res$issues)))
+})
+
+test_that("authors_field reports a field that evaluates to a non-person", {
+  res <- diagnose_authors_field(
+    verbose = FALSE,
+    desc = list(`Authors@R` = "list(1, 2)")
+  )
+  expect_false(res$passed)
+  expect_true(any(grepl("does not (parse|evaluate)", res$issues)))
+})
+
+test_that("Authors@R is not executed while diagnosing (no arbitrary code)", {
+  # checktor lints other people's packages; a malicious Authors@R must not run.
+  marker <- tempfile()
+  on.exit(unlink(marker), add = TRUE)
+  aar <- sprintf('system(paste0("touch ", shQuote("%s")))', marker)
+  res <- diagnose_authors_field(verbose = FALSE, desc = list(`Authors@R` = aar))
+  expect_false(file.exists(marker)) # the command did not run
+  expect_false(res$passed) # and the field is reported, not silently accepted
 })

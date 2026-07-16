@@ -13,10 +13,27 @@ test_that("build_ignore_matcher always skips .git and friends", {
   pkg <- tempfile()
   dir.create(pkg)
   on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
-  matcher <- build_ignore_matcher(pkg)  # no .Rbuildignore present
+  matcher <- build_ignore_matcher(pkg) # no .Rbuildignore present
   expect_true(matcher(".git/HEAD"))
   expect_true(matcher(".Rproj.user/foo"))
   expect_false(matcher("R/code.R"))
+})
+
+test_that("build_ignore_matcher honours a bare directory pattern like ^docs$", {
+  # R CMD build excludes a matched directory's whole subtree, so a top-level
+  # `^docs$` drops every file under docs/. Matching a leaf path alone missed this
+  # and counted a pkgdown docs/ or a .quarto cache against the size limit.
+  pkg <- tempfile()
+  dir.create(pkg)
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+  writeLines(c("^docs$", "^\\.quarto$"), file.path(pkg, ".Rbuildignore"))
+  matcher <- build_ignore_matcher(pkg)
+  expect_true(matcher("docs/index.html"))
+  expect_true(matcher("docs/reference/foo.html"))
+  expect_true(matcher(".quarto/cache.bin"))
+  expect_true(matcher("DOCS/index.html")) # case-insensitive, as in R
+  expect_false(matcher("R/code.R"))
+  expect_false(matcher("documentation.R")) # not the docs/ directory
 })
 
 test_that("read_r_xml parses every R/*.R file and reports per-file errors", {
@@ -40,10 +57,13 @@ test_that("undesirable_function_check ignores function names inside strings", {
   pkg <- tempfile()
   dir.create(file.path(pkg, "R"), recursive = TRUE)
   on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
-  writeLines(c(
-    "msg <- 'browser() reminder'",
-    "f <- function() browser()"
-  ), file.path(pkg, "R", "f.R"))
+  writeLines(
+    c(
+      "msg <- 'browser() reminder'",
+      "f <- function() browser()"
+    ),
+    file.path(pkg, "R", "f.R")
+  )
   parsed <- read_r_xml(pkg)
   hits <- undesirable_function_check(parsed, "browser", label = FALSE)
   expect_equal(length(hits), 1L)
@@ -53,11 +73,14 @@ test_that("undesirable_function_check ignores function names inside strings", {
 test_that("extract_rd_section finds a top-level Rd section by tag", {
   rd_file <- tempfile(fileext = ".Rd")
   on.exit(unlink(rd_file), add = TRUE)
-  writeLines(c(
-    "\\name{x}",
-    "\\title{Title}",
-    "\\value{a number}"
-  ), rd_file)
+  writeLines(
+    c(
+      "\\name{x}",
+      "\\title{Title}",
+      "\\value{a number}"
+    ),
+    rd_file
+  )
   rd <- tools::parse_Rd(rd_file)
   val <- extract_rd_section(rd, "\\value")
   expect_false(is.null(val))
@@ -68,15 +91,18 @@ test_that("extract_rd_section finds a top-level Rd section by tag", {
 test_that("collect_rd_text honours the skip argument", {
   rd_file <- tempfile(fileext = ".Rd")
   on.exit(unlink(rd_file), add = TRUE)
-  writeLines(c(
-    "\\name{x}",
-    "\\title{Title}",
-    "\\value{1}",
-    "\\examples{",
-    "  visible_part()",
-    "  \\dontrun{ hidden_part() }",
-    "}"
-  ), rd_file)
+  writeLines(
+    c(
+      "\\name{x}",
+      "\\title{Title}",
+      "\\value{1}",
+      "\\examples{",
+      "  visible_part()",
+      "  \\dontrun{ hidden_part() }",
+      "}"
+    ),
+    rd_file
+  )
   rd <- tools::parse_Rd(rd_file)
   ex <- extract_rd_section(rd, "\\examples")
   full <- collect_rd_text(ex)
@@ -91,7 +117,7 @@ test_that("collect_rd_text honours the skip argument", {
 
 test_that("is_commented_out_code separates prose from commented-out calls", {
   prose <- c(
-    "# --- end",                                   # separator: parses as unary minus
+    "# --- end", # separator: parses as unary minus
     "# --- welcome",
     "# Simulate random choices (default)",
     "# (Columns are attributes, rows are alternatives)",

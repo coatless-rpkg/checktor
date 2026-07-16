@@ -5,13 +5,26 @@ test_that("checktor returns a checktor_results object with all categories", {
   results <- checktor(pkg, verbose = FALSE, progress = FALSE)
 
   expect_s3_class(results, "checktor_results")
-  for (cat in c("code_issues", "description_issues", "documentation_issues",
-                "general_issues", "policy_issues", "metadata")) {
+  for (cat in c(
+    "code_issues",
+    "description_issues",
+    "documentation_issues",
+    "general_issues",
+    "policy_issues",
+    "metadata"
+  )) {
     expect_true(cat %in% names(results), info = cat)
   }
-  expect_true(all(c("total_issues", "failed_checks", "diagnosis_time",
-                    "package_path", "checktor_version") %in%
-                    names(results$metadata)))
+  expect_true(all(
+    c(
+      "total_issues",
+      "failed_checks",
+      "diagnosis_time",
+      "package_path",
+      "checktor_version"
+    ) %in%
+      names(results$metadata)
+  ))
 })
 
 test_that("a clean package has zero issues", {
@@ -40,8 +53,7 @@ test_that("total_issues counts every individual issue, not failed checks", {
   # 3 T/F + 1 seed = 4 issues across 2 failing checks (at minimum).
   expect_gte(results$metadata$total_issues, 4L)
   expect_gte(results$metadata$failed_checks, 2L)
-  expect_lt(results$metadata$failed_checks,
-            results$metadata$total_issues)
+  expect_lt(results$metadata$failed_checks, results$metadata$total_issues)
 })
 
 test_that("policy violations are part of the main run", {
@@ -55,8 +67,7 @@ test_that("policy violations are part of the main run", {
 
 test_that("checktor errors clearly on a non-package directory", {
   empty <- make_temp_dir()
-  expect_error(checktor(empty, verbose = FALSE),
-               "No DESCRIPTION file found")
+  expect_error(checktor(empty, verbose = FALSE), "No DESCRIPTION file found")
 })
 
 test_that("diagnose_* functions tolerate missing R/man directories", {
@@ -102,7 +113,7 @@ test_that("configure_doctor changes the defaults consumed by checktor", {
   # Default args of checktor() should now resolve to FALSE
   pkg <- make_temp_dir()
   write_pkg(pkg)
-  expect_no_error(checktor(pkg))     # would print/progress if defaults ignored
+  expect_no_error(checktor(pkg)) # would print/progress if defaults ignored
 })
 
 test_that("validate_package_directory enforces DESCRIPTION presence", {
@@ -114,8 +125,10 @@ test_that("validate_package_directory enforces DESCRIPTION presence", {
 })
 
 test_that("safe_read_lines handles missing files", {
-  expect_equal(safe_read_lines(file.path(tempdir(), "definitely-missing.R")),
-               character(0))
+  expect_equal(
+    safe_read_lines(file.path(tempdir(), "definitely-missing.R")),
+    character(0)
+  )
 })
 
 # ---- prescribe() -------------------------------------------------------------
@@ -128,7 +141,7 @@ test_that("prescribe() surfaces failed checks that have no curated treatment", {
   write_pkg(pkg, news = FALSE)
 
   res <- checktor(pkg, verbose = FALSE, progress = FALSE)
-  expect_false(res$general_issues$passed[["news_file"]])   # sanity
+  expect_false(res$general_issues$passed[["news_file"]]) # sanity
 
   out <- cli::cli_fmt(prescribe(res))
   txt <- paste(out, collapse = "\n")
