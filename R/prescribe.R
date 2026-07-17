@@ -72,7 +72,15 @@ prescribe <- function(results) {
         # re-parse markup inside interpolated values, so the braces would print
         # literally.
         cli::cli_text(paste0("{.strong Treatment:} ", rx$treatment))
-        cli::cli_code(rx$example)
+        # A treatment may carry a static `example`, or an `example_fn` that
+        # builds the snippet from the failed check itself (spelling fills in the
+        # words it actually flagged).
+        example <- if (!is.null(rx$example_fn)) {
+          rx$example_fn(cat_res[[chk]])
+        } else {
+          rx$example
+        }
+        cli::cli_code(example)
       } else {
         # No curated snippet yet: still surface the check and the specific
         # issues it found, so prescribe() never stays silent about a failure.
@@ -171,5 +179,37 @@ treatments <- list(
       "#' @export",
       "my_function <- function(x) paste('Result:', x)"
     )
+  ),
+  list(
+    category = "description_issues",
+    check = "spelling",
+    title = "Possibly Misspelled Words",
+    treatment = "Record the correct terms in a {.file .aspell} dictionary, which {.code R CMD check --as-cran} reads",
+    example_fn = function(check) {
+      words <- if (is.list(check)) check$issues else character(0)
+      build_aspell_snippet(words)
+    }
   )
 )
+
+# Build the .aspell/ setup snippet, pre-filled with the words a run flagged.
+# inst/WORDLIST (the spelling package) does NOT clear CRAN's aspell NOTE; a
+# .aspell/ dictionary does, so that is what we prescribe.
+build_aspell_snippet <- function(words) {
+  if (length(words) == 0L) {
+    words <- "TechnicalTerm"
+  }
+  vec <- paste0(
+    "c(",
+    paste(sprintf('"%s"', words), collapse = ", "),
+    ")"
+  )
+  c(
+    "# In the package root, record the accepted spellings:",
+    paste0("saveRDS(", vec, ', ".aspell/words.rds")'),
+    "",
+    "# .aspell/defaults.R (point aspell at that dictionary):",
+    "Rd_files <- vignettes <- R_files <- description <-",
+    '  list(encoding = "UTF-8", dictionaries = c("en_stats", "words"))'
+  )
+}

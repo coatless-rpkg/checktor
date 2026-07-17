@@ -641,3 +641,48 @@ test_that("Authors@R is not executed while diagnosing (no arbitrary code)", {
   expect_false(file.exists(marker)) # the command did not run
   expect_false(res$passed) # and the field is reported, not silently accepted
 })
+
+# ---- spelling ----------------------------------------------------------------
+
+test_that("diagnose_spelling flags DESCRIPTION words and honours a whitelist", {
+  skip_if_not(
+    nzchar(Sys.which("aspell")) || nzchar(Sys.which("hunspell")),
+    "no spell-check backend"
+  )
+  old <- options(checktor.spelling = TRUE)
+  on.exit(options(old), add = TRUE)
+  desc <- "Build a WASM REPL for WebAssembly workflows and more."
+
+  pkg <- make_temp_dir()
+  write_pkg(pkg, description = desc)
+  res <- diagnose_spelling(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_true(all(c("WASM", "REPL", "WebAssembly") %in% res$issues))
+
+  # accepted via Config/checktor/acronyms
+  pkg2 <- make_temp_dir()
+  write_pkg(
+    pkg2,
+    description = desc,
+    extra = "Config/checktor/acronyms: WASM, REPL, WebAssembly"
+  )
+  expect_true(diagnose_spelling(pkg2, verbose = FALSE)$passed)
+
+  # accepted via a .aspell/ dictionary
+  pkg3 <- make_temp_dir()
+  write_pkg(pkg3, description = desc)
+  dir.create(file.path(pkg3, ".aspell"))
+  saveRDS(
+    c("WASM", "REPL", "WebAssembly"),
+    file.path(pkg3, ".aspell", "words.rds")
+  )
+  expect_true(diagnose_spelling(pkg3, verbose = FALSE)$passed)
+})
+
+test_that("diagnose_spelling is a no-op when checktor.spelling is FALSE", {
+  old <- options(checktor.spelling = FALSE)
+  on.exit(options(old), add = TRUE)
+  pkg <- make_temp_dir()
+  write_pkg(pkg, description = "Build a WASM REPL for WebAssembly.")
+  expect_true(diagnose_spelling(pkg, verbose = FALSE)$passed)
+})

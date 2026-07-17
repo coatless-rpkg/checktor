@@ -51,6 +51,7 @@ CHECK_SEVERITY <- c(
   date_format = "policy", # CRAN incoming NOTE on non-ISO/stale Date
   encoding_utf8 = "policy", # CRAN incoming NOTE on non-UTF-8 Encoding
   version_format = "policy", # CRAN incoming NOTE on Version components
+  spelling = "opinion", # aspell NOTE; needs a backend, noisy
   license = "policy", # an invalid license is a rejection
   title_case = "policy", # CRAN incoming NOTE
   title_length = "opinion", # 65 chars is a convention

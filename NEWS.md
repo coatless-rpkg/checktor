@@ -83,6 +83,17 @@ exported and callable on its own, and a package can tune checktor from
   same text in a comment never matches. See `?diagnose_hardcoded_credentials` for
   the full list.
 
+* `spelling` runs `utils::aspell()` over the `Title` and `Description`, mirroring
+  CRAN's incoming spelling pass and reporting possibly-misspelled words. It reads
+  any `.aspell/` dictionary, `inst/WORDLIST`, or `Config/checktor` vocabulary you
+  already keep, so it is silenceable however you prefer. It needs a spell-check
+  backend to run and passes quietly without one, exactly as CRAN's check skips
+  spelling when none is present, which is why it is `opinion` tier and can be
+  turned off with `options(checktor.spelling = FALSE)`. When it fires,
+  `prescribe()` prints a ready-to-paste `.aspell/` snippet with the flagged words
+  filled in (`inst/WORDLIST` alone does not clear CRAN's aspell NOTE; a `.aspell/`
+  dictionary does).
+
 ## Configuration and extension
 
 * A package can now configure checktor from `Config/checktor/*` fields in its own
@@ -169,7 +180,7 @@ checktor reads far more of the ways R is actually written, so a clean run reflec
 
 **It now tells a read from a write, and a package's own state from the user's.**
 
-* `options()` and `par()` both read and write, and only a named argument makes the call a write, so `par("usr")[3]` and `withr`'s own `reset_options()` stay clean.
+* `options()` and `par()` both read and write, and only a named argument makes the call a write, so `par("usr")[3]` and `withr`'s own `reset_options()` stay clean. A restore factored into its own helper and registered by the caller with `on.exit(restore_par(op))` is recognised as the restore it is, not flagged as an unreset change.
 
 * A package's own namespaced option (`options(datatable.verbose = ...)`) is its own state, and a `setwd()` or `options()` inside a `callr` subprocess cannot reach the calling session.
 

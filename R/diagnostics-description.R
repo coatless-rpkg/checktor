@@ -89,6 +89,7 @@ diagnose_description_issues <- function(path = ".", verbose = TRUE) {
     date_format = function(p, v) diagnose_date_format(p, v, desc),
     encoding_utf8 = function(p, v) diagnose_encoding_utf8(p, v, desc),
     version_format = function(p, v) diagnose_version_format(p, v, desc),
+    spelling = function(p, v) diagnose_spelling(p, v, desc),
     description_length = function(p, v) diagnose_description_length(p, v, desc),
     description_starts_with = function(p, v) {
       diagnose_description_starts_with(p, v, desc)
@@ -1611,4 +1612,101 @@ diagnose_license_year <- function(path, verbose) {
     "Treatment: Replace the template placeholders with the real year and holder"
   )
   checktor_check_result(length(issues) == 0L, issues, "License file check")
+}
+
+#' Diagnose Possibly Misspelled Words in DESCRIPTION
+#'
+#' Spell-checks the `Title` and `Description` fields with [utils::aspell()],
+#' mirroring the aspell pass in CRAN's incoming check. It reports only words that
+#' are not already accepted somewhere: a package `.aspell/` dictionary,
+#' `inst/WORDLIST`, or a `Config/checktor/acronyms` or `software_names` field.
+#'
+#' @details
+#' The check needs a spell-check backend (`aspell` or `hunspell`) on the system.
+#' Without one it passes quietly, the same way CRAN's incoming check skips
+#' spelling when no backend is present, so a run on one machine may find words a
+#' run on another does not. It is therefore an `opinion`-tier check. When it does
+#' fire, [prescribe()] hands back a ready-to-paste `.aspell/` snippet with the
+#' flagged words filled in.
+#'
+#' @param path Character. Path to the package directory. Default: `"."`.
+#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
+#' @param desc Present for signature parity with the other DESCRIPTION checks;
+#'   spelling reads the `DESCRIPTION` file directly and ignores it.
+#'
+#' @return [checktor_check_result()] with `passed`, `issues`, `message`; the
+#'   `issues` are the possibly-misspelled words.
+#' @seealso [checktor()], [prescribe()].
+#' @export
+#' @examples
+#' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+#'                                  show_content = FALSE)
+#' diagnose_spelling(pkg, verbose = FALSE)$passed
+diagnose_spelling <- function(path = ".", verbose = TRUE, desc = NULL) {
+  desc_file <- file.path(path, "DESCRIPTION")
+  # Backend-dependent, so its result can differ between machines. Users who want
+  # a fully deterministic run (and the test suite) turn it off with
+  # options(checktor.spelling = FALSE); it stays on by default.
+  if (!isTRUE(getOption("checktor.spelling", TRUE))) {
+    return(checktor_check_result(TRUE, character(0), "Spelling check"))
+  }
+  program <- Sys.which("aspell")
+  if (!nzchar(program)) {
+    program <- Sys.which("hunspell")
+  }
+  # No backend or no DESCRIPTION: pass quietly, as CRAN's incoming check does.
+  if (!nzchar(program) || !file.exists(desc_file)) {
+    return(checktor_check_result(TRUE, character(0), "Spelling check"))
+  }
+
+  flagged <- tryCatch(
+    utils::aspell(desc_file, filter = "dcf", program = program),
+    error = function(e) NULL
+  )
+  words <- if (is.null(flagged) || nrow(flagged) == 0L) {
+    character(0)
+  } else {
+    unique(as.character(flagged$Original))
+  }
+  issues <- sort(setdiff(words, spelling_accepted_words(path)))
+
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues,
+    verbose,
+    "No possibly-misspelled words in {.file DESCRIPTION}",
+    "Possibly misspelled words in {.file DESCRIPTION}",
+    "Treatment: add correct terms to a .aspell dictionary; run prescribe() for the snippet",
+    level = "warning"
+  )
+  checktor_check_result(passed, issues, "Spelling check")
+}
+
+# Words a package has already declared acceptable, gathered from every mechanism
+# a maintainer might use: an aspell `.aspell/*.rds` dictionary, the spelling
+# package's `inst/WORDLIST`, and checktor's own `Config/checktor` acronyms and
+# software_names. Subtracting these keeps diagnose_spelling silenceable no matter
+# which one the package reaches for.
+spelling_accepted_words <- function(path) {
+  words <- character(0)
+
+  aspell_dir <- file.path(path, ".aspell")
+  if (dir.exists(aspell_dir)) {
+    for (f in list.files(aspell_dir, pattern = "\\.rds$", full.names = TRUE)) {
+      w <- tryCatch(readRDS(f), error = function(e) NULL)
+      if (is.character(w)) {
+        words <- c(words, w)
+      }
+    }
+  }
+
+  wordlist <- file.path(path, "inst", "WORDLIST")
+  if (file.exists(wordlist)) {
+    words <- c(words, safe_read_lines(wordlist))
+  }
+
+  cfg <- checktor_config(path)
+  words <- c(words, cfg$acronyms, cfg$software_names)
+
+  unique(words[nzchar(words)])
 }

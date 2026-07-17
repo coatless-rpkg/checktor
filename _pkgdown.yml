@@ -103,6 +103,7 @@ reference:
   - diagnose_date_format
   - diagnose_encoding_utf8
   - diagnose_version_format
+  - diagnose_spelling
   - diagnose_description_length
   - diagnose_description_starts_with
   - diagnose_description_quoted_quotes
