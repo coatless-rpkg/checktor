@@ -545,6 +545,14 @@ diagnose_option_changes <- function(path, verbose = TRUE, parsed = NULL) {
     "  or text() = 'rcmd' or text() = 'callr'",
     "]])"
   )
+  # A function factored out as an on.exit() restore handler -- registered by the
+  # caller as `on.exit(restore_par(op))` -- is doing the restoring, so its own
+  # par()/options() writes are the restore, not a leak. Its body holds no on.exit,
+  # which is why the guard above cannot see it. paintr's restore_par() is exactly
+  # this shape.
+  not_restore_handler <- not_on_exit_handler_xpath(on_exit_handler_names(
+    parsed
+  ))
   xpath <- paste0(
     "//SYMBOL_FUNCTION_CALL[text() = 'options' or text() = 'par' or text() = 'setwd'][",
     "  ",
@@ -561,6 +569,8 @@ diagnose_option_changes <- function(path, verbose = TRUE, parsed = NULL) {
     )),
     "  and ",
     in_subprocess,
+    "  and ",
+    not_restore_handler,
     "  and ",
     captured,
     "]"

@@ -247,6 +247,40 @@ not_under_fn_with_call_xpath <- function(funs) {
   )
 }
 
+# Names of functions registered as on.exit() cleanup handlers anywhere in the
+# sources. A function invoked from inside on.exit(...), such as
+# `on.exit(restore_par(op))`, IS the restoration, so the par()/options() writes
+# in its body are restores rather than leaks, even though the on.exit() lives in
+# the caller. Returns the callee names found inside on.exit() calls.
+on_exit_handler_names <- function(parsed) {
+  xpath <- paste0(
+    "//SYMBOL_FUNCTION_CALL[text() = 'on.exit']",
+    "/parent::expr/parent::expr//SYMBOL_FUNCTION_CALL"
+  )
+  names <- character(0)
+  for (p in parsed) {
+    if (is.null(p$xml)) {
+      next
+    }
+    names <- c(names, xml2::xml_text(xml2::xml_find_all(p$xml, xpath)))
+  }
+  setdiff(unique(names), "on.exit")
+}
+
+# XPath predicate that holds unless the innermost enclosing function DEFINITION is
+# assigned to one of `names`. Used to exempt option/par writes inside a registered
+# on.exit handler. An empty `names` yields a predicate that never excludes.
+not_on_exit_handler_xpath <- function(names) {
+  if (length(names) == 0L) {
+    return("true()")
+  }
+  pred <- paste(sprintf("text() = '%s'", names), collapse = " or ")
+  sprintf(
+    "not(ancestor::expr[FUNCTION][1]/parent::*/expr[1]/SYMBOL[%s])",
+    pred
+  )
+}
+
 # ---- Rd helpers --------------------------------------------------------------
 # tools::parse_Rd() returns a recursive list. Each section element carries
 # attr(., "Rd_tag") e.g. "\\value", "\\examples", "\\dontrun", "TEXT".

@@ -177,6 +177,33 @@ test_that("diagnose_option_changes recognises on.exit and withr::local_*", {
   expect_false(diagnose_option_changes(pkg_bad, verbose = FALSE)$passed)
 })
 
+test_that("diagnose_option_changes exempts a factored on.exit restore handler", {
+  # paintr's shape: the restore is a helper the caller registers with on.exit(),
+  # so its own par() writes ARE the restore even though its body has no on.exit.
+  pkg_ok <- make_temp_dir()
+  write_pkg(
+    pkg_ok,
+    r_code = c(
+      "reset_par <- function(op) par(cex = op$cex, mar = op$mar)",
+      "draw <- function() {",
+      "  op <- par(no.readonly = TRUE)",
+      "  on.exit(reset_par(op))",
+      "  par(mar = c(2, 2, 2, 2))",
+      "  plot(1)",
+      "}"
+    )
+  )
+  expect_true(diagnose_option_changes(pkg_ok, verbose = FALSE)$passed)
+
+  # But a helper that is NOT registered with on.exit stays a genuine leak.
+  pkg_bad <- make_temp_dir()
+  write_pkg(
+    pkg_bad,
+    r_code = "set_margins <- function() par(mar = c(1, 1, 1, 1))"
+  )
+  expect_false(diagnose_option_changes(pkg_bad, verbose = FALSE)$passed)
+})
+
 # ---- home writing ------------------------------------------------------------
 
 test_that("diagnose_home_writing does NOT flag formula tildes", {
