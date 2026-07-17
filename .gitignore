@@ -8,9 +8,6 @@ inst/doc
 logo-options/
 .superpowers/
 dev/
-internal/cache/
-internal/*.html
-internal/*_files/
-internal/.quarto/
+internal/
 docs/
 Rplots.pdf
