@@ -35,8 +35,8 @@ results <- checktor(pkg, verbose = FALSE, progress = FALSE)
 report <- health_report(results, format = "text")
 head(report)
 #> [1] "Package Doctor - Health Report"                                
-#> [2] "Generated on: 2026-07-16 06:53:32.720514"                      
-#> [3] "Patient: /tmp/Rtmp07ZJw3/checktor_example_20260716_065332_8690"
+#> [2] "Generated on: 2026-07-17 04:26:20.023901"                      
+#> [3] "Patient: /tmp/Rtmp2gvCdh/checktor_example_20260717_042619_2286"
 #> [4] ""                                                              
 #> [5] "Summary:"                                                      
 #> [6] "Total Issues: 7"                                               

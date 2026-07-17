@@ -101,6 +101,21 @@ callable on its own, and a package can tune checktor from
   [`?diagnose_hardcoded_credentials`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_hardcoded_credentials.md)
   for the full list.
 
+- `spelling` runs
+  [`utils::aspell()`](https://rdrr.io/r/utils/aspell.html) over the
+  `Title` and `Description`, mirroring CRAN’s incoming spelling pass and
+  reporting possibly-misspelled words. It reads any `.aspell/`
+  dictionary, `inst/WORDLIST`, or `Config/checktor` vocabulary you
+  already keep, so it is silenceable however you prefer. It needs a
+  spell-check backend to run and passes quietly without one, exactly as
+  CRAN’s check skips spelling when none is present, which is why it is
+  `opinion` tier and can be turned off with
+  `options(checktor.spelling = FALSE)`. When it fires,
+  [`prescribe()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/prescribe.md)
+  prints a ready-to-paste `.aspell/` snippet with the flagged words
+  filled in (`inst/WORDLIST` alone does not clear CRAN’s aspell NOTE; a
+  `.aspell/` dictionary does).
+
 ### Configuration and extension
 
 - A package can now configure checktor from `Config/checktor/*` fields
@@ -235,7 +250,10 @@ user’s.**
 - [`options()`](https://rdrr.io/r/base/options.html) and
   [`par()`](https://rdrr.io/r/graphics/par.html) both read and write,
   and only a named argument makes the call a write, so `par("usr")[3]`
-  and `withr`’s own `reset_options()` stay clean.
+  and `withr`’s own `reset_options()` stay clean. A restore factored
+  into its own helper and registered by the caller with
+  `on.exit(restore_par(op))` is recognised as the restore it is, not
+  flagged as an unreset change.
 
 - A package’s own namespaced option (`options(datatable.verbose = ...)`)
   is its own state, and a [`setwd()`](https://rdrr.io/r/base/getwd.html)

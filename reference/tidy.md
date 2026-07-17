@@ -69,26 +69,27 @@ tidy(results)
 #> 26   description               date_format     policy   TRUE        0
 #> 27   description             encoding_utf8     policy   TRUE        0
 #> 28   description            version_format     policy   TRUE        0
-#> 29   description        description_length    opinion   TRUE        0
-#> 30   description   description_starts_with     policy   TRUE        0
-#> 31   description description_quoted_quotes     policy   TRUE        0
-#> 32   description              license_year robustness   TRUE        0
-#> 33 documentation                value_tags    opinion   TRUE        0
-#> 34 documentation          missing_examples    opinion   TRUE        0
-#> 35 documentation             roxygen_usage robustness   TRUE        0
-#> 36 documentation         example_structure    opinion   TRUE        0
-#> 37 documentation        commented_examples    opinion   TRUE        0
-#> 38 documentation       donttest_vs_dontrun    opinion   TRUE        0
-#> 39 documentation     unexported_example_ns robustness   TRUE        0
-#> 40 documentation     suggested_in_examples     policy   TRUE        0
-#> 41       general              package_size     policy   TRUE        0
-#> 42       general                      urls    opinion   TRUE        0
-#> 43       general                 news_file    opinion   TRUE        0
-#> 44       general              readme_links robustness   TRUE        0
-#> 45        policy             browser_calls     policy   TRUE        0
-#> 46        policy              system_calls robustness   TRUE        0
-#> 47        policy           file_operations     policy   TRUE        0
-#> 48        policy        network_operations     policy   TRUE        0
+#> 29   description                  spelling    opinion   TRUE        0
+#> 30   description        description_length    opinion   TRUE        0
+#> 31   description   description_starts_with     policy   TRUE        0
+#> 32   description description_quoted_quotes     policy   TRUE        0
+#> 33   description              license_year robustness   TRUE        0
+#> 34 documentation                value_tags    opinion   TRUE        0
+#> 35 documentation          missing_examples    opinion   TRUE        0
+#> 36 documentation             roxygen_usage robustness   TRUE        0
+#> 37 documentation         example_structure    opinion   TRUE        0
+#> 38 documentation        commented_examples    opinion   TRUE        0
+#> 39 documentation       donttest_vs_dontrun    opinion   TRUE        0
+#> 40 documentation     unexported_example_ns robustness   TRUE        0
+#> 41 documentation     suggested_in_examples     policy   TRUE        0
+#> 42       general              package_size     policy   TRUE        0
+#> 43       general                      urls    opinion   TRUE        0
+#> 44       general                 news_file    opinion   TRUE        0
+#> 45       general              readme_links robustness   TRUE        0
+#> 46        policy             browser_calls     policy   TRUE        0
+#> 47        policy              system_calls robustness   TRUE        0
+#> 48        policy           file_operations     policy   TRUE        0
+#> 49        policy        network_operations     policy   TRUE        0
 #>                               message
 #> 1                     T/F usage check
 #> 2                  Seed setting check
@@ -118,24 +119,25 @@ tidy(results)
 #> 26                   Date field check
 #> 27               Encoding field check
 #> 28                Version field check
-#> 29           Description length check
-#> 30          Description opening check
-#> 31    Description double-quotes check
-#> 32                 License file check
-#> 33                   Value tags check
-#> 34             Missing examples check
-#> 35            Roxygen freshness check
-#> 36            Example structure check
-#> 37       Commented-out examples check
-#> 38          donttest vs dontrun check
-#> 39 Unexported example-namespace check
-#> 40   Suggested-package examples check
-#> 41                 Package size check
-#> 42                         URLs check
-#> 43                    NEWS file check
-#> 44        README relative-links check
-#> 45                Browser calls check
-#> 46                 System calls check
-#> 47              File operations check
-#> 48           Network operations check
+#> 29                     Spelling check
+#> 30           Description length check
+#> 31          Description opening check
+#> 32    Description double-quotes check
+#> 33                 License file check
+#> 34                   Value tags check
+#> 35             Missing examples check
+#> 36            Roxygen freshness check
+#> 37            Example structure check
+#> 38       Commented-out examples check
+#> 39          donttest vs dontrun check
+#> 40 Unexported example-namespace check
+#> 41   Suggested-package examples check
+#> 42                 Package size check
+#> 43                         URLs check
+#> 44                    NEWS file check
+#> 45        README relative-links check
+#> 46                Browser calls check
+#> 47                 System calls check
+#> 48              File operations check
+#> 49           Network operations check
 ```

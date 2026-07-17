@@ -120,6 +120,8 @@ Checks against the DESCRIPTION file, parsed via
   : Diagnose a Non-Portable DESCRIPTION Encoding
 - [`diagnose_version_format()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_version_format.md)
   : Diagnose the DESCRIPTION Version Field
+- [`diagnose_spelling()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_spelling.md)
+  : Diagnose Possibly Misspelled Words in DESCRIPTION
 - [`diagnose_description_length()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_description_length.md)
   : Diagnose Description Length
 - [`diagnose_description_starts_with()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_description_starts_with.md)
