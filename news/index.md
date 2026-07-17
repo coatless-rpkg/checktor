@@ -302,7 +302,11 @@ user’s.**
   the Descriptions that mention it). Programming languages and markup
   (`Python`, `Java`, `SQL`, `HTML`) are quoted only 20-57% of the time
   across CRAN, a coin flip rather than a convention, so they were
-  dropped.
+  dropped. `WebAssembly` is the one technology name it does demand: a
+  specific format the R WebAssembly ecosystem quotes consistently and
+  CRAN asks for, with `WASM`, `webR` and `Shinylive` recognised when
+  quoted. A package can add its own names with
+  `Config/checktor/software_names`.
 
 - Smaller sharpenings: `description_quoted_quotes` flags only a
   recognised software name rather than scare-quoted jargon,
