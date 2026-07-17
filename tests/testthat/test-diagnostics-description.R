@@ -53,6 +53,29 @@ test_that("software_names_formatting does NOT flag the bare letter R", {
   expect_true(res$software_names$passed)
 })
 
+test_that("software_names_formatting flags an unquoted WebAssembly", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, description = "Runs R code in a WebAssembly runtime.")
+  res <- diagnose_software_names_formatting(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_true(any(grepl("WebAssembly", res$issues)))
+
+  pkg_ok <- make_temp_dir()
+  write_pkg(pkg_ok, description = "Runs R code in a 'WebAssembly' runtime.")
+  expect_true(
+    diagnose_software_names_formatting(pkg_ok, verbose = FALSE)$passed
+  )
+})
+
+test_that("quoted WebAssembly/WASM/webR are recognised, not scare-quoted", {
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    description = "Builds links for 'WebAssembly' ('WASM') and 'webR' apps."
+  )
+  expect_true(diagnose_description_quoted_quotes(pkg, verbose = FALSE)$passed)
+})
+
 # ---- title_length ------------------------------------------------------------
 
 test_that("title_length flags titles of 65+ characters", {

@@ -198,7 +198,7 @@ checktor reads far more of the ways R is actually written, so a clean run reflec
 
 * `commented_examples` fires only when an entire `\examples{}` block is commented out, `example_structure` accepts a database, prompt or Shiny reactive context as justifying `\dontrun{}`, and `library_in_pkg` exempts code sent to a parallel worker, whose search path starts empty.
 
-* `software_names` flags only R-package and software-product names, which CRAN consistently requires quoted (`ggplot2` is quoted in 96% of the Descriptions that mention it). Programming languages and markup (`Python`, `Java`, `SQL`, `HTML`) are quoted only 20-57% of the time across CRAN, a coin flip rather than a convention, so they were dropped.
+* `software_names` flags only R-package and software-product names, which CRAN consistently requires quoted (`ggplot2` is quoted in 96% of the Descriptions that mention it). Programming languages and markup (`Python`, `Java`, `SQL`, `HTML`) are quoted only 20-57% of the time across CRAN, a coin flip rather than a convention, so they were dropped. `WebAssembly` is the one technology name it does demand: a specific format the R WebAssembly ecosystem quotes consistently and CRAN asks for, with `WASM`, `webR` and `Shinylive` recognised when quoted. A package can add its own names with `Config/checktor/software_names`.
 
 * Smaller sharpenings: `description_quoted_quotes` flags only a recognised software name rather than scare-quoted jargon, `description_length` counts words, `description_starts_with` gained its initial-capital rule, `acronyms` no longer flags `CMD`, and `urls` names the offending URL while skipping fenced code and `\verb{}` spans.
 

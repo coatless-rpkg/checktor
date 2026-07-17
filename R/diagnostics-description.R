@@ -211,6 +211,13 @@ diagnose_software_names_formatting <- function(
   # not defensible. They are technology descriptors, not the names of other
   # packages. ("R" itself is excluded for the same reason it always was: it is the
   # host language and appears too often legitimately.)
+  #
+  # `WebAssembly` is the exception among technology names: it is a specific format
+  # (a W3C standard, not a language you write a package "in"), it is consistently
+  # quoted in the R WebAssembly ecosystem, and CRAN asks for it. Its abbreviation
+  # `WASM` and the products `webR`/`Shinylive` are recognised when quoted (see
+  # SOFTWARE_NAMES) but not demanded, since bare abbreviations in parentheses are
+  # conventional. A package can add its own names via `Config/checktor/software_names`.
   software_names <- check_vocab(
     checktor_config(path),
     "software_names",
@@ -223,7 +230,8 @@ diagnose_software_names_formatting <- function(
       "shiny",
       "plotly",
       "data.table",
-      "tidyverse"
+      "tidyverse",
+      "WebAssembly"
     )
   )
   issues <- character(0)
@@ -1049,7 +1057,11 @@ SOFTWARE_NAMES <- c(
   "BUGS",
   "TensorFlow",
   "PyTorch",
-  "Keras"
+  "Keras",
+  "WebAssembly",
+  "WASM",
+  "webR",
+  "Shinylive"
 )
 
 is_software_name <- function(x, extra = character(0)) {
