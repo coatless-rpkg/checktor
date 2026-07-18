@@ -752,6 +752,31 @@ test_that("example_structure accepts \\dontrun{} around a shiny reactive context
   expect_true(diagnose_example_structure(pkg, verbose = FALSE)$passed)
 })
 
+test_that("example_structure accepts an install/launcher \\dontrun{} with a placeholder path", {
+  # shinyelectron ships install_*() and run_electron_app("path/to/app") examples:
+  # they install software or open a placeholder path, so \dontrun{} is justified.
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    rd_files = list(
+      "launch.Rd" = c(
+        "\\name{launch}",
+        "\\alias{launch}",
+        "\\title{l}",
+        "\\description{d}",
+        "\\value{x}",
+        "\\examples{",
+        "\\dontrun{",
+        "  install_nodejs()",
+        "  run_electron_app(\"path/to/electron/app\")",
+        "}",
+        "}"
+      )
+    )
+  )
+  expect_true(diagnose_example_structure(pkg, verbose = FALSE)$passed)
+})
+
 test_that("example_structure still flags \\dontrun{} with no justification", {
   pkg <- make_temp_dir()
   write_pkg(

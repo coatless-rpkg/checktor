@@ -215,6 +215,7 @@ diagnose_example_structure <- function(path, verbose = TRUE) {
     "download\\.file",
     "httr2?::",
     "curl",
+    "network",
     "http[s]?://",
     # needs a database
     "dbConnect",
@@ -236,6 +237,14 @@ diagnose_example_structure <- function(path, verbose = TRUE) {
     "long.running",
     "long.time",
     "Sys.sleep",
+    # installs or launches external software, or runs a system command
+    "install",
+    "electron",
+    "launch",
+    "system2?\\(",
+    # a placeholder path the example cannot actually open
+    "path/to",
+    "your[-_/ ]",
     sep = "|"
   )
 
