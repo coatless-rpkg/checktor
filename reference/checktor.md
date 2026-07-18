@@ -104,8 +104,9 @@ own `DESCRIPTION` (comma-separated lists):
   results and tallied in `metadata$suppressed`, while a `disable`d check
   is removed entirely and never counted there.
 
-- `Config/checktor/software_names`, `Config/checktor/acronyms`: names
-  appended to those checks' vocabularies.
+- `Config/checktor/software_names`, `Config/checktor/language_names`,
+  `Config/checktor/acronyms`: names appended to those checks'
+  vocabularies.
 
 ## See also
 
@@ -127,7 +128,7 @@ results <- checktor(pkg, verbose = FALSE, progress = FALSE)
 results              # the diagnosis summary
 #> ── Package Doctor - Diagnosis Summary ──────────────────────────────────────────
 #> Patient: examplepackage
-#> Examined: 2026-07-17 23:09:13.869071
+#> Examined: 2026-07-18 07:58:39.713793
 #> Doctor version: 0.2.0
 #> 
 #> CODE ISSUES: 1 failing check
@@ -141,9 +142,9 @@ results              # the diagnosis summary
 summary(results)     # per-category overview
 #>        category checks passed failed issues
 #> 1          code     15     14      1      7
-#> 2   description     18     17      1      1
+#> 2   description     19     18      1      1
 #> 3 documentation      8      8      0      0
-#> 4       general      4      4      0      0
+#> 4       general      5      5      0      0
 #> 5        policy      4      4      0      0
 issues(results)      # every issue as a tidy data frame
 #>      category    check   severity           file line

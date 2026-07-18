@@ -37,8 +37,8 @@ results <- checktor(pkg, verbose = FALSE, progress = FALSE)
 summary(results)
 #>        category checks passed failed issues
 #> 1          code     15     14      1      7
-#> 2   description     18     17      1      1
+#> 2   description     19     18      1      1
 #> 3 documentation      8      8      0      0
-#> 4       general      4      4      0      0
+#> 4       general      5      5      0      0
 #> 5        policy      4      4      0      0
 ```

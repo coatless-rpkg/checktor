@@ -176,6 +176,7 @@ desc_result <- diagnose_description_issues(pkg_path)
 #> 
 #> ! Potential software name formatting issues
 #> • Description: ggplot2 should be in single quotes
+#> ✔ Programming-language names appear properly formatted
 #> ! Potential unexplained acronyms: "ML"
 #> Treatment: Consider explaining these acronyms
 #> ✖ License field problems

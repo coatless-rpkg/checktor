@@ -43,6 +43,7 @@
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_home_writing.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_identifier_format.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_installed_packages_usage.html</loc></url>
+<url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_language_names.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_library_in_pkg_code.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_license_formatting.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_license_year.html</loc></url>
@@ -70,6 +71,7 @@
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_title_redundant_phrases.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_title_starts_with_article.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_unexported_example_namespace.html</loc></url>
+<url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_url_liveness.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_urls.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_value_tags.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_version_format.html</loc></url>

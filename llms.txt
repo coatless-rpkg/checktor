@@ -146,6 +146,8 @@ Checks against the DESCRIPTION file, parsed via
   : Diagnose DESCRIPTION File Issues
 - [`diagnose_software_names_formatting()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_software_names_formatting.md)
   : Diagnose Unquoted Software Names in DESCRIPTION
+- [`diagnose_language_names()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_language_names.md)
+  : Diagnose Programming-Language Names in DESCRIPTION
 - [`diagnose_acronym_explanation()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_acronym_explanation.md)
   : Diagnose Unexplained Acronyms in DESCRIPTION
 - [`diagnose_license_formatting()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_license_formatting.md)
@@ -222,6 +224,8 @@ other categories.
   : Diagnose Package Size
 - [`diagnose_urls()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_urls.md)
   : Diagnose URL Issues in Package Files
+- [`diagnose_url_liveness()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_url_liveness.md)
+  : Diagnose Broken and Redirecting URLs (Opt-In, Network)
 - [`diagnose_news_file()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_news_file.md)
   : Diagnose a Missing NEWS File
 - [`diagnose_readme_relative_links()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_readme_relative_links.md)
