@@ -18,10 +18,10 @@ For the full list of checks, see the
 ## Installation
 
 ```r
-# From CRAN (once published)
+# From CRAN
 install.packages("checktor")
 
-# Development version
+# Development version (cutting edge, from GitHub)
 # install.packages("pak")
 pak::pak("coatless-rpkg/checktor")
 ```
