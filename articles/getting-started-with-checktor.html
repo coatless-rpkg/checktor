@@ -102,22 +102,33 @@
 <p><code>checktor</code> is the specialist your build refers you to before that appointment. It runs the extra-CRAN checks that live in the Repository Policy and reviewers’ long memories but nowhere in the standard toolchain, and, true to the name, it gives you a checkup, a diagnosis, and a prescription.</p>
 </section><section class="level2"><h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
-<p>For now, <code>checktor</code> lives on GitHub. Once it reaches CRAN you will be able to <code>install.packages("checktor")</code>, but until then you install the development version.</p>
+<p><code>checktor</code> is on CRAN, so you can install it the usual way.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"checktor"</span><span class="op">)</span></span></code></pre></div>
+</div>
+<p>If you want the cutting-edge development version, with the latest changes before they reach CRAN, install it from GitHub.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># install.packages("pak")</span></span>
 <span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"coatless-rpkg/checktor"</span><span class="op">)</span></span></code></pre></div>
 </div>
 </section><section class="level2"><h2 id="a-first-checkup">A first checkup<a class="anchor" aria-label="anchor" href="#a-first-checkup"></a>
 </h2>
+<p>Load the package first.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/coatless-rpkg/checktor" class="external-link">checktor</a></span><span class="op">)</span></span></code></pre></div>
+</div>
+<p>That brings <code><a href="../reference/checktor.html">checktor()</a></code> and its helpers into your session, so from here everything is a single function call, and the natural place to begin is a checkup.</p>
 <p><code><a href="../reference/checktor.html">checktor()</a></code> examines a package directory. So we can watch it work without maiming your own package, we will point it at a throwaway package built around one deliberately bad file.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">pkg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/example_diagnose_scenario.html">example_diagnose_scenario</a></span><span class="op">(</span><span class="st">"code_examples/tf_usage_bad.R"</span>,</span>
 <span>                                 show_content <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
 </div>
 <p>Here is the file it was built around, bad habits and all.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Example file showing T/F usage issues</span></span>
 <span></span>
 <span><span class="co">#' Process Data Function</span></span>
@@ -153,13 +164,13 @@
 </blockquote>
 <p>Now the checkup itself.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># verbose and progress are off here, which keeps the printout compact</span></span>
 <span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/checktor.html">checktor</a></span><span class="op">(</span><span class="va">pkg</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span>, progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="va">results</span></span>
 <span><span class="co">#&gt; ── Package Doctor - Diagnosis Summary ──────────────────────────────────────────</span></span>
 <span><span class="co">#&gt; Patient: examplepackage</span></span>
-<span><span class="co">#&gt; Examined: 2026-07-18 07:58:57.317888</span></span>
+<span><span class="co">#&gt; Examined: 2026-07-18 23:57:35.88721</span></span>
 <span><span class="co">#&gt; Doctor version: 0.2.0</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; CODE ISSUES: 1 failing check</span></span>
@@ -180,7 +191,7 @@
 <p>The printed report is for humans. When you want to <em>compute</em> on the findings, filter them, count them, fold them into a report of your own, reach for the accessors. They return plain data frames, so you never spelunk through nested lists.</p>
 <p><img src="figures/result-shapes-light.svg" class="ct-fig ct-light" alt="The one checktor_results object fans out into three plain data frames. summary() gives 5 rows, one per category. issues() gives 10 rows, one per issue, carrying the file and line. tidy() gives 46 rows, one per check, whether it passed or not."><img src="figures/result-shapes-dark.svg" class="ct-fig ct-dark" aria-hidden="true"></p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span>   <span class="co"># one row per category</span></span>
 <span><span class="co">#&gt;        category checks passed failed issues</span></span>
 <span><span class="co">#&gt; 1          code     15     14      1      7</span></span>
@@ -190,7 +201,7 @@
 <span><span class="co">#&gt; 5        policy      4      4      0      0</span></span></code></pre></div>
 </div>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/issues.html">issues</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span>    <span class="co"># one row per issue, with file and line</span></span>
 <span><span class="co">#&gt;      category    check   severity           file line</span></span>
 <span><span class="co">#&gt; 1        code tf_usage robustness tf_usage_bad.R    8</span></span>
@@ -213,7 +224,7 @@
 </div>
 <p><code>tidy(results)</code> gives one row per check, passed or not, and <code><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame()</a></code> is its alias. Three predicates answer the yes/no questions directly:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/predicates.html">is_healthy</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] FALSE</span></span>
 <span><span class="fu"><a href="../reference/predicates.html">n_issues</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span>
@@ -226,7 +237,7 @@
 </h2>
 <p>For scripts and pre-submission checklists, <code><a href="../reference/checkup.html">checkup()</a></code> collapses the whole diagnosis to a single verdict, <code>TRUE</code> when the package is clean:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/checkup.html">checkup</a></span><span class="op">(</span><span class="va">pkg</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] FALSE</span></span></code></pre></div>
 </div>
@@ -235,7 +246,7 @@
 </h2>
 <p>A diagnosis you cannot act on is just bad news. <code><a href="../reference/prescribe.html">prescribe()</a></code> turns each finding into a concrete remedy, with the before and after spelled out.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/prescribe.html">prescribe</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span>
 <span><span class="co">#&gt; ── Treatment Recommendations ───────────────────────────────────────────────────</span></span>
 <span><span class="co">#&gt; </span></span>
@@ -255,7 +266,7 @@
 </div>
 <p><code><a href="../reference/health_report.html">health_report()</a></code> writes the whole consultation to a file, as Markdown, HTML, or plain text, to keep alongside your <code>cran-comments.md</code>:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/health_report.html">health_report</a></span><span class="op">(</span><span class="va">results</span>, file <span class="op">=</span> <span class="st">"package-health.md"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/health_report.html">health_report</a></span><span class="op">(</span><span class="va">results</span>, file <span class="op">=</span> <span class="st">"package-health.html"</span>, format <span class="op">=</span> <span class="st">"html"</span><span class="op">)</span></span></code></pre></div>
 </div>
@@ -263,7 +274,7 @@
 </h2>
 <p>Each category runs on its own, which helps when you are fixing one thing and would rather not hear about the others:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/diagnose_code_issues.html">diagnose_code_issues</a></span><span class="op">(</span><span class="op">)</span>           <span class="co"># just the R sources</span></span>
 <span><span class="fu"><a href="../reference/diagnose_description_issues.html">diagnose_description_issues</a></span><span class="op">(</span><span class="op">)</span>    <span class="co"># just DESCRIPTION</span></span>
 <span><span class="fu"><a href="../reference/diagnose_documentation_issues.html">diagnose_documentation_issues</a></span><span class="op">(</span><span class="op">)</span>  <span class="co"># just the .Rd files</span></span>
@@ -274,7 +285,7 @@
 </h2>
 <p><code><a href="../reference/checktor.html">checktor()</a></code> is chatty by design. In a script, quiet it once and every later call inherits the setting:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/configure_doctor.html">configure_doctor</a></span><span class="op">(</span>verbose_default <span class="op">=</span> <span class="cn">FALSE</span>, progress_default <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># or per call</span></span>
@@ -284,7 +295,7 @@
 </h2>
 <p>Run <code>checktor</code> in the gap between writing code and <code>R CMD check</code>:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">document</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">test</span><span class="op">(</span><span class="op">)</span></span>
 <span></span>

@@ -37,7 +37,7 @@ pkg_path <- example_diagnose_scenario(
   "documentation_examples/missing_examples_bad.Rd", show_content = FALSE)
 writeLines("export(undocumented_fn)", file.path(pkg_path, "NAMESPACE"))
 issues(diagnose_missing_examples(pkg_path, verbose = FALSE))
-#> Warning: /tmp/RtmpLtfes6/checktor_example_20260718_075845_2314/man/missing_examples_bad.Rd:5: unexpected section header '\examples'
+#> Warning: /tmp/RtmpySzMCe/checktor_example_20260718_235722_2314/man/missing_examples_bad.Rd:5: unexpected section header '\examples'
 #>   file line                location                message
 #> 1 <NA>   NA missing_examples_bad.Rd Missing examples check
 ```

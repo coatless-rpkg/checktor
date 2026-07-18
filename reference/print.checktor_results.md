@@ -42,7 +42,7 @@ results <- checktor(pkg, verbose = FALSE, progress = FALSE)
 print(results)
 #> ── Package Doctor - Diagnosis Summary ──────────────────────────────────────────
 #> Patient: examplepackage
-#> Examined: 2026-07-18 07:58:51.184481
+#> Examined: 2026-07-18 23:57:29.278349
 #> Doctor version: 0.2.0
 #> 
 #> CODE ISSUES: 1 failing check

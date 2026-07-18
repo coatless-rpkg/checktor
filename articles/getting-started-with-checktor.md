@@ -27,9 +27,15 @@ and a prescription.
 
 ## Installation
 
-For now, `checktor` lives on GitHub. Once it reaches CRAN you will be
-able to `install.packages("checktor")`, but until then you install the
-development version.
+`checktor` is on CRAN, so you can install it the usual way.
+
+``` r
+
+install.packages("checktor")
+```
+
+If you want the cutting-edge development version, with the latest
+changes before they reach CRAN, install it from GitHub.
 
 ``` r
 
@@ -38,6 +44,18 @@ pak::pak("coatless-rpkg/checktor")
 ```
 
 ## A first checkup
+
+Load the package first.
+
+``` r
+
+library(checktor)
+```
+
+That brings
+[`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md)
+and its helpers into your session, so from here everything is a single
+function call, and the natural place to begin is a checkup.
 
 [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md)
 examines a package directory. So we can watch it work without maiming
@@ -101,7 +119,7 @@ results <- checktor(pkg, verbose = FALSE, progress = FALSE)
 results
 #> ── Package Doctor - Diagnosis Summary ──────────────────────────────────────────
 #> Patient: examplepackage
-#> Examined: 2026-07-18 07:58:57.317888
+#> Examined: 2026-07-18 23:57:35.88721
 #> Doctor version: 0.2.0
 #> 
 #> CODE ISSUES: 1 failing check

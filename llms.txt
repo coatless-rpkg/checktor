@@ -15,10 +15,10 @@ reference](https://r-pkg.thecoatlessprofessor.com/checktor/reference/index.html)
 
 ``` r
 
-# From CRAN (once published)
+# From CRAN
 install.packages("checktor")
 
-# Development version
+# Development version (cutting edge, from GitHub)
 # install.packages("pak")
 pak::pak("coatless-rpkg/checktor")
 ```
