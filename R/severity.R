@@ -86,6 +86,10 @@ CHECK_SEVERITY <- c(
   # curl, jsonlite, digest and zoo among them. "Prefer https" is good advice, not
   # a citable violation.
   urls = "opinion",
+  # `url_liveness` fetches URLs and reports 404s/redirects, exactly as CRAN's
+  # incoming check does -- a real, citable NOTE, so robustness not opinion. It is
+  # opt-in (needs a network) and off by default, so it never colours a default run.
+  url_liveness = "robustness",
   news_file = "opinion",
   readme_links = "robustness", # a link that breaks in the built tarball
 

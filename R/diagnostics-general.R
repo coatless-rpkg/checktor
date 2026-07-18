@@ -42,6 +42,7 @@ diagnose_general_issues <- function(path = ".", verbose = TRUE) {
       list(
         package_size = diagnose_package_size,
         urls = diagnose_urls,
+        url_liveness = diagnose_url_liveness,
         news_file = diagnose_news_file,
         readme_links = diagnose_readme_relative_links
       ),
@@ -430,4 +431,89 @@ drop_fenced_code <- function(lines) {
   }
   inside <- cumsum(fence) %% 2L == 1L
   lines[!(inside | fence)]
+}
+
+#' Diagnose Broken and Redirecting URLs (Opt-In, Network)
+#'
+#' Fetches every URL in the package -- DESCRIPTION, `.Rd` files, and vignettes --
+#' and reports the ones that fail: 404s, other error statuses, and redirects that
+#' ought to point at their final target. This is exactly what
+#' `R CMD check --as-cran` does, through the same base R machinery
+#' ([tools::check_package_urls()]); checktor simply surfaces it as a check so you
+#' can run it without a full `--as-cran` pass and without depending on the
+#' `urlchecker` package.
+#'
+#' Because it needs a network and is comparatively slow, it is **opt-in** and does
+#' nothing until you enable it:
+#'
+#' ```r
+#' options(checktor.url_check = TRUE)
+#' checktor(".")
+#' ```
+#'
+#' With the option unset -- or when the fetch cannot run, such as offline -- it
+#' passes quietly, exactly as CRAN's own URL check does without connectivity. For
+#' the fast, offline half (flagging `http://` and URL shorteners without leaving
+#' the room) see [diagnose_urls()].
+#'
+#' @param path Character. Path to package directory
+#' @param verbose Logical. Print diagnostic messages
+#'
+#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
+#' @export
+#' @examples
+#' # Opt in first, then run against a package directory (needs a network):
+#' \dontrun{
+#' options(checktor.url_check = TRUE)
+#' diagnose_url_liveness(".")
+#' }
+diagnose_url_liveness <- function(path, verbose = TRUE) {
+  # Opt-in: it needs a network and is slow, so it stays off unless asked for.
+  if (!isTRUE(getOption("checktor.url_check", FALSE))) {
+    return(checktor_check_result(TRUE, character(0), "URL liveness check"))
+  }
+
+  db <- tryCatch(
+    suppressWarnings(suppressMessages(tools::check_package_urls(path))),
+    error = function(e) NULL
+  )
+  # No DESCRIPTION, no URLs, or the fetch itself failed (e.g. offline): the
+  # honest result is "nothing to report", not a wall of false failures.
+  if (is.null(db) || !is.data.frame(db) || nrow(db) == 0L) {
+    return(checktor_check_result(TRUE, character(0), "URL liveness check"))
+  }
+
+  col <- function(nm) {
+    v <- db[[nm]]
+    if (is.null(v)) {
+      return(rep("", nrow(db)))
+    }
+    v <- as.character(v)
+    v[is.na(v)] <- ""
+    v
+  }
+  from <- col("From")
+  status <- col("Status")
+  message <- col("Message")
+  new_target <- col("New")
+
+  issues <- trimws(sprintf(
+    "%s: %s -- %s%s%s",
+    ifelse(nzchar(from), from, "DESCRIPTION"),
+    col("URL"),
+    ifelse(nzchar(status), status, "unreachable"),
+    ifelse(nzchar(message), paste0(" ", message), ""),
+    ifelse(nzchar(new_target), paste0(" -> ", new_target), "")
+  ))
+
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues,
+    verbose,
+    "All URLs resolved cleanly",
+    "URLs that failed to resolve",
+    "Treatment: Fix or remove broken URLs; point redirects at their final target",
+    level = "warning"
+  )
+  checktor_check_result(passed, issues, "URL liveness check")
 }

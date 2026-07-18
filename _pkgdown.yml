@@ -131,6 +131,7 @@ reference:
   - diagnose_general_issues
   - diagnose_package_size
   - diagnose_urls
+  - diagnose_url_liveness
   - diagnose_news_file
   - diagnose_readme_relative_links
   - diagnose_cran_comments_file

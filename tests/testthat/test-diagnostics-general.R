@@ -207,3 +207,25 @@ test_that("diagnose_urls still flags a real Rd link outside a literal span", {
   res <- diagnose_urls(pkg, verbose = FALSE)
   expect_false(res$passed)
 })
+
+test_that("diagnose_url_liveness stays offline unless opted in", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, extra = "URL: https://nonexistent-host.checktor.invalid/")
+  # The option is off (setup.R pins it), so the check must not touch the network.
+  res <- diagnose_url_liveness(pkg, verbose = FALSE)
+  expect_true(res$passed)
+  expect_length(res$issues, 0L)
+})
+
+test_that("diagnose_url_liveness flags an unresolvable URL when opted in", {
+  skip_on_cran() # never fetch over the network on CRAN's machines
+  pkg <- make_temp_dir()
+  # A reserved .invalid host never resolves, so this fails deterministically
+  # (no live-internet dependency) yet exercises the real fetch path.
+  write_pkg(pkg, extra = "URL: https://nonexistent-host.checktor.invalid/")
+  old <- options(checktor.url_check = TRUE)
+  on.exit(options(old), add = TRUE)
+  res <- diagnose_url_liveness(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_match(res$issues, "checktor.invalid", all = FALSE)
+})

@@ -94,6 +94,15 @@ exported and callable on its own, and a package can tune checktor from
   filled in (`inst/WORDLIST` alone does not clear CRAN's aspell NOTE; a `.aspell/`
   dictionary does).
 
+* `url_liveness` fetches every URL in the DESCRIPTION, `.Rd` files and vignettes
+  and reports the ones that 404, error, or redirect, which is what
+  `R CMD check --as-cran` does through the same base R machinery
+  (`tools::check_package_urls()`), with no dependency on the `urlchecker` package.
+  Because it needs a network and is slow, it is opt-in: it does nothing until you
+  set `options(checktor.url_check = TRUE)`, and passes quietly offline. It is the
+  online half of the URL story; `urls` remains the fast offline half that flags
+  `http://` and shorteners without leaving the room.
+
 ## Configuration and extension
 
 * A package can now configure checktor from `Config/checktor/*` fields in its own
