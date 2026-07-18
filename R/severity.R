@@ -46,6 +46,7 @@ CHECK_SEVERITY <- c(
 
   # ---- description ----
   software_names = "policy", # WRE: single-quote other software
+  language_names = "policy", # WRE: single-quote languages/markup (own kind of policy)
   acronyms = "opinion", # reviewers ask; nothing enforces it
   identifier_format = "policy", # CRAN incoming NOTE on bad ORCID/ROR ids
   date_format = "policy", # CRAN incoming NOTE on non-ISO/stale Date
@@ -81,9 +82,8 @@ CHECK_SEVERITY <- c(
   package_size = "policy", # CRAN's size limit
   # `urls` flags any http:// link. But CRAN's NOTE is for URLs that are INVALID or
   # that REDIRECT, which R determines by FETCHING them. checktor is offline and
-  # cannot know whether a given http:// host even offers https. 15 of the packages
-  # audited ship http:// links and are on CRAN today, testthat, stringr, rlang,
-  # curl, jsonlite, digest and zoo among them. "Prefer https" is good advice, not
+  # cannot know whether a given http:// host even offers https. Plenty of packages
+  # that ship http:// links are on CRAN today. "Prefer https" is good advice, not
   # a citable violation.
   urls = "opinion",
   # `url_liveness` fetches URLs and reports 404s/redirects, exactly as CRAN's

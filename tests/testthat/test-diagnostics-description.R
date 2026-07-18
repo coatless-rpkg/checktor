@@ -67,6 +67,73 @@ test_that("software_names_formatting flags an unquoted WebAssembly", {
   )
 })
 
+test_that("language_names flags bare programming-language names", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, description = "Bridges R with Python and an SQL backend.")
+  res <- diagnose_language_names(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_true(any(grepl("Python", res$issues)))
+  expect_true(any(grepl("SQL", res$issues)))
+})
+
+test_that("language_names accepts quoted names and does not flag bare R", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, description = "Bridges R with 'Python' and an 'SQL' backend.")
+  expect_true(diagnose_language_names(pkg, verbose = FALSE)$passed)
+})
+
+test_that("language_names is a distinct policy check from software_names", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, description = "Bridges R with Python and 'ggplot2'.")
+  r <- checktor(pkg, verbose = FALSE, progress = FALSE)
+  # Python flags language_names (policy), ggplot2 is quoted so software_names passes.
+  expect_false(r$description_issues$language_names$passed)
+  expect_true(r$description_issues$software_names$passed)
+  expect_true("description.language_names" %in% failed_checks(r))
+})
+
+test_that("language_names flags C++ but never matches inside a larger token", {
+  # "C++" carries regex metacharacters; quoting it clears the flag.
+  bad <- make_temp_dir()
+  write_pkg(bad, description = "Exposes a C++ engine to R.")
+  res <- diagnose_language_names(bad, verbose = FALSE)
+  expect_false(res$passed)
+  expect_true(any(grepl("C++", res$issues, fixed = TRUE)))
+
+  ok <- make_temp_dir()
+  write_pkg(ok, description = "Exposes a 'C++' engine to R.")
+  expect_true(diagnose_language_names(ok, verbose = FALSE)$passed)
+
+  # SQL inside PostgreSQL, and Java inside JavaScript, must not be flagged.
+  edge <- make_temp_dir()
+  write_pkg(edge, description = "Reads a PostgreSQL dump with a 'JavaScript' viewer.")
+  expect_true(diagnose_language_names(edge, verbose = FALSE)$passed)
+})
+
+test_that("language_names covers statistical-computing environments", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, description = "Imports data from MATLAB and SAS into R.")
+  res <- diagnose_language_names(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_true(any(grepl("MATLAB", res$issues)))
+  expect_true(any(grepl("SAS", res$issues)))
+})
+
+test_that("language_names covers scripting, markup and data formats", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, description = "Renders Markdown, reads YAML, and drives Tcl widgets.")
+  res <- diagnose_language_names(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_true(any(grepl("Markdown", res$issues)))
+  expect_true(any(grepl("YAML", res$issues)))
+  expect_true(any(grepl("Tcl", res$issues)))
+
+  # TeX must not match inside LaTeX.
+  ok <- make_temp_dir()
+  write_pkg(ok, description = "Builds a manual with 'LaTeX' output.")
+  expect_true(diagnose_language_names(ok, verbose = FALSE)$passed)
+})
+
 test_that("quoted WebAssembly/WASM/webR are recognised, not scare-quoted", {
   pkg <- make_temp_dir()
   write_pkg(

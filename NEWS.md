@@ -42,9 +42,9 @@ exported and callable on its own, and a package can tune checktor from
 
   - `description_bare_r` demanded that every bare `R` in the `Description` be
     single-quoted. Writing R Extensions reserves single quotes for *other*
-    packages and external software, and R is the host language. Across CRAN, about
-    92% of the packages that mention R in their `Description` write it bare, and
-    packages first published in 2026 are no different.
+    packages and external software, and R is the host language. Across CRAN, most
+    packages that mention R in their `Description` write it bare, and packages
+    first published in 2026 are no different.
   - `title_starts_with_article` was a mis-transplant of CRAN's real rule, which
     applies to the `Description` field and requires the literal word "package"
     after the article. `jsonlite` ("A Simple and Robust JSON Parser and Generator
@@ -102,6 +102,15 @@ exported and callable on its own, and a package can tune checktor from
   set `options(checktor.url_check = TRUE)`, and passes quietly offline. It is the
   online half of the URL story; `urls` remains the fast offline half that flags
   `http://` and shorteners without leaving the room.
+
+* `language_names` flags a bare programming-language, markup, or
+  statistical-computing name -- `Python`, `Java`, `C++`, `SQL`, `HTML`, `MATLAB`,
+  `SAS` and more -- in the `Title` or `Description` that CRAN asks to see
+  single-quoted. It is the language counterpart to `software_names`: both are
+  policy-tier quoting checks, kept separate because a language name and a package
+  name are different kinds of thing. Single-letter and common-word names are left
+  out to avoid false positives, and the list extends with
+  `Config/checktor/language_names`.
 
 ## Configuration and extension
 
@@ -207,7 +216,7 @@ checktor reads far more of the ways R is actually written, so a clean run reflec
 
 * `commented_examples` fires only when an entire `\examples{}` block is commented out, `example_structure` accepts a database, prompt or Shiny reactive context (and now an install/launcher call or a `path/to/...` placeholder) as justifying `\dontrun{}`, and `library_in_pkg` exempts code sent to a parallel worker, whose search path starts empty.
 
-* `software_names` flags only R-package and software-product names, which CRAN consistently requires quoted (`ggplot2` is quoted in 96% of the Descriptions that mention it). Programming languages and markup (`Python`, `Java`, `SQL`, `HTML`) are quoted only 20-57% of the time across CRAN, a coin flip rather than a convention, so they were dropped. `WebAssembly` is the one technology name it does demand: a specific format the R WebAssembly ecosystem quotes consistently and CRAN asks for, with `WASM`, `webR` and `Shinylive` recognised when quoted. A package can add its own names with `Config/checktor/software_names`.
+* `software_names` flags R-package and software-product names CRAN asks to see quoted, plus `WebAssembly` (a specific format the R WebAssembly ecosystem and CRAN quote consistently), with `WASM`, `webR` and `Shinylive` recognised when quoted. Programming-language and markup names moved to their own `language_names` check. A package can add its own names with `Config/checktor/software_names`.
 
 * Smaller sharpenings: `description_quoted_quotes` flags only a recognised software name rather than scare-quoted jargon, `description_length` counts words, `description_starts_with` gained its initial-capital rule, `acronyms` no longer flags `CMD`, and `urls` names the offending URL while skipping fenced code and `\verb{}` spans.
 

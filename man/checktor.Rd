@@ -80,8 +80,8 @@ to mute only findings whose text contains \code{substring}. The check still
 runs; muted findings are dropped from the results and tallied in
 \code{metadata$suppressed}, while a \code{disable}d check is removed entirely and
 never counted there.
-\item \code{Config/checktor/software_names}, \code{Config/checktor/acronyms}: names appended
-to those checks' vocabularies.
+\item \code{Config/checktor/software_names}, \code{Config/checktor/language_names},
+\code{Config/checktor/acronyms}: names appended to those checks' vocabularies.
 }
 }
 \examples{

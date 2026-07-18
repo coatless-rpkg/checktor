@@ -88,6 +88,7 @@ reference:
   contents:
   - diagnose_description_issues
   - diagnose_software_names_formatting
+  - diagnose_language_names
   - diagnose_acronym_explanation
   - diagnose_license_formatting
   - diagnose_license_year

@@ -62,8 +62,8 @@
 #'   runs; muted findings are dropped from the results and tallied in
 #'   `metadata$suppressed`, while a `disable`d check is removed entirely and
 #'   never counted there.
-#' - `Config/checktor/software_names`, `Config/checktor/acronyms`: names appended
-#'   to those checks' vocabularies.
+#' - `Config/checktor/software_names`, `Config/checktor/language_names`,
+#'   `Config/checktor/acronyms`: names appended to those checks' vocabularies.
 #'
 #' @seealso
 #' [health_report()] to generate detailed reports, [prescribe()] for treatment

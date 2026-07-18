@@ -58,6 +58,7 @@ diagnose_description_issues <- function(path = ".", verbose = TRUE) {
     software_names = function(p, v) {
       diagnose_software_names_formatting(p, v, desc)
     },
+    language_names = function(p, v) diagnose_language_names(p, v, desc),
     acronyms = function(p, v) diagnose_acronym_explanation(p, v, desc),
     license = function(p, v) diagnose_license_formatting(p, v, desc),
     title_case = function(p, v) diagnose_title_case(p, v, desc),
@@ -200,24 +201,21 @@ diagnose_software_names_formatting <- function(
 ) {
   desc <- resolve_description(path, desc)
   # R PACKAGE and software-PRODUCT names only. Writing R Extensions asks for "other
-  # packages and external software" in single quotes, and CRAN enforces that for
-  # package names: measured across CRAN, ggplot2 is quoted in 96% of the
-  # Descriptions that mention it, dplyr 94%, shiny 75%.
+  # packages and external software" in single quotes, and CRAN enforces it for
+  # package names, so an unquoted `ggplot2` or `shiny` is flagged here at policy.
   #
-  # PROGRAMMING LANGUAGES and markup (Python, Java, JavaScript, SQL, HTML, CSS,
-  # C++) were deliberately DROPPED. The same measurement puts them at 20-57%
-  # quoted (Python 57%, SQL 55%, JavaScript 46%, HTML 20%), which is a coin flip,
-  # not a convention, so flagging an unquoted "JavaScript" at policy severity is
-  # not defensible. They are technology descriptors, not the names of other
-  # packages. ("R" itself is excluded for the same reason it always was: it is the
-  # host language and appears too often legitimately.)
+  # PROGRAMMING LANGUAGES and markup names (Python, Java, SQL, HTML) live in their
+  # own policy check, `diagnose_language_names()` -- a language name and a package
+  # name are different kinds of thing, so they read as separate concerns. ("R"
+  # itself is never flagged anywhere: it is the host language and appears too often
+  # legitimately.)
   #
-  # `WebAssembly` is the exception among technology names: it is a specific format
-  # (a W3C standard, not a language you write a package "in"), it is consistently
-  # quoted in the R WebAssembly ecosystem, and CRAN asks for it. Its abbreviation
-  # `WASM` and the products `webR`/`Shinylive` are recognised when quoted (see
-  # SOFTWARE_NAMES) but not demanded, since bare abbreviations in parentheses are
-  # conventional. A package can add its own names via `Config/checktor/software_names`.
+  # `WebAssembly` stays here rather than with the languages: it is a specific format
+  # (a W3C standard, not a language you write a package "in"), consistently quoted
+  # in the R WebAssembly ecosystem, and CRAN asks for it. Its abbreviation `WASM`
+  # and the products `webR`/`Shinylive` are recognised when quoted but not demanded,
+  # since bare abbreviations in parentheses are conventional. A package can add its
+  # own names via `Config/checktor/software_names`.
   software_names <- check_vocab(
     checktor_config(path),
     "software_names",
@@ -268,6 +266,90 @@ diagnose_software_names_formatting <- function(
     level = "warning"
   )
   checktor_check_result(passed, issues, "Software names check")
+}
+
+#' Diagnose Programming-Language Names in DESCRIPTION
+#'
+#' Flags a bare programming-language, markup, or statistical-computing name --
+#' `Python`, `Java`, `C++`, `SQL`, `HTML`, `MATLAB`, `SAS` and more -- in `Title`
+#' or `Description` that CRAN asks to see single-quoted. This is the language
+#' counterpart to [diagnose_software_names_formatting()]: both are policy-tier
+#' quoting checks, kept separate because a language name and a package name are
+#' different kinds of thing. `R` itself is never flagged -- it is the host language
+#' and appears too often to quote sensibly, and single-letter or common-word names
+#' (`C`, `Go`, `Swift`) are left out for the same reason.
+#'
+#' A package can extend the list through `Config/checktor/language_names` in its own
+#' DESCRIPTION.
+#'
+#' @param path Character. Path to the package directory. Default: `"."`.
+#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
+#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
+#'   Defaults to reading it from `path`.
+#'
+#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
+#' @seealso [checktor()], [diagnose_software_names_formatting()].
+#' @export
+#' @examples
+#' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+#'                                  show_content = FALSE)
+#' diagnose_language_names(pkg, verbose = FALSE)$passed
+diagnose_language_names <- function(path = ".", verbose = TRUE, desc = NULL) {
+  desc <- resolve_description(path, desc)
+  language_names <- check_vocab(
+    checktor_config(path),
+    "language_names",
+    c(
+      # general-purpose languages
+      "Python", "Java", "JavaScript", "TypeScript", "C++", "C#",
+      "Perl", "PHP", "Ruby", "Rust", "Fortran", "Julia", "Scala",
+      "Kotlin", "Haskell", "Lua", "Tcl",
+      # statistical / numerical computing environments
+      "MATLAB", "SAS", "Stata", "SPSS", "Octave", "Mathematica",
+      # query, markup, typesetting and data formats
+      "SQL", "HTML", "CSS", "XML", "JSON", "YAML", "TOML",
+      "LaTeX", "TeX", "Markdown"
+    )
+  )
+  # Single-letter names (C, D) and common English words (Go, Swift) are left out:
+  # at policy severity their false positives would outweigh the catch. A package
+  # that wants them can add them via Config/checktor/language_names.
+  issues <- character(0)
+
+  # A name may carry regex metacharacters ("C++", "C#") and must not match inside
+  # a larger token ("Java" in "JavaScript", "SQL" in "PostgreSQL"), so match the
+  # escaped name between non-name boundaries rather than with a plain word boundary.
+  esc <- function(x) gsub("([.^$*+?(){}|\\[\\]\\\\])", "\\\\\\1", x, perl = TRUE)
+
+  for (field in c("Title", "Description")) {
+    text <- desc[[field]]
+    if (is.null(text) || !nzchar(text)) {
+      next
+    }
+    for (name in language_names) {
+      e <- esc(name)
+      bare <- paste0("(?<![\\w+#])", e, "(?![\\w+#])")
+      if (
+        grepl(bare, text, perl = TRUE) &&
+          !grepl(paste0("'", e, "'"), text, perl = TRUE)
+      ) {
+        issues <- c(
+          issues,
+          paste0(field, ": ", name, " should be in single quotes")
+        )
+      }
+    }
+  }
+
+  passed <- length(issues) == 0
+  emit_issue_summary(
+    issues,
+    verbose,
+    "Programming-language names appear properly formatted",
+    "Potential programming-language name formatting issues",
+    level = "warning"
+  )
+  checktor_check_result(passed, issues, "Language names check")
 }
 
 #' Diagnose Unexplained Acronyms in DESCRIPTION
