@@ -89,7 +89,7 @@ do next, and the failure surfaces far from its cause:</p>
 <p>This is a robustness defect rather than a policy one, and it is distinct from
 the <code>core_usage</code> check, which asks how many cores you <em>use</em>. A package can cap
 itself at two cores perfectly and still crash on the machine where
-<code>detectCores()</code> returns <code>NA</code>. Both <code>logitr</code> and <code>cbcTools</code> do exactly that.</p>
+<code>detectCores()</code> returns <code>NA</code>.</p>
 <p>A call is treated as guarded when its enclosing function tests for <code>NA</code>
 (<code><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na()</a></code>), passes <code>na.rm = TRUE</code>, or supplies a fallback with <code>%||%</code>. The
 durable fix is <code>parallelly::availableCores()</code>, which never returns <code>NA</code> and

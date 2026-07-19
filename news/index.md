@@ -49,15 +49,17 @@ tune checktor through `Config/checktor/*` fields in its own DESCRIPTION.
   and [`tidy()`](https://generics.r-lib.org/reference/tidy.html) gained
   a `severity` column.
 
-- Three checks were dropped from the default run because no authority
+- `description_bare_r` was removed. It flagged every bare `R` in the
+  `Description` and asked you to quote it, but Writing R Extensions
+  reserves single quotes for other packages and external software, and
+  `R` is the host language, so most packages write it bare and stay on
+  CRAN. The new `language_names` check settles the question the right
+  way by leaving `R` alone.
+
+- Two checks were dropped from the default run because no authority
   supports them, and each stays exported and callable for anyone who
   wants it.
 
-  - `description_bare_r` demanded that every bare `R` in the
-    `Description` be single-quoted. Writing R Extensions reserves single
-    quotes for other packages and external software, and `R` is the host
-    language, so most packages that mention it write it bare and stay on
-    CRAN.
   - `title_starts_with_article` was a mis-transplant of a real CRAN rule
     that applies to the `Description` field and requires the literal
     word “package” after the article. Plenty of packages sit on CRAN

@@ -186,8 +186,6 @@ Checks against the DESCRIPTION file, parsed via
   : Diagnose the Description Opening
 - [`diagnose_description_quoted_quotes()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_description_quoted_quotes.md)
   : Diagnose Double-Quoted Software Names
-- [`diagnose_description_bare_r()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_description_bare_r.md)
-  : Diagnose a Bare R in DESCRIPTION
 
 ## Documentation diagnostics
 

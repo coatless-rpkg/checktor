@@ -44,8 +44,7 @@ its cause:
 This is a robustness defect rather than a policy one, and it is distinct
 from the `core_usage` check, which asks how many cores you *use*. A
 package can cap itself at two cores perfectly and still crash on the
-machine where `detectCores()` returns `NA`. Both `logitr` and `cbcTools`
-do exactly that.
+machine where `detectCores()` returns `NA`.
 
 A call is treated as guarded when its enclosing function tests for `NA`
 ([`is.na()`](https://rdrr.io/r/base/NA.html)), passes `na.rm = TRUE`, or

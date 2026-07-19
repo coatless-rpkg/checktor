@@ -58,11 +58,10 @@
 </li>
 <li><p>Every <code>diagnose_*</code> function is now exported. The old split was accidental, with <code><a href="../reference/diagnose_tf_usage.html">diagnose_tf_usage()</a></code> public while <code><a href="../reference/diagnose_option_changes.html">diagnose_option_changes()</a></code> was not. The DESCRIPTION checks used to take a pre-parsed <code>DESCRIPTION</code> as their first argument, which is not something a caller has, so they now take <code>(path, verbose, desc = NULL)</code> like every other check.</p></li>
 <li><p><code><a href="../reference/issues.html">issues()</a></code> and <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code> gained a <code>severity</code> column.</p></li>
+<li><p><code>description_bare_r</code> was removed. It flagged every bare <code>R</code> in the <code>Description</code> and asked you to quote it, but Writing R Extensions reserves single quotes for other packages and external software, and <code>R</code> is the host language, so most packages write it bare and stay on CRAN. The new <code>language_names</code> check settles the question the right way by leaving <code>R</code> alone.</p></li>
 <li>
-<p>Three checks were dropped from the default run because no authority supports them, and each stays exported and callable for anyone who wants it.</p>
+<p>Two checks were dropped from the default run because no authority supports them, and each stays exported and callable for anyone who wants it.</p>
 <ul><li>
-<code>description_bare_r</code> demanded that every bare <code>R</code> in the <code>Description</code> be single-quoted. Writing R Extensions reserves single quotes for other packages and external software, and <code>R</code> is the host language, so most packages that mention it write it bare and stay on CRAN.</li>
-<li>
 <code>title_starts_with_article</code> was a mis-transplant of a real CRAN rule that applies to the <code>Description</code> field and requires the literal word “package” after the article. Plenty of packages sit on CRAN with titles that begin with an article.</li>
 <li>
 <code>description_function_quotes</code> asserted that single quotes are reserved for software names. Writing R Extensions actually treats them as an inclusive list for non-English usage that includes other packages, so a quoted function name breaks no rule.</li>
