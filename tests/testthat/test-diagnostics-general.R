@@ -251,3 +251,19 @@ test_that("diagnose_url_liveness passes when the fetch reports nothing", {
   expect_true(res$passed)
   expect_length(res$issues, 0L)
 })
+
+test_that("diagnose_url_liveness passes a reachable URL end to end", {
+  skip_on_cran() # CRAN policy: tests must not require network access
+  # A real run against tools::check_package_urls(), no mock. A reachable URL must
+  # not be flagged. This direction is robust to a network-less runner: with no
+  # network the fetch reports nothing and the check still passes, so the only way
+  # it fails is if the URL genuinely breaks. CRAN's own site is the most stable
+  # choice and never rate-limits R's URL checker.
+  pkg <- make_temp_dir()
+  write_pkg(pkg, extra = "URL: https://cran.r-project.org/")
+  old <- options(checktor.url_check = TRUE)
+  on.exit(options(old), add = TRUE)
+  res <- diagnose_url_liveness(pkg, verbose = FALSE)
+  expect_true(res$passed)
+  expect_length(res$issues, 0L)
+})
