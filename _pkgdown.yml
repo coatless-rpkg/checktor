@@ -108,7 +108,6 @@ reference:
   - diagnose_description_length
   - diagnose_description_starts_with
   - diagnose_description_quoted_quotes
-  - diagnose_description_bare_r
 
 - title: Documentation diagnostics
   desc: >

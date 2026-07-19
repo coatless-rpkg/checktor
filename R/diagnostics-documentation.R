@@ -193,8 +193,8 @@ diagnose_example_structure <- function(path, verbose = TRUE) {
   # a network, credentials, a person at the keyboard, a database, a running app,
   # or more time than CRAN allows.
   #
-  # The reactive-context markers matter as much as the rest. surveydown's
-  # examples define `server <- function(input, output, session)`, which is
+  # The reactive-context markers matter as much as the rest. Some examples
+  # define `server <- function(input, output, session)`, which is
   # meaningless outside a running Shiny app, but the word "shiny" never appears
   # in them -- so a literal search for it reported three correct \dontrun{} blocks
   # as unnecessary.
@@ -346,9 +346,9 @@ diagnose_commented_examples <- function(path, verbose = TRUE) {
 
     # The defect is an example that DEMONSTRATES NOTHING because the code that
     # would run has been commented out. A comment sitting alongside live code is
-    # a different thing entirely: surveydown's examples comment out the server
-    # and .qmd snippets that belong in the user's OWN files, then call
-    # sd_create_survey() for real. That is illustration, not a disabled example,
+    # a different thing entirely: some examples comment out server and .qmd
+    # snippets that belong in the user's OWN files, then call a setup function
+    # for real. That is illustration, not a disabled example,
     # and reporting it was reporting the documentation for doing its job.
     #
     # So: only flag when the block has no runnable code at all. \dontrun{} is
@@ -736,7 +736,7 @@ diagnose_suggested_in_examples <- function(path, verbose = TRUE) {
       #
       # Note `interactive()` is deliberately NOT a guard: it does not make the
       # package available, so an example wrapped in it still fails when the package
-      # is absent. surveydown does exactly that, and it stays flagged.
+      # is absent. Some examples do exactly that, and they stay flagged.
       guard_re <- sprintf(
         paste0(
           "(?:requireNamespace|is_installed)\\s*\\(\\s*['\"]?%s['\"]?",

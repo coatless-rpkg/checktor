@@ -34,7 +34,7 @@ if (cores > n) cores <- n          # Error: missing value where TRUE/FALSE neede
 This is a robustness defect rather than a policy one, and it is distinct from
 the \code{core_usage} check, which asks how many cores you \emph{use}. A package can cap
 itself at two cores perfectly and still crash on the machine where
-\code{detectCores()} returns \code{NA}. Both \code{logitr} and \code{cbcTools} do exactly that.
+\code{detectCores()} returns \code{NA}.
 
 A call is treated as guarded when its enclosing function tests for \code{NA}
 (\code{is.na()}), passes \code{na.rm = TRUE}, or supplies a fallback with \verb{\%||\%}. The

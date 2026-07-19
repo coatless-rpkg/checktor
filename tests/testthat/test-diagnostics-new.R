@@ -2,38 +2,6 @@
 
 # ---- description_starts_with -------------------------------------------------
 
-# ---- description_bare_r ------------------------------------------------------
-
-test_that("description_bare_r is NOT part of a default run", {
-  # It demanded that every bare `R` be single-quoted, which no authority supports:
-  # Writing R Extensions reserves single quotes for OTHER software, and R is the
-  # host language. Measured against the installed library, 115 packages write R
-  # bare and 25 quote it. The check stays callable; it is not run.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    description = "A tool for R users to do things and more things."
-  )
-  res <- diagnose_description_issues(pkg, verbose = FALSE)
-  expect_null(res$description_bare_r)
-  expect_false("description_bare_r" %in% names(res$passed))
-})
-
-test_that("description_bare_r still works when called directly", {
-  expect_false(
-    diagnose_description_bare_r(
-      verbose = FALSE,
-      desc = c(Description = "A tool for R users.")
-    )$passed
-  )
-  expect_true(
-    diagnose_description_bare_r(
-      verbose = FALSE,
-      desc = c(Description = "A tool for 'R' users.")
-    )$passed
-  )
-})
-
 # ---- description_quoted_quotes -----------------------------------------------
 
 test_that("description_quoted_quotes flags a double-quoted SOFTWARE name", {

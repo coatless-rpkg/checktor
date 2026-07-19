@@ -381,9 +381,9 @@ diagnose_print_cat_usage <- function(path, verbose = TRUE, parsed = NULL) {
   )
 
   # A function that PROMPTS the user is an interactive function by definition, so
-  # the text it prints to set up the prompt is part of the prompt. surveydown's
-  # sd_create_survey() cat()s a file tree and then asks "Overwrite all existing
-  # files?" -- flagging that is flagging the question.
+  # the text it prints to set up the prompt is part of the prompt. A setup routine
+  # that cat()s a file tree and then asks "Overwrite all existing files?" is
+  # prompting, and flagging that is flagging the question.
   prompts_user <- paste0(
     "ancestor::expr[FUNCTION][1]//SYMBOL_FUNCTION_CALL[",
     "  text() = 'readline' or text() = 'menu' or text() = 'askYesNo'",
@@ -1241,8 +1241,8 @@ worker_count_is_risky <- function(w) {
 }
 
 # TRUE when the enclosing function caps cores for CRAN, i.e. it mentions
-# _R_CHECK_LIMIT_CORES_ or NOT_CRAN. This is the guard both logitr and cbcTools
-# implement, and it is byte-for-byte R's own parallel:::.check_ncores predicate.
+# _R_CHECK_LIMIT_CORES_ or NOT_CRAN. This is the guard packages implement to cap
+# cores under CRAN, and it is byte-for-byte R's own parallel:::.check_ncores predicate.
 has_cran_core_guard <- function(call_node) {
   hits <- xml2::xml_find_all(
     call_node,
@@ -1262,8 +1262,8 @@ has_cran_core_guard <- function(call_node) {
 # The exception is code destined for a WORKER process. A parallel daemon starts
 # with an empty search path, so `mirai::everywhere({ library(pkg) })` and
 # `parallel::clusterEvalQ(cl, library(pkg))` are not altering the user's search
-# path at all -- they are setting up someone else's. logitr does exactly this,
-# and flagging it was flagging the one place library() is the right call.
+# path at all -- they are setting up someone else's. Flagging it was flagging
+# the one place library() is the right call.
 REMOTE_EVAL_FUNS <- c(
   "everywhere",
   "clusterEvalQ",
@@ -1408,7 +1408,7 @@ diagnose_sys_setenv_no_reset <- function(path, verbose = TRUE, parsed = NULL) {
 #' This is a robustness defect rather than a policy one, and it is distinct from
 #' the `core_usage` check, which asks how many cores you *use*. A package can cap
 #' itself at two cores perfectly and still crash on the machine where
-#' `detectCores()` returns `NA`. Both `logitr` and `cbcTools` do exactly that.
+#' `detectCores()` returns `NA`.
 #'
 #' A call is treated as guarded when its enclosing function tests for `NA`
 #' (`is.na()`), passes `na.rm = TRUE`, or supplies a fallback with `%||%`. The

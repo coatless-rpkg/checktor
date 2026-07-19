@@ -64,7 +64,6 @@ CHECK_SEVERITY <- c(
   references = "policy", # CRAN incoming NOTE on <doi:> form
   description_length = "opinion",
   description_starts_with = "policy", # CRAN incoming NOTE
-  description_bare_r = "opinion", # see below: not in the default run
   description_quoted_quotes = "policy", # WRE quoting rules
   license_year = "robustness", # an unfilled LICENSE template
 
@@ -103,14 +102,7 @@ CHECK_SEVERITY <- c(
 # Checks excluded from the default run because no authority supports them in
 # EITHER direction. They stay callable, and stay in `CHECK_SEVERITY`, so anyone
 # who wants them can ask for them.
-#
-# `description_bare_r` demanded that every bare `R` in Description be
-# single-quoted. Writing R Extensions reserves single quotes for OTHER software,
-# and R is the host language, not a dependency: of the packages installed here,
-# 115 write R bare and 25 quote it. The rule was inventing a requirement, and
-# checktor's own DESCRIPTION quoted 'R' solely because its own check said so.
 EXCLUDED_BY_DEFAULT <- c(
-  "description_bare_r",
   "title_starts_with_article",
   "description_function_quotes"
 )

@@ -377,8 +377,8 @@ enclosing_function_name <- function(node) {
 # Names of functions whose output is only ever reachable through an S3 output
 # method, i.e. print-method delegates.
 #
-# An S3 print method may hand its cat()ing off to a helper (cbcTools does this
-# with print_structure_section() and friends). The helper is not itself a method,
+# An S3 print method may hand its cat()ing off to a helper (some packages do this
+# with a print_structure_section() and friends). The helper is not itself a method,
 # so a name-based exemption cannot see it. But if EVERY caller of the helper is
 # an S3 print/format/summary method, its output is reachable only via one, which
 # is behaviourally identical to inlining it. Callers are resolved across all

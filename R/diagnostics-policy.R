@@ -169,8 +169,8 @@ diagnose_system_calls <- function(path, verbose = TRUE, parsed = NULL) {
 # `writeLines(x, out_file)` writes wherever the caller said, and a caller who
 # passed the path gave permission by doing so. An earlier version had this
 # backwards: it flagged every write and then tried to exempt the ones whose
-# destination was a formal, which meant every computed path -- surveydown's
-# `writeLines(template, env_file)`, where env_file is built from a user-supplied
+# destination was a formal, which meant every computed path -- a
+# `writeLines(template, env_file)` where env_file is built from a user-supplied
 # directory -- was reported.
 #
 # The one hole that leaves is a destination that IS a symbol but DEFAULTS to a

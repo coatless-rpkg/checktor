@@ -95,13 +95,6 @@ diagnose_description_issues <- function(path = ".", verbose = TRUE) {
     description_starts_with = function(p, v) {
       diagnose_description_starts_with(p, v, desc)
     },
-    # `description_bare_r` is deliberately NOT here. It demanded that every bare
-    # `R` in the Description be single-quoted, and no authority supports that:
-    # Writing R Extensions reserves single quotes for OTHER software, and R is the
-    # host language, not a dependency. Of the packages installed on the machine
-    # this was measured on, 115 write R bare and 25 quote it. checktor's own
-    # DESCRIPTION quoted 'R' solely because this check said so. It stays callable
-    # for anyone who wants it, but it is not part of a run.
     description_quoted_quotes = function(p, v) {
       diagnose_description_quoted_quotes(p, v, desc)
     },
@@ -948,76 +941,6 @@ diagnose_description_length <- function(
   )
 }
 
-# Bare 'R' (the language name) should be quoted as 'R' in Description.
-# Match 'R' as a standalone word, excluding cases already quoted or part of
-# acronyms like 'CRAN' / 'RStudio'.
-#' Diagnose a Bare R in DESCRIPTION
-#'
-#' Flags an unquoted `R` in `Description`.
-#'
-#' This check is NOT part of a [checktor()] run, and is kept only for callers who
-#' want it. No authority supports the rule: Writing R Extensions reserves single
-#' quotes for OTHER software, and R is the host language, not a dependency.
-#' Measured against one installed library, 115 packages write R bare and 25 quote
-#' it.
-#'
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
-#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
-#'   Defaults to reading it from `path`.
-#'
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @seealso [checktor()], which runs this and every other check.
-#' @export
-#' @examples
-#' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
-#'                                  show_content = FALSE)
-#' diagnose_description_bare_r(pkg, verbose = FALSE)$passed
-diagnose_description_bare_r <- function(
-  path = ".",
-  verbose = TRUE,
-  desc = NULL
-) {
-  desc <- resolve_description(path, desc)
-  text <- desc[["Description"]]
-  if (is.null(text) || !nzchar(text)) {
-    return(checktor_check_result(
-      TRUE,
-      character(0),
-      "Description bare-R check"
-    ))
-  }
-  # read.dcf preserves the physical line breaks inside multi-line fields;
-  # collapse them so phrase-level whitelisting works.
-  text <- gsub("\\s+", " ", text)
-  # Whitelist the canonical CRAN expansion - by convention the embedded R is
-  # not quoted.
-  text <- gsub(
-    "Comprehensive R Archive Network",
-    "Comprehensive_X_Archive_Network",
-    text,
-    fixed = TRUE
-  )
-  # Match bare R with surrounding non-word chars, not preceded by quote or
-  # alphabetic character. Allow 'R CMD check' and similar inside single quotes.
-  pat <- "(?<![A-Za-z0-9_'])R(?![A-Za-z0-9_'])"
-  if (grepl(pat, text, perl = TRUE)) {
-    issues <- "Description contains bare 'R' (use single quotes: 'R')"
-    passed <- FALSE
-  } else {
-    issues <- character(0)
-    passed <- TRUE
-  }
-  emit_issue_summary(
-    issues,
-    verbose,
-    "Description quotes 'R' properly",
-    "Description has bare R that should be single-quoted",
-    level = "warning"
-  )
-  checktor_check_result(passed, issues, "Description bare-R check")
-}
-
 # Double quotes in Description should only enclose publication titles.
 # Heuristic: flag any pair of double quotes whose content is short (< 80 chars)
 # and contains no title-case multi-word pattern (very common indicator of a
@@ -1066,8 +989,8 @@ diagnose_description_quoted_quotes <- function(
   #
   # So the rule is about SOFTWARE NAMES in double quotes. The old test flagged any
   # double-quoted phrase of three words or fewer, which caught ordinary scare-
-  # quoted jargon -- cbcTools ships "labeled", "no choice" and "alternative-
-  # specific designs" on CRAN today. Those ARE the quotations double quotes are
+  # quoted jargon such as the "labeled", "no choice" and "alternative-specific
+  # designs" that appear on CRAN today. Those ARE the quotations double quotes are
   # reserved for. Only flag a double-quoted name we can actually recognise as
   # software.
   extra_names <- checktor_config(path)$software_names
