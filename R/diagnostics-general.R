@@ -433,6 +433,12 @@ drop_fenced_code <- function(lines) {
   lines[!(inside | fence)]
 }
 
+# A seam over R's own URL checker so the network fetch can be stubbed in tests.
+# It returns the check_url_db data frame that tools::check_package_urls() builds.
+fetch_url_db <- function(path) {
+  tools::check_package_urls(path)
+}
+
 #' Diagnose Broken and Redirecting URLs (Opt-In, Network)
 #'
 #' Fetches every URL in the package -- DESCRIPTION, `.Rd` files, and vignettes --
@@ -474,7 +480,7 @@ diagnose_url_liveness <- function(path, verbose = TRUE) {
   }
 
   db <- tryCatch(
-    suppressWarnings(suppressMessages(tools::check_package_urls(path))),
+    suppressWarnings(suppressMessages(fetch_url_db(path))),
     error = function(e) NULL
   )
   # No DESCRIPTION, no URLs, or the fetch itself failed (e.g. offline): the

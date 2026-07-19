@@ -217,15 +217,37 @@ test_that("diagnose_url_liveness stays offline unless opted in", {
   expect_length(res$issues, 0L)
 })
 
-test_that("diagnose_url_liveness flags an unresolvable URL when opted in", {
-  skip_on_cran() # never fetch over the network on CRAN's machines
+test_that("diagnose_url_liveness surfaces the broken URLs the fetch reports", {
+  # Stub the network fetch so the test is deterministic and never leaves the
+  # machine. The real fetch is base R's tools::check_package_urls(), whose
+  # behaviour is environment-dependent (and absent without a network).
   pkg <- make_temp_dir()
-  # A reserved .invalid host never resolves, so this fails deterministically
-  # (no live-internet dependency) yet exercises the real fetch path.
-  write_pkg(pkg, extra = "URL: https://nonexistent-host.checktor.invalid/")
+  write_pkg(pkg)
   old <- options(checktor.url_check = TRUE)
   on.exit(options(old), add = TRUE)
+
+  fake_db <- data.frame(
+    URL = "https://example.com/missing",
+    From = "DESCRIPTION",
+    Status = "404",
+    Message = "Not Found",
+    New = "",
+    stringsAsFactors = FALSE
+  )
+  testthat::local_mocked_bindings(fetch_url_db = function(path) fake_db)
   res <- diagnose_url_liveness(pkg, verbose = FALSE)
   expect_false(res$passed)
-  expect_match(res$issues, "checktor.invalid", all = FALSE)
+  expect_match(res$issues, "example.com/missing", all = FALSE)
+  expect_match(res$issues, "404", all = FALSE)
+})
+
+test_that("diagnose_url_liveness passes when the fetch reports nothing", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  old <- options(checktor.url_check = TRUE)
+  on.exit(options(old), add = TRUE)
+  testthat::local_mocked_bindings(fetch_url_db = function(path) data.frame())
+  res <- diagnose_url_liveness(pkg, verbose = FALSE)
+  expect_true(res$passed)
+  expect_length(res$issues, 0L)
 })
