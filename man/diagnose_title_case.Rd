@@ -20,6 +20,16 @@ Defaults to reading it from \code{path}.}
 \description{
 Flags a \code{Title} that is not in title case, delegating to \code{\link[tools:toTitleCase]{tools::toTitleCase()}}, which restores single-quoted spans so \code{'shiny'} keeps its own capitalisation.
 }
+\section{Source}{
+
+\href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file}{Writing R Extensions},
+under "The DESCRIPTION file", says the \code{Title} "should use title case"; the
+\href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages}{\code{--as-cran}}
+incoming check flags one that does not. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)

@@ -21,6 +21,15 @@ relative links whose target is missing on disk or excluded by
 \code{.Rbuildignore} (and therefore absent after \verb{R CMD build}). Relative links
 to files that do ship (e.g. \code{man/figures/logo.png}) are not flagged.
 }
+\section{Source}{
+
+No formal rule. A relative README link whose target is excluded from the
+tarball breaks on the package page, which is why this sits at \code{robustness}
+tier. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                       show_content = FALSE)

@@ -20,6 +20,16 @@ orchestrator. Defaults to parsing \code{path} afresh.}
 \description{
 Flags a change to \code{options(warn = )} that is not restored.
 }
+\section{Source}{
+
+The CRAN Cookbook covers this under
+\href{https://contributor.r-project.org/cran-cookbook/code_issues.html#setting-optionswarn--1}{Setting options(warn = -1)}.
+Suppressing warnings for the rest of the session hides them from everything that
+runs afterwards, so restore the previous value via \code{on.exit()}. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)

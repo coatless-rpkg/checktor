@@ -20,6 +20,14 @@ Defaults to reading it from \code{path}.}
 \description{
 Flags a \code{Title} beginning with \code{A}, \code{An}, or \code{The}.
 }
+\section{Source}{
+
+No rule. This was a mis-transplant of a real CRAN rule and is kept
+callable but off by default. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)

@@ -20,6 +20,14 @@ orchestrator. Defaults to parsing \code{path} afresh.}
 \description{
 Flags \code{installed.packages()}, which is slow and is discouraged by its own help page.
 }
+\section{Source}{
+
+The \href{https://cran.r-project.org/web/packages/policies.html}{CRAN Repository Policy}
+does not let a package install other packages when it runs. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)

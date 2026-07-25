@@ -20,6 +20,16 @@ Defaults to reading it from \code{path}.}
 \description{
 Flags an \code{Authors@R} with no \verb{[cph]} role.
 }
+\section{Source}{
+
+The CRAN Cookbook covers the roles under
+\href{https://contributor.r-project.org/cran-cookbook/description_issues.html#using-authorsr}{Using Authors@R}.
+A copyright-holder (\code{cph}) is commonly expected but not required, which is why
+this sits at \code{opinion} tier. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)

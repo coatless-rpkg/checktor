@@ -20,6 +20,16 @@ orchestrator. Defaults to parsing \code{path} afresh.}
 \description{
 Flags a temporary file created without a matching cleanup.
 }
+\section{Source}{
+
+The CRAN Cookbook covers this under
+\href{https://contributor.r-project.org/cran-cookbook/code_issues.html#leaving-files-in-the-temporary-directory}{Leaving Files in the Temporary Directory}.
+\code{tempdir()} is removed at session end, so an un-\code{unlink()}ed tempfile breaks no
+rule, and tidiness rather than policy is why this sits at \code{opinion} tier. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)

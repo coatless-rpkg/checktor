@@ -20,6 +20,16 @@ orchestrator. Defaults to parsing \code{path} afresh.}
 \description{
 Flags a write whose destination resolves to \code{~} or \verb{$HOME}.
 }
+\section{Source}{
+
+The \href{https://cran.r-project.org/web/packages/policies.html}{CRAN Repository Policy}
+states that "Packages should not write in the user's home filespace ... nor
+anywhere else on the file system apart from the R session's temporary
+directory". See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)

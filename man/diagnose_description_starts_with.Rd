@@ -20,6 +20,17 @@ Defaults to reading it from \code{path}.}
 \description{
 Flags a \code{Description} opening with a phrase CRAN forbids ("This package..."), or one that does not begin with a capital letter.
 }
+\section{Source}{
+
+\href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file}{Writing R Extensions},
+under "The DESCRIPTION file", says "It is good practice not to
+start with the package name, 'This package' or similar"; the
+\href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages}{incoming check}
+flags it. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)

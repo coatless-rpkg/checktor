@@ -20,6 +20,15 @@ orchestrator. Defaults to parsing \code{path} afresh.}
 \description{
 Flags \code{library()} / \code{require()} in package code, which alters the user's search path. Code destined for a parallel worker is exempt, since a daemon starts with an empty search path.
 }
+\section{Source}{
+
+\href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Package-Dependencies}{Writing R Extensions},
+under "Package Dependencies", asks package code to reach its dependencies
+through \code{Imports} and \code{::} rather than attaching them with \code{library()}. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)

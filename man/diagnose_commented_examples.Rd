@@ -17,6 +17,14 @@ diagnose_commented_examples(path, verbose = TRUE)
 \description{
 Flags an \verb{\\examples\{\}} block whose only content is commented out, so it demonstrates nothing. A comment beside live code is illustration and is not flagged.
 }
+\section{Source}{
+
+No formal rule. An \verb{\\examples\{\}} block that is entirely commented out
+demonstrates nothing, a convention which is why this sits at \code{opinion} tier. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)

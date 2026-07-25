@@ -18,8 +18,34 @@ orchestrator. Defaults to parsing \code{path} afresh.}
 \code{\link[=checktor_check_result]{checktor_check_result()}} with \code{passed}, \code{issues}, \code{message}.
 }
 \description{
-Flags \code{options()} / \code{par()} / \code{setwd()} changed without restoring. A setter that captures the old value and hands it back honours the base R contract and is not flagged.
+Flags a call to \code{options()}, \code{par()} or \code{setwd()} that changes the user's
+session state without restoring it.
 }
+\section{Source}{
+
+The CRAN Cookbook covers this under
+\href{https://contributor.r-project.org/cran-cookbook/code_issues.html#change-of-options-graphical-parameters-and-working-directory}{Change of Options, Graphical Parameters and Working Directory},
+which asks that a function restore any \code{options()}, \code{par()} graphics parameters,
+or working directory it changes, using \code{on.exit()}. No clause in the Repository
+Policy or Writing R Extensions states it, yet it is among the most common reasons
+a package is sent back, because a function that quietly runs \code{options(digits = 3)}
+and returns has changed how the rest of the session behaves. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
+\section{Exemptions}{
+
+Two shapes leak nothing and are exempt. A setter that captures the old value and
+hands it back, as in \verb{old <- options(...); invisible(old)}, honours the base R
+contract and lets the caller restore. And an option in the package's own
+namespace, written \verb{options(<PackageName>.key = ...)}, is the package managing
+its own configuration rather than the user's, so a deliberate session preference
+like \code{options(mypkg.threshold = 5)} is fine. If you keep a user setting for the
+session, give it a namespaced name rather than a bare global one, and restore a
+genuinely temporary change with \code{on.exit(options(old))}.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)

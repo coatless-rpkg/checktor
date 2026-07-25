@@ -23,6 +23,18 @@ the parsed AST, so \code{T} inside string literals or comments is not flagged
 (a long-standing source of regex false positives). Named-argument names
 (\code{f(T = 1)}) and \verb{$T} / \verb{@T} extractions are excluded.
 }
+\section{Source}{
+
+No binding rule forbids \code{T} and \code{F}, though the CRAN Cookbook keeps a recipe for
+it under
+\href{https://contributor.r-project.org/cran-cookbook/code_issues.html#tf-instead-of-truefalse}{T/F Instead of TRUE/FALSE}.
+They are ordinary variables (see \code{?logical}) that R sets to \code{TRUE} and \code{FALSE} at
+startup but that any code can rebind, so a function reading \code{T} after something
+has run \code{T <- 0} gets the wrong answer. A real risk that no rule makes citable is
+why this sits at \code{robustness} tier rather than policy. See \code{vignette("check-sources", package = "checktor")} for how every
+check maps to its source.
+}
+
 \examples{
 # show_content defaults to TRUE, so the offending file prints first
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R")

@@ -17,6 +17,16 @@ diagnose_donttest_vs_dontrun(path, verbose = TRUE)
 \description{
 Flags \verb{\dontrun{}} around code that is merely slow. \verb{\donttest{}} is the right wrapper, since it still runs under \code{--run-donttest}.
 }
+\section{Source}{
+
+The CRAN Cookbook covers the distinction under
+\href{https://contributor.r-project.org/cran-cookbook/general_issues.html#structuring-of-examples}{Structuring of Examples},
+where \verb{\donttest{}} is the wrapper for an example that merely runs long. Nothing
+enforces the choice, which is why this sits at \code{opinion} tier. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)

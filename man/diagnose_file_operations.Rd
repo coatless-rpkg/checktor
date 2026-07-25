@@ -20,6 +20,15 @@ orchestrator. Defaults to parsing \code{path} afresh.}
 \description{
 Flags a write whose destination is a literal path, so it provably lands in the working directory or the user's home. A caller-supplied or computed destination is permission, and is not flagged.
 }
+\section{Source}{
+
+The \href{https://cran.r-project.org/web/packages/policies.html}{CRAN Repository Policy}
+states that "Packages should not write ... anywhere ... apart from the R
+session's temporary directory". See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)

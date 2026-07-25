@@ -20,6 +20,15 @@ orchestrator. Defaults to parsing \code{path} afresh.}
 \description{
 Flags a \code{browser()} call left in package code.
 }
+\section{Source}{
+
+The \href{https://cran.r-project.org/web/packages/policies.html}{CRAN Repository Policy}
+requires checks to run non-interactively, so a debugging leftover such as
+\code{browser()} must not ship. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)

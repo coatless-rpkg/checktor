@@ -20,6 +20,16 @@ Defaults to reading it from \code{path}.}
 \description{
 Flags an acronym in \code{Description} that is never spelled out. A parenthetical gloss in either order counts as explained.
 }
+\section{Source}{
+
+The CRAN Cookbook covers this under
+\href{https://contributor.r-project.org/cran-cookbook/description_issues.html#explaining-acronyms}{Explaining Acronyms}.
+Reviewers ask for an acronym to be spelled out once, but nothing enforces it,
+which is why this sits at \code{opinion} tier. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)

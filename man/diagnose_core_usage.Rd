@@ -20,6 +20,15 @@ orchestrator. Defaults to parsing \code{path} afresh.}
 \description{
 Flags a worker count that can exceed CRAN's two-core limit. Understands parallel, snow, foreach, future, furrr, mirai, RcppParallel, data.table, and BiocParallel.
 }
+\section{Source}{
+
+The \href{https://cran.r-project.org/web/packages/policies.html}{CRAN Repository Policy}
+states that "If running a package uses multiple threads/cores it must never
+use more than two simultaneously". See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)

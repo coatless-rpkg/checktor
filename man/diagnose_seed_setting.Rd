@@ -21,6 +21,16 @@ from \code{path} on demand.}
 Flags \verb{set.seed(<numeric>)} calls. Multi-line forms are handled because
 the check matches the call AST node, not raw text.
 }
+\section{Source}{
+
+The \href{https://cran.r-project.org/web/packages/policies.html}{CRAN Repository Policy}
+asks a package not to modify the user's workspace, and \code{set.seed()} writes
+\code{.Random.seed} there, changing the random-number stream for the rest of the
+session. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/seed_setting_bad.R",
                                  show_content = FALSE)

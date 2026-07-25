@@ -17,6 +17,15 @@ diagnose_network_operations(path, verbose = TRUE)
 \description{
 Flags network access in code or examples that runs without a guard.
 }
+\section{Source}{
+
+The \href{https://cran.r-project.org/web/packages/policies.html}{CRAN Repository Policy}
+states that "Packages which use Internet resources should fail gracefully
+with an informative message if the resource is not available". See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)

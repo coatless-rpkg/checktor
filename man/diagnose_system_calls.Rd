@@ -20,6 +20,15 @@ orchestrator. Defaults to parsing \code{path} afresh.}
 \description{
 Flags \code{system()} / \code{system2()} / \code{shell()}, which need review for portability and for shell-injection risk.
 }
+\section{Source}{
+
+No flat rule. A raw \code{system()} or \code{system2()} call needs review for
+portability rather than being an automatic violation, which is why this sits
+at \code{robustness} tier. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)

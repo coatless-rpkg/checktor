@@ -24,6 +24,18 @@ detection is robust regardless of formatting. Calls inside S3 \verb{print.*}
 and \verb{format.*} methods are exempt, since \code{cat()} is the required idiom
 there (base R's own \code{print.default()} / \code{print.lm()} use it).
 }
+\section{Source}{
+
+The CRAN Cookbook covers this under
+\href{https://contributor.r-project.org/cran-cookbook/code_issues.html#using-printcat}{Using print()/cat()}.
+Diagnostic output belongs in \code{message()} or \code{warning()}, which a user can
+suppress, rather than in \code{cat()} or \code{print()}, which they cannot. Neither the
+Repository Policy nor Writing R Extensions states this, but reviewers ask for it
+consistently. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/print_cat_bad.R",
                                  show_content = FALSE)

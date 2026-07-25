@@ -53,6 +53,15 @@ Databricks tokens (\code{dapi}), and Postman keys (\verb{PMAK-}).
 The prefixes and lengths follow each provider's published token format and
 the community-maintained gitleaks secret-detection ruleset.
 }
+\section{Source}{
+
+No formal rule. A token or key committed to a package is public the moment it
+reaches CRAN and must be revoked, which is why this sits at \code{robustness}
+tier. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/credentials_bad.R",
                                  show_content = FALSE)

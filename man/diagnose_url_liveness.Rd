@@ -36,6 +36,15 @@ passes quietly, exactly as CRAN's own URL check does without connectivity. For
 the fast, offline half (flagging \verb{http://} and URL shorteners without leaving
 the room) see \code{\link[=diagnose_urls]{diagnose_urls()}}.
 }
+\section{Source}{
+
+The \href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages}{CRAN incoming check}
+run by \verb{R CMD check --as-cran} fetches URLs and NOTEs 404s and redirects; it
+is opt-in here because it needs a network. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 # Opt in first, then run against a package directory (needs a network):
 \dontrun{

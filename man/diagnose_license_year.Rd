@@ -17,6 +17,17 @@ diagnose_license_year(path, verbose)
 \description{
 Flags a \code{LICENSE} file still carrying template placeholders such as \verb{<YEAR>} or \verb{<COPYRIGHT HOLDER>}.
 }
+\section{Source}{
+
+The CRAN Cookbook covers the file itself under
+\href{https://contributor.r-project.org/cran-cookbook/description_issues.html#license-files}{LICENSE files}.
+An unfilled template, with \verb{<YEAR>} or \verb{<COPYRIGHT HOLDER>} left in, ships a
+placeholder, and no binding rule names it, which is why this sits at
+\code{robustness} tier. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)

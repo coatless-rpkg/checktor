@@ -20,6 +20,17 @@ Defaults to reading it from \code{path}.}
 \description{
 Flags an \code{Encoding} outside the portable set Writing R Extensions names: \code{UTF-8}, \code{latin1}, \code{latin2} (compared case-insensitively). An absent \code{Encoding} passes.
 }
+\section{Source}{
+
+\href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file}{Writing R Extensions},
+under "The DESCRIPTION file", says a non-ASCII DESCRIPTION "should contain an
+'Encoding' field"; the
+\href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages}{incoming check}
+flags a non-portable one. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)

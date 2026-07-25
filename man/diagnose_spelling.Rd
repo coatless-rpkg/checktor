@@ -32,6 +32,16 @@ run on another does not. It is therefore an \code{opinion}-tier check. When it d
 fire, \code{\link[=prescribe]{prescribe()}} hands back a ready-to-paste \verb{.aspell/} snippet with the
 flagged words filled in.
 }
+\section{Source}{
+
+The \href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages}{CRAN incoming check}
+runs \code{aspell} over the \code{Title} and \code{Description}; it needs a
+spell-check backend and is noisy, so checktor keeps it at
+\code{opinion} tier. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)

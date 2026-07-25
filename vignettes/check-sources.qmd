@@ -1,0 +1,163 @@
+---
+title: "Where checktor's Checks Come From"
+vignette: >
+  %\VignetteIndexEntry{Where checktor's Checks Come From}
+  %\VignetteEngine{quarto::html}
+  %\VignetteEncoding{UTF-8}
+knitr:
+  opts_chunk:
+    collapse: true
+    comment: '#>'
+---
+
+Every checktor check exists for a reason, and that reason has a source. This page
+maps each check to where its authority comes from -- with a link to the exact
+section wherever one exists -- and to the severity tier that authority earns. For
+the full argument behind any single check, read its help page (for example
+`?diagnose_option_changes`), which spells out the reasoning and the exemptions. This
+page is the map across all of them.
+
+## The tiers, and what each one rests on
+
+A check's severity tier tells you what kind of authority stands behind it.
+
+- **`policy`** is a rule CRAN enforces, so breaking one can get a package rejected
+  and a policy finding counts against a clean bill of health. Most are written in the
+  [CRAN Repository Policy][policy] or [Writing R Extensions][wre], the two documents
+  CRAN treats as binding, and some mirror a **CRAN incoming check**, one of the NOTEs
+  that [`R CMD check --as-cran`][wre-check] raises against a submission. A handful are
+  long-standing requirements reviewers apply that no clause in either manual actually
+  states, and for those the [CRAN Cookbook][cookbook] is the written record. Restoring
+  `options()`, `par()` and the working directory is the clearest example: it is one of
+  the most common reasons a package is sent back, and neither manual mentions it.
+- **`robustness`** is a real defect that CRAN will nonetheless let you ship, such as
+  a `detectCores()` that can return `NA`. It counts toward the verdict too, because it
+  can still crash a user.
+- **`opinion`** is a convention that experienced maintainers and reviewers tend to
+  ask for, with nothing enforcing it. Worth knowing, but it stays outside the default
+  verdict, which is `policy` and `robustness` only.
+
+The source column names which kind each check is. Many conventions are written down
+in the [CRAN Cookbook][cookbook], the R Contributor guide to the problems that get
+packages sent back, and the column links to the individual recipe wherever there is
+one. Where a check has no citable source at all, it says so plainly.
+
+## Code checks
+
+| Check | Tier | Source |
+|---|---|---|
+| `seed_setting` | `policy` | [CRAN Policy][policy]: a package "should not modify the global environment", and `set.seed()` writes `.Random.seed` there. Recipe: [Setting a Specific Seed][cb-seed]. |
+| `print_cat_usage` | `policy` | [Cookbook: Using print()/cat()][cb-printcat]: diagnostic output belongs in `message()` or `warning()`, which a user can suppress. A reviewer requirement rather than a clause in the manuals. |
+| `option_changes` | `policy` | [Cookbook: Change of Options, Graphical Parameters and Working Directory][cb-options]: restore anything a function changes, via `on.exit()`. Neither manual states this, but it is among the most common reasons a package is sent back. |
+| `warn_option` | `policy` | [Cookbook: Setting options(warn = -1)][cb-warn]: the same requirement, for the warning level. |
+| `home_writing` | `policy` | [CRAN Policy][policy]: "Packages should not write in the user's home filespace ... nor anywhere else on the file system apart from the R session's temporary directory". Recipe: [Writing Files and Directories to the Home Filespace][cb-home]. |
+| `globalenv_mod` | `policy` | [CRAN Policy][policy]: "Packages should not modify the global environment (user's workspace)." Recipe: [Writing to the .GlobalEnv][cb-globalenv]. |
+| `installed_packages` | `policy` | [CRAN Policy][policy]: a package must not install other packages when it runs. Recipe: [Calling installed.packages()][cb-installed]. |
+| `software_install` | `policy` | [CRAN Policy][policy]: a package must not download and install external software at load or run time. Recipe: [Installing Software][cb-software]. |
+| `core_usage` | `policy` | [CRAN Policy][policy]: "If running a package uses multiple threads/cores it must never use more than two simultaneously". Recipe: [Using more than 2 Cores][cb-cores]. |
+| `sys_setenv` | `policy` | No clause names environment variables, but they are session state exactly as `options()` are, and the same restore-on-exit requirement applies. See [Cookbook: Change of Options, Graphical Parameters and Working Directory][cb-options]. |
+| `tf_usage` | `robustness` | No binding rule, but a documented one: [Cookbook: T/F Instead of TRUE/FALSE][cb-tf]. `T` and `F` are ordinary variables (see `?logical`) that can be rebound, so they are unsafe stand-ins. |
+| `library_in_pkg` | `robustness` | [WRE: Package Dependencies][wre-deps]: package code should reach dependencies through `Imports` and `::`, not attach them with `library()`. |
+| `detect_cores_robustness` | `robustness` | No formal rule. `?detectCores` states it returns "`NA` if the answer is unknown", and the arithmetic that usually follows then crashes. |
+| `hardcoded_credentials` | `robustness` | No formal rule. A token or key committed to a package is public the moment it reaches CRAN and must be revoked. |
+| `temp_cleanup` | `opinion` | [Cookbook: Leaving Files in the Temporary Directory][cb-temp]. `tempdir()` is removed at session end, so an un-`unlink()`ed tempfile breaks no rule, which is why this stays advisory. |
+
+## DESCRIPTION checks
+
+| Check | Tier | Source |
+|---|---|---|
+| `software_names` | `policy` | [WRE: The DESCRIPTION file][wre-desc]: "Refer to other packages and external software in single quotes". Recipe: [Formatting Software Names][cb-names]. |
+| `language_names` | `policy` | [WRE: The DESCRIPTION file][wre-desc]: the same rule, for programming-language and markup names. Recipe: [Formatting Software Names][cb-names]. |
+| `description_quoted_quotes` | `policy` | [WRE: The DESCRIPTION file][wre-desc]: double quotes are for book titles and similar; software names take single quotes. Recipe: [Formatting Software Names][cb-names]. |
+| `license` | `policy` | [CRAN Policy][policy]: an invalid or unrecognised `License` field is a rejection. Recipe: [LICENSE files][cb-license]. |
+| `authors` | `policy` | [CRAN Policy][policy]: a placeholder or malformed `Authors@R`, including a missing maintainer, is a rejection. Recipe: [Using Authors@R][cb-authors]. |
+| `title_case` | `policy` | [WRE: The DESCRIPTION file][wre-desc]: the `Title` "should use title case"; the [`--as-cran`][wre-check] incoming check flags one that does not. Recipe: [Title Case][cb-titlecase]. |
+| `date_format` | `policy` | [WRE: The DESCRIPTION file][wre-desc]: "the 'yyyy-mm-dd' format of the ISO 8601 standard is strongly recommended"; the [incoming check][wre-check] also flags a stale or future date. |
+| `version_format` | `policy` | [WRE: The DESCRIPTION file][wre-desc]: a `Version` is "a sequence of at least two ... non-negative integers"; the [incoming check][wre-check] flags a leading zero or an implausible value. |
+| `encoding_utf8` | `policy` | [WRE: The DESCRIPTION file][wre-desc]: a non-ASCII DESCRIPTION "should contain an 'Encoding' field"; the [incoming check][wre-check] flags a non-portable one. |
+| `description_starts_with` | `policy` | [WRE: The DESCRIPTION file][wre-desc]: "It is good practice not to start with the package name, 'This package' or similar"; flagged by the [incoming check][wre-check]. |
+| `references` | `policy` | [CRAN incoming check][wre-check]: it NOTEs a reference not written in the `<doi:...>` or `<arXiv:...>` form. Recipe: [References][cb-refs]. |
+| `identifier_format` | `policy` | [CRAN incoming check][wre-check]: it NOTEs a malformed ORCID or ROR identifier in `Authors@R`. |
+| `license_year` | `robustness` | No binding rule. An unfilled `LICENSE` template, with `<YEAR>` or `<COPYRIGHT HOLDER>` left in, ships a placeholder. Recipe: [LICENSE files][cb-license]. |
+| `spelling` | `opinion` | [CRAN incoming check][wre-check] (aspell), but it needs a spell-check backend and is noisy, so checktor keeps it advisory. |
+| `acronyms` | `opinion` | [Cookbook: Explaining Acronyms][cb-acronyms]. Reviewers ask for an acronym to be spelled out once, but nothing enforces it. |
+| `cph_role` | `opinion` | [Cookbook: Using Authors@R][cb-authors] covers the roles, and a copyright-holder (`cph`) is commonly expected, though not required. |
+| `description_length` | `opinion` | [Cookbook: Description Length][cb-desclen]. A one-line `Description` is thin, and reviewers ask for more. |
+| `title_length` | `opinion` | Convention only. A `Title` under about 65 characters is a common preference. |
+| `title_redundant_phrases` | `opinion` | Convention only. Phrases like "R package to" are redundant in a `Title`. |
+| `title_starts_with_article` | `opinion` | No rule. A mis-transplant of a real CRAN rule, kept callable but off by default. |
+| `description_function_quotes` | `opinion` | No rule. An invented rule, kept callable but off by default. |
+
+## Documentation checks
+
+| Check | Tier | Source |
+|---|---|---|
+| `suggested_in_examples` | `policy` | [WRE: Suggested packages][wre-sugg]: a package from `Suggests` used in an example must be guarded so the example still runs without it. |
+| `roxygen_usage` | `robustness` | No binding rule. A function tagged `@export` that never reached `NAMESPACE` is not actually exported. Recipe: [Repeated Rejections of Issues in Manuals If Using roxygen2][cb-roxygen]. |
+| `unexported_example_ns` | `robustness` | No formal rule. An example that reaches for an unexported object will error when it runs. |
+| `value_tags` | `opinion` | [WRE: Documenting functions][wre-doc] describes `\value{}` and [Cookbook: Missing \value-tags in .Rd-files][cb-value] is the recipe reviewers cite, but `R CMD check` does not require it. |
+| `example_structure` | `opinion` | [Cookbook: Structuring of Examples][cb-examples]. `\dontrun{}` should wrap only code that genuinely cannot run inside a check. |
+| `donttest_vs_dontrun` | `opinion` | [Cookbook: Structuring of Examples][cb-examples]: `\donttest{}` is the wrapper for examples that merely run long, where `\dontrun{}` is often reached for instead. |
+| `missing_examples` | `opinion` | [Cookbook: Structuring of Examples][cb-examples]. Exported functions are expected to carry an `\examples{}` block. |
+| `commented_examples` | `opinion` | Convention only. An `\examples{}` block that is entirely commented out demonstrates nothing. |
+
+## General checks
+
+| Check | Tier | Source |
+|---|---|---|
+| `package_size` | `policy` | [CRAN Policy][policy]: CRAN limits the size of the built tarball. Recipe: [Package Size][cb-size], which gives the practical figures. |
+| `url_liveness` | `robustness` | [CRAN incoming check][wre-check]: `--as-cran` fetches URLs and NOTEs 404s and redirects. It is opt-in here because it needs a network. |
+| `readme_links` | `robustness` | No formal rule. A relative README link whose target is excluded from the tarball breaks on the package page. |
+| `urls` | `opinion` | Convention only. Preferring `https://` is good advice, but CRAN's NOTE is about broken URLs rather than the scheme. |
+| `news_file` | `opinion` | Convention only. A `NEWS` file is expected but not required. |
+
+## CRAN policy checks
+
+| Check | Tier | Source |
+|---|---|---|
+| `browser_calls` | `policy` | [CRAN Policy][policy]: checks run non-interactively, so a debugging leftover such as `browser()` must not ship. |
+| `file_operations` | `policy` | [CRAN Policy][policy]: "Packages should not write ... anywhere ... apart from the R session's temporary directory". Recipe: [Writing Files and Directories to the Home Filespace][cb-home]. |
+| `network_operations` | `policy` | [CRAN Policy][policy]: "Packages which use Internet resources should fail gracefully with an informative message if the resource is not available". |
+| `system_calls` | `robustness` | No flat rule. A raw `system()` or `system2()` call needs review for portability rather than being an automatic violation. |
+
+## When checktor and an authority disagree
+
+A tier is where a check's authority sits, not how strongly checktor feels about it.
+A few checks are deliberately `opinion` because no authority backs them in either
+direction, and two of those (`title_starts_with_article` and
+`description_function_quotes`) are kept callable but left out of the default run for
+the same reason. If a finding does not match your reading of the policy, the tier is
+the first thing to look at: an `opinion` finding is a conversation, not a
+requirement, and you can turn any check off through `Config/checktor` in your own
+DESCRIPTION.
+
+[policy]: https://cran.r-project.org/web/packages/policies.html
+[wre]: https://cran.r-project.org/doc/manuals/r-release/R-exts.html
+[wre-check]: https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages
+[wre-desc]: https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file
+[wre-sugg]: https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Suggested-packages
+[wre-deps]: https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Package-Dependencies
+[wre-doc]: https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Documenting-functions
+[cookbook]: https://contributor.r-project.org/cran-cookbook/
+[cb-tf]: https://contributor.r-project.org/cran-cookbook/code_issues.html#tf-instead-of-truefalse
+[cb-seed]: https://contributor.r-project.org/cran-cookbook/code_issues.html#setting-a-specific-seed
+[cb-printcat]: https://contributor.r-project.org/cran-cookbook/code_issues.html#using-printcat
+[cb-options]: https://contributor.r-project.org/cran-cookbook/code_issues.html#change-of-options-graphical-parameters-and-working-directory
+[cb-home]: https://contributor.r-project.org/cran-cookbook/code_issues.html#writing-files-and-directories-to-the-home-filespace
+[cb-temp]: https://contributor.r-project.org/cran-cookbook/code_issues.html#leaving-files-in-the-temporary-directory
+[cb-globalenv]: https://contributor.r-project.org/cran-cookbook/code_issues.html#writing-to-the-.globalenv
+[cb-installed]: https://contributor.r-project.org/cran-cookbook/code_issues.html#calling-installed.packages
+[cb-warn]: https://contributor.r-project.org/cran-cookbook/code_issues.html#setting-optionswarn--1
+[cb-software]: https://contributor.r-project.org/cran-cookbook/code_issues.html#installing-software
+[cb-cores]: https://contributor.r-project.org/cran-cookbook/code_issues.html#using-more-than-2-cores
+[cb-value]: https://contributor.r-project.org/cran-cookbook/docs_issues.html#missing-value-tags-in-.rd-files
+[cb-roxygen]: https://contributor.r-project.org/cran-cookbook/docs_issues.html#repeated-rejections-of-issues-in-manuals-if-using-roxygen2
+[cb-names]: https://contributor.r-project.org/cran-cookbook/description_issues.html#formatting-software-names
+[cb-acronyms]: https://contributor.r-project.org/cran-cookbook/description_issues.html#explaining-acronyms
+[cb-license]: https://contributor.r-project.org/cran-cookbook/description_issues.html#license-files
+[cb-titlecase]: https://contributor.r-project.org/cran-cookbook/description_issues.html#title-case
+[cb-authors]: https://contributor.r-project.org/cran-cookbook/description_issues.html#using-authorsr
+[cb-refs]: https://contributor.r-project.org/cran-cookbook/description_issues.html#references
+[cb-desclen]: https://contributor.r-project.org/cran-cookbook/general_issues.html#description-length
+[cb-examples]: https://contributor.r-project.org/cran-cookbook/general_issues.html#structuring-of-examples
+[cb-size]: https://contributor.r-project.org/cran-cookbook/general_issues.html#package-size

@@ -24,6 +24,15 @@ This check is opt-in: it is \strong{not} part of the default \code{\link[=checkt
 \code{\link[=diagnose_general_issues]{diagnose_general_issues()}} run, because a \code{cran-comments.md} is a workflow
 convention rather than a CRAN requirement. Call it directly to use it.
 }
+\section{Source}{
+
+No formal rule. A \code{cran-comments.md} is a submission-workflow convention
+rather than a CRAN requirement, which is why this check is opt-in and not
+part of a default run. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                       show_content = FALSE)

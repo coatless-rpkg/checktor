@@ -20,6 +20,15 @@ Defaults to reading it from \code{path}.}
 \description{
 Flags a reference that is not in CRAN's expected \verb{<doi:...>} / \verb{<arXiv:...>} form.
 }
+\section{Source}{
+
+The \href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages}{CRAN incoming check}
+run by \verb{R CMD check --as-cran} NOTEs a reference not written in the
+\verb{<doi:...>} or \verb{<arXiv:...>} form. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)

@@ -20,6 +20,18 @@ Walks \code{.Rd} files via \code{\link[tools:parse_Rd]{tools::parse_Rd()}} and r
 missing a \verb{\\value\{\}} section. Data, class, methods, package-level, and
 re-export topics are skipped (they don't need \verb{\\value\{\}}).
 }
+\section{Source}{
+
+\href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Documenting-functions}{Writing R Extensions},
+under "Documenting functions", describes \verb{\\value\{\}}, and the CRAN Cookbook keeps
+the recipe reviewers cite under
+\href{https://contributor.r-project.org/cran-cookbook/docs_issues.html#missing-value-tags-in-.rd-files}{Missing value-tags in .Rd-files},
+but \verb{R CMD check} does not require it, so checktor keeps this at \code{opinion} tier.
+See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg_path <- example_diagnose_scenario("documentation_examples/missing_value_tag.Rd",
                                       show_content = FALSE)

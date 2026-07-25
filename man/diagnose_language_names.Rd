@@ -31,6 +31,15 @@ and appears too often to quote sensibly, and single-letter or common-word names
 A package can extend the list through \code{Config/checktor/language_names} in its own
 DESCRIPTION.
 }
+\section{Source}{
+
+\href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file}{Writing R Extensions},
+under "The DESCRIPTION file", asks for single quotes around other software;
+checktor applies the same to programming-language and markup names. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)

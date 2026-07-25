@@ -60,6 +60,11 @@ diagnose_general_issues <- function(path = ".", verbose = TRUE) {
 #' `.git`, `.Rproj.user`, are excluded). Warns at the 5 MB threshold.
 #'
 #' @param path Character. Path to package directory
+#' @section Source:
+#' The [CRAN Repository Policy](https://cran.r-project.org/web/packages/policies.html)
+#' limits the size of the built tarball. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' @param verbose Logical. Print diagnostic messages
 #'
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`,
@@ -144,6 +149,11 @@ diagnose_package_size <- function(path, verbose = TRUE) {
 #'
 #' @param path Character. Path to package directory
 #' @param verbose Logical. Print diagnostic messages
+#' @section Source:
+#' No formal rule. A `NEWS` file is expected but not required, a convention
+#' which is why this sits at `opinion` tier. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #'
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @export
@@ -192,6 +202,12 @@ diagnose_news_file <- function(path, verbose = TRUE) {
 #' @param path Character. Path to package directory
 #' @param verbose Logical. Print diagnostic messages
 #'
+#' @section Source:
+#' No formal rule. A `cran-comments.md` is a submission-workflow convention
+#' rather than a CRAN requirement, which is why this check is opt-in and not
+#' part of a default run. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @export
 #' @examples
@@ -254,6 +270,12 @@ is_external_or_anchor <- function(tgt) {
 #' @param verbose Logical. Print diagnostic messages
 #'
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
+#' @section Source:
+#' No formal rule. A relative README link whose target is excluded from the
+#' tarball breaks on the package page, which is why this sits at `robustness`
+#' tier. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' @export
 #' @examples
 #' pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
@@ -339,6 +361,12 @@ diagnose_readme_relative_links <- function(path, verbose = TRUE) {
 #'
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @export
+#' @section Source:
+#' No formal rule. Preferring `https://` is good advice, but CRAN's NOTE is
+#' about broken URLs rather than the scheme, which is why this sits at `opinion`
+#' tier. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' @examples
 #' pkg_path <- example_diagnose_scenario("description_examples/bad_description.txt",
 #'                                       show_content = FALSE)
@@ -468,6 +496,12 @@ fetch_url_db <- function(path) {
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @export
 #' @examples
+#' @section Source:
+#' The [CRAN incoming check](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages)
+#' run by `R CMD check --as-cran` fetches URLs and NOTEs 404s and redirects; it
+#' is opt-in here because it needs a network. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' # Opt in first, then run against a package directory (needs a network):
 #' \dontrun{
 #' options(checktor.url_check = TRUE)

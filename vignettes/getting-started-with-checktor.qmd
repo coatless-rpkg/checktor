@@ -223,6 +223,8 @@ nothing left to say. That is the entire point.
 
 - [checktor in Continuous Integration](checktor-in-ci.html): put `checkup()` in
   charge of a GitHub Actions build as a quality gate.
+- [Where the Checks Come From](check-sources.html): the source and severity tier
+  behind every check, from CRAN policy to convention.
 - [Writing Your Own Checks](writing-checks.html): add project-specific checks
   against the parsed syntax tree.
 - [Function reference](https://r-pkg.thecoatlessprofessor.com/checktor/reference/index.html):

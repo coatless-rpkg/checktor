@@ -37,6 +37,10 @@ navbar:
       menu:
       - text: Getting Started
         href: articles/getting-started-with-checktor.html
+      - text: Where the Checks Come From
+        href: articles/check-sources.html
+      - text: What R CMD check Checks
+        href: articles/r-cmd-check.html
       - text: checktor in Continuous Integration
         href: articles/checktor-in-ci.html
       - text: Writing Your Own Checks

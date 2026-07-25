@@ -20,6 +20,15 @@ Defaults to reading it from \code{path}.}
 \description{
 Flags a package or external-software name in \code{Title}/\code{Description} that is not in single quotes, as Writing R Extensions requires.
 }
+\section{Source}{
+
+\href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file}{Writing R Extensions},
+under "The DESCRIPTION file", asks you to "Refer to other packages and
+external software in single quotes". See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)

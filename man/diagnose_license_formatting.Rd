@@ -20,6 +20,14 @@ Defaults to reading it from \code{path}.}
 \description{
 Flags a \code{License} that \code{\link[tools:analyze_license]{tools::analyze_license()}} cannot standardize, and a \verb{+ file LICENSE} pointing at a file that does not exist.
 }
+\section{Source}{
+
+The \href{https://cran.r-project.org/web/packages/policies.html}{CRAN Repository Policy}
+treats an invalid or unrecognised \code{License} field as a rejection. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)

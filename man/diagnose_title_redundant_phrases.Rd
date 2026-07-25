@@ -20,6 +20,14 @@ Defaults to reading it from \code{path}.}
 \description{
 Flags a \code{Title} carrying a phrase CRAN asks you to drop, such as "for R".
 }
+\section{Source}{
+
+No formal rule. Phrases like "R package to" are redundant in a
+\code{Title}, a convention which is why this sits at \code{opinion} tier. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)

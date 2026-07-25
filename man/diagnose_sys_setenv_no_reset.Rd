@@ -20,6 +20,17 @@ orchestrator. Defaults to parsing \code{path} afresh.}
 \description{
 Flags \code{Sys.setenv()} with no matching cleanup in the same function.
 }
+\section{Source}{
+
+No clause names environment variables, but they are session state exactly as
+\code{options()} are, so the same restore-on-exit requirement applies. The CRAN
+Cookbook states it for options under
+\href{https://contributor.r-project.org/cran-cookbook/code_issues.html#change-of-options-graphical-parameters-and-working-directory}{Change of Options, Graphical Parameters and Working Directory}.
+See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)

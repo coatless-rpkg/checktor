@@ -38,6 +38,17 @@ arbitrary order, and an mtime comparison would pass or fail at random in CI.
 The check is skipped entirely unless \code{NAMESPACE} carries the roxygen2
 "do not edit by hand" banner, so a hand-managed package is never flagged.
 }
+\section{Source}{
+
+The CRAN Cookbook covers the roxygen2 side of this under
+\href{https://contributor.r-project.org/cran-cookbook/docs_issues.html#repeated-rejections-of-issues-in-manuals-if-using-roxygen2}{Repeated Rejections of Issues in Manuals},
+where documentation is regenerated rather than hand-edited. A function tagged
+\verb{@export} that never reached \code{NAMESPACE} is not actually exported, and no binding
+rule names it, which is why this sits at \code{robustness} tier. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                       show_content = FALSE)

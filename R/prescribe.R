@@ -168,6 +168,34 @@ treatments <- list(
     )
   ),
   list(
+    category = "code_issues",
+    check = "option_changes",
+    title = "Unrestored Option Changes",
+    treatment = paste0(
+      "Namespace a setting you keep for the session as ",
+      "{.code options(<PackageName>.key = ...)}, or restore a temporary change ",
+      "with {.code on.exit()}"
+    ),
+    example = c(
+      "# Before",
+      "set_threshold <- function(x) {",
+      "  options(threshold = x)",
+      "}",
+      "",
+      "# After - option 1: a namespaced setting, kept for the session",
+      "set_threshold <- function(x) {",
+      "  options(mypkg.threshold = x)   # read with getOption('mypkg.threshold')",
+      "}",
+      "",
+      "# After - option 2: a temporary change, restored on exit",
+      "with_quiet <- function(expr) {",
+      "  old <- options(warn = -1)",
+      "  on.exit(options(old))",
+      "  expr",
+      "}"
+    )
+  ),
+  list(
     category = "documentation_issues",
     check = "value_tags",
     title = "Missing \\value Tags",

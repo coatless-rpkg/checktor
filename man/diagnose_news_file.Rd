@@ -19,6 +19,14 @@ CRAN expects packages (especially on resubmission) to document user-facing
 changes in a \code{NEWS} file. Accepts \code{NEWS.md}, \code{NEWS}, or \code{NEWS.Rd} at the
 package root or under \verb{inst/}.
 }
+\section{Source}{
+
+No formal rule. A \code{NEWS} file is expected but not required, a convention
+which is why this sits at \code{opinion} tier. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                       show_content = FALSE)

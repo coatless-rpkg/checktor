@@ -20,6 +20,17 @@ Defaults to reading it from \code{path}.}
 \description{
 Flags a \code{Date} field that is not ISO 8601 \code{yyyy-mm-dd}, is over a month old, or lies in the future. Mirrors the CRAN incoming check; an absent \code{Date} field (the common, preferred case) passes.
 }
+\section{Source}{
+
+\href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file}{Writing R Extensions},
+under "The DESCRIPTION file", says "the 'yyyy-mm-dd' format of the
+ISO 8601 standard is strongly recommended"; the
+\href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages}{incoming check}
+also flags a stale or future date. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)

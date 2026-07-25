@@ -20,6 +20,17 @@ Defaults to reading it from \code{path}.}
 \description{
 Flags a \code{Version} with a leading-zero component or a suspiciously large one, mirroring CRAN's \code{version_with_leading_zeroes} and \code{version_with_large_components} incoming checks. A calendar-year component (e.g. a dated \code{2026.01} version) is exempt.
 }
+\section{Source}{
+
+\href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file}{Writing R Extensions},
+under "The DESCRIPTION file", says a \code{Version} is "a sequence of at
+least two ... non-negative integers"; the
+\href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages}{incoming check}
+flags a leading zero or an implausible value. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)

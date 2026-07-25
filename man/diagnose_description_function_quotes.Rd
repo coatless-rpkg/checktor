@@ -20,6 +20,14 @@ Defaults to reading it from \code{path}.}
 \description{
 Flags a single-quoted function name in \code{Title}/\code{Description}. Single quotes are reserved for software names.
 }
+\section{Source}{
+
+No rule. This was an invented rule and is kept callable but off by
+default. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)

@@ -20,6 +20,15 @@ Defaults to reading it from \code{path}.}
 \description{
 Flags a missing \code{Authors@R}, and an unfilled \code{usethis} template such as \code{person("First", "Last", ...)}, which is a hard CRAN rejection that \verb{R CMD check} says nothing about.
 }
+\section{Source}{
+
+The \href{https://cran.r-project.org/web/packages/policies.html}{CRAN Repository Policy}
+treats a placeholder or malformed \code{Authors@R}, including a missing
+maintainer, as a rejection. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)

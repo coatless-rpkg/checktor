@@ -28,6 +28,15 @@ a full check.
 Literal spans are skipped, so documenting the string \verb{http://} inside \verb{\verb{}},
 \verb{\code{}} or a fenced markdown block is not mistaken for linking to it.
 }
+\section{Source}{
+
+No formal rule. Preferring \verb{https://} is good advice, but CRAN's NOTE is
+about broken URLs rather than the scheme, which is why this sits at \code{opinion}
+tier. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg_path <- example_diagnose_scenario("description_examples/bad_description.txt",
                                       show_content = FALSE)

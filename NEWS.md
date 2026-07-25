@@ -151,6 +151,11 @@ engines instead of reimplementing them.
   The two correct idioms, a closure updating its parent frame and the
   package-level cache written as `.cache <<- ...`, both come out clean.
 
+* `option_changes` now prescribes a fix. When it fires, `prescribe()` shows the two
+  ways out, namespacing a setting you keep for the session as
+  `options(<PackageName>.key = ...)`, or restoring a temporary change with
+  `on.exit()`.
+
 * `core_usage` now inspects the worker count itself and understands the
   `parallel`, `snow`, `foreach`, `future`, `furrr`, `mirai`, `RcppParallel`,
   `data.table` and `BiocParallel` frameworks. It no longer keys off an `mc.cores`
@@ -301,7 +306,18 @@ checktor recognises the guards CRAN sanctions, too.
 
 ## Documentation and website
 
-* The three vignettes gained figures. There is a coverage map of what
+* Two new vignettes explain where the rules come from. *Where the Checks Come From*
+  maps every check to the CRAN Repository Policy or Writing R Extensions section it
+  rests on, and to the CRAN Cookbook recipe where the authority is a convention
+  rather than a rule, linking to each. *What R CMD check Checks* walks through every
+  step `R CMD check` performs so the line between the standard checks and checktor's
+  is clear.
+
+* Every check's help page gained a *Source* section that names the rule behind it,
+  a CRAN policy clause, a Writing R Extensions section, a CRAN Cookbook recipe, or
+  an honest note that no rule applies, with a link wherever one exists.
+
+* The original three vignettes gained figures. There is a coverage map of what
   `R CMD check`, `lintr` and `checktor` each catch, a view of the three data
   frames the accessors return, `checkup()` running at three latencies in CI, and,
   for Writing Your Own Checks, the road from source to finding alongside the XPath

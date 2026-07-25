@@ -19,6 +19,16 @@ Walks \verb{\\examples\{\}} sections via \code{\link[tools:parse_Rd]{tools::pars
 \verb{\dontrun{}} subtrees that don't appear to have a justifying reason
 (interactive, network, credentials, long-running, etc.).
 }
+\section{Source}{
+
+The CRAN Cookbook covers this under
+\href{https://contributor.r-project.org/cran-cookbook/general_issues.html#structuring-of-examples}{Structuring of Examples}.
+\verb{\dontrun{}} should wrap only code that genuinely cannot run inside a check, a
+convention rather than a rule, which is why this sits at \code{opinion} tier. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg_path <- example_diagnose_scenario("network_examples/bad_network_example.Rd",
                                       show_content = FALSE)

@@ -41,6 +41,15 @@ A call is treated as guarded when its enclosing function tests for \code{NA}
 durable fix is \code{parallelly::availableCores()}, which never returns \code{NA} and
 also honours the CRAN core limit.
 }
+\section{Source}{
+
+No formal rule. \code{?detectCores} states it returns "\code{NA} if the answer is
+unknown", and the arithmetic that usually follows then crashes, which is why
+this sits at \code{robustness} tier. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)

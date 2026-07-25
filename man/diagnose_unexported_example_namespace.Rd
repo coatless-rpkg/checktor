@@ -24,6 +24,14 @@ call fails.
 and slow, and it is skipped entirely when examples are wrapped in \verb{\dontrun{}}
 or when you check with \code{--no-examples}. This finds it statically in a second.
 }
+\section{Source}{
+
+No formal rule. An example that reaches for an unexported object will
+error when it runs, which is why this sits at \code{robustness} tier. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                       show_content = FALSE)

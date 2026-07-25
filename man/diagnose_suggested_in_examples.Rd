@@ -22,6 +22,15 @@ not guarded by \code{requireNamespace()} / \code{rlang::is_installed()} (the for
 \verb{@examplesIf} and \verb{if (requireNamespace(...))} produce). Usage inside
 \verb{\dontrun{}} or \verb{\donttest{}} is not flagged.
 }
+\section{Source}{
+
+\href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Suggested-packages}{Writing R Extensions},
+under "Suggested packages", asks that a package from \code{Suggests} used in
+an example be guarded so the example still runs without it. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg_path <- example_diagnose_scenario(
   "documentation_examples/suggested_in_examples_bad.Rd", show_content = FALSE)

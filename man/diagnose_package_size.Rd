@@ -20,6 +20,14 @@ Estimates the size of the source package that would be shipped to CRAN
 (files matched by \code{.Rbuildignore}, plus standard scratch directories like
 \code{.git}, \code{.Rproj.user}, are excluded). Warns at the 5 MB threshold.
 }
+\section{Source}{
+
+The \href{https://cran.r-project.org/web/packages/policies.html}{CRAN Repository Policy}
+limits the size of the built tarball. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                       show_content = FALSE)

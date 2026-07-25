@@ -24,6 +24,16 @@ topics are skipped, and only topics whose name appears in NAMESPACE
 required to have examples). Genuinely side-effect-only functions may be
 false positives and can be ignored.
 }
+\section{Source}{
+
+The CRAN Cookbook covers examples under
+\href{https://contributor.r-project.org/cran-cookbook/general_issues.html#structuring-of-examples}{Structuring of Examples}.
+Exported functions are expected to carry an \verb{\\examples\{\}} block, a convention
+rather than a rule, which is why this sits at \code{opinion} tier. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg_path <- example_diagnose_scenario(
   "documentation_examples/missing_examples_bad.Rd", show_content = FALSE)

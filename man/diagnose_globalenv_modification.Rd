@@ -20,6 +20,15 @@ orchestrator. Defaults to parsing \code{path} afresh.}
 \description{
 Flags a \verb{<<-} whose target binds in neither an enclosing function nor the package, and so reaches \code{.GlobalEnv}. A closure updating its parent, or a package-level cache, is not flagged.
 }
+\section{Source}{
+
+The \href{https://cran.r-project.org/web/packages/policies.html}{CRAN Repository Policy}
+states that "Packages should not modify the global environment (user's
+workspace)." See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)

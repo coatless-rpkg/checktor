@@ -157,6 +157,16 @@ emit_issue_summary <- function(
 #' (`f(T = 1)`) and `$T` / `@T` extractions are excluded.
 #'
 #' @param path Character. Path to package directory.
+#' @section Source:
+#' No binding rule forbids `T` and `F`, though the CRAN Cookbook keeps a recipe for
+#' it under
+#' [T/F Instead of TRUE/FALSE](https://contributor.r-project.org/cran-cookbook/code_issues.html#tf-instead-of-truefalse).
+#' They are ordinary variables (see `?logical`) that R sets to `TRUE` and `FALSE` at
+#' startup but that any code can rebind, so a function reading `T` after something
+#' has run `T <- 0` gets the wrong answer. A real risk that no rule makes citable is
+#' why this sits at `robustness` tier rather than policy. See `vignette("check-sources", package = "checktor")` for how every
+#' check maps to its source.
+#'
 #' @param verbose Logical. Print diagnostic messages.
 #' @param parsed Internal. Pre-parsed source cache; if `NULL`, files are read
 #'   from `path` on demand.
@@ -221,6 +231,13 @@ diagnose_tf_usage <- function(path, verbose = TRUE, parsed = NULL) {
 #' @inheritParams diagnose_tf_usage
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @export
+#' @section Source:
+#' The [CRAN Repository Policy](https://cran.r-project.org/web/packages/policies.html)
+#' asks a package not to modify the user's workspace, and `set.seed()` writes
+#' `.Random.seed` there, changing the random-number stream for the rest of the
+#' session. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/seed_setting_bad.R",
 #'                                  show_content = FALSE)
@@ -267,6 +284,15 @@ diagnose_seed_setting <- function(path, verbose = TRUE, parsed = NULL) {
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @export
 #' @examples
+#' @section Source:
+#' The CRAN Cookbook covers this under
+#' [Using print()/cat()](https://contributor.r-project.org/cran-cookbook/code_issues.html#using-printcat).
+#' Diagnostic output belongs in `message()` or `warning()`, which a user can
+#' suppress, rather than in `cat()` or `print()`, which they cannot. Neither the
+#' Repository Policy nor Writing R Extensions states this, but reviewers ask for it
+#' consistently. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' pkg <- example_diagnose_scenario("code_examples/print_cat_bad.R",
 #'                                  show_content = FALSE)
 #' diagnose_print_cat_usage(pkg, verbose = FALSE)
@@ -460,7 +486,29 @@ diagnose_print_cat_usage <- function(path, verbose = TRUE, parsed = NULL) {
 
 #' Diagnose Unrestored Option Changes
 #'
-#' Flags `options()` / `par()` / `setwd()` changed without restoring. A setter that captures the old value and hands it back honours the base R contract and is not flagged.
+#' Flags a call to `options()`, `par()` or `setwd()` that changes the user's
+#' session state without restoring it.
+#'
+#' @section Source:
+#' The CRAN Cookbook covers this under
+#' [Change of Options, Graphical Parameters and Working Directory](https://contributor.r-project.org/cran-cookbook/code_issues.html#change-of-options-graphical-parameters-and-working-directory),
+#' which asks that a function restore any `options()`, `par()` graphics parameters,
+#' or working directory it changes, using `on.exit()`. No clause in the Repository
+#' Policy or Writing R Extensions states it, yet it is among the most common reasons
+#' a package is sent back, because a function that quietly runs `options(digits = 3)`
+#' and returns has changed how the rest of the session behaves. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
+#'
+#' @section Exemptions:
+#' Two shapes leak nothing and are exempt. A setter that captures the old value and
+#' hands it back, as in `old <- options(...); invisible(old)`, honours the base R
+#' contract and lets the caller restore. And an option in the package's own
+#' namespace, written `options(<PackageName>.key = ...)`, is the package managing
+#' its own configuration rather than the user's, so a deliberate session preference
+#' like `options(mypkg.threshold = 5)` is fine. If you keep a user setting for the
+#' session, give it a namespaced name rather than a bare global one, and restore a
+#' genuinely temporary change with `on.exit(options(old))`.
 #'
 #' @param path Character. Path to the package directory. Default: `"."`.
 #' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
@@ -584,9 +632,10 @@ diagnose_option_changes <- function(path, verbose = TRUE, parsed = NULL) {
     "Option changes appear to be properly reset",
     "Option changes without apparent reset",
     paste0(
-      "Treatment: Capture and restore, e.g. ",
-      "{.code oldpar <- par(no.readonly = TRUE); on.exit(par(oldpar))}. ",
-      "Resetting {.code par()} on exit is strongly recommended by CRAN."
+      "Treatment: For a setting you keep for the session, namespace it as ",
+      "{.code options(<PackageName>.key = ...)}. For a temporary change, restore ",
+      "it on exit, e.g. ",
+      "{.code oldpar <- par(no.readonly = TRUE); on.exit(par(oldpar))}."
     )
   )
   checktor_check_result(passed, issues, "Option changes check")
@@ -601,6 +650,13 @@ diagnose_option_changes <- function(path, verbose = TRUE, parsed = NULL) {
 #' @param parsed Optional pre-parsed source, as returned internally by the
 #'   orchestrator. Defaults to parsing `path` afresh.
 #'
+#' @section Source:
+#' The [CRAN Repository Policy](https://cran.r-project.org/web/packages/policies.html)
+#' states that "Packages should not write in the user's home filespace ... nor
+#' anywhere else on the file system apart from the R session's temporary
+#' directory". See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @seealso [checktor()], which runs this and every other check.
 #' @export
@@ -693,6 +749,13 @@ diagnose_home_writing <- function(path, verbose = TRUE, parsed = NULL) {
 #'   orchestrator. Defaults to parsing `path` afresh.
 #'
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
+#' @section Source:
+#' The CRAN Cookbook covers this under
+#' [Leaving Files in the Temporary Directory](https://contributor.r-project.org/cran-cookbook/code_issues.html#leaving-files-in-the-temporary-directory).
+#' `tempdir()` is removed at session end, so an un-`unlink()`ed tempfile breaks no
+#' rule, and tidiness rather than policy is why this sits at `opinion` tier. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' @seealso [checktor()], which runs this and every other check.
 #' @export
 #' @examples
@@ -781,6 +844,12 @@ diagnose_temp_cleanup <- function(path, verbose = TRUE, parsed = NULL) {
 #'
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @seealso [checktor()], which runs this and every other check.
+#' @section Source:
+#' The [CRAN Repository Policy](https://cran.r-project.org/web/packages/policies.html)
+#' states that "Packages should not modify the global environment (user's
+#' workspace)." See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' @export
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
@@ -888,6 +957,11 @@ diagnose_globalenv_modification <- function(
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @seealso [checktor()], which runs this and every other check.
 #' @export
+#' @section Source:
+#' The [CRAN Repository Policy](https://cran.r-project.org/web/packages/policies.html)
+#' does not let a package install other packages when it runs. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
@@ -939,6 +1013,13 @@ diagnose_installed_packages_usage <- function(
 #' @seealso [checktor()], which runs this and every other check.
 #' @export
 #' @examples
+#' @section Source:
+#' The CRAN Cookbook covers this under
+#' [Setting options(warn = -1)](https://contributor.r-project.org/cran-cookbook/code_issues.html#setting-optionswarn--1).
+#' Suppressing warnings for the rest of the session hides them from everything that
+#' runs afterwards, so restore the previous value via `on.exit()`. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
 #' diagnose_warn_option(pkg, verbose = FALSE)$passed
@@ -984,6 +1065,12 @@ diagnose_warn_option <- function(path, verbose = TRUE, parsed = NULL) {
 #' @export
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+#' @section Source:
+#' The [CRAN Repository Policy](https://cran.r-project.org/web/packages/policies.html)
+#' does not let a package download and install external software when it loads
+#' or runs. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #'                                  show_content = FALSE)
 #' diagnose_software_installation(pkg, verbose = FALSE)$passed
 diagnose_software_installation <- function(
@@ -1078,6 +1165,12 @@ diagnose_software_installation <- function(
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
+#' @section Source:
+#' The [CRAN Repository Policy](https://cran.r-project.org/web/packages/policies.html)
+#' states that "If running a package uses multiple threads/cores it must never
+#' use more than two simultaneously". See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' diagnose_core_usage(pkg, verbose = FALSE)$passed
 diagnose_core_usage <- function(path, verbose = TRUE, parsed = NULL) {
   if (is.null(parsed)) {
@@ -1288,6 +1381,12 @@ REMOTE_EVAL_FUNS <- c(
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
 #' diagnose_library_in_pkg_code(pkg, verbose = FALSE)$passed
+#' @section Source:
+#' [Writing R Extensions](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Package-Dependencies),
+#' under "Package Dependencies", asks package code to reach its dependencies
+#' through `Imports` and `::` rather than attaching them with `library()`. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 diagnose_library_in_pkg_code <- function(path, verbose = TRUE, parsed = NULL) {
   if (is.null(parsed)) {
     parsed <- read_r_xml(path)
@@ -1349,6 +1448,14 @@ diagnose_library_in_pkg_code <- function(path, verbose = TRUE, parsed = NULL) {
 #'                                  show_content = FALSE)
 #' diagnose_sys_setenv_no_reset(pkg, verbose = FALSE)$passed
 diagnose_sys_setenv_no_reset <- function(path, verbose = TRUE, parsed = NULL) {
+#' @section Source:
+#' No clause names environment variables, but they are session state exactly as
+#' `options()` are, so the same restore-on-exit requirement applies. The CRAN
+#' Cookbook states it for options under
+#' [Change of Options, Graphical Parameters and Working Directory](https://contributor.r-project.org/cran-cookbook/code_issues.html#change-of-options-graphical-parameters-and-working-directory).
+#' See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
   if (is.null(parsed)) {
     parsed <- read_r_xml(path)
   }
@@ -1430,6 +1537,12 @@ diagnose_detect_cores_robustness <- function(
   if (is.null(parsed)) {
     parsed <- read_r_xml(path)
   }
+#' @section Source:
+#' No formal rule. `?detectCores` states it returns "`NA` if the answer is
+#' unknown", and the arithmetic that usually follows then crashes, which is why
+#' this sits at `robustness` tier. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
   if (length(parsed) == 0L) {
     return(checktor_check_result(TRUE, character(0), "detectCores() NA check"))
   }
@@ -1523,6 +1636,12 @@ diagnose_hardcoded_credentials <- function(
     parsed <- read_r_xml(path)
   }
   if (length(parsed) == 0L) {
+#' @section Source:
+#' No formal rule. A token or key committed to a package is public the moment it
+#' reaches CRAN and must be revoked, which is why this sits at `robustness`
+#' tier. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
     return(checktor_check_result(
       TRUE,
       character(0),

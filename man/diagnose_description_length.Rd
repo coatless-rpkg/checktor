@@ -20,6 +20,16 @@ Defaults to reading it from \code{path}.}
 \description{
 Flags a \code{Description} of fewer than 10 words.
 }
+\section{Source}{
+
+The CRAN Cookbook covers this under
+\href{https://contributor.r-project.org/cran-cookbook/general_issues.html#description-length}{Description Length}.
+A one-line \code{Description} is thin and reviewers ask for more, a convention rather
+than a rule, which is why this sits at \code{opinion} tier. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to its
+source.
+}
+
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)
