@@ -69,6 +69,72 @@ configure_doctor <- function(
   invisible(old)
 }
 
+#' Find the Root of the Package Containing a Path
+#'
+#' Walks up from `path` until it finds the directory holding a `DESCRIPTION`
+#' file, so checktor can be run from anywhere inside a package tree rather than
+#' only from the directory holding `DESCRIPTION`. This is what lets
+#' `checktor()` behave like `devtools::check()` when your working directory is
+#' `R/`, `tests/testthat/`, or any other subdirectory.
+#'
+#' Every checktor entry point calls this on the `path` it is given, so you
+#' rarely need it directly. It is exported for custom checks registered with
+#' [register_check()], which receive a path that has already been resolved.
+#'
+#' @param path Character. A directory inside a package, or a file within one.
+#'   Default: `"."`.
+#'
+#' @return
+#' Character. The package root, as an absolute path, when one is found above
+#' `path`. When `path` itself holds a `DESCRIPTION` it is returned unchanged, so
+#' an existing caller sees exactly what it passed in. When no package root is
+#' found at all, the search falls back to the directory it started from, meaning
+#' `path` for a directory and its parent for a file, which leaves the caller
+#' reporting the problem against the place the user pointed at.
+#'
+#' @seealso [checktor()], which resolves its `path` this way.
+#' @export
+#' @examples
+#' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+#'                                  show_content = FALSE)
+#'
+#' # From the package root, the path is handed back untouched
+#' identical(find_package_root(pkg), pkg)
+#'
+#' # From a subdirectory, the root is found by walking up
+#' basename(find_package_root(file.path(pkg, "R")))
+find_package_root <- function(path = ".") {
+  # A file is a reasonable thing to point at, so start from its directory.
+  if (!dir.exists(path) && file.exists(path)) {
+    path <- dirname(path)
+  }
+  if (!dir.exists(path)) {
+    return(path)
+  }
+  # Already a root: hand `path` back exactly as given, relative form and all, so
+  # nothing about the existing behaviour changes for the common case.
+  if (file.exists(file.path(path, "DESCRIPTION"))) {
+    return(path)
+  }
+
+  current <- normalizePath(path, winslash = "/", mustWork = FALSE)
+  repeat {
+    parent <- dirname(current)
+    # dirname() of a filesystem root is itself, which is where the walk stops.
+    if (identical(parent, current)) {
+      break
+    }
+    current <- parent
+    if (file.exists(file.path(current, "DESCRIPTION"))) {
+      return(current)
+    }
+  }
+
+  # No package anywhere above: unchanged, so "not a package" errors name the
+  # directory the caller actually asked about.
+  path
+}
+
 # ---- internal helpers --------------------------------------------------------
 
 safe_read_lines <- function(file) {

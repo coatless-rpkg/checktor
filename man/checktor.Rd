@@ -12,8 +12,11 @@ checktor(
 )
 }
 \arguments{
-\item{path}{Character. Path to the R package directory. Defaults to current
-directory (\code{"."}).}
+\item{path}{Character. Any directory inside the R package, or a file within
+one. Defaults to the working directory (\code{"."}). Like \code{devtools::check()},
+checktor walks up to find the \code{DESCRIPTION}, so running it from \verb{R/} or
+\verb{tests/testthat/} examines the whole package rather than failing. See
+\code{\link[=find_package_root]{find_package_root()}}.}
 
 \item{verbose}{Logical. Whether to print detailed diagnostic output to
 console. Defaults to \code{getOption("checktor.verbose", TRUE)}.}

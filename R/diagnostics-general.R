@@ -33,6 +33,7 @@
 #' general_results <- diagnose_general_issues(pkg_path, verbose = FALSE)
 #' general_results$package_size$size_mb
 diagnose_general_issues <- function(path = ".", verbose = TRUE) {
+  path <- find_package_root(path)
   if (verbose) {
     cli::cli_h2("General Health Check")
   }
@@ -59,12 +60,12 @@ diagnose_general_issues <- function(path = ".", verbose = TRUE) {
 #' (files matched by `.Rbuildignore`, plus standard scratch directories like
 #' `.git`, `.Rproj.user`, are excluded). Warns at the 5 MB threshold.
 #'
-#' @param path Character. Path to package directory
 #' @section Source:
 #' The [CRAN Repository Policy](https://cran.r-project.org/web/packages/policies.html)
 #' limits the size of the built tarball. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
+#' @param path Character. Path to package directory
 #' @param verbose Logical. Print diagnostic messages
 #'
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`,
@@ -75,6 +76,7 @@ diagnose_general_issues <- function(path = ".", verbose = TRUE) {
 #'                                       show_content = FALSE)
 #' diagnose_package_size(pkg_path, verbose = FALSE)$size_mb
 diagnose_package_size <- function(path, verbose = TRUE) {
+  path <- find_package_root(path)
   all_files <- list.files(
     path,
     recursive = TRUE,
@@ -147,13 +149,13 @@ diagnose_package_size <- function(path, verbose = TRUE) {
 #' changes in a `NEWS` file. Accepts `NEWS.md`, `NEWS`, or `NEWS.Rd` at the
 #' package root or under `inst/`.
 #'
-#' @param path Character. Path to package directory
-#' @param verbose Logical. Print diagnostic messages
 #' @section Source:
 #' No formal rule. A `NEWS` file is expected but not required, a convention
 #' which is why this sits at `opinion` tier. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
+#' @param path Character. Path to package directory
+#' @param verbose Logical. Print diagnostic messages
 #'
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @export
@@ -163,6 +165,7 @@ diagnose_package_size <- function(path, verbose = TRUE) {
 #' file.remove(file.path(pkg_path, "NEWS.md"))   # demonstrate the failing case
 #' issues(diagnose_news_file(pkg_path, verbose = FALSE))
 diagnose_news_file <- function(path, verbose = TRUE) {
+  path <- find_package_root(path)
   candidates <- file.path(
     path,
     c(
@@ -199,15 +202,15 @@ diagnose_news_file <- function(path, verbose = TRUE) {
 #' [diagnose_general_issues()] run, because a `cran-comments.md` is a workflow
 #' convention rather than a CRAN requirement. Call it directly to use it.
 #'
-#' @param path Character. Path to package directory
-#' @param verbose Logical. Print diagnostic messages
-#'
 #' @section Source:
 #' No formal rule. A `cran-comments.md` is a submission-workflow convention
 #' rather than a CRAN requirement, which is why this check is opt-in and not
 #' part of a default run. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
+#' @param path Character. Path to package directory
+#' @param verbose Logical. Print diagnostic messages
+#'
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @export
 #' @examples
@@ -216,6 +219,7 @@ diagnose_news_file <- function(path, verbose = TRUE) {
 #' file.remove(file.path(pkg_path, "cran-comments.md"))  # failing case
 #' issues(diagnose_cran_comments_file(pkg_path, verbose = FALSE))
 diagnose_cran_comments_file <- function(path, verbose = TRUE) {
+  path <- find_package_root(path)
   has_it <- file.exists(file.path(path, "cran-comments.md"))
   issues <- if (has_it) {
     character(0)
@@ -266,16 +270,16 @@ is_external_or_anchor <- function(tgt) {
 #' `.Rbuildignore` (and therefore absent after `R CMD build`). Relative links
 #' to files that do ship (e.g. `man/figures/logo.png`) are not flagged.
 #'
-#' @param path Character. Path to package directory
-#' @param verbose Logical. Print diagnostic messages
-#'
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @section Source:
 #' No formal rule. A relative README link whose target is excluded from the
 #' tarball breaks on the package page, which is why this sits at `robustness`
 #' tier. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
+#' @param path Character. Path to package directory
+#' @param verbose Logical. Print diagnostic messages
+#'
+#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @export
 #' @examples
 #' pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
@@ -284,6 +288,7 @@ is_external_or_anchor <- function(tgt) {
 #'            file.path(pkg_path, "README.md"))
 #' issues(diagnose_readme_relative_links(pkg_path, verbose = FALSE))
 diagnose_readme_relative_links <- function(path, verbose = TRUE) {
+  path <- find_package_root(path)
   readmes <- file.path(path, c("README.md", "README.Rmd"))
   readmes <- readmes[file.exists(readmes)]
   if (length(readmes) == 0L) {
@@ -356,22 +361,23 @@ diagnose_readme_relative_links <- function(path, verbose = TRUE) {
 #' Literal spans are skipped, so documenting the string `http://` inside `\verb{}`,
 #' `\code{}` or a fenced markdown block is not mistaken for linking to it.
 #'
-#' @param path Character. Path to package directory
-#' @param verbose Logical. Print diagnostic messages
-#'
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @export
 #' @section Source:
 #' No formal rule. Preferring `https://` is good advice, but CRAN's NOTE is
 #' about broken URLs rather than the scheme, which is why this sits at `opinion`
 #' tier. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
+#' @param path Character. Path to package directory
+#' @param verbose Logical. Print diagnostic messages
+#'
+#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
+#' @export
 #' @examples
 #' pkg_path <- example_diagnose_scenario("description_examples/bad_description.txt",
 #'                                       show_content = FALSE)
 #' issues(diagnose_urls(pkg_path, verbose = FALSE))
 diagnose_urls <- function(path, verbose = TRUE) {
+  path <- find_package_root(path)
   rd_files <- list.files(
     file.path(path, "man"),
     pattern = "\\.Rd$",
@@ -490,24 +496,25 @@ fetch_url_db <- function(path) {
 #' the fast, offline half (flagging `http://` and URL shorteners without leaving
 #' the room) see [diagnose_urls()].
 #'
-#' @param path Character. Path to package directory
-#' @param verbose Logical. Print diagnostic messages
-#'
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @export
-#' @examples
 #' @section Source:
 #' The [CRAN incoming check](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages)
 #' run by `R CMD check --as-cran` fetches URLs and NOTEs 404s and redirects; it
 #' is opt-in here because it needs a network. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
+#' @param path Character. Path to package directory
+#' @param verbose Logical. Print diagnostic messages
+#'
+#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
+#' @export
+#' @examples
 #' # Opt in first, then run against a package directory (needs a network):
 #' \dontrun{
 #' options(checktor.url_check = TRUE)
 #' diagnose_url_liveness(".")
 #' }
 diagnose_url_liveness <- function(path, verbose = TRUE) {
+  path <- find_package_root(path)
   # Opt-in: it needs a network and is slow, so it stays off unless asked for.
   if (!isTRUE(getOption("checktor.url_check", FALSE))) {
     return(checktor_check_result(TRUE, character(0), "URL liveness check"))

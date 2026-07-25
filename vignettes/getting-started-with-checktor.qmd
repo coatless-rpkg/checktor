@@ -107,8 +107,10 @@ documentation, general, and CRAN policy) need attention, and gives an overall
 verdict. For the full catalogue of what each category checks, see the
 [function reference](https://r-pkg.thecoatlessprofessor.com/checktor/reference/index.html).
 
-> **On your own package**, the call is simply `checktor()`. Run from the
-> package root, it examines everything in place.
+> **On your own package**, the call is simply `checktor()`. Like
+> `devtools::check()`, it works from anywhere inside the package, so calling it
+> with your working directory in `R/` or `tests/testthat/` still examines the
+> whole package.
 
 ## Reading the results as data
 
@@ -221,10 +223,10 @@ nothing left to say. That is the entire point.
 
 ## See also
 
-- [checktor in Continuous Integration](checktor-in-ci.html): put `checkup()` in
-  charge of a GitHub Actions build as a quality gate.
 - [Where the Checks Come From](check-sources.html): the source and severity tier
   behind every check, from CRAN policy to convention.
+- [checktor in Continuous Integration](checktor-in-ci.html): put `checkup()` in
+  charge of a GitHub Actions build as a quality gate.
 - [Writing Your Own Checks](writing-checks.html): add project-specific checks
   against the parsed syntax tree.
 - [Function reference](https://r-pkg.thecoatlessprofessor.com/checktor/reference/index.html):

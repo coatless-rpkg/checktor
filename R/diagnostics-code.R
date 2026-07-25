@@ -30,6 +30,7 @@
 #' summary(code_results)   # per-category overview
 #' issues(code_results)    # the issues found
 diagnose_code_issues <- function(path = ".", verbose = TRUE) {
+  path <- find_package_root(path)
   if (verbose) {
     cli::cli_h2("Code Health Check")
   }
@@ -156,7 +157,6 @@ emit_issue_summary <- function(
 #' (a long-standing source of regex false positives). Named-argument names
 #' (`f(T = 1)`) and `$T` / `@T` extractions are excluded.
 #'
-#' @param path Character. Path to package directory.
 #' @section Source:
 #' No binding rule forbids `T` and `F`, though the CRAN Cookbook keeps a recipe for
 #' it under
@@ -167,6 +167,7 @@ emit_issue_summary <- function(
 #' why this sits at `robustness` tier rather than policy. See `vignette("check-sources", package = "checktor")` for how every
 #' check maps to its source.
 #'
+#' @param path Character. Path to package directory.
 #' @param verbose Logical. Print diagnostic messages.
 #' @param parsed Internal. Pre-parsed source cache; if `NULL`, files are read
 #'   from `path` on demand.
@@ -177,6 +178,7 @@ emit_issue_summary <- function(
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R")
 #' issues(diagnose_tf_usage(pkg, verbose = FALSE))
 diagnose_tf_usage <- function(path, verbose = TRUE, parsed = NULL) {
+  path <- find_package_root(path)
   if (is.null(parsed)) {
     parsed <- read_r_xml(path)
   }
@@ -229,8 +231,6 @@ diagnose_tf_usage <- function(path, verbose = TRUE, parsed = NULL) {
 #' the check matches the call AST node, not raw text.
 #'
 #' @inheritParams diagnose_tf_usage
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @export
 #' @section Source:
 #' The [CRAN Repository Policy](https://cran.r-project.org/web/packages/policies.html)
 #' asks a package not to modify the user's workspace, and `set.seed()` writes
@@ -238,11 +238,14 @@ diagnose_tf_usage <- function(path, verbose = TRUE, parsed = NULL) {
 #' session. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
+#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
+#' @export
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/seed_setting_bad.R",
 #'                                  show_content = FALSE)
 #' diagnose_seed_setting(pkg, verbose = FALSE)   # prints PASSED/FAILED
 diagnose_seed_setting <- function(path, verbose = TRUE, parsed = NULL) {
+  path <- find_package_root(path)
   if (is.null(parsed)) {
     parsed <- read_r_xml(path)
   }
@@ -281,9 +284,6 @@ diagnose_seed_setting <- function(path, verbose = TRUE, parsed = NULL) {
 #' there (base R's own `print.default()` / `print.lm()` use it).
 #'
 #' @inheritParams diagnose_tf_usage
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @export
-#' @examples
 #' @section Source:
 #' The CRAN Cookbook covers this under
 #' [Using print()/cat()](https://contributor.r-project.org/cran-cookbook/code_issues.html#using-printcat).
@@ -293,10 +293,14 @@ diagnose_seed_setting <- function(path, verbose = TRUE, parsed = NULL) {
 #' consistently. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
+#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
+#' @export
+#' @examples
 #' pkg <- example_diagnose_scenario("code_examples/print_cat_bad.R",
 #'                                  show_content = FALSE)
 #' diagnose_print_cat_usage(pkg, verbose = FALSE)
 diagnose_print_cat_usage <- function(path, verbose = TRUE, parsed = NULL) {
+  path <- find_package_root(path)
   if (is.null(parsed)) {
     parsed <- read_r_xml(path)
   }
@@ -523,6 +527,7 @@ diagnose_print_cat_usage <- function(path, verbose = TRUE, parsed = NULL) {
 #'                                  show_content = FALSE)
 #' diagnose_option_changes(pkg, verbose = FALSE)$passed
 diagnose_option_changes <- function(path, verbose = TRUE, parsed = NULL) {
+  path <- find_package_root(path)
   if (is.null(parsed)) {
     parsed <- read_r_xml(path)
   }
@@ -645,11 +650,6 @@ diagnose_option_changes <- function(path, verbose = TRUE, parsed = NULL) {
 #'
 #' Flags a write whose destination resolves to `~` or `$HOME`.
 #'
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
-#' @param parsed Optional pre-parsed source, as returned internally by the
-#'   orchestrator. Defaults to parsing `path` afresh.
-#'
 #' @section Source:
 #' The [CRAN Repository Policy](https://cran.r-project.org/web/packages/policies.html)
 #' states that "Packages should not write in the user's home filespace ... nor
@@ -657,6 +657,11 @@ diagnose_option_changes <- function(path, verbose = TRUE, parsed = NULL) {
 #' directory". See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
+#' @param path Character. Path to the package directory. Default: `"."`.
+#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
+#' @param parsed Optional pre-parsed source, as returned internally by the
+#'   orchestrator. Defaults to parsing `path` afresh.
+#'
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @seealso [checktor()], which runs this and every other check.
 #' @export
@@ -665,6 +670,7 @@ diagnose_option_changes <- function(path, verbose = TRUE, parsed = NULL) {
 #'                                  show_content = FALSE)
 #' diagnose_home_writing(pkg, verbose = FALSE)$passed
 diagnose_home_writing <- function(path, verbose = TRUE, parsed = NULL) {
+  path <- find_package_root(path)
   if (is.null(parsed)) {
     parsed <- read_r_xml(path)
   }
@@ -743,12 +749,6 @@ diagnose_home_writing <- function(path, verbose = TRUE, parsed = NULL) {
 #'
 #' Flags a temporary file created without a matching cleanup.
 #'
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
-#' @param parsed Optional pre-parsed source, as returned internally by the
-#'   orchestrator. Defaults to parsing `path` afresh.
-#'
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @section Source:
 #' The CRAN Cookbook covers this under
 #' [Leaving Files in the Temporary Directory](https://contributor.r-project.org/cran-cookbook/code_issues.html#leaving-files-in-the-temporary-directory).
@@ -756,6 +756,12 @@ diagnose_home_writing <- function(path, verbose = TRUE, parsed = NULL) {
 #' rule, and tidiness rather than policy is why this sits at `opinion` tier. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
+#' @param path Character. Path to the package directory. Default: `"."`.
+#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
+#' @param parsed Optional pre-parsed source, as returned internally by the
+#'   orchestrator. Defaults to parsing `path` afresh.
+#'
+#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @seealso [checktor()], which runs this and every other check.
 #' @export
 #' @examples
@@ -763,6 +769,7 @@ diagnose_home_writing <- function(path, verbose = TRUE, parsed = NULL) {
 #'                                  show_content = FALSE)
 #' diagnose_temp_cleanup(pkg, verbose = FALSE)$passed
 diagnose_temp_cleanup <- function(path, verbose = TRUE, parsed = NULL) {
+  path <- find_package_root(path)
   # Scope: package code under R/, NOT tests/.
   #
   # This used to scan tests/, which is not shipped behaviour and never runs on a
@@ -837,6 +844,12 @@ diagnose_temp_cleanup <- function(path, verbose = TRUE, parsed = NULL) {
 #'
 #' Flags a `<<-` whose target binds in neither an enclosing function nor the package, and so reaches `.GlobalEnv`. A closure updating its parent, or a package-level cache, is not flagged.
 #'
+#' @section Source:
+#' The [CRAN Repository Policy](https://cran.r-project.org/web/packages/policies.html)
+#' states that "Packages should not modify the global environment (user's
+#' workspace)." See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' @param path Character. Path to the package directory. Default: `"."`.
 #' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
 #' @param parsed Optional pre-parsed source, as returned internally by the
@@ -844,12 +857,6 @@ diagnose_temp_cleanup <- function(path, verbose = TRUE, parsed = NULL) {
 #'
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @seealso [checktor()], which runs this and every other check.
-#' @section Source:
-#' The [CRAN Repository Policy](https://cran.r-project.org/web/packages/policies.html)
-#' states that "Packages should not modify the global environment (user's
-#' workspace)." See
-#' `vignette("check-sources", package = "checktor")` for how every check maps to its
-#' source.
 #' @export
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
@@ -860,6 +867,7 @@ diagnose_globalenv_modification <- function(
   verbose = TRUE,
   parsed = NULL
 ) {
+  path <- find_package_root(path)
   if (is.null(parsed)) {
     parsed <- read_r_xml(path)
   }
@@ -949,6 +957,11 @@ diagnose_globalenv_modification <- function(
 #'
 #' Flags `installed.packages()`, which is slow and is discouraged by its own help page.
 #'
+#' @section Source:
+#' The [CRAN Repository Policy](https://cran.r-project.org/web/packages/policies.html)
+#' does not let a package install other packages when it runs. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' @param path Character. Path to the package directory. Default: `"."`.
 #' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
 #' @param parsed Optional pre-parsed source, as returned internally by the
@@ -957,11 +970,6 @@ diagnose_globalenv_modification <- function(
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @seealso [checktor()], which runs this and every other check.
 #' @export
-#' @section Source:
-#' The [CRAN Repository Policy](https://cran.r-project.org/web/packages/policies.html)
-#' does not let a package install other packages when it runs. See
-#' `vignette("check-sources", package = "checktor")` for how every check maps to its
-#' source.
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
@@ -971,6 +979,7 @@ diagnose_installed_packages_usage <- function(
   verbose = TRUE,
   parsed = NULL
 ) {
+  path <- find_package_root(path)
   if (is.null(parsed)) {
     parsed <- read_r_xml(path)
   }
@@ -1004,6 +1013,13 @@ diagnose_installed_packages_usage <- function(
 #'
 #' Flags a change to `options(warn = )` that is not restored.
 #'
+#' @section Source:
+#' The CRAN Cookbook covers this under
+#' [Setting options(warn = -1)](https://contributor.r-project.org/cran-cookbook/code_issues.html#setting-optionswarn--1).
+#' Suppressing warnings for the rest of the session hides them from everything that
+#' runs afterwards, so restore the previous value via `on.exit()`. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' @param path Character. Path to the package directory. Default: `"."`.
 #' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
 #' @param parsed Optional pre-parsed source, as returned internally by the
@@ -1013,17 +1029,11 @@ diagnose_installed_packages_usage <- function(
 #' @seealso [checktor()], which runs this and every other check.
 #' @export
 #' @examples
-#' @section Source:
-#' The CRAN Cookbook covers this under
-#' [Setting options(warn = -1)](https://contributor.r-project.org/cran-cookbook/code_issues.html#setting-optionswarn--1).
-#' Suppressing warnings for the rest of the session hides them from everything that
-#' runs afterwards, so restore the previous value via `on.exit()`. See
-#' `vignette("check-sources", package = "checktor")` for how every check maps to its
-#' source.
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
 #' diagnose_warn_option(pkg, verbose = FALSE)$passed
 diagnose_warn_option <- function(path, verbose = TRUE, parsed = NULL) {
+  path <- find_package_root(path)
   if (is.null(parsed)) {
     parsed <- read_r_xml(path)
   }
@@ -1055,6 +1065,12 @@ diagnose_warn_option <- function(path, verbose = TRUE, parsed = NULL) {
 #'
 #' Flags `install.packages()` and friends. A package may not install software on the user's machine.
 #'
+#' @section Source:
+#' The [CRAN Repository Policy](https://cran.r-project.org/web/packages/policies.html)
+#' does not let a package download and install external software when it loads
+#' or runs. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' @param path Character. Path to the package directory. Default: `"."`.
 #' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
 #' @param parsed Optional pre-parsed source, as returned internally by the
@@ -1065,12 +1081,6 @@ diagnose_warn_option <- function(path, verbose = TRUE, parsed = NULL) {
 #' @export
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
-#' @section Source:
-#' The [CRAN Repository Policy](https://cran.r-project.org/web/packages/policies.html)
-#' does not let a package download and install external software when it loads
-#' or runs. See
-#' `vignette("check-sources", package = "checktor")` for how every check maps to its
-#' source.
 #'                                  show_content = FALSE)
 #' diagnose_software_installation(pkg, verbose = FALSE)$passed
 diagnose_software_installation <- function(
@@ -1078,6 +1088,7 @@ diagnose_software_installation <- function(
   verbose = TRUE,
   parsed = NULL
 ) {
+  path <- find_package_root(path)
   if (is.null(parsed)) {
     parsed <- read_r_xml(path)
   }
@@ -1154,6 +1165,12 @@ diagnose_software_installation <- function(
 #'
 #' Flags a worker count that can exceed CRAN's two-core limit. Understands parallel, snow, foreach, future, furrr, mirai, RcppParallel, data.table, and BiocParallel.
 #'
+#' @section Source:
+#' The [CRAN Repository Policy](https://cran.r-project.org/web/packages/policies.html)
+#' states that "If running a package uses multiple threads/cores it must never
+#' use more than two simultaneously". See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' @param path Character. Path to the package directory. Default: `"."`.
 #' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
 #' @param parsed Optional pre-parsed source, as returned internally by the
@@ -1165,14 +1182,9 @@ diagnose_software_installation <- function(
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' @section Source:
-#' The [CRAN Repository Policy](https://cran.r-project.org/web/packages/policies.html)
-#' states that "If running a package uses multiple threads/cores it must never
-#' use more than two simultaneously". See
-#' `vignette("check-sources", package = "checktor")` for how every check maps to its
-#' source.
 #' diagnose_core_usage(pkg, verbose = FALSE)$passed
 diagnose_core_usage <- function(path, verbose = TRUE, parsed = NULL) {
+  path <- find_package_root(path)
   if (is.null(parsed)) {
     parsed <- read_r_xml(path)
   }
@@ -1369,6 +1381,12 @@ REMOTE_EVAL_FUNS <- c(
 #'
 #' Flags `library()` / `require()` in package code, which alters the user's search path. Code destined for a parallel worker is exempt, since a daemon starts with an empty search path.
 #'
+#' @section Source:
+#' [Writing R Extensions](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Package-Dependencies),
+#' under "Package Dependencies", asks package code to reach its dependencies
+#' through `Imports` and `::` rather than attaching them with `library()`. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' @param path Character. Path to the package directory. Default: `"."`.
 #' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
 #' @param parsed Optional pre-parsed source, as returned internally by the
@@ -1381,13 +1399,8 @@ REMOTE_EVAL_FUNS <- c(
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
 #' diagnose_library_in_pkg_code(pkg, verbose = FALSE)$passed
-#' @section Source:
-#' [Writing R Extensions](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Package-Dependencies),
-#' under "Package Dependencies", asks package code to reach its dependencies
-#' through `Imports` and `::` rather than attaching them with `library()`. See
-#' `vignette("check-sources", package = "checktor")` for how every check maps to its
-#' source.
 diagnose_library_in_pkg_code <- function(path, verbose = TRUE, parsed = NULL) {
+  path <- find_package_root(path)
   if (is.null(parsed)) {
     parsed <- read_r_xml(path)
   }
@@ -1435,6 +1448,14 @@ diagnose_library_in_pkg_code <- function(path, verbose = TRUE, parsed = NULL) {
 #'
 #' Flags `Sys.setenv()` with no matching cleanup in the same function.
 #'
+#' @section Source:
+#' No clause names environment variables, but they are session state exactly as
+#' `options()` are, so the same restore-on-exit requirement applies. The CRAN
+#' Cookbook states it for options under
+#' [Change of Options, Graphical Parameters and Working Directory](https://contributor.r-project.org/cran-cookbook/code_issues.html#change-of-options-graphical-parameters-and-working-directory).
+#' See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' @param path Character. Path to the package directory. Default: `"."`.
 #' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
 #' @param parsed Optional pre-parsed source, as returned internally by the
@@ -1448,14 +1469,7 @@ diagnose_library_in_pkg_code <- function(path, verbose = TRUE, parsed = NULL) {
 #'                                  show_content = FALSE)
 #' diagnose_sys_setenv_no_reset(pkg, verbose = FALSE)$passed
 diagnose_sys_setenv_no_reset <- function(path, verbose = TRUE, parsed = NULL) {
-#' @section Source:
-#' No clause names environment variables, but they are session state exactly as
-#' `options()` are, so the same restore-on-exit requirement applies. The CRAN
-#' Cookbook states it for options under
-#' [Change of Options, Graphical Parameters and Working Directory](https://contributor.r-project.org/cran-cookbook/code_issues.html#change-of-options-graphical-parameters-and-working-directory).
-#' See
-#' `vignette("check-sources", package = "checktor")` for how every check maps to its
-#' source.
+  path <- find_package_root(path)
   if (is.null(parsed)) {
     parsed <- read_r_xml(path)
   }
@@ -1523,6 +1537,12 @@ diagnose_sys_setenv_no_reset <- function(path, verbose = TRUE, parsed = NULL) {
 #' also honours the CRAN core limit.
 #'
 #' @inheritParams diagnose_tf_usage
+#' @section Source:
+#' No formal rule. `?detectCores` states it returns "`NA` if the answer is
+#' unknown", and the arithmetic that usually follows then crashes, which is why
+#' this sits at `robustness` tier. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @export
 #' @examples
@@ -1534,15 +1554,10 @@ diagnose_detect_cores_robustness <- function(
   verbose = TRUE,
   parsed = NULL
 ) {
+  path <- find_package_root(path)
   if (is.null(parsed)) {
     parsed <- read_r_xml(path)
   }
-#' @section Source:
-#' No formal rule. `?detectCores` states it returns "`NA` if the answer is
-#' unknown", and the arithmetic that usually follows then crashes, which is why
-#' this sits at `robustness` tier. See
-#' `vignette("check-sources", package = "checktor")` for how every check maps to its
-#' source.
   if (length(parsed) == 0L) {
     return(checktor_check_result(TRUE, character(0), "detectCores() NA check"))
   }
@@ -1621,6 +1636,12 @@ diagnose_detect_cores_robustness <- function(
 #' \url{https://github.com/gitleaks/gitleaks}
 #'
 #' @inheritParams diagnose_tf_usage
+#' @section Source:
+#' No formal rule. A token or key committed to a package is public the moment it
+#' reaches CRAN and must be revoked, which is why this sits at `robustness`
+#' tier. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @export
 #' @examples
@@ -1632,16 +1653,11 @@ diagnose_hardcoded_credentials <- function(
   verbose = TRUE,
   parsed = NULL
 ) {
+  path <- find_package_root(path)
   if (is.null(parsed)) {
     parsed <- read_r_xml(path)
   }
   if (length(parsed) == 0L) {
-#' @section Source:
-#' No formal rule. A token or key committed to a package is public the moment it
-#' reaches CRAN and must be revoked, which is why this sits at `robustness`
-#' tier. See
-#' `vignette("check-sources", package = "checktor")` for how every check maps to its
-#' source.
     return(checktor_check_result(
       TRUE,
       character(0),

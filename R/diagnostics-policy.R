@@ -23,6 +23,7 @@
 #' summary(policy)
 #' issues(policy)
 diagnose_policy_violations <- function(path = ".", verbose = TRUE) {
+  path <- find_package_root(path)
   if (verbose) {
     cli::cli_h2("CRAN Policy Violations Check")
   }
@@ -55,13 +56,13 @@ diagnose_policy_violations <- function(path = ".", verbose = TRUE) {
 #'
 #' Flags a `browser()` call left in package code.
 #'
-#' @param path Character. Path to the package directory. Default: `"."`.
 #' @section Source:
 #' The [CRAN Repository Policy](https://cran.r-project.org/web/packages/policies.html)
 #' requires checks to run non-interactively, so a debugging leftover such as
 #' `browser()` must not ship. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
+#' @param path Character. Path to the package directory. Default: `"."`.
 #' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
 #' @param parsed Optional pre-parsed source, as returned internally by the
 #'   orchestrator. Defaults to parsing `path` afresh.
@@ -74,6 +75,7 @@ diagnose_policy_violations <- function(path = ".", verbose = TRUE) {
 #'                                  show_content = FALSE)
 #' diagnose_browser_calls(pkg, verbose = FALSE)$passed
 diagnose_browser_calls <- function(path, verbose = TRUE, parsed = NULL) {
+  path <- find_package_root(path)
   if (is.null(parsed)) {
     parsed <- read_r_xml(path)
   }
@@ -95,14 +97,14 @@ diagnose_browser_calls <- function(path, verbose = TRUE, parsed = NULL) {
 #'
 #' Flags `system()` / `system2()` / `shell()`, which need review for portability and for shell-injection risk.
 #'
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
 #' @section Source:
 #' No flat rule. A raw `system()` or `system2()` call needs review for
 #' portability rather than being an automatic violation, which is why this sits
 #' at `robustness` tier. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
+#' @param path Character. Path to the package directory. Default: `"."`.
+#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
 #' @param parsed Optional pre-parsed source, as returned internally by the
 #'   orchestrator. Defaults to parsing `path` afresh.
 #'
@@ -114,6 +116,7 @@ diagnose_browser_calls <- function(path, verbose = TRUE, parsed = NULL) {
 #'                                  show_content = FALSE)
 #' diagnose_system_calls(pkg, verbose = FALSE)$passed
 diagnose_system_calls <- function(path, verbose = TRUE, parsed = NULL) {
+  path <- find_package_root(path)
   if (is.null(parsed)) {
     parsed <- read_r_xml(path)
   }
@@ -191,15 +194,15 @@ diagnose_system_calls <- function(path, verbose = TRUE, parsed = NULL) {
 #'
 #' Flags a write whose destination is a literal path, so it provably lands in the working directory or the user's home. A caller-supplied or computed destination is permission, and is not flagged.
 #'
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
-#' @param parsed Optional pre-parsed source, as returned internally by the
 #' @section Source:
 #' The [CRAN Repository Policy](https://cran.r-project.org/web/packages/policies.html)
 #' states that "Packages should not write ... anywhere ... apart from the R
 #' session's temporary directory". See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
+#' @param path Character. Path to the package directory. Default: `"."`.
+#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
+#' @param parsed Optional pre-parsed source, as returned internally by the
 #'   orchestrator. Defaults to parsing `path` afresh.
 #'
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
@@ -210,6 +213,7 @@ diagnose_system_calls <- function(path, verbose = TRUE, parsed = NULL) {
 #'                                  show_content = FALSE)
 #' diagnose_file_operations(pkg, verbose = FALSE)$passed
 diagnose_file_operations <- function(path, verbose = TRUE, parsed = NULL) {
+  path <- find_package_root(path)
   if (is.null(parsed)) {
     parsed <- read_r_xml(path)
   }
@@ -273,16 +277,16 @@ diagnose_file_operations <- function(path, verbose = TRUE, parsed = NULL) {
 #'
 #' Flags network access in code or examples that runs without a guard.
 #'
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
-#'
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @section Source:
 #' The [CRAN Repository Policy](https://cran.r-project.org/web/packages/policies.html)
 #' states that "Packages which use Internet resources should fail gracefully
 #' with an informative message if the resource is not available". See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
+#' @param path Character. Path to the package directory. Default: `"."`.
+#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
+#'
+#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @seealso [checktor()], which runs this and every other check.
 #' @export
 #' @examples
@@ -290,6 +294,7 @@ diagnose_file_operations <- function(path, verbose = TRUE, parsed = NULL) {
 #'                                  show_content = FALSE)
 #' diagnose_network_operations(pkg, verbose = FALSE)$passed
 diagnose_network_operations <- function(path, verbose = TRUE) {
+  path <- find_package_root(path)
   rd_files <- list.files(
     file.path(path, "man"),
     pattern = "\\.Rd$",

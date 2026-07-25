@@ -6,8 +6,11 @@
 #' package structure, and CRAN policy compliance to identify potential problems
 #' that could cause CRAN submission delays or rejections.
 #'
-#' @param path Character. Path to the R package directory. Defaults to current
-#'   directory (`"."`).
+#' @param path Character. Any directory inside the R package, or a file within
+#'   one. Defaults to the working directory (`"."`). Like `devtools::check()`,
+#'   checktor walks up to find the `DESCRIPTION`, so running it from `R/` or
+#'   `tests/testthat/` examines the whole package rather than failing. See
+#'   [find_package_root()].
 #' @param verbose Logical. Whether to print detailed diagnostic output to
 #'   console. Defaults to `getOption("checktor.verbose", TRUE)`.
 #' @param progress Logical. Whether to show progress bars during diagnostics.
@@ -86,6 +89,7 @@ checktor <- function(
   progress = getOption("checktor.progress", verbose),
   severity = getOption("checktor.severity", DEFAULT_SEVERITY)
 ) {
+  path <- find_package_root(path)
   validate_package_directory(path)
   severity <- match.arg(severity, SEVERITY_LEVELS, several.ok = TRUE)
 

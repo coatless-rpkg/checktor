@@ -6,7 +6,8 @@ a user. New checks widen that ground by bringing part of CRAN's incoming filter
 offline, covering the `Date`, `Encoding` and `Version` fields, the structure of
 `Authors@R`, ORCID and ROR identifiers, a `detectCores()` that can return `NA`,
 and a scan for a leaked credential. Many existing checks are sharper and quieter,
-every diagnostic is now exported and callable on its own, and a package can tune
+every diagnostic is now exported and callable on its own, checktor runs from
+anywhere inside a package the way `devtools::check()` does, and a package can tune
 checktor through `Config/checktor/*` fields in its own DESCRIPTION.
 
 ## Breaking changes
@@ -115,6 +116,15 @@ checktor through `Config/checktor/*` fields in its own DESCRIPTION.
 
 ## Configuration and extension
 
+* checktor now runs from anywhere inside a package, the way `devtools::check()`
+  does. It walks up from the path you give it to find the `DESCRIPTION`, so a call
+  with your working directory in `R/` or `tests/testthat/` examines the whole
+  package instead of failing, and pointing it at a file works as well as pointing
+  it at a directory. Every entry point resolves the root the same way, from
+  `checktor()` and `checkup()` down to each individual `diagnose_*()`, and
+  `find_package_root()` is exported for custom checks that want the same rule.
+  A directory that really is outside a package still says so.
+
 * A package can now configure checktor through `Config/checktor/*` fields in its
   own DESCRIPTION. The `disable` field skips a check, `allow` mutes reviewed
   findings for either a whole check or a `check:substring` and gives a green
@@ -141,6 +151,11 @@ checktor through `Config/checktor/*` fields in its own DESCRIPTION.
 Several checks are now substantially more accurate, and a few hand off to R's own
 engines instead of reimplementing them.
 
+* `option_changes` now prescribes a fix. When it fires, `prescribe()` shows the two
+  ways out, namespacing a setting you keep for the session as
+  `options(<PackageName>.key = ...)`, or restoring a temporary change with
+  `on.exit()`.
+
 * `home_writing` now flags a write whose destination resolves to the user's home,
   such as `writeLines(x, "~/leaked.txt")` or `saveRDS(x, "~/.cache/x.rds")`. It
   previously looked only at reads like `Sys.getenv("HOME")`, so the writes that
@@ -150,11 +165,6 @@ engines instead of reimplementing them.
   `.GlobalEnv`, meaning it binds in neither an enclosing function nor the package.
   The two correct idioms, a closure updating its parent frame and the
   package-level cache written as `.cache <<- ...`, both come out clean.
-
-* `option_changes` now prescribes a fix. When it fires, `prescribe()` shows the two
-  ways out, namespacing a setting you keep for the session as
-  `options(<PackageName>.key = ...)`, or restoring a temporary change with
-  `on.exit()`.
 
 * `core_usage` now inspects the worker count itself and understands the
   `parallel`, `snow`, `foreach`, `future`, `furrr`, `mirai`, `RcppParallel`,

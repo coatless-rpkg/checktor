@@ -31,6 +31,7 @@
 #' summary(doc_results)
 #' issues(doc_results)
 diagnose_documentation_issues <- function(path = ".", verbose = TRUE) {
+  path <- find_package_root(path)
   if (verbose) {
     cli::cli_h2("Documentation Health Check")
   }
@@ -83,7 +84,6 @@ is_non_function_rd_obj <- function(rd) {
 #' missing a `\value{}` section. Data, class, methods, package-level, and
 #' re-export topics are skipped (they don't need `\value{}`).
 #'
-#' @param path Character. Path to package directory
 #' @section Source:
 #' [Writing R Extensions](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Documenting-functions),
 #' under "Documenting functions", describes `\value{}`, and the CRAN Cookbook keeps
@@ -93,6 +93,7 @@ is_non_function_rd_obj <- function(rd) {
 #' See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
+#' @param path Character. Path to package directory
 #' @param verbose Logical. Print diagnostic messages
 #'
 #' @return [checktor_check_result()] with `passed`, `issues`, `missing`,
@@ -103,6 +104,7 @@ is_non_function_rd_obj <- function(rd) {
 #'                                       show_content = FALSE)
 #' issues(diagnose_value_tags(pkg_path, verbose = FALSE))
 diagnose_value_tags <- function(path, verbose = TRUE) {
+  path <- find_package_root(path)
   rd_files <- list.files(
     file.path(path, "man"),
     pattern = "\\.Rd$",
@@ -182,8 +184,6 @@ diagnose_value_tags <- function(path, verbose = TRUE) {
 #' (interactive, network, credentials, long-running, etc.).
 #'
 #' @inheritParams diagnose_value_tags
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @export
 #' @section Source:
 #' The CRAN Cookbook covers this under
 #' [Structuring of Examples](https://contributor.r-project.org/cran-cookbook/general_issues.html#structuring-of-examples).
@@ -191,11 +191,14 @@ diagnose_value_tags <- function(path, verbose = TRUE) {
 #' convention rather than a rule, which is why this sits at `opinion` tier. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
+#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
+#' @export
 #' @examples
 #' pkg_path <- example_diagnose_scenario("network_examples/bad_network_example.Rd",
 #'                                       show_content = FALSE)
 #' diagnose_example_structure(pkg_path, verbose = FALSE)
 diagnose_example_structure <- function(path, verbose = TRUE) {
+  path <- find_package_root(path)
   rd_files <- list.files(
     file.path(path, "man"),
     pattern = "\\.Rd$",
@@ -318,14 +321,14 @@ contains_dontrun <- function(node) contains_rd_tag(node, "\\dontrun")
 #'
 #' Flags an `\examples{}` block whose only content is commented out, so it demonstrates nothing. A comment beside live code is illustration and is not flagged.
 #'
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
-#'
 #' @section Source:
 #' No formal rule. An `\examples{}` block that is entirely commented out
 #' demonstrates nothing, a convention which is why this sits at `opinion` tier. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
+#' @param path Character. Path to the package directory. Default: `"."`.
+#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
+#'
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @seealso [checktor()], which runs this and every other check.
 #' @export
@@ -334,6 +337,7 @@ contains_dontrun <- function(node) contains_rd_tag(node, "\\dontrun")
 #'                                  show_content = FALSE)
 #' diagnose_commented_examples(pkg, verbose = FALSE)$passed
 diagnose_commented_examples <- function(path, verbose = TRUE) {
+  path <- find_package_root(path)
   rd_files <- list.files(
     file.path(path, "man"),
     pattern = "\\.Rd$",
@@ -511,10 +515,6 @@ rd_aliases <- function(rd) {
 #'
 #' Flags `\dontrun{}` around code that is merely slow. `\donttest{}` is the right wrapper, since it still runs under `--run-donttest`.
 #'
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
-#'
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @section Source:
 #' The CRAN Cookbook covers the distinction under
 #' [Structuring of Examples](https://contributor.r-project.org/cran-cookbook/general_issues.html#structuring-of-examples),
@@ -522,6 +522,10 @@ rd_aliases <- function(rd) {
 #' enforces the choice, which is why this sits at `opinion` tier. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
+#' @param path Character. Path to the package directory. Default: `"."`.
+#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
+#'
+#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @seealso [checktor()], which runs this and every other check.
 #' @export
 #' @examples
@@ -529,6 +533,7 @@ rd_aliases <- function(rd) {
 #'                                  show_content = FALSE)
 #' diagnose_donttest_vs_dontrun(pkg, verbose = FALSE)$passed
 diagnose_donttest_vs_dontrun <- function(path, verbose = TRUE) {
+  path <- find_package_root(path)
   rd_files <- list.files(
     file.path(path, "man"),
     pattern = "\\.Rd$",
@@ -603,11 +608,6 @@ diagnose_donttest_vs_dontrun <- function(path, verbose = TRUE) {
 #' false positives and can be ignored.
 #'
 #' @inheritParams diagnose_value_tags
-#' @return [checktor_check_result()] with `passed`, `issues`, `missing`,
-#'   `message`.
-#' @export
-#' @examples
-#' pkg_path <- example_diagnose_scenario(
 #' @section Source:
 #' The CRAN Cookbook covers examples under
 #' [Structuring of Examples](https://contributor.r-project.org/cran-cookbook/general_issues.html#structuring-of-examples).
@@ -615,10 +615,16 @@ diagnose_donttest_vs_dontrun <- function(path, verbose = TRUE) {
 #' rather than a rule, which is why this sits at `opinion` tier. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
+#' @return [checktor_check_result()] with `passed`, `issues`, `missing`,
+#'   `message`.
+#' @export
+#' @examples
+#' pkg_path <- example_diagnose_scenario(
 #'   "documentation_examples/missing_examples_bad.Rd", show_content = FALSE)
 #' writeLines("export(undocumented_fn)", file.path(pkg_path, "NAMESPACE"))
 #' issues(diagnose_missing_examples(pkg_path, verbose = FALSE))
 diagnose_missing_examples <- function(path, verbose = TRUE) {
+  path <- find_package_root(path)
   rd_files <- list.files(
     file.path(path, "man"),
     pattern = "\\.Rd$",
@@ -703,21 +709,22 @@ parse_package_list <- function(field) {
 #' `\dontrun{}` or `\donttest{}` is not flagged.
 #'
 #' @inheritParams diagnose_value_tags
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @export
-#' @examples
-#' pkg_path <- example_diagnose_scenario(
-#'   "documentation_examples/suggested_in_examples_bad.Rd", show_content = FALSE)
-#' cat("Suggests: somesuggest\n",
 #' @section Source:
 #' [Writing R Extensions](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Suggested-packages),
 #' under "Suggested packages", asks that a package from `Suggests` used in
 #' an example be guarded so the example still runs without it. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
+#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
+#' @export
+#' @examples
+#' pkg_path <- example_diagnose_scenario(
+#'   "documentation_examples/suggested_in_examples_bad.Rd", show_content = FALSE)
+#' cat("Suggests: somesuggest\n",
 #'     file = file.path(pkg_path, "DESCRIPTION"), append = TRUE)
 #' issues(diagnose_suggested_in_examples(pkg_path, verbose = FALSE))
 diagnose_suggested_in_examples <- function(path, verbose = TRUE) {
+  path <- find_package_root(path)
   rd_files <- list.files(
     file.path(path, "man"),
     pattern = "\\.Rd$",
@@ -848,13 +855,6 @@ diagnose_suggested_in_examples <- function(path, verbose = TRUE) {
 #' The check is skipped entirely unless `NAMESPACE` carries the roxygen2
 #' "do not edit by hand" banner, so a hand-managed package is never flagged.
 #'
-#' @param path Character. Path to package directory
-#' @param verbose Logical. Print diagnostic messages
-#'
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @export
-#' @examples
-#' pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #' @section Source:
 #' The CRAN Cookbook covers the roxygen2 side of this under
 #' [Repeated Rejections of Issues in Manuals](https://contributor.r-project.org/cran-cookbook/docs_issues.html#repeated-rejections-of-issues-in-manuals-if-using-roxygen2),
@@ -863,9 +863,17 @@ diagnose_suggested_in_examples <- function(path, verbose = TRUE) {
 #' rule names it, which is why this sits at `robustness` tier. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
+#' @param path Character. Path to package directory
+#' @param verbose Logical. Print diagnostic messages
+#'
+#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
+#' @export
+#' @examples
+#' pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                       show_content = FALSE)
 #' diagnose_roxygen_usage(pkg_path, verbose = FALSE)$passed
 diagnose_roxygen_usage <- function(path, verbose = TRUE) {
+  path <- find_package_root(path)
   pass <- function() {
     checktor_check_result(TRUE, character(0), "Roxygen freshness check")
   }
@@ -1031,6 +1039,11 @@ roxygen_exported_names <- function(parsed) {
 #' and slow, and it is skipped entirely when examples are wrapped in `\dontrun{}`
 #' or when you check with `--no-examples`. This finds it statically in a second.
 #'
+#' @section Source:
+#' No formal rule. An example that reaches for an unexported object will
+#' error when it runs, which is why this sits at `robustness` tier. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' @param path Character. Path to package directory
 #' @param verbose Logical. Print diagnostic messages
 #'
@@ -1039,13 +1052,9 @@ roxygen_exported_names <- function(parsed) {
 #' @examples
 #' pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                       show_content = FALSE)
-#' @section Source:
-#' No formal rule. An example that reaches for an unexported object will
-#' error when it runs, which is why this sits at `robustness` tier. See
-#' `vignette("check-sources", package = "checktor")` for how every check maps to its
-#' source.
 #' diagnose_unexported_example_namespace(pkg_path, verbose = FALSE)$passed
 diagnose_unexported_example_namespace <- function(path, verbose = TRUE) {
+  path <- find_package_root(path)
   rd_files <- list.files(
     file.path(path, "man"),
     pattern = "\\.Rd$",

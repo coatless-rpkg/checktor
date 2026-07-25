@@ -35,6 +35,7 @@
 #' parsed <- read_r_xml(pkg)
 #' names(parsed)
 read_r_xml <- function(path) {
+  path <- find_package_root(path)
   r_files <- list_r_files(path)
   setNames(lapply(r_files, parse_one_r_file), r_files)
 }

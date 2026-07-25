@@ -191,6 +191,7 @@ reference:
   - register_check
   - unregister_check
   - registered_checks
+  - find_package_root
   - read_r_xml
   - xpath_lints
   - xpath_per_file

@@ -21,6 +21,7 @@
 #' results <- diagnose_description_issues(pkg_path, verbose = FALSE)
 #' issues(results)     # description-field problems, if any
 diagnose_description_issues <- function(path = ".", verbose = TRUE) {
+  path <- find_package_root(path)
   if (verbose) {
     cli::cli_h2("DESCRIPTION File Health Check")
   }
@@ -175,13 +176,13 @@ parse_authors_at_r <- function(desc) {
 #'
 #' Flags a package or external-software name in `Title`/`Description` that is not in single quotes, as Writing R Extensions requires.
 #'
-#' @param path Character. Path to the package directory. Default: `"."`.
 #' @section Source:
 #' [Writing R Extensions](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file),
 #' under "The DESCRIPTION file", asks you to "Refer to other packages and
 #' external software in single quotes". See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
+#' @param path Character. Path to the package directory. Default: `"."`.
 #' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
 #' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
 #'   Defaults to reading it from `path`.
@@ -198,6 +199,7 @@ diagnose_software_names_formatting <- function(
   verbose = TRUE,
   desc = NULL
 ) {
+  path <- find_package_root(path)
   desc <- resolve_description(path, desc)
   # R PACKAGE and software-PRODUCT names only. Writing R Extensions asks for "other
   # packages and external software" in single quotes, and CRAN enforces it for
@@ -281,14 +283,14 @@ diagnose_software_names_formatting <- function(
 #' A package can extend the list through `Config/checktor/language_names` in its own
 #' DESCRIPTION.
 #'
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
 #' @section Source:
 #' [Writing R Extensions](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file),
 #' under "The DESCRIPTION file", asks for single quotes around other software;
 #' checktor applies the same to programming-language and markup names. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
+#' @param path Character. Path to the package directory. Default: `"."`.
+#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
 #' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
 #'   Defaults to reading it from `path`.
 #'
@@ -300,6 +302,7 @@ diagnose_software_names_formatting <- function(
 #'                                  show_content = FALSE)
 #' diagnose_language_names(pkg, verbose = FALSE)$passed
 diagnose_language_names <- function(path = ".", verbose = TRUE, desc = NULL) {
+  path <- find_package_root(path)
   desc <- resolve_description(path, desc)
   language_names <- check_vocab(
     checktor_config(path),
@@ -361,9 +364,6 @@ diagnose_language_names <- function(path = ".", verbose = TRUE, desc = NULL) {
 #'
 #' Flags an acronym in `Description` that is never spelled out. A parenthetical gloss in either order counts as explained.
 #'
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
-#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
 #' @section Source:
 #' The CRAN Cookbook covers this under
 #' [Explaining Acronyms](https://contributor.r-project.org/cran-cookbook/description_issues.html#explaining-acronyms).
@@ -371,6 +371,9 @@ diagnose_language_names <- function(path = ".", verbose = TRUE, desc = NULL) {
 #' which is why this sits at `opinion` tier. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
+#' @param path Character. Path to the package directory. Default: `"."`.
+#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
+#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
 #'   Defaults to reading it from `path`.
 #'
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
@@ -385,6 +388,7 @@ diagnose_acronym_explanation <- function(
   verbose = TRUE,
   desc = NULL
 ) {
+  path <- find_package_root(path)
   desc <- resolve_description(path, desc)
   text <- desc[["Description"]]
   if (is.null(text) || !nzchar(text)) {
@@ -468,16 +472,16 @@ diagnose_acronym_explanation <- function(
 #'
 #' Flags a missing `Authors@R`, and an unfilled `usethis` template such as `person("First", "Last", ...)`, which is a hard CRAN rejection that `R CMD check` says nothing about.
 #'
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
-#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
-#'   Defaults to reading it from `path`.
 #' @section Source:
 #' The [CRAN Repository Policy](https://cran.r-project.org/web/packages/policies.html)
 #' treats a placeholder or malformed `Authors@R`, including a missing
 #' maintainer, as a rejection. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
+#' @param path Character. Path to the package directory. Default: `"."`.
+#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
+#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
+#'   Defaults to reading it from `path`.
 #'
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @seealso [checktor()], which runs this and every other check.
@@ -487,6 +491,7 @@ diagnose_acronym_explanation <- function(
 #'                                  show_content = FALSE)
 #' diagnose_authors_field(pkg, verbose = FALSE)$passed
 diagnose_authors_field <- function(path = ".", verbose = TRUE, desc = NULL) {
+  path <- find_package_root(path)
   desc <- resolve_description(path, desc)
   # Two things are checked here, and only one of them overlaps with R.
   #
@@ -601,17 +606,17 @@ diagnose_authors_field <- function(path = ".", verbose = TRUE, desc = NULL) {
 #'
 #' Flags a reference that is not in CRAN's expected `<doi:...>` / `<arXiv:...>` form.
 #'
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
-#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
-#'   Defaults to reading it from `path`.
-#'
 #' @section Source:
 #' The [CRAN incoming check](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages)
 #' run by `R CMD check --as-cran` NOTEs a reference not written in the
 #' `<doi:...>` or `<arXiv:...>` form. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
+#' @param path Character. Path to the package directory. Default: `"."`.
+#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
+#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
+#'   Defaults to reading it from `path`.
+#'
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @seealso [checktor()], which runs this and every other check.
 #' @export
@@ -624,6 +629,7 @@ diagnose_references_formatting <- function(
   verbose = TRUE,
   desc = NULL
 ) {
+  path <- find_package_root(path)
   desc <- resolve_description(path, desc)
   text <- desc[["Description"]]
   if (is.null(text) || !nzchar(text)) {
@@ -672,12 +678,6 @@ diagnose_references_formatting <- function(
 #'
 #' Flags a `Date` field that is not ISO 8601 `yyyy-mm-dd`, is over a month old, or lies in the future. Mirrors the CRAN incoming check; an absent `Date` field (the common, preferred case) passes.
 #'
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
-#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
-#'   Defaults to reading it from `path`.
-#'
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @section Source:
 #' [Writing R Extensions](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file),
 #' under "The DESCRIPTION file", says "the 'yyyy-mm-dd' format of the
@@ -686,6 +686,12 @@ diagnose_references_formatting <- function(
 #' also flags a stale or future date. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
+#' @param path Character. Path to the package directory. Default: `"."`.
+#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
+#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
+#'   Defaults to reading it from `path`.
+#'
+#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @seealso [checktor()], which runs this and every other check.
 #' @export
 #' @examples
@@ -693,6 +699,7 @@ diagnose_references_formatting <- function(
 #'                                  show_content = FALSE)
 #' diagnose_date_format(pkg, verbose = FALSE)$passed
 diagnose_date_format <- function(path = ".", verbose = TRUE, desc = NULL) {
+  path <- find_package_root(path)
   desc <- resolve_description(path, desc)
   date <- desc[["Date"]]
   issues <- character(0)
@@ -723,13 +730,6 @@ diagnose_date_format <- function(path = ".", verbose = TRUE, desc = NULL) {
 #'
 #' Flags an `Encoding` outside the portable set Writing R Extensions names: `UTF-8`, `latin1`, `latin2` (compared case-insensitively). An absent `Encoding` passes.
 #'
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
-#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
-#'   Defaults to reading it from `path`.
-#'
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @seealso [checktor()], which runs this and every other check.
 #' @section Source:
 #' [Writing R Extensions](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file),
 #' under "The DESCRIPTION file", says a non-ASCII DESCRIPTION "should contain an
@@ -738,12 +738,20 @@ diagnose_date_format <- function(path = ".", verbose = TRUE, desc = NULL) {
 #' flags a non-portable one. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
+#' @param path Character. Path to the package directory. Default: `"."`.
+#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
+#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
+#'   Defaults to reading it from `path`.
+#'
+#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
+#' @seealso [checktor()], which runs this and every other check.
 #' @export
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
 #' diagnose_encoding_utf8(pkg, verbose = FALSE)$passed
 diagnose_encoding_utf8 <- function(path = ".", verbose = TRUE, desc = NULL) {
+  path <- find_package_root(path)
   desc <- resolve_description(path, desc)
   enc <- desc[["Encoding"]]
   issues <- character(0)
@@ -780,14 +788,6 @@ diagnose_encoding_utf8 <- function(path = ".", verbose = TRUE, desc = NULL) {
 #'
 #' Flags a `Version` with a leading-zero component or a suspiciously large one, mirroring CRAN's `version_with_leading_zeroes` and `version_with_large_components` incoming checks. A calendar-year component (e.g. a dated `2026.01` version) is exempt.
 #'
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
-#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
-#'   Defaults to reading it from `path`.
-#'
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @seealso [checktor()], which runs this and every other check.
-#' @export
 #' @section Source:
 #' [Writing R Extensions](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file),
 #' under "The DESCRIPTION file", says a `Version` is "a sequence of at
@@ -796,11 +796,20 @@ diagnose_encoding_utf8 <- function(path = ".", verbose = TRUE, desc = NULL) {
 #' flags a leading zero or an implausible value. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
+#' @param path Character. Path to the package directory. Default: `"."`.
+#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
+#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
+#'   Defaults to reading it from `path`.
+#'
+#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
+#' @seealso [checktor()], which runs this and every other check.
+#' @export
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
 #' diagnose_version_format(pkg, verbose = FALSE)$passed
 diagnose_version_format <- function(path = ".", verbose = TRUE, desc = NULL) {
+  path <- find_package_root(path)
   desc <- resolve_description(path, desc)
   ver <- desc[["Version"]]
   issues <- character(0)
@@ -871,6 +880,12 @@ ror_id_is_valid <- function(x) {
 #'
 #' Validates ORCID and ROR identifiers carried in `Authors@R` person `comment` fields, mirroring CRAN's `bad_ORCID_iDs` and `bad_ROR_IDs` incoming checks. ORCID iDs are checked against their checksum, ROR IDs against their shape.
 #'
+#' @section Source:
+#' The [CRAN incoming check](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages)
+#' run by `R CMD check --as-cran` NOTEs a malformed ORCID or ROR
+#' identifier in `Authors@R`. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' @param path Character. Path to the package directory. Default: `"."`.
 #' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
 #' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
@@ -880,12 +895,6 @@ ror_id_is_valid <- function(x) {
 #' @seealso [checktor()], which runs this and every other check.
 #' @export
 #' @examples
-#' @section Source:
-#' The [CRAN incoming check](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages)
-#' run by `R CMD check --as-cran` NOTEs a malformed ORCID or ROR
-#' identifier in `Authors@R`. See
-#' `vignette("check-sources", package = "checktor")` for how every check maps to its
-#' source.
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
 #' diagnose_identifier_format(pkg, verbose = FALSE)$passed
@@ -894,6 +903,7 @@ diagnose_identifier_format <- function(
   verbose = TRUE,
   desc = NULL
 ) {
+  path <- find_package_root(path)
   desc <- resolve_description(path, desc)
   pa <- parse_authors_at_r(desc)
   issues <- character(0)
@@ -930,6 +940,13 @@ diagnose_identifier_format <- function(
 #'
 #' Flags a `Description` of fewer than 10 words.
 #'
+#' @section Source:
+#' The CRAN Cookbook covers this under
+#' [Description Length](https://contributor.r-project.org/cran-cookbook/general_issues.html#description-length).
+#' A one-line `Description` is thin and reviewers ask for more, a convention rather
+#' than a rule, which is why this sits at `opinion` tier. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' @param path Character. Path to the package directory. Default: `"."`.
 #' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
 #' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
@@ -940,13 +957,6 @@ diagnose_identifier_format <- function(
 #' @export
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
-#' @section Source:
-#' The CRAN Cookbook covers this under
-#' [Description Length](https://contributor.r-project.org/cran-cookbook/general_issues.html#description-length).
-#' A one-line `Description` is thin and reviewers ask for more, a convention rather
-#' than a rule, which is why this sits at `opinion` tier. See
-#' `vignette("check-sources", package = "checktor")` for how every check maps to its
-#' source.
 #'                                  show_content = FALSE)
 #' diagnose_description_length(pkg, verbose = FALSE)$passed
 diagnose_description_length <- function(
@@ -954,6 +964,7 @@ diagnose_description_length <- function(
   verbose = TRUE,
   desc = NULL
 ) {
+  path <- find_package_root(path)
   desc <- resolve_description(path, desc)
   text <- desc[["Description"]]
   if (is.null(text) || !nzchar(text)) {
@@ -1017,6 +1028,12 @@ diagnose_description_length <- function(
 #'
 #' Flags a software name in double quotes. Writing R Extensions reserves double quotes for quotations and requires single quotes for software names, so scare-quoted jargon is left alone.
 #'
+#' @section Source:
+#' [Writing R Extensions](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file),
+#' under "The DESCRIPTION file", reserves double quotes for book
+#' titles and similar; software names take single quotes. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' @param path Character. Path to the package directory. Default: `"."`.
 #' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
 #' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
@@ -1028,18 +1045,13 @@ diagnose_description_length <- function(
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' @section Source:
-#' [Writing R Extensions](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file),
-#' under "The DESCRIPTION file", reserves double quotes for book
-#' titles and similar; software names take single quotes. See
-#' `vignette("check-sources", package = "checktor")` for how every check maps to its
-#' source.
 #' diagnose_description_quoted_quotes(pkg, verbose = FALSE)$passed
 diagnose_description_quoted_quotes <- function(
   path = ".",
   verbose = TRUE,
   desc = NULL
 ) {
+  path <- find_package_root(path)
   desc <- resolve_description(path, desc)
   text <- desc[["Description"]]
   if (is.null(text) || !nzchar(text)) {
@@ -1155,6 +1167,11 @@ is_software_name <- function(x, extra = character(0)) {
 #'
 #' Flags a `Title` beginning with `A`, `An`, or `The`.
 #'
+#' @section Source:
+#' No rule. This was a mis-transplant of a real CRAN rule and is kept
+#' callable but off by default. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' @param path Character. Path to the package directory. Default: `"."`.
 #' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
 #' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
@@ -1167,16 +1184,12 @@ is_software_name <- function(x, extra = character(0)) {
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
 #' diagnose_title_starts_with_article(pkg, verbose = FALSE)$passed
-#' @section Source:
-#' No rule. This was a mis-transplant of a real CRAN rule and is kept
-#' callable but off by default. See
-#' `vignette("check-sources", package = "checktor")` for how every check maps to its
-#' source.
 diagnose_title_starts_with_article <- function(
   path = ".",
   verbose = TRUE,
   desc = NULL
 ) {
+  path <- find_package_root(path)
   desc <- resolve_description(path, desc)
   title <- desc[["Title"]]
   if (is.null(title) || !nzchar(title)) {
@@ -1210,6 +1223,11 @@ diagnose_title_starts_with_article <- function(
 #'
 #' Flags a `Title` carrying a phrase CRAN asks you to drop, such as "for R".
 #'
+#' @section Source:
+#' No formal rule. Phrases like "R package to" are redundant in a
+#' `Title`, a convention which is why this sits at `opinion` tier. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' @param path Character. Path to the package directory. Default: `"."`.
 #' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
 #' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
@@ -1223,15 +1241,11 @@ diagnose_title_starts_with_article <- function(
 #'                                  show_content = FALSE)
 #' diagnose_title_redundant_phrases(pkg, verbose = FALSE)$passed
 diagnose_title_redundant_phrases <- function(
-#' @section Source:
-#' No formal rule. Phrases like "R package to" are redundant in a
-#' `Title`, a convention which is why this sits at `opinion` tier. See
-#' `vignette("check-sources", package = "checktor")` for how every check maps to its
-#' source.
   path = ".",
   verbose = TRUE,
   desc = NULL
 ) {
+  path <- find_package_root(path)
   desc <- resolve_description(path, desc)
   title <- desc[["Title"]]
   if (is.null(title) || !nzchar(title)) {
@@ -1276,6 +1290,13 @@ diagnose_title_redundant_phrases <- function(
 #'
 #' Flags an `Authors@R` with no `[cph]` role.
 #'
+#' @section Source:
+#' The CRAN Cookbook covers the roles under
+#' [Using Authors@R](https://contributor.r-project.org/cran-cookbook/description_issues.html#using-authorsr).
+#' A copyright-holder (`cph`) is commonly expected but not required, which is why
+#' this sits at `opinion` tier. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' @param path Character. Path to the package directory. Default: `"."`.
 #' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
 #' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
@@ -1289,14 +1310,8 @@ diagnose_title_redundant_phrases <- function(
 #'                                  show_content = FALSE)
 #' diagnose_cph_role(pkg, verbose = FALSE)$passed
 diagnose_cph_role <- function(path = ".", verbose = TRUE, desc = NULL) {
+  path <- find_package_root(path)
   desc <- resolve_description(path, desc)
-#' @section Source:
-#' The CRAN Cookbook covers the roles under
-#' [Using Authors@R](https://contributor.r-project.org/cran-cookbook/description_issues.html#using-authorsr).
-#' A copyright-holder (`cph`) is commonly expected but not required, which is why
-#' this sits at `opinion` tier. See
-#' `vignette("check-sources", package = "checktor")` for how every check maps to its
-#' source.
   authors <- desc[["Authors@R"]]
   if (is.null(authors) || !nzchar(authors)) {
     return(checktor_check_result(FALSE, "Authors@R missing", "cph role check"))
@@ -1324,6 +1339,11 @@ diagnose_cph_role <- function(path = ".", verbose = TRUE, desc = NULL) {
 #'
 #' Flags a `Title` of 65 or more characters.
 #'
+#' @section Source:
+#' No formal rule. A `Title` under about 65 characters is a common
+#' preference, which is why this sits at `opinion` tier. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' @param path Character. Path to the package directory. Default: `"."`.
 #' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
 #' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
@@ -1337,13 +1357,9 @@ diagnose_cph_role <- function(path = ".", verbose = TRUE, desc = NULL) {
 #'                                  show_content = FALSE)
 #' diagnose_title_length(pkg, verbose = FALSE)$passed
 diagnose_title_length <- function(path = ".", verbose = TRUE, desc = NULL) {
+  path <- find_package_root(path)
   desc <- resolve_description(path, desc)
   title <- desc[["Title"]]
-#' @section Source:
-#' No formal rule. A `Title` under about 65 characters is a common
-#' preference, which is why this sits at `opinion` tier. See
-#' `vignette("check-sources", package = "checktor")` for how every check maps to its
-#' source.
   if (is.null(title) || !nzchar(title)) {
     return(checktor_check_result(TRUE, character(0), "Title length check"))
   }
@@ -1373,6 +1389,11 @@ diagnose_title_length <- function(path = ".", verbose = TRUE, desc = NULL) {
 #'
 #' Flags a single-quoted function name in `Title`/`Description`. Single quotes are reserved for software names.
 #'
+#' @section Source:
+#' No rule. This was an invented rule and is kept callable but off by
+#' default. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' @param path Character. Path to the package directory. Default: `"."`.
 #' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
 #' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
@@ -1389,12 +1410,8 @@ diagnose_description_function_quotes <- function(
   path = ".",
   verbose = TRUE,
   desc = NULL
-#' @section Source:
-#' No rule. This was an invented rule and is kept callable but off by
-#' default. See
-#' `vignette("check-sources", package = "checktor")` for how every check maps to its
-#' source.
 ) {
+  path <- find_package_root(path)
   desc <- resolve_description(path, desc)
   # 'fn()', 'fn(x)', 'pkg::fn()' - identifier (optionally pkg::) then parens.
   pat <- "'\\s*[A-Za-z.][A-Za-z0-9._]*(?:::[A-Za-z0-9._]+)?\\s*\\([^')]*\\)\\s*'"
@@ -1453,6 +1470,13 @@ dcf_field <- function(desc, field) {
 #'
 #' Flags a `Title` that is not in title case, delegating to [tools::toTitleCase()], which restores single-quoted spans so `'shiny'` keeps its own capitalisation.
 #'
+#' @section Source:
+#' [Writing R Extensions](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file),
+#' under "The DESCRIPTION file", says the `Title` "should use title case"; the
+#' [`--as-cran`](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages)
+#' incoming check flags one that does not. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' @param path Character. Path to the package directory. Default: `"."`.
 #' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
 #' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
@@ -1466,17 +1490,11 @@ dcf_field <- function(desc, field) {
 #'                                  show_content = FALSE)
 #' diagnose_title_case(pkg, verbose = FALSE)$passed
 diagnose_title_case <- function(path = ".", verbose = TRUE, desc = NULL) {
+  path <- find_package_root(path)
   desc <- resolve_description(path, desc)
   title <- desc[["Title"]]
   if (is.null(title) || !nzchar(title)) {
     return(checktor_check_result(TRUE, character(0), "Title case check"))
-#' @section Source:
-#' [Writing R Extensions](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file),
-#' under "The DESCRIPTION file", says the `Title` "should use title case"; the
-#' [`--as-cran`](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages)
-#' incoming check flags one that does not. See
-#' `vignette("check-sources", package = "checktor")` for how every check maps to its
-#' source.
   }
 
   proposed <- tools::toTitleCase(title)
@@ -1515,6 +1533,11 @@ diagnose_title_case <- function(path = ".", verbose = TRUE, desc = NULL) {
 #'
 #' Flags a `License` that [tools::analyze_license()] cannot standardize, and a `+ file LICENSE` pointing at a file that does not exist.
 #'
+#' @section Source:
+#' The [CRAN Repository Policy](https://cran.r-project.org/web/packages/policies.html)
+#' treats an invalid or unrecognised `License` field as a rejection. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' @param path Character. Path to the package directory. Default: `"."`.
 #' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
 #' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
@@ -1532,12 +1555,8 @@ diagnose_license_formatting <- function(
   verbose = TRUE,
   desc = NULL
 ) {
+  path <- find_package_root(path)
   desc <- resolve_description(path, desc)
-#' @section Source:
-#' The [CRAN Repository Policy](https://cran.r-project.org/web/packages/policies.html)
-#' treats an invalid or unrecognised `License` field as a rejection. See
-#' `vignette("check-sources", package = "checktor")` for how every check maps to its
-#' source.
   lic <- desc[["License"]]
   issues <- character(0)
 
@@ -1597,6 +1616,14 @@ diagnose_license_formatting <- function(
 #'
 #' Flags a `Description` opening with a phrase CRAN forbids ("This package..."), or one that does not begin with a capital letter.
 #'
+#' @section Source:
+#' [Writing R Extensions](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file),
+#' under "The DESCRIPTION file", says "It is good practice not to
+#' start with the package name, 'This package' or similar"; the
+#' [incoming check](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages)
+#' flags it. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' @param path Character. Path to the package directory. Default: `"."`.
 #' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
 #' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
@@ -1614,16 +1641,9 @@ diagnose_description_starts_with <- function(
   verbose = TRUE,
   desc = NULL
 ) {
+  path <- find_package_root(path)
   desc <- resolve_description(path, desc)
   text <- desc[["Description"]]
-#' @section Source:
-#' [Writing R Extensions](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file),
-#' under "The DESCRIPTION file", says "It is good practice not to
-#' start with the package name, 'This package' or similar"; the
-#' [incoming check](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages)
-#' flags it. See
-#' `vignette("check-sources", package = "checktor")` for how every check maps to its
-#' source.
   pkg <- dcf_field(desc, "Package")
   if (is.null(text) || !nzchar(text)) {
     return(checktor_check_result(
@@ -1691,6 +1711,14 @@ diagnose_description_starts_with <- function(
 #'
 #' Flags a `LICENSE` file still carrying template placeholders such as `<YEAR>` or `<COPYRIGHT HOLDER>`.
 #'
+#' @section Source:
+#' The CRAN Cookbook covers the file itself under
+#' [LICENSE files](https://contributor.r-project.org/cran-cookbook/description_issues.html#license-files).
+#' An unfilled template, with `<YEAR>` or `<COPYRIGHT HOLDER>` left in, ships a
+#' placeholder, and no binding rule names it, which is why this sits at
+#' `robustness` tier. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' @param path Character. Path to the package directory. Default: `"."`.
 #' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
 #'
@@ -1702,6 +1730,7 @@ diagnose_description_starts_with <- function(
 #'                                  show_content = FALSE)
 #' diagnose_license_year(pkg, verbose = FALSE)$passed
 diagnose_license_year <- function(path, verbose) {
+  path <- find_package_root(path)
   license_file <- Filter(file.exists, file.path(path, c("LICENSE", "LICENCE")))
   if (length(license_file) == 0L) {
     return(checktor_check_result(TRUE, character(0), "License file check"))
@@ -1711,14 +1740,6 @@ diagnose_license_year <- function(path, verbose) {
     return(checktor_check_result(
       FALSE,
       "LICENSE file is empty",
-#' @section Source:
-#' The CRAN Cookbook covers the file itself under
-#' [LICENSE files](https://contributor.r-project.org/cran-cookbook/description_issues.html#license-files).
-#' An unfilled template, with `<YEAR>` or `<COPYRIGHT HOLDER>` left in, ships a
-#' placeholder, and no binding rule names it, which is why this sits at
-#' `robustness` tier. See
-#' `vignette("check-sources", package = "checktor")` for how every check maps to its
-#' source.
       "License file check"
     ))
   }
@@ -1775,6 +1796,13 @@ diagnose_license_year <- function(path, verbose) {
 #' fire, [prescribe()] hands back a ready-to-paste `.aspell/` snippet with the
 #' flagged words filled in.
 #'
+#' @section Source:
+#' The [CRAN incoming check](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages)
+#' runs `aspell` over the `Title` and `Description`; it needs a
+#' spell-check backend and is noisy, so checktor keeps it at
+#' `opinion` tier. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
 #' @param path Character. Path to the package directory. Default: `"."`.
 #' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
 #' @param desc Present for signature parity with the other DESCRIPTION checks;
@@ -1789,6 +1817,7 @@ diagnose_license_year <- function(path, verbose) {
 #'                                  show_content = FALSE)
 #' diagnose_spelling(pkg, verbose = FALSE)$passed
 diagnose_spelling <- function(path = ".", verbose = TRUE, desc = NULL) {
+  path <- find_package_root(path)
   desc_file <- file.path(path, "DESCRIPTION")
   # Backend-dependent, so its result can differ between machines. Users who want
   # a fully deterministic run (and the test suite) turn it off with
@@ -1796,13 +1825,6 @@ diagnose_spelling <- function(path = ".", verbose = TRUE, desc = NULL) {
   if (!isTRUE(getOption("checktor.spelling", TRUE))) {
     return(checktor_check_result(TRUE, character(0), "Spelling check"))
   }
-#' @section Source:
-#' The [CRAN incoming check](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages)
-#' runs `aspell` over the `Title` and `Description`; it needs a
-#' spell-check backend and is noisy, so checktor keeps it at
-#' `opinion` tier. See
-#' `vignette("check-sources", package = "checktor")` for how every check maps to its
-#' source.
   program <- Sys.which("aspell")
   if (!nzchar(program)) {
     program <- Sys.which("hunspell")

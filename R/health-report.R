@@ -279,9 +279,10 @@ validate_package_directory <- function(path) {
   }
 
   if (!file.exists(file.path(path, "DESCRIPTION"))) {
-    cli::cli_abort(
-      "No DESCRIPTION file found in {.path {path}}. Is this an R package directory?"
-    )
+    cli::cli_abort(c(
+      "No DESCRIPTION file found in {.path {path}}, or in any directory above it.",
+      "i" = "checktor runs from anywhere inside a package. Is this one?"
+    ))
   }
 
   return(TRUE)
