@@ -21,9 +21,9 @@ reporting the problem against the place the user pointed at.
 \description{
 Walks up from \code{path} until it finds the directory holding a \code{DESCRIPTION}
 file, so checktor can be run from anywhere inside a package tree rather than
-only from the directory holding \code{DESCRIPTION}. This is what lets
-\code{checktor()} behave like \code{devtools::check()} when your working directory is
-\verb{R/}, \verb{tests/testthat/}, or any other subdirectory.
+only from the directory holding \code{DESCRIPTION}. That is what lets \code{checktor()}
+work with your working directory set to \verb{R/}, \verb{tests/testthat/}, or any other
+subdirectory.
 }
 \details{
 Every checktor entry point calls this on the \code{path} it is given, so you

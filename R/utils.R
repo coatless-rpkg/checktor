@@ -73,9 +73,9 @@ configure_doctor <- function(
 #'
 #' Walks up from `path` until it finds the directory holding a `DESCRIPTION`
 #' file, so checktor can be run from anywhere inside a package tree rather than
-#' only from the directory holding `DESCRIPTION`. This is what lets
-#' `checktor()` behave like `devtools::check()` when your working directory is
-#' `R/`, `tests/testthat/`, or any other subdirectory.
+#' only from the directory holding `DESCRIPTION`. That is what lets `checktor()`
+#' work with your working directory set to `R/`, `tests/testthat/`, or any other
+#' subdirectory.
 #'
 #' Every checktor entry point calls this on the `path` it is given, so you
 #' rarely need it directly. It is exported for custom checks registered with

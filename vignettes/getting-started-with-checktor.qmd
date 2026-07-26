@@ -107,10 +107,9 @@ documentation, general, and CRAN policy) need attention, and gives an overall
 verdict. For the full catalogue of what each category checks, see the
 [function reference](https://r-pkg.thecoatlessprofessor.com/checktor/reference/index.html).
 
-> **On your own package**, the call is simply `checktor()`. Like
-> `devtools::check()`, it works from anywhere inside the package, so calling it
-> with your working directory in `R/` or `tests/testthat/` still examines the
-> whole package.
+> **On your own package**, the call is simply `checktor()`. It works from anywhere
+> inside the package, so calling it with your working directory in `R/` or
+> `tests/testthat/` still examines the whole package.
 
 ## Reading the results as data
 

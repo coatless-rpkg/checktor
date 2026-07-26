@@ -7,10 +7,9 @@
 #' that could cause CRAN submission delays or rejections.
 #'
 #' @param path Character. Any directory inside the R package, or a file within
-#'   one. Defaults to the working directory (`"."`). Like `devtools::check()`,
-#'   checktor walks up to find the `DESCRIPTION`, so running it from `R/` or
-#'   `tests/testthat/` examines the whole package rather than failing. See
-#'   [find_package_root()].
+#'   one. Defaults to the working directory (`"."`). checktor walks up to find the
+#'   `DESCRIPTION`, so running it from `R/` or `tests/testthat/` examines the whole
+#'   package rather than failing. See [find_package_root()].
 #' @param verbose Logical. Whether to print detailed diagnostic output to
 #'   console. Defaults to `getOption("checktor.verbose", TRUE)`.
 #' @param progress Logical. Whether to show progress bars during diagnostics.

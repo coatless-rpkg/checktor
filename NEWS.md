@@ -7,8 +7,8 @@ offline, covering the `Date`, `Encoding` and `Version` fields, the structure of
 `Authors@R`, ORCID and ROR identifiers, a `detectCores()` that can return `NA`,
 and a scan for a leaked credential. Many existing checks are sharper and quieter,
 every diagnostic is now exported and callable on its own, checktor runs from
-anywhere inside a package the way `devtools::check()` does, and a package can tune
-checktor through `Config/checktor/*` fields in its own DESCRIPTION.
+anywhere inside a package tree, and a package can tune checktor through
+`Config/checktor/*` fields in its own DESCRIPTION.
 
 ## Breaking changes
 
@@ -116,11 +116,11 @@ checktor through `Config/checktor/*` fields in its own DESCRIPTION.
 
 ## Configuration and extension
 
-* checktor now runs from anywhere inside a package, the way `devtools::check()`
-  does. It walks up from the path you give it to find the `DESCRIPTION`, so a call
-  with your working directory in `R/` or `tests/testthat/` examines the whole
-  package instead of failing, and pointing it at a file works as well as pointing
-  it at a directory. Every entry point resolves the root the same way, from
+* checktor now runs from anywhere inside a package (#12). It walks up from the path
+  you give it to find the `DESCRIPTION`, so a call with your working directory in
+  `R/` or `tests/testthat/` examines the whole package instead of failing, and
+  pointing it at a file works as well as pointing it at a directory. Every entry
+  point resolves the root the same way, from
   `checktor()` and `checkup()` down to each individual `diagnose_*()`, and
   `find_package_root()` is exported for custom checks that want the same rule.
   A directory that really is outside a package still says so.
@@ -198,7 +198,7 @@ engines instead of reimplementing them.
 
 * `print_cat_usage` now flags unsuppressable console output only from a function
   that also returns a value, and it treats a verbosity gate as the guard rather
-  than any enclosing `if`, `for` or `while`.
+  than any enclosing `if`, `for` or `while` (#10).
 
 ## Understands more of R
 
@@ -264,7 +264,8 @@ checktor recognises the guards CRAN sanctions, too.
   logicals.
 
 * `commented_examples` fires only when an entire `\examples{}` block is commented
-  out. `example_structure` accepts a database, a prompt, or a Shiny reactive
+  out, so a prose comment beside working code is left alone (#9).
+  `example_structure` accepts a database, a prompt, or a Shiny reactive
   context as a reason for `\dontrun{}`, and it now takes an install or launcher
   call or a `path/to/...` placeholder the same way. And `library_in_pkg` exempts
   code sent to a parallel worker, whose search path starts empty.
@@ -316,7 +317,7 @@ checktor recognises the guards CRAN sanctions, too.
 
 ## Documentation and website
 
-* Two new vignettes explain where the rules come from. *Where the Checks Come From*
+* Two new vignettes explain where the rules come from (#8). *Where the Checks Come From*
   maps every check to the CRAN Repository Policy or Writing R Extensions section it
   rests on, and to the CRAN Cookbook recipe where the authority is a convention
   rather than a rule, linking to each. *What R CMD check Checks* walks through every

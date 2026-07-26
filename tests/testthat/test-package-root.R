@@ -1,6 +1,5 @@
-# checktor is meant to run from anywhere inside a package tree, the way
-# devtools::check() does, rather than only from the directory holding
-# DESCRIPTION. These tests pin that behaviour down.
+# checktor is meant to run from anywhere inside a package tree, rather than only
+# from the directory holding DESCRIPTION. These tests pin that behaviour down.
 
 test_that("find_package_root returns a root path untouched", {
   pkg <- make_temp_dir()
@@ -65,7 +64,7 @@ test_that("checktor() from a subdirectory matches a run from the root", {
   expect_equal(n_issues(from_sub), n_issues(from_root))
 })
 
-test_that("checktor() respects the working directory, like devtools::check()", {
+test_that("checktor() resolves the package from the working directory", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
 
