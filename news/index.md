@@ -10,9 +10,8 @@ CRAN’s incoming filter offline, covering the `Date`, `Encoding` and
 identifiers, a `detectCores()` that can return `NA`, and a scan for a
 leaked credential. Many existing checks are sharper and quieter, every
 diagnostic is now exported and callable on its own, checktor runs from
-anywhere inside a package the way `devtools::check()` does, and a
-package can tune checktor through `Config/checktor/*` fields in its own
-DESCRIPTION.
+anywhere inside a package tree, and a package can tune checktor through
+`Config/checktor/*` fields in its own DESCRIPTION.
 
 ### Breaking changes
 
@@ -146,12 +145,13 @@ DESCRIPTION.
 
 ### Configuration and extension
 
-- checktor now runs from anywhere inside a package, the way
-  `devtools::check()` does. It walks up from the path you give it to
-  find the `DESCRIPTION`, so a call with your working directory in `R/`
-  or `tests/testthat/` examines the whole package instead of failing,
-  and pointing it at a file works as well as pointing it at a directory.
-  Every entry point resolves the root the same way, from
+- checktor now runs from anywhere inside a package
+  ([\#12](https://github.com/coatless-rpkg/checktor/issues/12)). It
+  walks up from the path you give it to find the `DESCRIPTION`, so a
+  call with your working directory in `R/` or `tests/testthat/` examines
+  the whole package instead of failing, and pointing it at a file works
+  as well as pointing it at a directory. Every entry point resolves the
+  root the same way, from
   [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md)
   and
   [`checkup()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checkup.md)
@@ -260,7 +260,8 @@ to R’s own engines instead of reimplementing them.
 
 - `print_cat_usage` now flags unsuppressable console output only from a
   function that also returns a value, and it treats a verbosity gate as
-  the guard rather than any enclosing `if`, `for` or `while`.
+  the guard rather than any enclosing `if`, `for` or `while`
+  ([\#10](https://github.com/coatless-rpkg/checktor/issues/10)).
 
 ### Understands more of R
 
@@ -342,11 +343,13 @@ checktor recognises the guards CRAN sanctions, too.
   tokens rather than logicals.
 
 - `commented_examples` fires only when an entire `\examples{}` block is
-  commented out. `example_structure` accepts a database, a prompt, or a
-  Shiny reactive context as a reason for `\dontrun{}`, and it now takes
-  an install or launcher call or a `path/to/...` placeholder the same
-  way. And `library_in_pkg` exempts code sent to a parallel worker,
-  whose search path starts empty.
+  commented out, so a prose comment beside working code is left alone
+  ([\#9](https://github.com/coatless-rpkg/checktor/issues/9)).
+  `example_structure` accepts a database, a prompt, or a Shiny reactive
+  context as a reason for `\dontrun{}`, and it now takes an install or
+  launcher call or a `path/to/...` placeholder the same way. And
+  `library_in_pkg` exempts code sent to a parallel worker, whose search
+  path starts empty.
 
 - `software_names` flags the R-package and software-product names CRAN
   asks to see quoted, along with `WebAssembly`, a specific format the R
@@ -410,13 +413,14 @@ checktor recognises the guards CRAN sanctions, too.
 
 ### Documentation and website
 
-- Two new vignettes explain where the rules come from. *Where the Checks
-  Come From* maps every check to the CRAN Repository Policy or Writing R
-  Extensions section it rests on, and to the CRAN Cookbook recipe where
-  the authority is a convention rather than a rule, linking to each.
-  *What R CMD check Checks* walks through every step `R CMD check`
-  performs so the line between the standard checks and checktor’s is
-  clear.
+- Two new vignettes explain where the rules come from
+  ([\#8](https://github.com/coatless-rpkg/checktor/issues/8)). *Where
+  the Checks Come From* maps every check to the CRAN Repository Policy
+  or Writing R Extensions section it rests on, and to the CRAN Cookbook
+  recipe where the authority is a convention rather than a rule, linking
+  to each. *What R CMD check Checks* walks through every step
+  `R CMD check` performs so the line between the standard checks and
+  checktor’s is clear.
 
 - Every check’s help page gained a *Source* section that names the rule
   behind it, a CRAN policy clause, a Writing R Extensions section, a

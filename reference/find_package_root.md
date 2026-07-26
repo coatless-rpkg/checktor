@@ -3,10 +3,10 @@
 Walks up from `path` until it finds the directory holding a
 `DESCRIPTION` file, so checktor can be run from anywhere inside a
 package tree rather than only from the directory holding `DESCRIPTION`.
-This is what lets
+That is what lets
 [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md)
-behave like `devtools::check()` when your working directory is `R/`,
-`tests/testthat/`, or any other subdirectory.
+work with your working directory set to `R/`, `tests/testthat/`, or any
+other subdirectory.
 
 ## Usage
 
@@ -56,5 +56,5 @@ identical(find_package_root(pkg), pkg)
 
 # From a subdirectory, the root is found by walking up
 basename(find_package_root(file.path(pkg, "R")))
-#> [1] "checktor_example_20260726_033417_2286"
+#> [1] "checktor_example_20260726_175828_2286"
 ```

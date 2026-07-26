@@ -23,10 +23,9 @@ checktor(
 - path:
 
   Character. Any directory inside the R package, or a file within one.
-  Defaults to the working directory (`"."`). Like `devtools::check()`,
-  checktor walks up to find the `DESCRIPTION`, so running it from `R/`
-  or `tests/testthat/` examines the whole package rather than failing.
-  See
+  Defaults to the working directory (`"."`). checktor walks up to find
+  the `DESCRIPTION`, so running it from `R/` or `tests/testthat/`
+  examines the whole package rather than failing. See
   [`find_package_root()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/find_package_root.md).
 
 - verbose:
@@ -132,7 +131,7 @@ results <- checktor(pkg, verbose = FALSE, progress = FALSE)
 results              # the diagnosis summary
 #> ── Package Doctor - Diagnosis Summary ──────────────────────────────────────────
 #> Patient: examplepackage
-#> Examined: 2026-07-26 03:34:06.398286
+#> Examined: 2026-07-26 17:58:18.020009
 #> Doctor version: 0.2.0
 #> 
 #> CODE ISSUES: 1 failing check
