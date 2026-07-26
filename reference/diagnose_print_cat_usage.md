@@ -36,6 +36,20 @@ diagnose_print_cat_usage(path, verbose = TRUE, parsed = NULL)
 [`checktor_check_result()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor_check_result.md)
 with `passed`, `issues`, `message`.
 
+## Source
+
+The CRAN Cookbook covers this under [Using
+print()/cat()](https://contributor.r-project.org/cran-cookbook/code_issues.html#using-printcat).
+Diagnostic output belongs in
+[`message()`](https://rdrr.io/r/base/message.html) or
+[`warning()`](https://rdrr.io/r/base/warning.html), which a user can
+suppress, rather than in [`cat()`](https://rdrr.io/r/base/cat.html) or
+[`print()`](https://rdrr.io/r/base/print.html), which they cannot.
+Neither the Repository Policy nor Writing R Extensions states this, but
+reviewers ask for it consistently. See
+[`vignette("check-sources", package = "checktor")`](https://r-pkg.thecoatlessprofessor.com/checktor/articles/check-sources.md)
+for how every check maps to its source.
+
 ## Examples
 
 ``` r

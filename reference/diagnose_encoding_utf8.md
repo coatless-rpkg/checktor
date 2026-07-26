@@ -31,6 +31,17 @@ diagnose_encoding_utf8(path = ".", verbose = TRUE, desc = NULL)
 [`checktor_check_result()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor_check_result.md)
 with `passed`, `issues`, `message`.
 
+## Source
+
+[Writing R
+Extensions](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file),
+under "The DESCRIPTION file", says a non-ASCII DESCRIPTION "should
+contain an 'Encoding' field"; the [incoming
+check](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages)
+flags a non-portable one. See
+[`vignette("check-sources", package = "checktor")`](https://r-pkg.thecoatlessprofessor.com/checktor/articles/check-sources.md)
+for how every check maps to its source.
+
 ## See also
 
 [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md),

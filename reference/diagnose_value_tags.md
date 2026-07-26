@@ -27,6 +27,18 @@ diagnose_value_tags(path, verbose = TRUE)
 [`checktor_check_result()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor_check_result.md)
 with `passed`, `issues`, `missing`, `message`.
 
+## Source
+
+[Writing R
+Extensions](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Documenting-functions),
+under "Documenting functions", describes `\value{}`, and the CRAN
+Cookbook keeps the recipe reviewers cite under [Missing value-tags in
+.Rd-files](https://contributor.r-project.org/cran-cookbook/docs_issues.html#missing-value-tags-in-.rd-files),
+but `R CMD check` does not require it, so checktor keeps this at
+`opinion` tier. See
+[`vignette("check-sources", package = "checktor")`](https://r-pkg.thecoatlessprofessor.com/checktor/articles/check-sources.md)
+for how every check maps to its source.
+
 ## Examples
 
 ``` r

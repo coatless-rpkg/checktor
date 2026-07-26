@@ -21,6 +21,8 @@ guard."><meta name="twitter:card" content="summary_large_image"><meta name="twit
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/getting-started-with-checktor.html">Getting Started</a></li>
+    <li><a class="dropdown-item" href="../articles/check-sources.html">Where the Checks Come From</a></li>
+    <li><a class="dropdown-item" href="../articles/r-cmd-check.html">What R CMD check Checks</a></li>
     <li><a class="dropdown-item" href="../articles/checktor-in-ci.html">checktor in Continuous Integration</a></li>
     <li><a class="dropdown-item" href="../articles/writing-checks.html">Writing Your Own Checks</a></li>
   </ul></li>
@@ -94,6 +96,16 @@ itself at two cores perfectly and still crash on the machine where
 (<code><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na()</a></code>), passes <code>na.rm = TRUE</code>, or supplies a fallback with <code>%||%</code>. The
 durable fix is <code>parallelly::availableCores()</code>, which never returns <code>NA</code> and
 also honours the CRAN core limit.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="source">Source<a class="anchor" aria-label="anchor" href="#source"></a></h2>
+
+
+<p>No formal rule. <code>?detectCores</code> states it returns "<code>NA</code> if the answer is
+unknown", and the arithmetic that usually follows then crashes, which is why
+this sits at <code>robustness</code> tier. See
+<code><a href="../articles/check-sources.html">vignette("check-sources", package = "checktor")</a></code> for how every check maps to its
+source.</p>
     </div>
 
     <div class="section level2">

@@ -25,6 +25,13 @@ diagnose_news_file(path, verbose = TRUE)
 [`checktor_check_result()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor_check_result.md)
 with `passed`, `issues`, `message`.
 
+## Source
+
+No formal rule. A `NEWS` file is expected but not required, a convention
+which is why this sits at `opinion` tier. See
+[`vignette("check-sources", package = "checktor")`](https://r-pkg.thecoatlessprofessor.com/checktor/articles/check-sources.md)
+for how every check maps to its source.
+
 ## Examples
 
 ``` r

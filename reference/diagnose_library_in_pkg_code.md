@@ -31,6 +31,16 @@ diagnose_library_in_pkg_code(path, verbose = TRUE, parsed = NULL)
 [`checktor_check_result()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor_check_result.md)
 with `passed`, `issues`, `message`.
 
+## Source
+
+[Writing R
+Extensions](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Package-Dependencies),
+under "Package Dependencies", asks package code to reach its
+dependencies through `Imports` and `::` rather than attaching them with
+[`library()`](https://rdrr.io/r/base/library.html). See
+[`vignette("check-sources", package = "checktor")`](https://r-pkg.thecoatlessprofessor.com/checktor/articles/check-sources.md)
+for how every check maps to its source.
+
 ## See also
 
 [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md),

@@ -43,6 +43,15 @@ connectivity. For the fast, offline half (flagging `http://` and URL
 shorteners without leaving the room) see
 [`diagnose_urls()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_urls.md).
 
+## Source
+
+The [CRAN incoming
+check](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages)
+run by `R CMD check --as-cran` fetches URLs and NOTEs 404s and
+redirects; it is opt-in here because it needs a network. See
+[`vignette("check-sources", package = "checktor")`](https://r-pkg.thecoatlessprofessor.com/checktor/articles/check-sources.md)
+for how every check maps to its source.
+
 ## Examples
 
 ``` r

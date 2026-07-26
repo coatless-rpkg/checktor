@@ -21,6 +21,8 @@ shortener domains, across DESCRIPTION, README, vignettes and the .Rd files."><me
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/getting-started-with-checktor.html">Getting Started</a></li>
+    <li><a class="dropdown-item" href="../articles/check-sources.html">Where the Checks Come From</a></li>
+    <li><a class="dropdown-item" href="../articles/r-cmd-check.html">What R CMD check Checks</a></li>
     <li><a class="dropdown-item" href="../articles/checktor-in-ci.html">checktor in Continuous Integration</a></li>
     <li><a class="dropdown-item" href="../articles/writing-checks.html">Writing Your Own Checks</a></li>
   </ul></li>
@@ -82,6 +84,16 @@ problems you can find without leaving the room, before you spend ten minutes on
 a full check.</p>
 <p>Literal spans are skipped, so documenting the string <code>http://</code> inside <code>\verb{}</code>,
 <code>\code{}</code> or a fenced markdown block is not mistaken for linking to it.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="source">Source<a class="anchor" aria-label="anchor" href="#source"></a></h2>
+
+
+<p>No formal rule. Preferring <code>https://</code> is good advice, but CRAN's NOTE is
+about broken URLs rather than the scheme, which is why this sits at <code>opinion</code>
+tier. See
+<code><a href="../articles/check-sources.html">vignette("check-sources", package = "checktor")</a></code> for how every check maps to its
+source.</p>
     </div>
 
     <div class="section level2">

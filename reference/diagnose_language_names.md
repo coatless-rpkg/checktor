@@ -43,6 +43,16 @@ with `passed`, `issues`, `message`.
 A package can extend the list through `Config/checktor/language_names`
 in its own DESCRIPTION.
 
+## Source
+
+[Writing R
+Extensions](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file),
+under "The DESCRIPTION file", asks for single quotes around other
+software; checktor applies the same to programming-language and markup
+names. See
+[`vignette("check-sources", package = "checktor")`](https://r-pkg.thecoatlessprofessor.com/checktor/articles/check-sources.md)
+for how every check maps to its source.
+
 ## See also
 
 [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md),

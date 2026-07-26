@@ -52,6 +52,14 @@ supplies a fallback with `%||%`. The durable fix is
 `parallelly::availableCores()`, which never returns `NA` and also
 honours the CRAN core limit.
 
+## Source
+
+No formal rule. `?detectCores` states it returns "`NA` if the answer is
+unknown", and the arithmetic that usually follows then crashes, which is
+why this sits at `robustness` tier. See
+[`vignette("check-sources", package = "checktor")`](https://r-pkg.thecoatlessprofessor.com/checktor/articles/check-sources.md)
+for how every check maps to its source.
+
 ## Examples
 
 ``` r

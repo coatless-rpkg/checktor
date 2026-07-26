@@ -30,6 +30,14 @@ diagnose_installed_packages_usage(path, verbose = TRUE, parsed = NULL)
 [`checktor_check_result()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor_check_result.md)
 with `passed`, `issues`, `message`.
 
+## Source
+
+The [CRAN Repository
+Policy](https://cran.r-project.org/web/packages/policies.html) does not
+let a package install other packages when it runs. See
+[`vignette("check-sources", package = "checktor")`](https://r-pkg.thecoatlessprofessor.com/checktor/articles/check-sources.md)
+for how every check maps to its source.
+
 ## See also
 
 [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md),

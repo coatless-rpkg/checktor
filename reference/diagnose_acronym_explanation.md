@@ -30,6 +30,15 @@ diagnose_acronym_explanation(path = ".", verbose = TRUE, desc = NULL)
 [`checktor_check_result()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor_check_result.md)
 with `passed`, `issues`, `message`.
 
+## Source
+
+The CRAN Cookbook covers this under [Explaining
+Acronyms](https://contributor.r-project.org/cran-cookbook/description_issues.html#explaining-acronyms).
+Reviewers ask for an acronym to be spelled out once, but nothing
+enforces it, which is why this sits at `opinion` tier. See
+[`vignette("check-sources", package = "checktor")`](https://r-pkg.thecoatlessprofessor.com/checktor/articles/check-sources.md)
+for how every check maps to its source.
+
 ## See also
 
 [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md),

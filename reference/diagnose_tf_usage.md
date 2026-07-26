@@ -32,6 +32,20 @@ diagnose_tf_usage(path, verbose = TRUE, parsed = NULL)
 [`checktor_check_result()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor_check_result.md)
 with `passed`, `issues`, `message`.
 
+## Source
+
+No binding rule forbids `T` and `F`, though the CRAN Cookbook keeps a
+recipe for it under [T/F Instead of
+TRUE/FALSE](https://contributor.r-project.org/cran-cookbook/code_issues.html#tf-instead-of-truefalse).
+They are ordinary variables (see
+[`?logical`](https://rdrr.io/r/base/logical.html)) that R sets to `TRUE`
+and `FALSE` at startup but that any code can rebind, so a function
+reading `T` after something has run `T <- 0` gets the wrong answer. A
+real risk that no rule makes citable is why this sits at `robustness`
+tier rather than policy. See
+[`vignette("check-sources", package = "checktor")`](https://r-pkg.thecoatlessprofessor.com/checktor/articles/check-sources.md)
+for how every check maps to its source.
+
 ## Examples
 
 ``` r

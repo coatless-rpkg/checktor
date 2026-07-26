@@ -9,8 +9,10 @@ CRAN’s incoming filter offline, covering the `Date`, `Encoding` and
 `Version` fields, the structure of `Authors@R`, ORCID and ROR
 identifiers, a `detectCores()` that can return `NA`, and a scan for a
 leaked credential. Many existing checks are sharper and quieter, every
-diagnostic is now exported and callable on its own, and a package can
-tune checktor through `Config/checktor/*` fields in its own DESCRIPTION.
+diagnostic is now exported and callable on its own, checktor runs from
+anywhere inside a package the way `devtools::check()` does, and a
+package can tune checktor through `Config/checktor/*` fields in its own
+DESCRIPTION.
 
 ### Breaking changes
 
@@ -144,6 +146,20 @@ tune checktor through `Config/checktor/*` fields in its own DESCRIPTION.
 
 ### Configuration and extension
 
+- checktor now runs from anywhere inside a package, the way
+  `devtools::check()` does. It walks up from the path you give it to
+  find the `DESCRIPTION`, so a call with your working directory in `R/`
+  or `tests/testthat/` examines the whole package instead of failing,
+  and pointing it at a file works as well as pointing it at a directory.
+  Every entry point resolves the root the same way, from
+  [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md)
+  and
+  [`checkup()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checkup.md)
+  down to each individual `diagnose_*()`, and
+  [`find_package_root()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/find_package_root.md)
+  is exported for custom checks that want the same rule. A directory
+  that really is outside a package still says so.
+
 - A package can now configure checktor through `Config/checktor/*`
   fields in its own DESCRIPTION. The `disable` field skips a check,
   `allow` mutes reviewed findings for either a whole check or a
@@ -187,6 +203,12 @@ tune checktor through `Config/checktor/*` fields in its own DESCRIPTION.
 
 Several checks are now substantially more accurate, and a few hand off
 to R’s own engines instead of reimplementing them.
+
+- `option_changes` now prescribes a fix. When it fires,
+  [`prescribe()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/prescribe.md)
+  shows the two ways out, namespacing a setting you keep for the session
+  as `options(<PackageName>.key = ...)`, or restoring a temporary change
+  with [`on.exit()`](https://rdrr.io/r/base/on.exit.html).
 
 - `home_writing` now flags a write whose destination resolves to the
   user’s home, such as `writeLines(x, "~/leaked.txt")` or
@@ -388,9 +410,22 @@ checktor recognises the guards CRAN sanctions, too.
 
 ### Documentation and website
 
-- The three vignettes gained figures. There is a coverage map of what
-  `R CMD check`, `lintr` and `checktor` each catch, a view of the three
-  data frames the accessors return,
+- Two new vignettes explain where the rules come from. *Where the Checks
+  Come From* maps every check to the CRAN Repository Policy or Writing R
+  Extensions section it rests on, and to the CRAN Cookbook recipe where
+  the authority is a convention rather than a rule, linking to each.
+  *What R CMD check Checks* walks through every step `R CMD check`
+  performs so the line between the standard checks and checktor’s is
+  clear.
+
+- Every check’s help page gained a *Source* section that names the rule
+  behind it, a CRAN policy clause, a Writing R Extensions section, a
+  CRAN Cookbook recipe, or an honest note that no rule applies, with a
+  link wherever one exists.
+
+- The original three vignettes gained figures. There is a coverage map
+  of what `R CMD check`, `lintr` and `checktor` each catch, a view of
+  the three data frames the accessors return,
   [`checkup()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checkup.md)
   running at three latencies in CI, and, for Writing Your Own Checks,
   the road from source to finding alongside the XPath axes around a

@@ -23,6 +23,15 @@ diagnose_network_operations(path, verbose = TRUE)
 [`checktor_check_result()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor_check_result.md)
 with `passed`, `issues`, `message`.
 
+## Source
+
+The [CRAN Repository
+Policy](https://cran.r-project.org/web/packages/policies.html) states
+that "Packages which use Internet resources should fail gracefully with
+an informative message if the resource is not available". See
+[`vignette("check-sources", package = "checktor")`](https://r-pkg.thecoatlessprofessor.com/checktor/articles/check-sources.md)
+for how every check maps to its source.
+
 ## See also
 
 [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md),

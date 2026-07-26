@@ -32,6 +32,13 @@ is late and slow, and it is skipped entirely when examples are wrapped
 in `\dontrun{}` or when you check with `--no-examples`. This finds it
 statically in a second.
 
+## Source
+
+No formal rule. An example that reaches for an unexported object will
+error when it runs, which is why this sits at `robustness` tier. See
+[`vignette("check-sources", package = "checktor")`](https://r-pkg.thecoatlessprofessor.com/checktor/articles/check-sources.md)
+for how every check maps to its source.
+
 ## Examples
 
 ``` r

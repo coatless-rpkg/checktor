@@ -30,6 +30,15 @@ diagnose_globalenv_modification(path, verbose = TRUE, parsed = NULL)
 [`checktor_check_result()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor_check_result.md)
 with `passed`, `issues`, `message`.
 
+## Source
+
+The [CRAN Repository
+Policy](https://cran.r-project.org/web/packages/policies.html) states
+that "Packages should not modify the global environment (user's
+workspace)." See
+[`vignette("check-sources", package = "checktor")`](https://r-pkg.thecoatlessprofessor.com/checktor/articles/check-sources.md)
+for how every check maps to its source.
+
 ## See also
 
 [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md),

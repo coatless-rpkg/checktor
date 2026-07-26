@@ -71,6 +71,14 @@ on, are:
 The prefixes and lengths follow each provider's published token format
 and the community-maintained gitleaks secret-detection ruleset.
 
+## Source
+
+No formal rule. A token or key committed to a package is public the
+moment it reaches CRAN and must be revoked, which is why this sits at
+`robustness` tier. See
+[`vignette("check-sources", package = "checktor")`](https://r-pkg.thecoatlessprofessor.com/checktor/articles/check-sources.md)
+for how every check maps to its source.
+
 ## References
 
 Provider token formats and the gitleaks ruleset:

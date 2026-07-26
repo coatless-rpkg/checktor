@@ -37,6 +37,14 @@ Literal spans are skipped, so documenting the string `http://` inside
 `\verb{}`, `\code{}` or a fenced markdown block is not mistaken for
 linking to it.
 
+## Source
+
+No formal rule. Preferring `https://` is good advice, but CRAN's NOTE is
+about broken URLs rather than the scheme, which is why this sits at
+`opinion` tier. See
+[`vignette("check-sources", package = "checktor")`](https://r-pkg.thecoatlessprofessor.com/checktor/articles/check-sources.md)
+for how every check maps to its source.
+
 ## Examples
 
 ``` r

@@ -48,6 +48,18 @@ The check is skipped entirely unless `NAMESPACE` carries the roxygen2
 "do not edit by hand" banner, so a hand-managed package is never
 flagged.
 
+## Source
+
+The CRAN Cookbook covers the roxygen2 side of this under [Repeated
+Rejections of Issues in
+Manuals](https://contributor.r-project.org/cran-cookbook/docs_issues.html#repeated-rejections-of-issues-in-manuals-if-using-roxygen2),
+where documentation is regenerated rather than hand-edited. A function
+tagged `@export` that never reached `NAMESPACE` is not actually
+exported, and no binding rule names it, which is why this sits at
+`robustness` tier. See
+[`vignette("check-sources", package = "checktor")`](https://r-pkg.thecoatlessprofessor.com/checktor/articles/check-sources.md)
+for how every check maps to its source.
+
 ## Examples
 
 ``` r

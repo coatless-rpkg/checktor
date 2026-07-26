@@ -23,6 +23,8 @@ absence is flagged so it can be added before submission."><meta name="twitter:ca
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/getting-started-with-checktor.html">Getting Started</a></li>
+    <li><a class="dropdown-item" href="../articles/check-sources.html">Where the Checks Come From</a></li>
+    <li><a class="dropdown-item" href="../articles/r-cmd-check.html">What R CMD check Checks</a></li>
     <li><a class="dropdown-item" href="../articles/checktor-in-ci.html">checktor in Continuous Integration</a></li>
     <li><a class="dropdown-item" href="../articles/writing-checks.html">Writing Your Own Checks</a></li>
   </ul></li>
@@ -81,6 +83,16 @@ absence is flagged so it can be added before submission.</p>
     <p>This check is opt-in: it is <strong>not</strong> part of the default <code><a href="checktor.html">checktor()</a></code> /
 <code><a href="diagnose_general_issues.html">diagnose_general_issues()</a></code> run, because a <code>cran-comments.md</code> is a workflow
 convention rather than a CRAN requirement. Call it directly to use it.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="source">Source<a class="anchor" aria-label="anchor" href="#source"></a></h2>
+
+
+<p>No formal rule. A <code>cran-comments.md</code> is a submission-workflow convention
+rather than a CRAN requirement, which is why this check is opt-in and not
+part of a default run. See
+<code><a href="../articles/check-sources.html">vignette("check-sources", package = "checktor")</a></code> for how every check maps to its
+source.</p>
     </div>
 
     <div class="section level2">

@@ -28,6 +28,16 @@ diagnose_home_writing(path, verbose = TRUE, parsed = NULL)
 [`checktor_check_result()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor_check_result.md)
 with `passed`, `issues`, `message`.
 
+## Source
+
+The [CRAN Repository
+Policy](https://cran.r-project.org/web/packages/policies.html) states
+that "Packages should not write in the user's home filespace ... nor
+anywhere else on the file system apart from the R session's temporary
+directory". See
+[`vignette("check-sources", package = "checktor")`](https://r-pkg.thecoatlessprofessor.com/checktor/articles/check-sources.md)
+for how every check maps to its source.
+
 ## See also
 
 [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md),

@@ -25,6 +25,8 @@ inst/WORDLIST, or a Config/checktor/acronyms or software_names field."><meta nam
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/getting-started-with-checktor.html">Getting Started</a></li>
+    <li><a class="dropdown-item" href="../articles/check-sources.html">Where the Checks Come From</a></li>
+    <li><a class="dropdown-item" href="../articles/r-cmd-check.html">What R CMD check Checks</a></li>
     <li><a class="dropdown-item" href="../articles/checktor-in-ci.html">checktor in Continuous Integration</a></li>
     <li><a class="dropdown-item" href="../articles/writing-checks.html">Writing Your Own Checks</a></li>
   </ul></li>
@@ -93,6 +95,17 @@ spelling when no backend is present, so a run on one machine may find words a
 run on another does not. It is therefore an <code>opinion</code>-tier check. When it does
 fire, <code><a href="prescribe.html">prescribe()</a></code> hands back a ready-to-paste <code>.aspell/</code> snippet with the
 flagged words filled in.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="source">Source<a class="anchor" aria-label="anchor" href="#source"></a></h2>
+
+
+<p>The <a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages" class="external-link">CRAN incoming check</a>
+runs <code>aspell</code> over the <code>Title</code> and <code>Description</code>; it needs a
+spell-check backend and is noisy, so checktor keeps it at
+<code>opinion</code> tier. See
+<code><a href="../articles/check-sources.html">vignette("check-sources", package = "checktor")</a></code> for how every check maps to its
+source.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

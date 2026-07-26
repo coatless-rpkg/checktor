@@ -33,6 +33,8 @@ and appears too often to quote sensibly, and single-letter or common-word names
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/getting-started-with-checktor.html">Getting Started</a></li>
+    <li><a class="dropdown-item" href="../articles/check-sources.html">Where the Checks Come From</a></li>
+    <li><a class="dropdown-item" href="../articles/r-cmd-check.html">What R CMD check Checks</a></li>
     <li><a class="dropdown-item" href="../articles/checktor-in-ci.html">checktor in Continuous Integration</a></li>
     <li><a class="dropdown-item" href="../articles/writing-checks.html">Writing Your Own Checks</a></li>
   </ul></li>
@@ -100,6 +102,16 @@ Defaults to reading it from <code>path</code>.</p></dd>
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>A package can extend the list through <code>Config/checktor/language_names</code> in its own
 DESCRIPTION.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="source">Source<a class="anchor" aria-label="anchor" href="#source"></a></h2>
+
+
+<p><a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file" class="external-link">Writing R Extensions</a>,
+under "The DESCRIPTION file", asks for single quotes around other software;
+checktor applies the same to programming-language and markup names. See
+<code><a href="../articles/check-sources.html">vignette("check-sources", package = "checktor")</a></code> for how every check maps to its
+source.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

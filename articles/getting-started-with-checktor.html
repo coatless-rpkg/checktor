@@ -44,6 +44,8 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/getting-started-with-checktor.html">Getting Started</a></li>
+    <li><a class="dropdown-item" href="../articles/check-sources.html">Where the Checks Come From</a></li>
+    <li><a class="dropdown-item" href="../articles/r-cmd-check.html">What R CMD check Checks</a></li>
     <li><a class="dropdown-item" href="../articles/checktor-in-ci.html">checktor in Continuous Integration</a></li>
     <li><a class="dropdown-item" href="../articles/writing-checks.html">Writing Your Own Checks</a></li>
   </ul>
@@ -170,7 +172,7 @@
 <span><span class="va">results</span></span>
 <span><span class="co">#&gt; ── Package Doctor - Diagnosis Summary ──────────────────────────────────────────</span></span>
 <span><span class="co">#&gt; Patient: examplepackage</span></span>
-<span><span class="co">#&gt; Examined: 2026-07-19 05:06:09.988867</span></span>
+<span><span class="co">#&gt; Examined: 2026-07-26 03:34:27.376206</span></span>
 <span><span class="co">#&gt; Doctor version: 0.2.0</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; CODE ISSUES: 1 failing check</span></span>
@@ -184,7 +186,7 @@
 </div>
 <p>That bedside summary names which of the five categories (code, DESCRIPTION, documentation, general, and CRAN policy) need attention, and gives an overall verdict. For the full catalogue of what each category checks, see the <a href="https://r-pkg.thecoatlessprofessor.com/checktor/reference/index.html">function reference</a>.</p>
 <blockquote>
-<p><strong>On your own package</strong>, the call is simply <code><a href="../reference/checktor.html">checktor()</a></code>. Run from the package root, it examines everything in place.</p>
+<p><strong>On your own package</strong>, the call is simply <code><a href="../reference/checktor.html">checktor()</a></code>. Like <code>devtools::check()</code>, it works from anywhere inside the package, so calling it with your working directory in <code>R/</code> or <code>tests/testthat/</code> still examines the whole package.</p>
 </blockquote>
 </section><section class="level2"><h2 id="reading-the-results-as-data">Reading the results as data<a class="anchor" aria-label="anchor" href="#reading-the-results-as-data"></a>
 </h2>
@@ -310,6 +312,8 @@
 </section><section class="level2"><h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a>
 </h2>
 <ul>
+<li>
+<a href="check-sources.html">Where the Checks Come From</a>: the source and severity tier behind every check, from CRAN policy to convention.</li>
 <li>
 <a href="checktor-in-ci.html">checktor in Continuous Integration</a>: put <code><a href="../reference/checkup.html">checkup()</a></code> in charge of a GitHub Actions build as a quality gate.</li>
 <li>

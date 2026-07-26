@@ -31,6 +31,8 @@ urlchecker package."><meta name="twitter:card" content="summary_large_image"><me
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/getting-started-with-checktor.html">Getting Started</a></li>
+    <li><a class="dropdown-item" href="../articles/check-sources.html">Where the Checks Come From</a></li>
+    <li><a class="dropdown-item" href="../articles/r-cmd-check.html">What R CMD check Checks</a></li>
     <li><a class="dropdown-item" href="../articles/checktor-in-ci.html">checktor in Continuous Integration</a></li>
     <li><a class="dropdown-item" href="../articles/writing-checks.html">Writing Your Own Checks</a></li>
   </ul></li>
@@ -98,6 +100,16 @@ nothing until you enable it:</p>
 passes quietly, exactly as CRAN's own URL check does without connectivity. For
 the fast, offline half (flagging <code>http://</code> and URL shorteners without leaving
 the room) see <code><a href="diagnose_urls.html">diagnose_urls()</a></code>.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="source">Source<a class="anchor" aria-label="anchor" href="#source"></a></h2>
+
+
+<p>The <a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages" class="external-link">CRAN incoming check</a>
+run by <code>R CMD check --as-cran</code> fetches URLs and NOTEs 404s and redirects; it
+is opt-in here because it needs a network. See
+<code><a href="../articles/check-sources.html">vignette("check-sources", package = "checktor")</a></code> for how every check maps to its
+source.</p>
     </div>
 
     <div class="section level2">

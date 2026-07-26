@@ -45,6 +45,15 @@ may find words a run on another does not. It is therefore an
 hands back a ready-to-paste `.aspell/` snippet with the flagged words
 filled in.
 
+## Source
+
+The [CRAN incoming
+check](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages)
+runs `aspell` over the `Title` and `Description`; it needs a spell-check
+backend and is noisy, so checktor keeps it at `opinion` tier. See
+[`vignette("check-sources", package = "checktor")`](https://r-pkg.thecoatlessprofessor.com/checktor/articles/check-sources.md)
+for how every check maps to its source.
+
 ## See also
 
 [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md),

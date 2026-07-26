@@ -32,6 +32,15 @@ diagnose_identifier_format(path = ".", verbose = TRUE, desc = NULL)
 [`checktor_check_result()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor_check_result.md)
 with `passed`, `issues`, `message`.
 
+## Source
+
+The [CRAN incoming
+check](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages)
+run by `R CMD check --as-cran` NOTEs a malformed ORCID or ROR identifier
+in `Authors@R`. See
+[`vignette("check-sources", package = "checktor")`](https://r-pkg.thecoatlessprofessor.com/checktor/articles/check-sources.md)
+for how every check maps to its source.
+
 ## See also
 
 [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md),

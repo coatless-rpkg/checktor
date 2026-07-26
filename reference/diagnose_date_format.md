@@ -31,6 +31,17 @@ diagnose_date_format(path = ".", verbose = TRUE, desc = NULL)
 [`checktor_check_result()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor_check_result.md)
 with `passed`, `issues`, `message`.
 
+## Source
+
+[Writing R
+Extensions](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file),
+under "The DESCRIPTION file", says "the 'yyyy-mm-dd' format of the ISO
+8601 standard is strongly recommended"; the [incoming
+check](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages)
+also flags a stale or future date. See
+[`vignette("check-sources", package = "checktor")`](https://r-pkg.thecoatlessprofessor.com/checktor/articles/check-sources.md)
+for how every check maps to its source.
+
 ## See also
 
 [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md),

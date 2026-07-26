@@ -34,6 +34,14 @@ This check is opt-in: it is **not** part of the default
 run, because a `cran-comments.md` is a workflow convention rather than a
 CRAN requirement. Call it directly to use it.
 
+## Source
+
+No formal rule. A `cran-comments.md` is a submission-workflow convention
+rather than a CRAN requirement, which is why this check is opt-in and
+not part of a default run. See
+[`vignette("check-sources", package = "checktor")`](https://r-pkg.thecoatlessprofessor.com/checktor/articles/check-sources.md)
+for how every check maps to its source.
+
 ## Examples
 
 ``` r

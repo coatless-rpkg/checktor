@@ -23,6 +23,8 @@ devtools::document()."><meta name="twitter:card" content="summary_large_image"><
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/getting-started-with-checktor.html">Getting Started</a></li>
+    <li><a class="dropdown-item" href="../articles/check-sources.html">Where the Checks Come From</a></li>
+    <li><a class="dropdown-item" href="../articles/r-cmd-check.html">What R CMD check Checks</a></li>
     <li><a class="dropdown-item" href="../articles/checktor-in-ci.html">checktor in Continuous Integration</a></li>
     <li><a class="dropdown-item" href="../articles/writing-checks.html">Writing Your Own Checks</a></li>
   </ul></li>
@@ -90,6 +92,18 @@ them, so on a fresh clone every file carries roughly the checkout time in
 arbitrary order, and an mtime comparison would pass or fail at random in CI.</p>
 <p>The check is skipped entirely unless <code>NAMESPACE</code> carries the roxygen2
 "do not edit by hand" banner, so a hand-managed package is never flagged.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="source">Source<a class="anchor" aria-label="anchor" href="#source"></a></h2>
+
+
+<p>The CRAN Cookbook covers the roxygen2 side of this under
+<a href="https://contributor.r-project.org/cran-cookbook/docs_issues.html#repeated-rejections-of-issues-in-manuals-if-using-roxygen2" class="external-link">Repeated Rejections of Issues in Manuals</a>,
+where documentation is regenerated rather than hand-edited. A function tagged
+<code>@export</code> that never reached <code>NAMESPACE</code> is not actually exported, and no binding
+rule names it, which is why this sits at <code>robustness</code> tier. See
+<code><a href="../articles/check-sources.html">vignette("check-sources", package = "checktor")</a></code> for how every check maps to its
+source.</p>
     </div>
 
     <div class="section level2">

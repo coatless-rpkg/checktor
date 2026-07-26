@@ -119,7 +119,7 @@ results <- checktor(pkg, verbose = FALSE, progress = FALSE)
 results
 #> ── Package Doctor - Diagnosis Summary ──────────────────────────────────────────
 #> Patient: examplepackage
-#> Examined: 2026-07-19 05:06:09.988867
+#> Examined: 2026-07-26 03:34:27.376206
 #> Doctor version: 0.2.0
 #> 
 #> CODE ISSUES: 1 failing check
@@ -140,7 +140,9 @@ reference](https://r-pkg.thecoatlessprofessor.com/checktor/reference/index.html)
 
 > **On your own package**, the call is simply
 > [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md).
-> Run from the package root, it examines everything in place.
+> Like `devtools::check()`, it works from anywhere inside the package,
+> so calling it with your working directory in `R/` or `tests/testthat/`
+> still examines the whole package.
 
 ## Reading the results as data
 
@@ -317,6 +319,10 @@ That is the entire point.
 
 ## See also
 
+- [Where the Checks Come
+  From](https://r-pkg.thecoatlessprofessor.com/checktor/articles/check-sources.md):
+  the source and severity tier behind every check, from CRAN policy to
+  convention.
 - [checktor in Continuous
   Integration](https://r-pkg.thecoatlessprofessor.com/checktor/articles/checktor-in-ci.md):
   put

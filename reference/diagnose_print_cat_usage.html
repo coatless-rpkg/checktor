@@ -27,6 +27,8 @@ there (base R's own print.default() / print.lm() use it)."><meta name="twitter:c
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/getting-started-with-checktor.html">Getting Started</a></li>
+    <li><a class="dropdown-item" href="../articles/check-sources.html">Where the Checks Come From</a></li>
+    <li><a class="dropdown-item" href="../articles/r-cmd-check.html">What R CMD check Checks</a></li>
     <li><a class="dropdown-item" href="../articles/checktor-in-ci.html">checktor in Continuous Integration</a></li>
     <li><a class="dropdown-item" href="../articles/writing-checks.html">Writing Your Own Checks</a></li>
   </ul></li>
@@ -86,6 +88,19 @@ from <code>path</code> on demand.</p></dd>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p><code><a href="checktor_check_result.html">checktor_check_result()</a></code> with <code>passed</code>, <code>issues</code>, <code>message</code>.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="source">Source<a class="anchor" aria-label="anchor" href="#source"></a></h2>
+
+
+<p>The CRAN Cookbook covers this under
+<a href="https://contributor.r-project.org/cran-cookbook/code_issues.html#using-printcat" class="external-link">Using print()/cat()</a>.
+Diagnostic output belongs in <code><a href="https://rdrr.io/r/base/message.html" class="external-link">message()</a></code> or <code><a href="https://rdrr.io/r/base/warning.html" class="external-link">warning()</a></code>, which a user can
+suppress, rather than in <code><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat()</a></code> or <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code>, which they cannot. Neither the
+Repository Policy nor Writing R Extensions states this, but reviewers ask for it
+consistently. See
+<code><a href="../articles/check-sources.html">vignette("check-sources", package = "checktor")</a></code> for how every check maps to its
+source.</p>
     </div>
 
     <div class="section level2">

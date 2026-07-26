@@ -321,6 +321,9 @@ and `.Rd` files.
 - [`registered_checks()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/registered_checks.md)
   : List Registered Checks
 
+- [`find_package_root()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/find_package_root.md)
+  : Find the Root of the Package Containing a Path
+
 - [`read_r_xml()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/read_r_xml.md)
   : Parse a Package's R Sources into Queryable XML
 
@@ -352,9 +355,13 @@ and `.Rd` files.
 
 ### All vignettes
 
+- [Where checktor's Checks Come
+  From](https://r-pkg.thecoatlessprofessor.com/checktor/articles/check-sources.md):
 - [checktor in Continuous
   Integration](https://r-pkg.thecoatlessprofessor.com/checktor/articles/checktor-in-ci.md):
 - [Getting Started with
   checktor](https://r-pkg.thecoatlessprofessor.com/checktor/articles/getting-started-with-checktor.md):
+- [What R CMD check
+  Checks](https://r-pkg.thecoatlessprofessor.com/checktor/articles/r-cmd-check.md):
 - [Writing Your Own
   Checks](https://r-pkg.thecoatlessprofessor.com/checktor/articles/writing-checks.md):

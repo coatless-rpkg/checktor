@@ -265,6 +265,9 @@ and `.Rd` files.
 - [`registered_checks()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/registered_checks.md)
   : List Registered Checks
 
+- [`find_package_root()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/find_package_root.md)
+  : Find the Root of the Package Containing a Path
+
 - [`read_r_xml()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/read_r_xml.md)
   : Parse a Package's R Sources into Queryable XML
 

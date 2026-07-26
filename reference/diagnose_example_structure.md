@@ -26,6 +26,16 @@ diagnose_example_structure(path, verbose = TRUE)
 [`checktor_check_result()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor_check_result.md)
 with `passed`, `issues`, `message`.
 
+## Source
+
+The CRAN Cookbook covers this under [Structuring of
+Examples](https://contributor.r-project.org/cran-cookbook/general_issues.html#structuring-of-examples).
+`\dontrun{}` should wrap only code that genuinely cannot run inside a
+check, a convention rather than a rule, which is why this sits at
+`opinion` tier. See
+[`vignette("check-sources", package = "checktor")`](https://r-pkg.thecoatlessprofessor.com/checktor/articles/check-sources.md)
+for how every check maps to its source.
+
 ## Examples
 
 ``` r

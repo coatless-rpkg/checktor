@@ -27,6 +27,8 @@ that could cause CRAN submission delays or rejections."><meta name="twitter:card
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/getting-started-with-checktor.html">Getting Started</a></li>
+    <li><a class="dropdown-item" href="../articles/check-sources.html">Where the Checks Come From</a></li>
+    <li><a class="dropdown-item" href="../articles/r-cmd-check.html">What R CMD check Checks</a></li>
     <li><a class="dropdown-item" href="../articles/checktor-in-ci.html">checktor in Continuous Integration</a></li>
     <li><a class="dropdown-item" href="../articles/writing-checks.html">Writing Your Own Checks</a></li>
   </ul></li>
@@ -76,8 +78,11 @@ that could cause CRAN submission delays or rejections.</p>
 
 
 <dl><dt id="arg-path">path<a class="anchor" aria-label="anchor" href="#arg-path"></a></dt>
-<dd><p>Character. Path to the R package directory. Defaults to current
-directory (<code>"."</code>).</p></dd>
+<dd><p>Character. Any directory inside the R package, or a file within
+one. Defaults to the working directory (<code>"."</code>). Like <code>devtools::check()</code>,
+checktor walks up to find the <code>DESCRIPTION</code>, so running it from <code>R/</code> or
+<code>tests/testthat/</code> examines the whole package rather than failing. See
+<code><a href="find_package_root.html">find_package_root()</a></code>.</p></dd>
 
 
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
@@ -155,7 +160,7 @@ recommendations, <code><a href="checkup.html">checkup()</a></code> for quick hea
 <span class="r-in"><span><span class="va">results</span>              <span class="co"># the diagnosis summary</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> ── Package Doctor - Diagnosis Summary ──────────────────────────────────────────</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Patient: <span style="color: #0000BB;">examplepackage</span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> Examined: 2026-07-19 05:05:51.09551</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> Examined: 2026-07-26 03:34:06.398286</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Doctor version: 0.2.0</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">CODE ISSUES</span>: 1 failing check</span>

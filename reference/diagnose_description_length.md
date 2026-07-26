@@ -29,6 +29,16 @@ diagnose_description_length(path = ".", verbose = TRUE, desc = NULL)
 [`checktor_check_result()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor_check_result.md)
 with `passed`, `issues`, `message`.
 
+## Source
+
+The CRAN Cookbook covers this under [Description
+Length](https://contributor.r-project.org/cran-cookbook/general_issues.html#description-length).
+A one-line `Description` is thin and reviewers ask for more, a
+convention rather than a rule, which is why this sits at `opinion` tier.
+See
+[`vignette("check-sources", package = "checktor")`](https://r-pkg.thecoatlessprofessor.com/checktor/articles/check-sources.md)
+for how every check maps to its source.
+
 ## See also
 
 [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md),
