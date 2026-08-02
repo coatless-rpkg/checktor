@@ -300,11 +300,13 @@ test_that("lab_url_liveness reports a failed fetch as not checked, not as a pass
 })
 
 test_that("fetch_url_db really calls base R and returns the columns we read", {
-  # Every other liveness test mocks fetch_url_db, and lab_url_liveness turns a
-  # failed fetch into a *passing* result -- so a broken tools:: call would leave
-  # every URL unchecked with the suite still green. This pins the seam itself.
-  # A package with no URLs needs no network: check_package_urls() has nothing to
-  # fetch and returns an empty db immediately, so this runs everywhere.
+  # Every other liveness test mocks fetch_url_db, so a broken tools:: call would
+  # leave every URL unchecked with the suite still green. This pins the seam.
+  #
+  # check_package_urls() always calls check_url_db(parallel = TRUE), and that
+  # branch opens a curl::new_pool() before it looks at whether there is anything
+  # to fetch. So it needs curl even for a package with no URLs at all.
+  skip_if_not_installed("curl")
   pkg <- make_temp_dir()
   write_pkg(pkg) # no URL: field, so there is nothing to fetch
 

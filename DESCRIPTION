@@ -31,7 +31,8 @@ Imports:
 Suggests:
     testthat (>= 3.0.0),
     quarto,
-    jsonlite
+    jsonlite,
+    curl
 VignetteBuilder: quarto
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

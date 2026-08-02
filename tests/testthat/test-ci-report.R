@@ -104,23 +104,33 @@ test_that("severity maps to each forge's own words", {
 })
 
 test_that("the forge is detected from the variables each one sets", {
-  withr_env <- function(vars, code) {
-    old <- Sys.getenv(names(vars), unset = NA)
-    do.call(Sys.setenv, as.list(vars))
+  # These tests run ON a forge, which sets its own variable in the real
+  # environment. Setting GITLAB_CI while GITHUB_ACTIONS is already set does not
+  # test GitLab detection, it tests precedence -- so clear every forge variable
+  # first and set only the one under test.
+  forge_vars <- c("GITHUB_ACTIONS", "GITLAB_CI", "TF_BUILD", "JENKINS_URL")
+  only_forge <- function(vars, code) {
+    old <- Sys.getenv(forge_vars, unset = NA)
+    Sys.unsetenv(forge_vars)
+    if (length(vars)) do.call(Sys.setenv, as.list(vars))
     on.exit({
-      for (i in seq_along(vars)) {
-        if (is.na(old[[i]])) {
-          Sys.unsetenv(names(vars)[[i]])
-        } else {
-          do.call(Sys.setenv, stats::setNames(list(old[[i]]), names(vars)[[i]]))
-        }
-      }
+      Sys.unsetenv(forge_vars)
+      keep <- !is.na(old)
+      if (any(keep)) do.call(Sys.setenv, as.list(old[keep]))
     })
     force(code)
   }
-  withr_env(c(GITHUB_ACTIONS = "true"), expect_equal(detect_ci(), "github"))
-  withr_env(c(GITLAB_CI = "true"), expect_equal(detect_ci(), "gitlab"))
-  withr_env(c(TF_BUILD = "True"), expect_equal(detect_ci(), "azure"))
+  only_forge(c(GITHUB_ACTIONS = "true"), expect_equal(detect_ci(), "github"))
+  only_forge(c(GITLAB_CI = "true"), expect_equal(detect_ci(), "gitlab"))
+  only_forge(c(TF_BUILD = "True"), expect_equal(detect_ci(), "azure"))
+  only_forge(c(JENKINS_URL = "http://ci"), expect_equal(detect_ci(), "checkstyle"))
+  # No forge at all falls back to plain text rather than guessing.
+  only_forge(character(0), expect_equal(detect_ci(), "text"))
+  # Gitea and Forgejo set GITHUB_ACTIONS too, so it is checked first and wins.
+  only_forge(
+    c(GITHUB_ACTIONS = "true", GITLAB_CI = "true"),
+    expect_equal(detect_ci(), "github")
+  )
 })
 
 test_that("a clean package reports nothing at all", {
