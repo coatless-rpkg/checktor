@@ -208,8 +208,8 @@ lab_software_names <- function(
   # PROGRAMMING LANGUAGES and markup names (Python, Java, SQL, HTML) live in their
   # own policy check, `lab_language_names()` -- a language name and a package
   # name are different kinds of thing, so they read as separate concerns. ("R"
-  # itself is never flagged anywhere: it is the host language and appears too often
-  # legitimately.)
+  # itself is never flagged anywhere, in either form: no authority names it, and
+  # both a bare R and a quoted 'R' clear CRAN, so neither is worth nagging about.)
   #
   # `WebAssembly` stays here rather than with the languages: it is a specific format
   # (a W3C standard, not a language you write a package "in"), consistently quoted
@@ -279,9 +279,11 @@ lab_software_names <- function(
 #' or `Description` that CRAN asks to see single-quoted. This is the language
 #' counterpart to [lab_software_names()]: both are policy-tier
 #' quoting checks, kept separate because a language name and a package name are
-#' different kinds of thing. `R` itself is never flagged -- it is the host language
-#' and appears too often to quote sensibly, and single-letter or common-word names
-#' (`C`, `Go`, `Swift`) are left out for the same reason.
+#' different kinds of thing. `R` itself is never flagged in either form. No
+#' authority names it, and a bare `R` and a quoted `'R'` both clear CRAN, so
+#' checktor takes no position on which you write. Single-letter or common-word
+#' names (`C`, `Go`, `Swift`) are left out because they cannot be told from
+#' ordinary prose.
 #'
 #' A package can extend the list through `Config/checktor/language_names` in its own
 #' DESCRIPTION.

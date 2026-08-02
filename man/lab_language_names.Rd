@@ -23,9 +23,11 @@ Flags a bare programming-language, markup, or statistical-computing name --
 or \code{Description} that CRAN asks to see single-quoted. This is the language
 counterpart to \code{\link[=lab_software_names]{lab_software_names()}}: both are policy-tier
 quoting checks, kept separate because a language name and a package name are
-different kinds of thing. \code{R} itself is never flagged -- it is the host language
-and appears too often to quote sensibly, and single-letter or common-word names
-(\code{C}, \code{Go}, \code{Swift}) are left out for the same reason.
+different kinds of thing. \code{R} itself is never flagged in either form. No
+authority names it, and a bare \code{R} and a quoted \code{'R'} both clear CRAN, so
+checktor takes no position on which you write. Single-letter or common-word
+names (\code{C}, \code{Go}, \code{Swift}) are left out because they cannot be told from
+ordinary prose.
 }
 \details{
 A package can extend the list through \code{Config/checktor/language_names} in its own
