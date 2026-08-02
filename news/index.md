@@ -76,10 +76,11 @@ tune checktor through `Config/checktor/*` fields in its own DESCRIPTION.
   a `severity` column.
 
 - `description_bare_r` was removed. It asked you to quote every bare `R`
-  in the `Description`, but Writing R Extensions reserves single quotes
-  for other packages and external software, and `R` is the host
-  language. The new `language_names` check settles the question by
-  leaving `R` alone.
+  in the `Description`, which is not a rule anyone enforces. Writing R
+  Extensions asks for single quotes around other packages and external
+  software without naming `R` either way, and both forms clear CRAN, so
+  `language_names` leaves a bare `R` and a quoted `'R'` alone alike and
+  takes no position on which you prefer.
 
 - Two checks left the default run because no authority supports them,
   and each stays exported for anyone who wants it. The CRAN rule behind

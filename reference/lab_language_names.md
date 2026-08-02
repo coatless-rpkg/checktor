@@ -7,9 +7,10 @@ the language counterpart to
 [`lab_software_names()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_software_names.md):
 both are policy-tier quoting checks, kept separate because a language
 name and a package name are different kinds of thing. `R` itself is
-never flagged – it is the host language and appears too often to quote
-sensibly, and single-letter or common-word names (`C`, `Go`, `Swift`)
-are left out for the same reason.
+never flagged in either form. No authority names it, and a bare `R` and
+a quoted `'R'` both clear CRAN, so checktor takes no position on which
+you write. Single-letter or common-word names (`C`, `Go`, `Swift`) are
+left out because they cannot be told from ordinary prose.
 
 ## Usage
 
