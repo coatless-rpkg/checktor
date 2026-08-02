@@ -122,11 +122,106 @@ checktor::configure_doctor(verbose_default = FALSE, progress_default = FALSE)
 ```
 
 You can also run a single category when that is all you care about, since each
-`diagnose_*_issues()` function stands on its own:
+`diagnose_*_issues()` function stands on its own, and a single check the same way
+through its `lab_*()` function:
 
 ```r
 # Gate only on DESCRIPTION-field problems
 desc <- checktor::diagnose_description_issues(".")
+
+# Or one check on its own
+tf <- checktor::lab_tf_usage(".")
+```
+
+## Findings on the diff, not in the log
+
+A log someone has to scroll is the weakest way to deliver a finding. Every forge
+can put one next to the line that caused it, and `ci_report()` writes whichever
+shape yours reads. With no arguments it examines the package, works out where it is
+running, and emits the right thing.
+
+```r
+checktor::ci_report()
+```
+
+On GitHub Actions that prints workflow commands, and each finding appears on the
+pull request diff:
+
+```
+::error file=R/plot.R,line=42,title=checktor: option_changes::Option changes check: plot.R:42
+```
+
+Gitea and Forgejo Actions read the same commands, so the same call covers them.
+Elsewhere, name the format and the file your configuration expects:
+
+| Forge | Format | What to do with it |
+|---|---|---|
+| GitHub, Gitea, Forgejo | `"github"` | Printed to the log, shown on the diff |
+| GitLab | `"gitlab"` | Name it in `artifacts:reports:codequality:` |
+| Azure Pipelines | `"azure"` | Printed to the log |
+| Jenkins, reviewdog, review bots | `"checkstyle"` | Read the XML with the warnings plugin |
+| GitHub code scanning | `"sarif"` | Upload with `github/codeql-action/upload-sarif` |
+
+A GitLab job needs only this:
+
+```yaml
+checktor:
+  image: rocker/r-ver:latest
+  script:
+    - Rscript -e 'install.packages("checktor"); checktor::ci_report(format = "gitlab")'
+  artifacts:
+    reports:
+      codequality: gl-code-quality-report.json
+```
+
+`ci_report()` reports every tier, since an annotation is information rather than a
+verdict. Keep `checkup()` for the verdict, so what fails a build stays a separate
+decision from what gets pointed at. If you want an opinion to fail a build, that is
+`checkup(severity = SEVERITY_LEVELS)`, and the threshold stays in one place rather
+than being spelled two ways that can disagree.
+
+Checks that did not run are named once at the end, rather than one annotation each,
+because a check that never happened should not compete for space with a finding:
+
+```
+::notice title=checktor: skipped::2 checks did not run: spelling, url_liveness
+```
+
+For the report formats that note goes to the job log instead, keeping the artifact a
+clean document. Pass `skipped = FALSE` if you would rather not hear about it.
+
+## Keeping the report
+
+`health_report()` writes the whole consultation to a file, which an artifact step
+can keep for later:
+
+```yaml
+      - name: Upload checktor report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: checktor-report
+          path: checktor-report.md
+```
+
+Writing the report before the gate runs, and uploading it with `if: always()`,
+means a failing build still leaves the findings behind after its log has scrolled
+away. checktor's own workflow does exactly this.
+
+## What a runner does not check
+
+Two checks sit out in CI, because the result would say more about the runner than
+about your package. The URL fetch waits until you are at the console, and spelling
+waits until a spell-check backend is installed. Neither is reported as a pass. They
+come back marked skipped, they are named in `metadata$skipped_checks`, `tidy()`
+carries a `skipped` column, and `ci_report()` says so on the build itself, so a
+green build never implies a check that never happened.
+
+Turn the URL fetch on in a job that should do it, keeping in mind that a network
+hiccup then becomes a red build:
+
+```r
+options(checktor.url_check = TRUE)
 ```
 
 ## Closer to the keyboard

@@ -21,7 +21,7 @@ into specific code, documentation, or DESCRIPTION categories.
 \details{
 This function checks:
 \itemize{
-\item Package size, measured against the files that would ship in the
+\item Package size, measured against the files that would go into the
 tarball (\code{.Rbuildignore} and standard scratch dirs are excluded), with
 a 5 MB warning threshold matching CRAN's recommendation.
 \item \verb{http://} URLs and URL shorteners, offline. \verb{R CMD check --as-cran} does
@@ -31,7 +31,7 @@ is the fast local pass.
 \item Relative links in the \code{README} that would break on CRAN.
 }
 
-\code{\link[=diagnose_cran_comments_file]{diagnose_cran_comments_file()}} is intentionally not part of this default
+\code{\link[=lab_cran_comments_file]{lab_cran_comments_file()}} is intentionally not part of this default
 run, since a \code{cran-comments.md} is a workflow convention rather than a CRAN
 requirement; call it directly to opt in.
 }

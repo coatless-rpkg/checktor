@@ -47,5 +47,5 @@ result <- checktor_check_result(
 print(result)
 }
 \seealso{
-Individual diagnostic functions like \code{\link[=diagnose_tf_usage]{diagnose_tf_usage()}}, \code{\link[=diagnose_seed_setting]{diagnose_seed_setting()}}
+Individual diagnostic functions like \code{\link[=lab_tf_usage]{lab_tf_usage()}}, \code{\link[=lab_seed_setting]{lab_seed_setting()}}
 }

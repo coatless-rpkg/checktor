@@ -65,7 +65,7 @@ The temporary package created has this structure:
 \examples{
 # Create scenario with T/F usage issues
 pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R")
-result <- diagnose_tf_usage(pkg_path, verbose = TRUE)
+result <- lab_tf_usage(pkg_path, verbose = TRUE)
 issues(checktor(pkg_path, verbose = FALSE, progress = FALSE))
 
 # Create scenario without showing file content
@@ -86,6 +86,6 @@ pkg_path <- example_diagnose_scenario("code_examples/browser_calls_bad.R",
 # Cleanup happens automatically when R session ends
 }
 \seealso{
-Used in examples for diagnostic functions like \code{\link[=diagnose_tf_usage]{diagnose_tf_usage()}},
-\code{\link[=diagnose_seed_setting]{diagnose_seed_setting()}}, etc.
+Used in examples for diagnostic functions like \code{\link[=lab_tf_usage]{lab_tf_usage()}},
+\code{\link[=lab_seed_setting]{lab_seed_setting()}}, etc.
 }

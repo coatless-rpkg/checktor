@@ -31,7 +31,7 @@ Every check still runs, and every finding stays in the result and appears in
 \code{\link[=issues]{issues()}} with its tier. What this argument decides is which findings count
 against a clean bill of health. \code{"policy"} is a citable CRAN Repository
 Policy or Writing R Extensions violation. \code{"robustness"} is a real defect
-that CRAN will nonetheless let you ship, such as a \code{detectCores()} that may
+that CRAN will still accept, such as a \code{detectCores()} that may
 return \code{NA}. \code{"opinion"} is a convention with no authority behind it.
 
 The default therefore makes "0 issues" mean \emph{nothing here will get you

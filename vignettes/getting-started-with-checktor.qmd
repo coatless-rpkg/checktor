@@ -118,7 +118,7 @@ filter them, count them, fold them into a report of your own, reach for the
 accessors. They return plain data frames, so you never spelunk through nested
 lists.
 
-![The one `checktor_results` object fans out into three plain data frames. `summary()` gives 5 rows, one per category. `issues()` gives 10 rows, one per issue, carrying the file and line. `tidy()` gives 46 rows, one per check, whether it passed or not.](figures/result-shapes-light.svg){.ct-fig .ct-light}
+![The one `checktor_results` object fans out into three plain data frames. `summary()` gives 5 rows, one per category. `issues()` gives 8 rows, one per issue, carrying the file and line. `tidy()` gives 51 rows, one per check, whether it passed or not.](figures/result-shapes-light.svg){.ct-fig .ct-light}
 ![](figures/result-shapes-dark.svg){.ct-fig .ct-dark aria-hidden="true"}
 
 ```{r}
@@ -130,7 +130,9 @@ issues(results)    # one row per issue, with file and line
 ```
 
 `tidy(results)` gives one row per check, passed or not, and `as.data.frame()` is
-its alias. Three predicates answer the yes/no questions directly:
+its alias. Its `skipped` column marks any check that did not run, such as the URL
+fetch when you are not at the console, so a check that sat out never reads as one
+that passed. Three predicates answer the yes/no questions directly:
 
 ```{r}
 is_healthy(results)

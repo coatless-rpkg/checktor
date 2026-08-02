@@ -15,7 +15,9 @@
 \item{...}{Unused.}
 }
 \value{
-For results: a 5-row \code{data.frame} (\verb{category, checks, passed, failed, issues}). For a category: a 1-row \code{data.frame} (\verb{checks, passed, failed, issues}).
+For results: a 5-row \code{data.frame} (\verb{category, checks, passed, failed, skipped, issues}). For a category: a 1-row \code{data.frame}
+(\verb{checks, passed, failed, skipped, issues}). \code{skipped} counts the checks
+that did not run, which are not counted as passing.
 }
 \description{
 Per-category summary of checktor results

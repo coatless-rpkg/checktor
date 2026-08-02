@@ -20,7 +20,7 @@ License: AGPL (>= 3)
 URL: https://github.com/coatless-rpkg/checktor,
     https://r-pkg.thecoatlessprofessor.com/checktor/
 BugReports: https://github.com/coatless-rpkg/checktor/issues
-Depends: R (>= 4.4.0)
+Depends: R (>= 4.5.0)
 Imports:
     utils,
     tools,
@@ -28,9 +28,10 @@ Imports:
     generics,
     xml2,
     xmlparsedata
-Suggests: 
+Suggests:
     testthat (>= 3.0.0),
-    quarto
+    quarto,
+    jsonlite
 VignetteBuilder: quarto
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

@@ -13,10 +13,11 @@ register_check(
 }
 \arguments{
 \item{name}{Character. The check's key, used in results and reports. Must not
-clash with a built-in check name.}
+clash with a built-in check name. Naming the function \verb{lab_<name>()} keeps it
+consistent with the built-in checks, where the two always match.}
 
 \item{fn}{A function returning a \code{\link[=checktor_check_result]{checktor_check_result()}}, the same shape as
-any \verb{diagnose_*} function. It is called as \code{fn(path, verbose)}. If it also
+any \verb{lab_*} check. It is called as \code{fn(path, verbose)}. If it also
 declares a \code{parsed} argument (for \code{code} and \code{policy} checks) or a \code{desc}
 argument (for \code{description} checks), checktor forwards its shared parse cache
 so the check does not re-read the sources.}
@@ -33,19 +34,23 @@ argument.}
 Invisibly, \code{name}.
 }
 \description{
-Adds a user-supplied diagnostic to every subsequent \code{\link[=checktor]{checktor()}} run without
-editing checktor's source. The check runs alongside the built-ins in its
-category, appears in \code{\link[=issues]{issues()}}, \code{\link[=tidy]{tidy()}} and the printed report, and counts
-toward the verdict at the severity tier you declare.
+Adds a check of your own to every subsequent \code{\link[=checktor]{checktor()}} run without editing
+checktor's source. It joins the panel its category already runs, appears in
+\code{\link[=issues]{issues()}}, \code{\link[=tidy]{tidy()}} and the printed report, and counts toward the verdict at
+the severity tier you declare.
+}
+\details{
+A registered check joins one of the five built-in categories. There is no way
+to add a category of your own, so pick the panel your check belongs to.
 }
 \examples{
 # A house rule: flag any call to a banned helper.
-diagnose_no_banned <- function(path, verbose = TRUE, parsed = NULL) {
+lab_no_banned <- function(path, verbose = TRUE, parsed = NULL) {
   if (is.null(parsed)) parsed <- read_r_xml(path)
   issues <- undesirable_function_check(parsed, "banned_helper")
   checktor_check_result(length(issues) == 0L, issues, "no banned_helper()")
 }
-register_check("no_banned", diagnose_no_banned,
+register_check("no_banned", lab_no_banned,
                category = "code", severity = "policy")
 
 registered_checks()

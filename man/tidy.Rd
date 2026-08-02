@@ -22,7 +22,9 @@
 }
 \value{
 A \code{data.frame} with one row per check: \code{category} (results level
-only), \code{check}, \code{passed}, \code{n_issues}, \code{message}.
+only), \code{check}, \code{severity}, \code{passed}, \code{skipped}, \code{n_issues}, \code{message}.
+\code{skipped} marks a check that did not run, such as the URL fetch away from
+the console, so it never reads as one that passed.
 }
 \description{
 Tidy a checktor result into a per-check data frame
