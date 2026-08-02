@@ -349,6 +349,29 @@ collect_rd_text <- function(node, skip = character(0)) {
   ""
 }
 
+# The complement of `skip=`: gather only what sits inside the named tags. Taking
+# the whole section and subtracting the runnable text does not work, because the
+# two are not contiguous once anything follows the hidden block -- a trailing
+# newline is enough -- so a fixed-string removal matches nothing and hands back
+# the entire section as though it were hidden.
+collect_rd_text_within <- function(node, tags) {
+  tag <- attr(node, "Rd_tag")
+  if (!is.null(tag) && tag %in% tags) {
+    return(collect_rd_text(node))
+  }
+  if (is.list(node)) {
+    parts <- vapply(
+      node,
+      collect_rd_text_within,
+      character(1),
+      tags = tags,
+      USE.NAMES = FALSE
+    )
+    return(paste(parts, collapse = ""))
+  }
+  ""
+}
+
 # The name of the innermost top-level function a node sits inside, or "" when the
 # node is not inside a named function. Used to attribute a hit to its function so
 # call-graph reasoning can act on it.
@@ -918,28 +941,75 @@ is_file_writing_print <- function(node) {
 # Which argument of a write function names the destination. The position differs
 # per function, and assuming "the second argument" (as an earlier version did)
 # reads the CONTENT argument of file.create() as its path.
+# Every call that sends output to a destination, mapped to the position that
+# destination sits in. NA means the destination is only ever named, as in
+# `save(x, file = "out.rda")`. This is the single list the write-related checks
+# share, so one of them cannot quietly know about a function the others do not.
 WRITE_DEST_ARG <- list(
+  # base and utils
   write.csv = 2L,
   write.csv2 = 2L,
   write.table = 2L,
   writeLines = 2L,
+  writeBin = 2L,
   saveRDS = 2L,
   write = 2L,
   cat = NA_integer_,
   save = NA_integer_, # `save(x, y, file = "...")`: named only
+  save.image = 1L,
+  capture.output = NA_integer_, # `capture.output(x, file = "...")`
   file.create = 1L,
   dir.create = 1L,
   file.copy = 2L,
   file.rename = 2L,
+  file.append = 1L,
+  download.file = 2L,
   sink = 1L,
+  # readr
+  write_csv = 2L,
+  write_csv2 = 2L,
+  write_tsv = 2L,
+  write_delim = 2L,
+  write_excel_csv = 2L,
+  write_rds = 2L,
+  write_lines = 2L,
+  write_file = 2L,
+  # data.table, and the spreadsheet writers
+  fwrite = 2L,
+  write_xlsx = 2L,
+  write.xlsx = 2L,
+  saveWorkbook = 2L,
+  # other serialisers
+  write_json = 2L,
+  write_yaml = 2L,
+  write_parquet = 2L,
+  write_feather = 2L,
+  # graphics devices
   png = 1L,
   pdf = 1L,
   jpeg = 1L,
+  tiff = 1L,
+  bmp = 1L,
+  svg = 1L,
+  postscript = 1L,
+  cairo_pdf = 1L,
   ggsave = 1L
 )
 
+# The functions the write checks look for. Derived from the map above so the two
+# can never disagree about what counts as a write.
+WRITE_FUNCTIONS <- names(WRITE_DEST_ARG)
+
 # Names a destination can travel under.
-DEST_ARG_NAMES <- c("file", "con", "path", "filename", "target", "destfile")
+DEST_ARG_NAMES <- c(
+  "file",
+  "con",
+  "path",
+  "filename",
+  "target",
+  "destfile",
+  "sink" # arrow's write_parquet(x, sink = ...)
+)
 
 # The expression node a write call sends its output TO, or NULL.
 write_destination <- function(node) {

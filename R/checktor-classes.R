@@ -17,7 +17,7 @@
 #' - Additional elements passed via `...`
 #'
 #' @seealso
-#' Individual diagnostic functions like [diagnose_tf_usage()], [diagnose_seed_setting()]
+#' Individual diagnostic functions like [lab_tf_usage()], [lab_seed_setting()]
 #'
 #' @export
 #' @examples

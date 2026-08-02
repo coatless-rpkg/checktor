@@ -45,14 +45,14 @@
 #' ```
 #'
 #' @seealso
-#' Used in examples for diagnostic functions like [diagnose_tf_usage()],
-#' [diagnose_seed_setting()], etc.
+#' Used in examples for diagnostic functions like [lab_tf_usage()],
+#' [lab_seed_setting()], etc.
 #'
 #' @export
 #' @examples
 #' # Create scenario with T/F usage issues
 #' pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R")
-#' result <- diagnose_tf_usage(pkg_path, verbose = TRUE)
+#' result <- lab_tf_usage(pkg_path, verbose = TRUE)
 #' issues(checktor(pkg_path, verbose = FALSE, progress = FALSE))
 #'
 #' # Create scenario without showing file content
@@ -199,7 +199,7 @@ create_example_description <- function(desc_path, type = "minimal") {
       "Version: 0.1.0",
       "Authors@R: person('Test', 'User', email = 'test@example.com', role = c('aut', 'cre'))",
       # Must not open with "This package": CRAN rejects it, and so
-      # does diagnose_description_starts_with().
+      # does lab_description_starts_with().
       "Description: Demonstrates proper formatting for CRAN submission.",
       "    It works with 'ggplot2' and provides Application Programming Interface (API)",
       "    access. The package serves as an example of best practices for R package",

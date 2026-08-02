@@ -56,7 +56,9 @@ check_vocab <- function(config, field, builtin) {
 # whole check when no substring is given). Locations are file:line, so matching is
 # on the finding TEXT, never on line numbers.
 apply_suppressions <- function(results, config) {
-  known <- names(CHECK_SEVERITY)
+  # A custom check registered with register_check() is as real as a built-in, so
+  # naming one in Config/checktor must not be reported as a typo.
+  known <- all_check_names()
 
   # allow specs -> named list: check -> character vector of substrings (NA = whole check)
   allow_map <- list()

@@ -35,15 +35,15 @@ diagnose_policy_violations <- function(path = ".", verbose = TRUE) {
     c(
       list(
         browser_calls = function(p, v) {
-          diagnose_browser_calls(p, v, parsed = parsed)
+          lab_browser_calls(p, v, parsed = parsed)
         },
         system_calls = function(p, v) {
-          diagnose_system_calls(p, v, parsed = parsed)
+          lab_system_calls(p, v, parsed = parsed)
         },
         file_operations = function(p, v) {
-          diagnose_file_operations(p, v, parsed = parsed)
+          lab_file_operations(p, v, parsed = parsed)
         },
-        network_operations = function(p, v) diagnose_network_operations(p, v)
+        network_operations = function(p, v) lab_network_operations(p, v)
       ),
       registered_checks_for("policy", parsed = parsed)
     ),
@@ -59,7 +59,7 @@ diagnose_policy_violations <- function(path = ".", verbose = TRUE) {
 #' @section Source:
 #' The [CRAN Repository Policy](https://cran.r-project.org/web/packages/policies.html)
 #' requires checks to run non-interactively, so a debugging leftover such as
-#' `browser()` must not ship. See
+#' `browser()` must not be left in. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
 #' @param path Character. Path to the package directory. Default: `"."`.
@@ -73,8 +73,8 @@ diagnose_policy_violations <- function(path = ".", verbose = TRUE) {
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_browser_calls(pkg, verbose = FALSE)$passed
-diagnose_browser_calls <- function(path, verbose = TRUE, parsed = NULL) {
+#' lab_browser_calls(pkg, verbose = FALSE)$passed
+lab_browser_calls <- function(path, verbose = TRUE, parsed = NULL) {
   path <- find_package_root(path)
   if (is.null(parsed)) {
     parsed <- read_r_xml(path)
@@ -114,8 +114,8 @@ diagnose_browser_calls <- function(path, verbose = TRUE, parsed = NULL) {
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_system_calls(pkg, verbose = FALSE)$passed
-diagnose_system_calls <- function(path, verbose = TRUE, parsed = NULL) {
+#' lab_system_calls(pkg, verbose = FALSE)$passed
+lab_system_calls <- function(path, verbose = TRUE, parsed = NULL) {
   path <- find_package_root(path)
   if (is.null(parsed)) {
     parsed <- read_r_xml(path)
@@ -211,8 +211,8 @@ diagnose_system_calls <- function(path, verbose = TRUE, parsed = NULL) {
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_file_operations(pkg, verbose = FALSE)$passed
-diagnose_file_operations <- function(path, verbose = TRUE, parsed = NULL) {
+#' lab_file_operations(pkg, verbose = FALSE)$passed
+lab_file_operations <- function(path, verbose = TRUE, parsed = NULL) {
   path <- find_package_root(path)
   if (is.null(parsed)) {
     parsed <- read_r_xml(path)
@@ -221,16 +221,10 @@ diagnose_file_operations <- function(path, verbose = TRUE, parsed = NULL) {
     return(checktor_check_result(TRUE, character(0), "File operations check"))
   }
 
-  write_funs <- c(
-    "write.csv",
-    "write.csv2",
-    "write.table",
-    "writeLines",
-    "saveRDS",
-    "save",
-    "file.create"
+  predicate <- paste(
+    sprintf("text() = '%s'", WRITE_FUNCTIONS),
+    collapse = " or "
   )
-  predicate <- paste(sprintf("text() = '%s'", write_funs), collapse = " or ")
   xpath <- sprintf("//SYMBOL_FUNCTION_CALL[%s]", predicate)
 
   issues <- xpath_per_file(parsed, xpath, function(file, nodes) {
@@ -292,8 +286,8 @@ diagnose_file_operations <- function(path, verbose = TRUE, parsed = NULL) {
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_network_operations(pkg, verbose = FALSE)$passed
-diagnose_network_operations <- function(path, verbose = TRUE) {
+#' lab_network_operations(pkg, verbose = FALSE)$passed
+lab_network_operations <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
   rd_files <- list.files(
     file.path(path, "man"),

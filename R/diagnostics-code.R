@@ -53,46 +53,49 @@ diagnose_code_issues <- function(path = ".", verbose = TRUE) {
   run_checks(
     c(
       list(
-        tf_usage = function(p, v) diagnose_tf_usage(p, v, parsed = parsed),
+        tf_usage = function(p, v) lab_tf_usage(p, v, parsed = parsed),
         seed_setting = function(p, v) {
-          diagnose_seed_setting(p, v, parsed = parsed)
+          lab_seed_setting(p, v, parsed = parsed)
         },
         print_cat_usage = function(p, v) {
-          diagnose_print_cat_usage(p, v, parsed = parsed)
+          lab_print_cat_usage(p, v, parsed = parsed)
         },
         option_changes = function(p, v) {
-          diagnose_option_changes(p, v, parsed = parsed)
+          lab_option_changes(p, v, parsed = parsed)
         },
         home_writing = function(p, v) {
-          diagnose_home_writing(p, v, parsed = parsed)
+          lab_home_writing(p, v, parsed = parsed)
         },
         temp_cleanup = function(p, v) {
-          diagnose_temp_cleanup(p, v, parsed = parsed)
+          lab_temp_cleanup(p, v, parsed = parsed)
         },
         globalenv_mod = function(p, v) {
-          diagnose_globalenv_modification(p, v, parsed = parsed)
+          lab_globalenv_mod(p, v, parsed = parsed)
         },
         installed_packages = function(p, v) {
-          diagnose_installed_packages_usage(p, v, parsed = parsed)
+          lab_installed_packages(p, v, parsed = parsed)
         },
         warn_option = function(p, v) {
-          diagnose_warn_option(p, v, parsed = parsed)
+          lab_warn_option(p, v, parsed = parsed)
         },
         software_install = function(p, v) {
-          diagnose_software_installation(p, v, parsed = parsed)
+          lab_software_install(p, v, parsed = parsed)
         },
-        core_usage = function(p, v) diagnose_core_usage(p, v, parsed = parsed),
+        core_usage = function(p, v) lab_core_usage(p, v, parsed = parsed),
         library_in_pkg = function(p, v) {
-          diagnose_library_in_pkg_code(p, v, parsed = parsed)
+          lab_library_in_pkg(p, v, parsed = parsed)
         },
         detect_cores_robustness = function(p, v) {
-          diagnose_detect_cores_robustness(p, v, parsed = parsed)
+          lab_detect_cores_robustness(p, v, parsed = parsed)
         },
         sys_setenv = function(p, v) {
-          diagnose_sys_setenv_no_reset(p, v, parsed = parsed)
+          lab_sys_setenv(p, v, parsed = parsed)
+        },
+        internal_ns = function(p, v) {
+          lab_internal_ns(p, v, parsed = parsed)
         },
         hardcoded_credentials = function(p, v) {
-          diagnose_hardcoded_credentials(p, v, parsed = parsed)
+          lab_hardcoded_credentials(p, v, parsed = parsed)
         }
       ),
       registered_checks_for("code", parsed = parsed)
@@ -129,7 +132,12 @@ emit_issue_summary <- function(
   if (length(issues) > max_show) {
     cli::cli_text("{.emph ... and {length(issues) - max_show} more}")
   }
-  if (!is.null(treatment)) cli::cli_text("{.emph {treatment}}")
+  # Treatment strings carry inline markup such as {.code TRUE}. Interpolating one
+  # as a value leaves the braces on screen, so it has to reach cli as part of the
+  # format string, the same way prescribe() passes its treatments.
+  if (!is.null(treatment)) {
+    cli::cli_text(paste0("{.emph ", treatment, "}"))
+  }
 }
 
 # In the xmlparsedata XML, a call `fn(a, b)` is:
@@ -150,11 +158,81 @@ emit_issue_summary <- function(
 #   - first positional arg:    `parent::expr/following-sibling::expr[1]`
 #   - any named-arg name:      `parent::expr/parent::expr/SYMBOL_SUB`
 
+#' Diagnose `:::` in Package Code
+#'
+#' Flags a `pkg:::fn()` call in `R/`. The triple colon reaches an object another
+#' package does not export, whose behaviour its author is free to change in routine
+#' maintenance, so a release elsewhere can break your package without warning.
+#'
+#' A call into your own package is reported too, since a package almost never needs
+#' `:::` for its own objects: everything in the namespace is already visible to the
+#' rest of it.
+#'
+#' @section Source:
+#' CRAN sends this back as "Using foo:::f instead of foo::f allows access to
+#' unexported objects. This is generally not recommended ... Please omit one
+#' colon." `R CMD check` reports it too, under dependencies in R code, so this
+#' check is the same finding without waiting for a full check. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
+#' @param path Character. Path to package directory.
+#' @param verbose Logical. Print diagnostic messages.
+#' @param parsed Internal. Pre-parsed source cache; if `NULL`, files are read
+#'   from `path` on demand.
+#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
+#' @seealso [checktor()], [lab_example_internal_ns()] for the same rule in examples.
+#' @export
+#' @examples
+#' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+#'                                  show_content = FALSE)
+#' lab_internal_ns(pkg, verbose = FALSE)$passed
+lab_internal_ns <- function(path, verbose = TRUE, parsed = NULL) {
+  path <- find_package_root(path)
+  if (is.null(parsed)) {
+    parsed <- read_r_xml(path)
+  }
+  if (length(parsed) == 0L) {
+    return(checktor_check_result(TRUE, character(0), "Internal namespace check"))
+  }
+
+  issues <- xpath_per_file(parsed, "//NS_GET_INT", function(file, nodes) {
+    # The package and object either side of the operator name the finding.
+    pkgs <- xml2::xml_text(xml2::xml_find_first(
+      nodes,
+      "preceding-sibling::*[1]"
+    ))
+    objs <- xml2::xml_text(xml2::xml_find_first(
+      nodes,
+      "following-sibling::*[1]"
+    ))
+    paste0(
+      basename(file),
+      ":",
+      xml2::xml_attr(nodes, "line1"),
+      " (",
+      pkgs,
+      ":::",
+      objs,
+      ")"
+    )
+  })
+
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues,
+    verbose,
+    "No {.code :::} calls in package code",
+    "{.code :::} calls found in package code",
+    "Treatment: Use {.code ::} on an exported object, or ask the other author to export what you need"
+  )
+  checktor_check_result(passed, issues, "Internal namespace check")
+}
+
 #' Diagnose `T`/`F` Usage in R Code
 #'
 #' Flags bare `T` / `F` symbols that should be `TRUE` / `FALSE`. Operates on
-#' the parsed AST, so `T` inside string literals or comments is not flagged
-#' (a long-standing source of regex false positives). Named-argument names
+#' the parsed syntax tree, so `T` inside a string or a comment is not reported,
+#' which a plain text search could not tell apart. Named-argument names
 #' (`f(T = 1)`) and `$T` / `@T` extractions are excluded.
 #'
 #' @section Source:
@@ -176,8 +254,8 @@ emit_issue_summary <- function(
 #' @examples
 #' # show_content defaults to TRUE, so the offending file prints first
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R")
-#' issues(diagnose_tf_usage(pkg, verbose = FALSE))
-diagnose_tf_usage <- function(path, verbose = TRUE, parsed = NULL) {
+#' issues(lab_tf_usage(pkg, verbose = FALSE))
+lab_tf_usage <- function(path, verbose = TRUE, parsed = NULL) {
   path <- find_package_root(path)
   if (is.null(parsed)) {
     parsed <- read_r_xml(path)
@@ -230,7 +308,7 @@ diagnose_tf_usage <- function(path, verbose = TRUE, parsed = NULL) {
 #' Flags `set.seed(<numeric>)` calls. Multi-line forms are handled because
 #' the check matches the call AST node, not raw text.
 #'
-#' @inheritParams diagnose_tf_usage
+#' @inheritParams lab_tf_usage
 #' @section Source:
 #' The [CRAN Repository Policy](https://cran.r-project.org/web/packages/policies.html)
 #' asks a package not to modify the user's workspace, and `set.seed()` writes
@@ -243,8 +321,8 @@ diagnose_tf_usage <- function(path, verbose = TRUE, parsed = NULL) {
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/seed_setting_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_seed_setting(pkg, verbose = FALSE)   # prints PASSED/FAILED
-diagnose_seed_setting <- function(path, verbose = TRUE, parsed = NULL) {
+#' lab_seed_setting(pkg, verbose = FALSE)   # prints PASSED/FAILED
+lab_seed_setting <- function(path, verbose = TRUE, parsed = NULL) {
   path <- find_package_root(path)
   if (is.null(parsed)) {
     parsed <- read_r_xml(path)
@@ -283,7 +361,7 @@ diagnose_seed_setting <- function(path, verbose = TRUE, parsed = NULL) {
 #' and `format.*` methods are exempt, since `cat()` is the required idiom
 #' there (base R's own `print.default()` / `print.lm()` use it).
 #'
-#' @inheritParams diagnose_tf_usage
+#' @inheritParams lab_tf_usage
 #' @section Source:
 #' The CRAN Cookbook covers this under
 #' [Using print()/cat()](https://contributor.r-project.org/cran-cookbook/code_issues.html#using-printcat).
@@ -298,8 +376,8 @@ diagnose_seed_setting <- function(path, verbose = TRUE, parsed = NULL) {
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/print_cat_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_print_cat_usage(pkg, verbose = FALSE)
-diagnose_print_cat_usage <- function(path, verbose = TRUE, parsed = NULL) {
+#' lab_print_cat_usage(pkg, verbose = FALSE)
+lab_print_cat_usage <- function(path, verbose = TRUE, parsed = NULL) {
   path <- find_package_root(path)
   if (is.null(parsed)) {
     parsed <- read_r_xml(path)
@@ -525,8 +603,8 @@ diagnose_print_cat_usage <- function(path, verbose = TRUE, parsed = NULL) {
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_option_changes(pkg, verbose = FALSE)$passed
-diagnose_option_changes <- function(path, verbose = TRUE, parsed = NULL) {
+#' lab_option_changes(pkg, verbose = FALSE)$passed
+lab_option_changes <- function(path, verbose = TRUE, parsed = NULL) {
   path <- find_package_root(path)
   if (is.null(parsed)) {
     parsed <- read_r_xml(path)
@@ -668,8 +746,8 @@ diagnose_option_changes <- function(path, verbose = TRUE, parsed = NULL) {
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_home_writing(pkg, verbose = FALSE)$passed
-diagnose_home_writing <- function(path, verbose = TRUE, parsed = NULL) {
+#' lab_home_writing(pkg, verbose = FALSE)$passed
+lab_home_writing <- function(path, verbose = TRUE, parsed = NULL) {
   path <- find_package_root(path)
   if (is.null(parsed)) {
     parsed <- read_r_xml(path)
@@ -683,24 +761,10 @@ diagnose_home_writing <- function(path, verbose = TRUE, parsed = NULL) {
   # which are all *reads*: it flagged `Sys.getenv("HOME")` (which writes nothing)
   # while missing `writeLines(x, "~/leaked.txt")`, the actual violation. So flag a
   # WRITE whose destination resolves to the user's home.
-  write_funs <- c(
-    "write.csv",
-    "write.csv2",
-    "write.table",
-    "writeLines",
-    "saveRDS",
-    "save",
-    "file.create",
-    "dir.create",
-    "file.copy",
-    "file.rename",
-    "sink",
-    "png",
-    "pdf",
-    "jpeg",
-    "ggsave"
+  write_pred <- paste(
+    sprintf("text() = '%s'", WRITE_FUNCTIONS),
+    collapse = " or "
   )
-  write_pred <- paste(sprintf("text() = '%s'", write_funs), collapse = " or ")
 
   # An argument resolves to the user's home if it contains a `~`-rooted literal
   # anywhere, or reads HOME / USERPROFILE from the environment. STR_CONST text
@@ -767,8 +831,8 @@ diagnose_home_writing <- function(path, verbose = TRUE, parsed = NULL) {
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_temp_cleanup(pkg, verbose = FALSE)$passed
-diagnose_temp_cleanup <- function(path, verbose = TRUE, parsed = NULL) {
+#' lab_temp_cleanup(pkg, verbose = FALSE)$passed
+lab_temp_cleanup <- function(path, verbose = TRUE, parsed = NULL) {
   path <- find_package_root(path)
   # Scope: package code under R/, NOT tests/.
   #
@@ -861,8 +925,8 @@ diagnose_temp_cleanup <- function(path, verbose = TRUE, parsed = NULL) {
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_globalenv_modification(pkg, verbose = FALSE)$passed
-diagnose_globalenv_modification <- function(
+#' lab_globalenv_mod(pkg, verbose = FALSE)$passed
+lab_globalenv_mod <- function(
   path,
   verbose = TRUE,
   parsed = NULL
@@ -973,8 +1037,8 @@ diagnose_globalenv_modification <- function(
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_installed_packages_usage(pkg, verbose = FALSE)$passed
-diagnose_installed_packages_usage <- function(
+#' lab_installed_packages(pkg, verbose = FALSE)$passed
+lab_installed_packages <- function(
   path,
   verbose = TRUE,
   parsed = NULL
@@ -1031,8 +1095,8 @@ diagnose_installed_packages_usage <- function(
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_warn_option(pkg, verbose = FALSE)$passed
-diagnose_warn_option <- function(path, verbose = TRUE, parsed = NULL) {
+#' lab_warn_option(pkg, verbose = FALSE)$passed
+lab_warn_option <- function(path, verbose = TRUE, parsed = NULL) {
   path <- find_package_root(path)
   if (is.null(parsed)) {
     parsed <- read_r_xml(path)
@@ -1082,8 +1146,8 @@ diagnose_warn_option <- function(path, verbose = TRUE, parsed = NULL) {
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_software_installation(pkg, verbose = FALSE)$passed
-diagnose_software_installation <- function(
+#' lab_software_install(pkg, verbose = FALSE)$passed
+lab_software_install <- function(
   path,
   verbose = TRUE,
   parsed = NULL
@@ -1182,8 +1246,8 @@ diagnose_software_installation <- function(
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_core_usage(pkg, verbose = FALSE)$passed
-diagnose_core_usage <- function(path, verbose = TRUE, parsed = NULL) {
+#' lab_core_usage(pkg, verbose = FALSE)$passed
+lab_core_usage <- function(path, verbose = TRUE, parsed = NULL) {
   path <- find_package_root(path)
   if (is.null(parsed)) {
     parsed <- read_r_xml(path)
@@ -1398,8 +1462,8 @@ REMOTE_EVAL_FUNS <- c(
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_library_in_pkg_code(pkg, verbose = FALSE)$passed
-diagnose_library_in_pkg_code <- function(path, verbose = TRUE, parsed = NULL) {
+#' lab_library_in_pkg(pkg, verbose = FALSE)$passed
+lab_library_in_pkg <- function(path, verbose = TRUE, parsed = NULL) {
   path <- find_package_root(path)
   if (is.null(parsed)) {
     parsed <- read_r_xml(path)
@@ -1443,7 +1507,7 @@ diagnose_library_in_pkg_code <- function(path, verbose = TRUE, parsed = NULL) {
 }
 
 # Sys.setenv() without on.exit()/withr cleanup in the same function body.
-# Mirrors diagnose_option_changes for environment variables.
+# Mirrors lab_option_changes for environment variables.
 #' Diagnose Unrestored Environment Variables
 #'
 #' Flags `Sys.setenv()` with no matching cleanup in the same function.
@@ -1467,8 +1531,8 @@ diagnose_library_in_pkg_code <- function(path, verbose = TRUE, parsed = NULL) {
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_sys_setenv_no_reset(pkg, verbose = FALSE)$passed
-diagnose_sys_setenv_no_reset <- function(path, verbose = TRUE, parsed = NULL) {
+#' lab_sys_setenv(pkg, verbose = FALSE)$passed
+lab_sys_setenv <- function(path, verbose = TRUE, parsed = NULL) {
   path <- find_package_root(path)
   if (is.null(parsed)) {
     parsed <- read_r_xml(path)
@@ -1536,7 +1600,7 @@ diagnose_sys_setenv_no_reset <- function(path, verbose = TRUE, parsed = NULL) {
 #' durable fix is `parallelly::availableCores()`, which never returns `NA` and
 #' also honours the CRAN core limit.
 #'
-#' @inheritParams diagnose_tf_usage
+#' @inheritParams lab_tf_usage
 #' @section Source:
 #' No formal rule. `?detectCores` states it returns "`NA` if the answer is
 #' unknown", and the arithmetic that usually follows then crashes, which is why
@@ -1548,8 +1612,8 @@ diagnose_sys_setenv_no_reset <- function(path, verbose = TRUE, parsed = NULL) {
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_detect_cores_robustness(pkg, verbose = FALSE)$passed
-diagnose_detect_cores_robustness <- function(
+#' lab_detect_cores_robustness(pkg, verbose = FALSE)$passed
+lab_detect_cores_robustness <- function(
   path,
   verbose = TRUE,
   parsed = NULL
@@ -1635,7 +1699,7 @@ diagnose_detect_cores_robustness <- function(
 #' Provider token formats and the gitleaks ruleset:
 #' \url{https://github.com/gitleaks/gitleaks}
 #'
-#' @inheritParams diagnose_tf_usage
+#' @inheritParams lab_tf_usage
 #' @section Source:
 #' No formal rule. A token or key committed to a package is public the moment it
 #' reaches CRAN and must be revoked, which is why this sits at `robustness`
@@ -1647,8 +1711,8 @@ diagnose_detect_cores_robustness <- function(
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/credentials_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_hardcoded_credentials(pkg, verbose = FALSE)$passed
-diagnose_hardcoded_credentials <- function(
+#' lab_hardcoded_credentials(pkg, verbose = FALSE)$passed
+lab_hardcoded_credentials <- function(
   path,
   verbose = TRUE,
   parsed = NULL

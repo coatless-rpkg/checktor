@@ -57,13 +57,13 @@ diagnose_description_issues <- function(path = ".", verbose = TRUE) {
   # bookkeeping.
   checks <- list(
     software_names = function(p, v) {
-      diagnose_software_names_formatting(p, v, desc)
+      lab_software_names(p, v, desc)
     },
-    language_names = function(p, v) diagnose_language_names(p, v, desc),
-    acronyms = function(p, v) diagnose_acronym_explanation(p, v, desc),
-    license = function(p, v) diagnose_license_formatting(p, v, desc),
-    title_case = function(p, v) diagnose_title_case(p, v, desc),
-    title_length = function(p, v) diagnose_title_length(p, v, desc),
+    language_names = function(p, v) lab_language_names(p, v, desc),
+    acronyms = function(p, v) lab_acronyms(p, v, desc),
+    license = function(p, v) lab_license(p, v, desc),
+    title_case = function(p, v) lab_title_case(p, v, desc),
+    title_length = function(p, v) lab_title_length(p, v, desc),
     # `title_starts_with_article` is deliberately NOT here. It is a mis-transplant
     # of CRAN's real rule, whose source is
     #     if (grepl("^(The|This|A|In this|In the) package", descr)) ...
@@ -75,7 +75,7 @@ diagnose_description_issues <- function(path = ".", verbose = TRUE) {
     # ("A Modern and Flexible Web Client for R") are both on CRAN with such titles.
     # `description_starts_with` already enforces the real rule, in the right field.
     title_redundant_phrases = function(p, v) {
-      diagnose_title_redundant_phrases(p, v, desc)
+      lab_title_redundant_phrases(p, v, desc)
     },
     # `description_function_quotes` is deliberately NOT here. It asserted that
     # single quotes are RESERVED for software names, so a quoted function name was a
@@ -84,22 +84,22 @@ diagnose_description_issues <- function(path = ".", verbose = TRUE) {
     # inclusive list, not an exclusive one. A function name is non-English usage and
     # is legitimately single-quoted. Nothing in WRE or the CRAN policy forbids
     # `'digest()'`, and digest itself ships exactly that.
-    authors = function(p, v) diagnose_authors_field(p, v, desc),
-    identifier_format = function(p, v) diagnose_identifier_format(p, v, desc),
-    cph_role = function(p, v) diagnose_cph_role(p, v, desc),
-    references = function(p, v) diagnose_references_formatting(p, v, desc),
-    date_format = function(p, v) diagnose_date_format(p, v, desc),
-    encoding_utf8 = function(p, v) diagnose_encoding_utf8(p, v, desc),
-    version_format = function(p, v) diagnose_version_format(p, v, desc),
-    spelling = function(p, v) diagnose_spelling(p, v, desc),
-    description_length = function(p, v) diagnose_description_length(p, v, desc),
+    authors = function(p, v) lab_authors(p, v, desc),
+    identifier_format = function(p, v) lab_identifier_format(p, v, desc),
+    cph_role = function(p, v) lab_cph_role(p, v, desc),
+    references = function(p, v) lab_references(p, v, desc),
+    date_format = function(p, v) lab_date_format(p, v, desc),
+    encoding_utf8 = function(p, v) lab_encoding_utf8(p, v, desc),
+    version_format = function(p, v) lab_version_format(p, v, desc),
+    spelling = function(p, v) lab_spelling(p, v, desc),
+    description_length = function(p, v) lab_description_length(p, v, desc),
     description_starts_with = function(p, v) {
-      diagnose_description_starts_with(p, v, desc)
+      lab_description_starts_with(p, v, desc)
     },
     description_quoted_quotes = function(p, v) {
-      diagnose_description_quoted_quotes(p, v, desc)
+      lab_description_quoted_quotes(p, v, desc)
     },
-    license_year = function(p, v) diagnose_license_year(p, v)
+    license_year = function(p, v) lab_license_year(p, v)
   )
   run_checks(
     c(checks, registered_checks_for("description", desc = desc)),
@@ -193,8 +193,8 @@ parse_authors_at_r <- function(desc) {
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_software_names_formatting(pkg, verbose = FALSE)$passed
-diagnose_software_names_formatting <- function(
+#' lab_software_names(pkg, verbose = FALSE)$passed
+lab_software_names <- function(
   path = ".",
   verbose = TRUE,
   desc = NULL
@@ -206,7 +206,7 @@ diagnose_software_names_formatting <- function(
   # package names, so an unquoted `ggplot2` or `shiny` is flagged here at policy.
   #
   # PROGRAMMING LANGUAGES and markup names (Python, Java, SQL, HTML) live in their
-  # own policy check, `diagnose_language_names()` -- a language name and a package
+  # own policy check, `lab_language_names()` -- a language name and a package
   # name are different kinds of thing, so they read as separate concerns. ("R"
   # itself is never flagged anywhere: it is the host language and appears too often
   # legitimately.)
@@ -241,9 +241,12 @@ diagnose_software_names_formatting <- function(
       next
     }
     for (name in software_names) {
+      # A name such as data.table is a regex if it is not escaped, where the dot
+      # would match any character and report the plain words "data table".
+      escaped <- escape_regex(name)
       if (
-        grepl(paste0("\\b", name, "\\b"), text) &&
-          !grepl(paste0("'", name, "'"), text)
+        grepl(paste0("\\b", escaped, "\\b"), text) &&
+          !grepl(paste0("'", escaped, "'"), text)
       ) {
         issues <- c(
           issues,
@@ -274,7 +277,7 @@ diagnose_software_names_formatting <- function(
 #' Flags a bare programming-language, markup, or statistical-computing name --
 #' `Python`, `Java`, `C++`, `SQL`, `HTML`, `MATLAB`, `SAS` and more -- in `Title`
 #' or `Description` that CRAN asks to see single-quoted. This is the language
-#' counterpart to [diagnose_software_names_formatting()]: both are policy-tier
+#' counterpart to [lab_software_names()]: both are policy-tier
 #' quoting checks, kept separate because a language name and a package name are
 #' different kinds of thing. `R` itself is never flagged -- it is the host language
 #' and appears too often to quote sensibly, and single-letter or common-word names
@@ -295,13 +298,13 @@ diagnose_software_names_formatting <- function(
 #'   Defaults to reading it from `path`.
 #'
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @seealso [checktor()], [diagnose_software_names_formatting()].
+#' @seealso [checktor()], [lab_software_names()].
 #' @export
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_language_names(pkg, verbose = FALSE)$passed
-diagnose_language_names <- function(path = ".", verbose = TRUE, desc = NULL) {
+#' lab_language_names(pkg, verbose = FALSE)$passed
+lab_language_names <- function(path = ".", verbose = TRUE, desc = NULL) {
   path <- find_package_root(path)
   desc <- resolve_description(path, desc)
   language_names <- check_vocab(
@@ -327,7 +330,7 @@ diagnose_language_names <- function(path = ".", verbose = TRUE, desc = NULL) {
   # A name may carry regex metacharacters ("C++", "C#") and must not match inside
   # a larger token ("Java" in "JavaScript", "SQL" in "PostgreSQL"), so match the
   # escaped name between non-name boundaries rather than with a plain word boundary.
-  esc <- function(x) gsub("([.^$*+?(){}|\\[\\]\\\\])", "\\\\\\1", x, perl = TRUE)
+  esc <- escape_regex
 
   for (field in c("Title", "Description")) {
     text <- desc[[field]]
@@ -382,8 +385,8 @@ diagnose_language_names <- function(path = ".", verbose = TRUE, desc = NULL) {
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_acronym_explanation(pkg, verbose = FALSE)$passed
-diagnose_acronym_explanation <- function(
+#' lab_acronyms(pkg, verbose = FALSE)$passed
+lab_acronyms <- function(
   path = ".",
   verbose = TRUE,
   desc = NULL
@@ -489,8 +492,8 @@ diagnose_acronym_explanation <- function(
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_authors_field(pkg, verbose = FALSE)$passed
-diagnose_authors_field <- function(path = ".", verbose = TRUE, desc = NULL) {
+#' lab_authors(pkg, verbose = FALSE)$passed
+lab_authors <- function(path = ".", verbose = TRUE, desc = NULL) {
   path <- find_package_root(path)
   desc <- resolve_description(path, desc)
   # Two things are checked here, and only one of them overlaps with R.
@@ -623,8 +626,8 @@ diagnose_authors_field <- function(path = ".", verbose = TRUE, desc = NULL) {
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_references_formatting(pkg, verbose = FALSE)$passed
-diagnose_references_formatting <- function(
+#' lab_references(pkg, verbose = FALSE)$passed
+lab_references <- function(
   path = ".",
   verbose = TRUE,
   desc = NULL
@@ -697,8 +700,8 @@ diagnose_references_formatting <- function(
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_date_format(pkg, verbose = FALSE)$passed
-diagnose_date_format <- function(path = ".", verbose = TRUE, desc = NULL) {
+#' lab_date_format(pkg, verbose = FALSE)$passed
+lab_date_format <- function(path = ".", verbose = TRUE, desc = NULL) {
   path <- find_package_root(path)
   desc <- resolve_description(path, desc)
   date <- desc[["Date"]]
@@ -749,8 +752,8 @@ diagnose_date_format <- function(path = ".", verbose = TRUE, desc = NULL) {
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_encoding_utf8(pkg, verbose = FALSE)$passed
-diagnose_encoding_utf8 <- function(path = ".", verbose = TRUE, desc = NULL) {
+#' lab_encoding_utf8(pkg, verbose = FALSE)$passed
+lab_encoding_utf8 <- function(path = ".", verbose = TRUE, desc = NULL) {
   path <- find_package_root(path)
   desc <- resolve_description(path, desc)
   enc <- desc[["Encoding"]]
@@ -807,8 +810,8 @@ diagnose_encoding_utf8 <- function(path = ".", verbose = TRUE, desc = NULL) {
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_version_format(pkg, verbose = FALSE)$passed
-diagnose_version_format <- function(path = ".", verbose = TRUE, desc = NULL) {
+#' lab_version_format(pkg, verbose = FALSE)$passed
+lab_version_format <- function(path = ".", verbose = TRUE, desc = NULL) {
   path <- find_package_root(path)
   desc <- resolve_description(path, desc)
   ver <- desc[["Version"]]
@@ -897,8 +900,8 @@ ror_id_is_valid <- function(x) {
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_identifier_format(pkg, verbose = FALSE)$passed
-diagnose_identifier_format <- function(
+#' lab_identifier_format(pkg, verbose = FALSE)$passed
+lab_identifier_format <- function(
   path = ".",
   verbose = TRUE,
   desc = NULL
@@ -958,8 +961,8 @@ diagnose_identifier_format <- function(
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_description_length(pkg, verbose = FALSE)$passed
-diagnose_description_length <- function(
+#' lab_description_length(pkg, verbose = FALSE)$passed
+lab_description_length <- function(
   path = ".",
   verbose = TRUE,
   desc = NULL
@@ -1045,8 +1048,8 @@ diagnose_description_length <- function(
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_description_quoted_quotes(pkg, verbose = FALSE)$passed
-diagnose_description_quoted_quotes <- function(
+#' lab_description_quoted_quotes(pkg, verbose = FALSE)$passed
+lab_description_quoted_quotes <- function(
   path = ".",
   verbose = TRUE,
   desc = NULL
@@ -1183,8 +1186,8 @@ is_software_name <- function(x, extra = character(0)) {
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_title_starts_with_article(pkg, verbose = FALSE)$passed
-diagnose_title_starts_with_article <- function(
+#' lab_title_starts_with_article(pkg, verbose = FALSE)$passed
+lab_title_starts_with_article <- function(
   path = ".",
   verbose = TRUE,
   desc = NULL
@@ -1239,8 +1242,8 @@ diagnose_title_starts_with_article <- function(
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_title_redundant_phrases(pkg, verbose = FALSE)$passed
-diagnose_title_redundant_phrases <- function(
+#' lab_title_redundant_phrases(pkg, verbose = FALSE)$passed
+lab_title_redundant_phrases <- function(
   path = ".",
   verbose = TRUE,
   desc = NULL
@@ -1308,8 +1311,8 @@ diagnose_title_redundant_phrases <- function(
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_cph_role(pkg, verbose = FALSE)$passed
-diagnose_cph_role <- function(path = ".", verbose = TRUE, desc = NULL) {
+#' lab_cph_role(pkg, verbose = FALSE)$passed
+lab_cph_role <- function(path = ".", verbose = TRUE, desc = NULL) {
   path <- find_package_root(path)
   desc <- resolve_description(path, desc)
   authors <- desc[["Authors@R"]]
@@ -1355,8 +1358,8 @@ diagnose_cph_role <- function(path = ".", verbose = TRUE, desc = NULL) {
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_title_length(pkg, verbose = FALSE)$passed
-diagnose_title_length <- function(path = ".", verbose = TRUE, desc = NULL) {
+#' lab_title_length(pkg, verbose = FALSE)$passed
+lab_title_length <- function(path = ".", verbose = TRUE, desc = NULL) {
   path <- find_package_root(path)
   desc <- resolve_description(path, desc)
   title <- desc[["Title"]]
@@ -1405,8 +1408,8 @@ diagnose_title_length <- function(path = ".", verbose = TRUE, desc = NULL) {
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_description_function_quotes(pkg, verbose = FALSE)$passed
-diagnose_description_function_quotes <- function(
+#' lab_description_function_quotes(pkg, verbose = FALSE)$passed
+lab_description_function_quotes <- function(
   path = ".",
   verbose = TRUE,
   desc = NULL
@@ -1488,8 +1491,8 @@ dcf_field <- function(desc, field) {
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_title_case(pkg, verbose = FALSE)$passed
-diagnose_title_case <- function(path = ".", verbose = TRUE, desc = NULL) {
+#' lab_title_case(pkg, verbose = FALSE)$passed
+lab_title_case <- function(path = ".", verbose = TRUE, desc = NULL) {
   path <- find_package_root(path)
   desc <- resolve_description(path, desc)
   title <- desc[["Title"]]
@@ -1549,8 +1552,8 @@ diagnose_title_case <- function(path = ".", verbose = TRUE, desc = NULL) {
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_license_formatting(pkg, verbose = FALSE)$passed
-diagnose_license_formatting <- function(
+#' lab_license(pkg, verbose = FALSE)$passed
+lab_license <- function(
   path = ".",
   verbose = TRUE,
   desc = NULL
@@ -1635,8 +1638,8 @@ diagnose_license_formatting <- function(
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_description_starts_with(pkg, verbose = FALSE)$passed
-diagnose_description_starts_with <- function(
+#' lab_description_starts_with(pkg, verbose = FALSE)$passed
+lab_description_starts_with <- function(
   path = ".",
   verbose = TRUE,
   desc = NULL
@@ -1714,7 +1717,7 @@ diagnose_description_starts_with <- function(
 #' @section Source:
 #' The CRAN Cookbook covers the file itself under
 #' [LICENSE files](https://contributor.r-project.org/cran-cookbook/description_issues.html#license-files).
-#' An unfilled template, with `<YEAR>` or `<COPYRIGHT HOLDER>` left in, ships a
+#' An unfilled template, with `<YEAR>` or `<COPYRIGHT HOLDER>` left in, leaves a
 #' placeholder, and no binding rule names it, which is why this sits at
 #' `robustness` tier. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
@@ -1728,8 +1731,8 @@ diagnose_description_starts_with <- function(
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_license_year(pkg, verbose = FALSE)$passed
-diagnose_license_year <- function(path, verbose) {
+#' lab_license_year(pkg, verbose = FALSE)$passed
+lab_license_year <- function(path, verbose) {
   path <- find_package_root(path)
   license_file <- Filter(file.exists, file.path(path, c("LICENSE", "LICENCE")))
   if (length(license_file) == 0L) {
@@ -1815,22 +1818,32 @@ diagnose_license_year <- function(path, verbose) {
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_spelling(pkg, verbose = FALSE)$passed
-diagnose_spelling <- function(path = ".", verbose = TRUE, desc = NULL) {
+#' lab_spelling(pkg, verbose = FALSE)$passed
+lab_spelling <- function(path = ".", verbose = TRUE, desc = NULL) {
   path <- find_package_root(path)
   desc_file <- file.path(path, "DESCRIPTION")
   # Backend-dependent, so its result can differ between machines. Users who want
   # a fully deterministic run (and the test suite) turn it off with
   # options(checktor.spelling = FALSE); it stays on by default.
   if (!isTRUE(getOption("checktor.spelling", TRUE))) {
-    return(checktor_check_result(TRUE, character(0), "Spelling check"))
+    return(checktor_skipped_result(
+      "Spelling check",
+      "turned off with options(checktor.spelling = FALSE)"
+    ))
   }
   program <- Sys.which("aspell")
   if (!nzchar(program)) {
     program <- Sys.which("hunspell")
   }
-  # No backend or no DESCRIPTION: pass quietly, as CRAN's incoming check does.
-  if (!nzchar(program) || !file.exists(desc_file)) {
+  # No backend or no DESCRIPTION: nothing was examined, so say so rather than
+  # reporting a pass, exactly as CRAN's incoming check skips spelling without one.
+  if (!nzchar(program)) {
+    return(checktor_skipped_result(
+      "Spelling check",
+      "no aspell or hunspell backend installed"
+    ))
+  }
+  if (!file.exists(desc_file)) {
     return(checktor_check_result(TRUE, character(0), "Spelling check"))
   }
 
@@ -1860,7 +1873,7 @@ diagnose_spelling <- function(path = ".", verbose = TRUE, desc = NULL) {
 # Words a package has already declared acceptable, gathered from every mechanism
 # a maintainer might use: an aspell `.aspell/*.rds` dictionary, the spelling
 # package's `inst/WORDLIST`, and checktor's own `Config/checktor` acronyms and
-# software_names. Subtracting these keeps diagnose_spelling silenceable no matter
+# software_names. Subtracting these keeps lab_spelling silenceable no matter
 # which one the package reaches for.
 spelling_accepted_words <- function(path) {
   words <- character(0)

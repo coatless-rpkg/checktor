@@ -137,6 +137,13 @@ find_package_root <- function(path = ".") {
 
 # ---- internal helpers --------------------------------------------------------
 
+# Escape a literal so it can be dropped into a regular expression. Names such as
+# data.table, C++ and C# carry metacharacters, and an unescaped one silently
+# matches text it should not.
+escape_regex <- function(x) {
+  gsub("([.^$*+?(){}|\\[\\]\\\\])", "\\\\\\1", x, perl = TRUE)
+}
+
 safe_read_lines <- function(file) {
   if (!file.exists(file)) {
     return(character(0))

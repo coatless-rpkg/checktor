@@ -19,15 +19,19 @@ CHECK_CATEGORIES <- c(
 
 #' Register a Custom Check with `checktor()`
 #'
-#' Adds a user-supplied diagnostic to every subsequent [checktor()] run without
-#' editing checktor's source. The check runs alongside the built-ins in its
-#' category, appears in [issues()], [tidy()] and the printed report, and counts
-#' toward the verdict at the severity tier you declare.
+#' Adds a check of your own to every subsequent [checktor()] run without editing
+#' checktor's source. It joins the panel its category already runs, appears in
+#' [issues()], [tidy()] and the printed report, and counts toward the verdict at
+#' the severity tier you declare.
+#'
+#' A registered check joins one of the five built-in categories. There is no way
+#' to add a category of your own, so pick the panel your check belongs to.
 #'
 #' @param name Character. The check's key, used in results and reports. Must not
-#'   clash with a built-in check name.
+#'   clash with a built-in check name. Naming the function `lab_<name>()` keeps it
+#'   consistent with the built-in checks, where the two always match.
 #' @param fn A function returning a [checktor_check_result()], the same shape as
-#'   any `diagnose_*` function. It is called as `fn(path, verbose)`. If it also
+#'   any `lab_*` check. It is called as `fn(path, verbose)`. If it also
 #'   declares a `parsed` argument (for `code` and `policy` checks) or a `desc`
 #'   argument (for `description` checks), checktor forwards its shared parse cache
 #'   so the check does not re-read the sources.
@@ -43,12 +47,12 @@ CHECK_CATEGORIES <- c(
 #' @export
 #' @examples
 #' # A house rule: flag any call to a banned helper.
-#' diagnose_no_banned <- function(path, verbose = TRUE, parsed = NULL) {
+#' lab_no_banned <- function(path, verbose = TRUE, parsed = NULL) {
 #'   if (is.null(parsed)) parsed <- read_r_xml(path)
 #'   issues <- undesirable_function_check(parsed, "banned_helper")
 #'   checktor_check_result(length(issues) == 0L, issues, "no banned_helper()")
 #' }
-#' register_check("no_banned", diagnose_no_banned,
+#' register_check("no_banned", lab_no_banned,
 #'                category = "code", severity = "policy")
 #'
 #' registered_checks()

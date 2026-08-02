@@ -38,14 +38,19 @@ diagnose_documentation_issues <- function(path = ".", verbose = TRUE) {
   run_checks(
     c(
       list(
-        value_tags = diagnose_value_tags,
-        missing_examples = diagnose_missing_examples,
-        roxygen_usage = diagnose_roxygen_usage,
-        example_structure = diagnose_example_structure,
-        commented_examples = diagnose_commented_examples,
-        donttest_vs_dontrun = diagnose_donttest_vs_dontrun,
-        unexported_example_ns = diagnose_unexported_example_namespace,
-        suggested_in_examples = diagnose_suggested_in_examples
+        value_tags = lab_value_tags,
+        missing_examples = lab_missing_examples,
+        roxygen_usage = lab_roxygen_usage,
+        example_structure = lab_example_structure,
+        commented_examples = lab_commented_examples,
+        donttest_vs_dontrun = lab_donttest_vs_dontrun,
+        unexported_example_ns = lab_unexported_example_ns,
+        suggested_in_examples = lab_suggested_in_examples,
+        example_interactive = lab_example_interactive,
+        example_installs = lab_example_installs,
+        example_writes = lab_example_writes,
+        example_state = lab_example_state,
+        example_internal_ns = lab_example_internal_ns
       ),
       registered_checks_for("documentation")
     ),
@@ -102,8 +107,8 @@ is_non_function_rd_obj <- function(rd) {
 #' @examples
 #' pkg_path <- example_diagnose_scenario("documentation_examples/missing_value_tag.Rd",
 #'                                       show_content = FALSE)
-#' issues(diagnose_value_tags(pkg_path, verbose = FALSE))
-diagnose_value_tags <- function(path, verbose = TRUE) {
+#' issues(lab_value_tags(pkg_path, verbose = FALSE))
+lab_value_tags <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
   rd_files <- list.files(
     file.path(path, "man"),
@@ -183,7 +188,7 @@ diagnose_value_tags <- function(path, verbose = TRUE) {
 #' `\dontrun{}` subtrees that don't appear to have a justifying reason
 #' (interactive, network, credentials, long-running, etc.).
 #'
-#' @inheritParams diagnose_value_tags
+#' @inheritParams lab_value_tags
 #' @section Source:
 #' The CRAN Cookbook covers this under
 #' [Structuring of Examples](https://contributor.r-project.org/cran-cookbook/general_issues.html#structuring-of-examples).
@@ -196,8 +201,8 @@ diagnose_value_tags <- function(path, verbose = TRUE) {
 #' @examples
 #' pkg_path <- example_diagnose_scenario("network_examples/bad_network_example.Rd",
 #'                                       show_content = FALSE)
-#' diagnose_example_structure(pkg_path, verbose = FALSE)
-diagnose_example_structure <- function(path, verbose = TRUE) {
+#' lab_example_structure(pkg_path, verbose = FALSE)
+lab_example_structure <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
   rd_files <- list.files(
     file.path(path, "man"),
@@ -256,10 +261,7 @@ diagnose_example_structure <- function(path, verbose = TRUE) {
     "long.running",
     "long.time",
     "Sys.sleep",
-    # installs or launches external software, or runs a system command
-    "install",
-    "electron",
-    "launch",
+    # runs a system command
     "system2?\\(",
     # a placeholder path the example cannot actually open
     "path/to",
@@ -335,8 +337,8 @@ contains_dontrun <- function(node) contains_rd_tag(node, "\\dontrun")
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_commented_examples(pkg, verbose = FALSE)$passed
-diagnose_commented_examples <- function(path, verbose = TRUE) {
+#' lab_commented_examples(pkg, verbose = FALSE)$passed
+lab_commented_examples <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
   rd_files <- list.files(
     file.path(path, "man"),
@@ -531,8 +533,8 @@ rd_aliases <- function(rd) {
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
-#' diagnose_donttest_vs_dontrun(pkg, verbose = FALSE)$passed
-diagnose_donttest_vs_dontrun <- function(path, verbose = TRUE) {
+#' lab_donttest_vs_dontrun(pkg, verbose = FALSE)$passed
+lab_donttest_vs_dontrun <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
   rd_files <- list.files(
     file.path(path, "man"),
@@ -604,10 +606,10 @@ diagnose_donttest_vs_dontrun <- function(path, verbose = TRUE) {
 #' topics that lack one. Data, class, methods, package-level, and re-export
 #' topics are skipped, and only topics whose name appears in NAMESPACE
 #' `export()` are considered (so internal helpers and S3 methods aren't
-#' required to have examples). Genuinely side-effect-only functions may be
-#' false positives and can be ignored.
+#' required to have examples). A function that exists only for its side effect
+#' may be reported here even though it is fine, so use your judgement.
 #'
-#' @inheritParams diagnose_value_tags
+#' @inheritParams lab_value_tags
 #' @section Source:
 #' The CRAN Cookbook covers examples under
 #' [Structuring of Examples](https://contributor.r-project.org/cran-cookbook/general_issues.html#structuring-of-examples).
@@ -622,8 +624,8 @@ diagnose_donttest_vs_dontrun <- function(path, verbose = TRUE) {
 #' pkg_path <- example_diagnose_scenario(
 #'   "documentation_examples/missing_examples_bad.Rd", show_content = FALSE)
 #' writeLines("export(undocumented_fn)", file.path(pkg_path, "NAMESPACE"))
-#' issues(diagnose_missing_examples(pkg_path, verbose = FALSE))
-diagnose_missing_examples <- function(path, verbose = TRUE) {
+#' issues(lab_missing_examples(pkg_path, verbose = FALSE))
+lab_missing_examples <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
   rd_files <- list.files(
     file.path(path, "man"),
@@ -708,7 +710,7 @@ parse_package_list <- function(field) {
 #' `@examplesIf` and `if (requireNamespace(...))` produce). Usage inside
 #' `\dontrun{}` or `\donttest{}` is not flagged.
 #'
-#' @inheritParams diagnose_value_tags
+#' @inheritParams lab_value_tags
 #' @section Source:
 #' [Writing R Extensions](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Suggested-packages),
 #' under "Suggested packages", asks that a package from `Suggests` used in
@@ -722,8 +724,8 @@ parse_package_list <- function(field) {
 #'   "documentation_examples/suggested_in_examples_bad.Rd", show_content = FALSE)
 #' cat("Suggests: somesuggest\n",
 #'     file = file.path(pkg_path, "DESCRIPTION"), append = TRUE)
-#' issues(diagnose_suggested_in_examples(pkg_path, verbose = FALSE))
-diagnose_suggested_in_examples <- function(path, verbose = TRUE) {
+#' issues(lab_suggested_in_examples(pkg_path, verbose = FALSE))
+lab_suggested_in_examples <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
   rd_files <- list.files(
     file.path(path, "man"),
@@ -871,8 +873,8 @@ diagnose_suggested_in_examples <- function(path, verbose = TRUE) {
 #' @examples
 #' pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                       show_content = FALSE)
-#' diagnose_roxygen_usage(pkg_path, verbose = FALSE)$passed
-diagnose_roxygen_usage <- function(path, verbose = TRUE) {
+#' lab_roxygen_usage(pkg_path, verbose = FALSE)$passed
+lab_roxygen_usage <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
   pass <- function() {
     checktor_check_result(TRUE, character(0), "Roxygen freshness check")
@@ -1052,8 +1054,8 @@ roxygen_exported_names <- function(parsed) {
 #' @examples
 #' pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                       show_content = FALSE)
-#' diagnose_unexported_example_namespace(pkg_path, verbose = FALSE)$passed
-diagnose_unexported_example_namespace <- function(path, verbose = TRUE) {
+#' lab_unexported_example_ns(pkg_path, verbose = FALSE)$passed
+lab_unexported_example_ns <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
   rd_files <- list.files(
     file.path(path, "man"),
@@ -1122,11 +1124,9 @@ diagnose_unexported_example_namespace <- function(path, verbose = TRUE) {
           issues,
           paste0(
             basename(file),
-            ": unexported '",
+            ": example calls unexported '",
             nm,
-            "()' called bare in \\examples; use 'pkg:::",
-            nm,
-            "()'"
+            "()', so it fails when the example runs"
           )
         )
         break
@@ -1137,9 +1137,9 @@ diagnose_unexported_example_namespace <- function(path, verbose = TRUE) {
   emit_issue_summary(
     issues,
     verbose,
-    "Unexported examples use {.code :::} where needed",
-    "Unexported topics call themselves bare in {.code \\examples{}}",
-    "Treatment: Use {.code pkg:::name()} or add {.code @noRd}",
+    "Every documented example calls an object it can reach",
+    "An example calls an object the package does not export",
+    "Treatment: Export the object, or keep the topic internal with {.code @noRd} and drop the runnable example. Reaching for it with {.code :::} is what CRAN asks you to remove.",
     level = "warning"
   )
   checktor_check_result(
