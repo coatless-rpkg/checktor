@@ -1,6 +1,6 @@
 # ---- browser() ---------------------------------------------------------------
 
-test_that("diagnose_browser_calls flags browser() and not the word in strings", {
+test_that("lab_browser_calls flags browser() and not the word in strings", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -9,14 +9,14 @@ test_that("diagnose_browser_calls flags browser() and not the word in strings", 
       "f <- function() browser()"
     )
   )
-  res <- diagnose_browser_calls(pkg, verbose = FALSE)
+  res <- lab_browser_calls(pkg, verbose = FALSE)
   expect_false(res$passed)
   expect_equal(length(res$issues), 1L)
 })
 
 # ---- system() ----------------------------------------------------------------
 
-test_that("diagnose_system_calls flags system()/system2()/shell()", {
+test_that("lab_system_calls flags system()/system2()/shell()", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -26,14 +26,14 @@ test_that("diagnose_system_calls flags system()/system2()/shell()", {
       "h <- function() shell('dir')"
     )
   )
-  res <- diagnose_system_calls(pkg, verbose = FALSE)
+  res <- lab_system_calls(pkg, verbose = FALSE)
   expect_false(res$passed)
   expect_gte(length(res$issues), 3L)
 })
 
 # ---- file operations ---------------------------------------------------------
 
-test_that("diagnose_file_operations does NOT double-match saveRDS as save()", {
+test_that("lab_file_operations does NOT double-match saveRDS as save()", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -41,14 +41,14 @@ test_that("diagnose_file_operations does NOT double-match saveRDS as save()", {
       "f <- function(x) saveRDS(x, '/tmp/foo.rds')"
     )
   )
-  res <- diagnose_file_operations(pkg, verbose = FALSE)
+  res <- lab_file_operations(pkg, verbose = FALSE)
   # Should flag saveRDS once. With the bug, the issues list contained both
   # 'saveRDS()' and 'save()' for the same line.
   expect_equal(sum(grepl("saveRDS", res$issues)), 1L)
   expect_false(any(grepl(":\\d+ \\(save\\(\\)\\)", res$issues)))
 })
 
-test_that("diagnose_file_operations exempts tempfile/tempdir targets", {
+test_that("lab_file_operations exempts tempfile/tempdir targets", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -60,20 +60,20 @@ test_that("diagnose_file_operations exempts tempfile/tempdir targets", {
       "}"
     )
   )
-  res <- diagnose_file_operations(pkg, verbose = FALSE)
+  res <- lab_file_operations(pkg, verbose = FALSE)
   expect_true(res$passed)
 })
 
-test_that("diagnose_file_operations flags writes outside tempdir", {
+test_that("lab_file_operations flags writes outside tempdir", {
   pkg <- make_temp_dir()
   write_pkg(pkg, r_code = "f <- function() write.csv(mtcars, '/etc/foo.csv')")
-  res <- diagnose_file_operations(pkg, verbose = FALSE)
+  res <- lab_file_operations(pkg, verbose = FALSE)
   expect_false(res$passed)
 })
 
 # ---- network ops in docs -----------------------------------------------------
 
-test_that("diagnose_network_operations flags download.file in Rd without wrapper", {
+test_that("lab_network_operations flags download.file in Rd without wrapper", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -88,11 +88,11 @@ test_that("diagnose_network_operations flags download.file in Rd without wrapper
       )
     )
   )
-  res <- diagnose_network_operations(pkg, verbose = FALSE)
+  res <- lab_network_operations(pkg, verbose = FALSE)
   expect_false(res$passed)
 })
 
-test_that("diagnose_network_operations accepts \\dontrun-wrapped network code", {
+test_that("lab_network_operations accepts \\dontrun-wrapped network code", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -109,7 +109,7 @@ test_that("diagnose_network_operations accepts \\dontrun-wrapped network code", 
       )
     )
   )
-  expect_true(diagnose_network_operations(pkg, verbose = FALSE)$passed)
+  expect_true(lab_network_operations(pkg, verbose = FALSE)$passed)
 })
 
 test_that("file_operations exempts a write to a caller-supplied destination", {
@@ -124,7 +124,7 @@ test_that("file_operations exempts a write to a caller-supplied destination", {
       "}"
     )
   )
-  expect_true(diagnose_file_operations(pkg, verbose = FALSE)$passed)
+  expect_true(lab_file_operations(pkg, verbose = FALSE)$passed)
 })
 
 test_that("file_operations still flags a formal that defaults into the user's filespace", {
@@ -139,7 +139,7 @@ test_that("file_operations still flags a formal that defaults into the user's fi
       "}"
     )
   )
-  expect_false(diagnose_file_operations(pkg, verbose = FALSE)$passed)
+  expect_false(lab_file_operations(pkg, verbose = FALSE)$passed)
 })
 
 test_that("file_operations does not exempt on the strength of a non-destination arg", {
@@ -154,7 +154,7 @@ test_that("file_operations does not exempt on the strength of a non-destination 
       "}"
     )
   )
-  expect_false(diagnose_file_operations(pkg, verbose = FALSE)$passed)
+  expect_false(lab_file_operations(pkg, verbose = FALSE)$passed)
 })
 
 # --- file_operations: only a provable destination is a violation -------------
@@ -168,7 +168,7 @@ test_that("file_operations flags a hardcoded literal destination", {
       "g <- function(x) saveRDS(x, '~/cache.rds')" # writes to $HOME
     )
   )
-  res <- diagnose_file_operations(pkg, verbose = FALSE)
+  res <- lab_file_operations(pkg, verbose = FALSE)
   expect_false(res$passed)
   expect_equal(length(res$issues), 2L)
 })
@@ -189,7 +189,7 @@ test_that("file_operations allows a caller-supplied or computed destination", {
       "h <- function(x) saveRDS(x, tempfile())"
     )
   )
-  expect_true(diagnose_file_operations(pkg, verbose = FALSE)$passed)
+  expect_true(lab_file_operations(pkg, verbose = FALSE)$passed)
 })
 
 test_that("file_operations still catches a formal that defaults into $HOME", {
@@ -200,7 +200,7 @@ test_that("file_operations still catches a formal that defaults into $HOME", {
     pkg,
     r_code = "f <- function(x, path = '~/data.csv') writeLines(x, path)"
   )
-  expect_false(diagnose_file_operations(pkg, verbose = FALSE)$passed)
+  expect_false(lab_file_operations(pkg, verbose = FALSE)$passed)
 })
 
 test_that("file_operations reads file.create()'s destination as its FIRST arg", {
@@ -208,7 +208,7 @@ test_that("file_operations reads file.create()'s destination as its FIRST arg", 
   # Assuming "always the second argument" read file.create()'s path as content.
   pkg <- make_temp_dir()
   write_pkg(pkg, r_code = "f <- function() file.create('~/marker.txt')")
-  expect_false(diagnose_file_operations(pkg, verbose = FALSE)$passed)
+  expect_false(lab_file_operations(pkg, verbose = FALSE)$passed)
 })
 
 test_that("file_operations judges a path by its ROOT, not any literal in it", {
@@ -226,7 +226,7 @@ test_that("file_operations judges a path by its ROOT, not any literal in it", {
       "under_dir <- function(dir, x) writeLines(x, file.path(dir, 'out.csv'))"
     )
   )
-  expect_true(diagnose_file_operations(pkg, verbose = FALSE)$passed)
+  expect_true(lab_file_operations(pkg, verbose = FALSE)$passed)
 })
 
 test_that("file_operations flags a path whose ROOT is a literal", {
@@ -238,7 +238,7 @@ test_that("file_operations flags a path whose ROOT is a literal", {
       "b <- function(x) writeLines(x, file.path('output', 'out.csv'))" # working dir
     )
   )
-  res <- diagnose_file_operations(pkg, verbose = FALSE)
+  res <- lab_file_operations(pkg, verbose = FALSE)
   expect_false(res$passed)
   expect_equal(length(res$issues), 2L)
 })

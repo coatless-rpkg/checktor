@@ -131,8 +131,8 @@ test_that("checks called from a subdirectory find the same real issues", {
   sub <- file.path(pkg, "R")
 
   named <- c(
-    "diagnose_tf_usage", "diagnose_seed_setting", "diagnose_print_cat_usage",
-    "diagnose_title_case", "diagnose_code_issues"
+    "lab_tf_usage", "lab_seed_setting", "lab_print_cat_usage",
+    "lab_title_case", "diagnose_code_issues"
   )
   found <- 0L
   for (nm in named) {

@@ -82,7 +82,7 @@ test_that("a check whose function errors surfaces as a failure", {
   # Stub a diagnostic that always throws; check that the orchestrator records
   # it as a failure with a non-empty message rather than silently dropping it.
   with_mocked_bindings(
-    diagnose_tf_usage = function(path, verbose = TRUE, parsed = NULL) {
+    lab_tf_usage = function(path, verbose = TRUE, parsed = NULL) {
       stop("synthetic")
     },
     code = {
@@ -110,10 +110,12 @@ test_that("configure_doctor changes the defaults consumed by checktor", {
   expect_false(getOption("checktor.verbose"))
   expect_false(getOption("checktor.progress"))
 
-  # Default args of checktor() should now resolve to FALSE
+  # Default args of checktor() should now resolve to FALSE. cli output is a
+  # message, not an error, so expect_no_error() would stay green through a run
+  # that printed all of its diagnostics. Silence is the only proof.
   pkg <- make_temp_dir()
   write_pkg(pkg)
-  expect_no_error(checktor(pkg)) # would print/progress if defaults ignored
+  expect_length(cli::cli_fmt(checktor(pkg)), 0L)
 })
 
 test_that("validate_package_directory enforces DESCRIPTION presence", {
@@ -145,7 +147,9 @@ test_that("prescribe() surfaces failed checks that have no curated treatment", {
 
   out <- cli::cli_fmt(prescribe(res))
   txt <- paste(out, collapse = "\n")
-  expect_match(txt, "NEWS")
+  # Match the ISSUE, not the heading: "NEWS" alone is satisfied by the
+  # "NEWS file check" header that #4 was filed about.
+  expect_match(txt, "No NEWS file found", fixed = TRUE)
 })
 
 test_that("prescribe() still emits curated treatments for known checks", {

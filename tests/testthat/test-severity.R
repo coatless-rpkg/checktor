@@ -106,5 +106,7 @@ test_that("prescribe() still offers remedies for advisory-only findings", {
   expect_true(is_healthy(r)) # nothing CRAN will reject
   expect_gt(r$metadata$advisory_issues, 0L) # but there IS something to say
   txt <- paste(cli::cli_fmt(prescribe(r)), collapse = "\n")
-  expect_match(txt, "NEWS")
+  # The finding itself, not the "NEWS file check" heading: a header-only
+  # prescription is exactly the silence this test is here to rule out.
+  expect_match(txt, "No NEWS file found", fixed = TRUE)
 })

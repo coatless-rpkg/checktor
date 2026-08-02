@@ -36,7 +36,7 @@ test_that("Config/checktor/software_names makes an extra name flagged when unquo
     description = "Wraps brms models for the user. It does several helpful things here.",
     extra = "Config/checktor/software_names: brms"
   )
-  res <- diagnose_software_names_formatting(pkg, verbose = FALSE)
+  res <- lab_software_names(pkg, verbose = FALSE)
   expect_false(res$passed)
   expect_true(any(grepl("brms", res$issues)))
 })
@@ -47,7 +47,7 @@ test_that("without config, the extra name is NOT flagged", {
     pkg,
     description = "Wraps brms models for the user. It does several helpful things here."
   )
-  expect_true(diagnose_software_names_formatting(pkg, verbose = FALSE)$passed)
+  expect_true(lab_software_names(pkg, verbose = FALSE)$passed)
 })
 
 test_that("Config software_names also reaches the double-quote check", {
@@ -59,7 +59,7 @@ test_that("Config software_names also reaches the double-quote check", {
     description = 'Wraps "brms" models for the user. It does helpful things here.',
     extra = "Config/checktor/software_names: brms"
   )
-  expect_false(diagnose_description_quoted_quotes(pkg, verbose = FALSE)$passed)
+  expect_false(lab_description_quoted_quotes(pkg, verbose = FALSE)$passed)
 })
 
 test_that("Config/checktor/acronyms suppresses an acronym finding", {
@@ -70,7 +70,7 @@ test_that("Config/checktor/acronyms suppresses an acronym finding", {
     extra = "Config/checktor/acronyms: MCMC"
   )
   expect_false(
-    "MCMC" %in% diagnose_acronym_explanation(pkg, verbose = FALSE)$issues
+    "MCMC" %in% lab_acronyms(pkg, verbose = FALSE)$issues
   )
 })
 

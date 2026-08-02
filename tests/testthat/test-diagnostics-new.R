@@ -60,7 +60,7 @@ test_that("title_starts_with_article is NOT part of a default run", {
 
   # Still callable directly.
   expect_false(
-    diagnose_title_starts_with_article(pkg, verbose = FALSE)$passed
+    lab_title_starts_with_article(pkg, verbose = FALSE)$passed
   )
 })
 
@@ -125,7 +125,7 @@ test_that("library_in_pkg_code flags library()/require() but not pkg::fn", {
       "}"
     )
   )
-  res <- diagnose_library_in_pkg_code(pkg, verbose = FALSE)
+  res <- lab_library_in_pkg(pkg, verbose = FALSE)
   expect_false(res$passed)
   expect_equal(length(res$issues), 2L)
 })
@@ -135,7 +135,7 @@ test_that("library_in_pkg_code flags library()/require() but not pkg::fn", {
 test_that("sys_setenv_no_reset flags naked Sys.setenv and accepts cleanup", {
   pkg_bad <- make_temp_dir()
   write_pkg(pkg_bad, r_code = "f <- function() Sys.setenv(FOO = 1)")
-  expect_false(diagnose_sys_setenv_no_reset(pkg_bad, verbose = FALSE)$passed)
+  expect_false(lab_sys_setenv(pkg_bad, verbose = FALSE)$passed)
 
   pkg_ok <- make_temp_dir()
   write_pkg(
@@ -148,7 +148,7 @@ test_that("sys_setenv_no_reset flags naked Sys.setenv and accepts cleanup", {
       "g <- function() withr::local_envvar(c(BAR = 1))"
     )
   )
-  expect_true(diagnose_sys_setenv_no_reset(pkg_ok, verbose = FALSE)$passed)
+  expect_true(lab_sys_setenv(pkg_ok, verbose = FALSE)$passed)
 })
 
 # ---- commented_examples ------------------------------------------------------
@@ -171,7 +171,7 @@ test_that("commented_examples flags an \\examples block that runs nothing", {
       )
     )
   )
-  res <- diagnose_commented_examples(pkg, verbose = FALSE)
+  res <- lab_commented_examples(pkg, verbose = FALSE)
   expect_false(res$passed)
 })
 
@@ -191,7 +191,7 @@ test_that("commented_examples accepts explanatory comments", {
       )
     )
   )
-  res <- diagnose_commented_examples(pkg, verbose = FALSE)
+  res <- lab_commented_examples(pkg, verbose = FALSE)
   expect_true(res$passed)
 })
 
@@ -216,7 +216,7 @@ test_that("donttest_vs_dontrun suggests \\donttest{} for slow-only code", {
       )
     )
   )
-  res <- diagnose_donttest_vs_dontrun(pkg, verbose = FALSE)
+  res <- lab_donttest_vs_dontrun(pkg, verbose = FALSE)
   expect_false(res$passed)
 })
 
@@ -238,6 +238,6 @@ test_that("donttest_vs_dontrun accepts \\dontrun for justified cases", {
       )
     )
   )
-  res <- diagnose_donttest_vs_dontrun(pkg, verbose = FALSE)
+  res <- lab_donttest_vs_dontrun(pkg, verbose = FALSE)
   expect_true(res$passed)
 })

@@ -1,6 +1,6 @@
 # ---- T/F usage ---------------------------------------------------------------
 
-test_that("diagnose_tf_usage flags bare T/F (including leading position)", {
+test_that("lab_tf_usage flags bare T/F (including leading position)", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -11,12 +11,12 @@ test_that("diagnose_tf_usage flags bare T/F (including leading position)", {
       "fn <- function() F"
     )
   )
-  res <- diagnose_tf_usage(pkg, verbose = FALSE)
+  res <- lab_tf_usage(pkg, verbose = FALSE)
   expect_false(res$passed)
   expect_equal(length(res$issues), 4L)
 })
 
-test_that("diagnose_tf_usage ignores T/F inside strings and comments", {
+test_that("lab_tf_usage ignores T/F inside strings and comments", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -28,11 +28,11 @@ test_that("diagnose_tf_usage ignores T/F inside strings and comments", {
       "y <- TRUE"
     )
   )
-  res <- diagnose_tf_usage(pkg, verbose = FALSE)
+  res <- lab_tf_usage(pkg, verbose = FALSE)
   expect_true(res$passed)
 })
 
-test_that("diagnose_tf_usage ignores TRUE/FALSE and other words containing T or F", {
+test_that("lab_tf_usage ignores TRUE/FALSE and other words containing T or F", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -43,16 +43,16 @@ test_that("diagnose_tf_usage ignores TRUE/FALSE and other words containing T or 
       "field <- 1"
     )
   )
-  res <- diagnose_tf_usage(pkg, verbose = FALSE)
+  res <- lab_tf_usage(pkg, verbose = FALSE)
   expect_true(res$passed)
 })
 
 # ---- seed setting ------------------------------------------------------------
 
-test_that("diagnose_seed_setting flags hardcoded set.seed and ignores parameterised seeds", {
+test_that("lab_seed_setting flags hardcoded set.seed and ignores parameterised seeds", {
   pkg_bad <- make_temp_dir()
   write_pkg(pkg_bad, r_code = "f <- function() { set.seed(1); 1 }")
-  expect_false(diagnose_seed_setting(pkg_bad, verbose = FALSE)$passed)
+  expect_false(lab_seed_setting(pkg_bad, verbose = FALSE)$passed)
 
   pkg_ok <- make_temp_dir()
   write_pkg(
@@ -64,12 +64,25 @@ test_that("diagnose_seed_setting flags hardcoded set.seed and ignores parameteri
       "}"
     )
   )
-  expect_true(diagnose_seed_setting(pkg_ok, verbose = FALSE)$passed)
+  expect_true(lab_seed_setting(pkg_ok, verbose = FALSE)$passed)
+})
+
+test_that("lab_seed_setting flags a seed under a live condition", {
+  # The dead-code carve-out is narrow on purpose: only `if (FALSE)` can never run.
+  # A seed under any condition a caller can satisfy DOES reach the user's RNG
+  # state, so it stays a finding.
+  pkg_live <- make_temp_dir()
+  write_pkg(pkg_live, r_code = "f <- function(x) { if (x > 0) set.seed(123); x }")
+  expect_false(lab_seed_setting(pkg_live, verbose = FALSE)$passed)
+
+  pkg_dead <- make_temp_dir()
+  write_pkg(pkg_dead, r_code = "f <- function(x) { if (FALSE) set.seed(123); x }")
+  expect_true(lab_seed_setting(pkg_dead, verbose = FALSE)$passed)
 })
 
 # ---- print/cat ---------------------------------------------------------------
 
-test_that("diagnose_print_cat_usage ignores cat in strings and verbosity-gated cat", {
+test_that("lab_print_cat_usage ignores cat in strings and verbosity-gated cat", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -79,7 +92,7 @@ test_that("diagnose_print_cat_usage ignores cat in strings and verbosity-gated c
       "g <- function(quiet) { if (!quiet) cat('y'); invisible() }"
     )
   )
-  expect_true(diagnose_print_cat_usage(pkg, verbose = FALSE)$passed)
+  expect_true(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
 
   # A function that COMPUTES and also prints is the leak: the caller wanted the
   # value and got noise too. (A function that only prints is an emitter, and
@@ -94,7 +107,51 @@ test_that("diagnose_print_cat_usage ignores cat in strings and verbosity-gated c
       "}"
     )
   )
-  expect_false(diagnose_print_cat_usage(pkg2, verbose = FALSE)$passed)
+  expect_false(lab_print_cat_usage(pkg2, verbose = FALSE)$passed)
+})
+
+test_that("print_cat_usage recognises every verbosity-flag stem it whitelists", {
+  # The two fixtures in the test above never reach the whitelist: both bodies are
+  # already exempt as functions with no visible return, so the guard is never
+  # consulted. These bodies end in `compute(x)`, a visible return, which is the
+  # only shape that gets as far as the flag-name test. One fixture per stem, so
+  # dropping any single name from the list (which is how geoR's `messages.screen`
+  # came to be reported 117 times) fails here.
+  stems <- c(
+    "verbose", "quiet", "silent", "debug", "trace", "message", "msg",
+    "print", "report", "note", "info", "show", "echo", "progress",
+    "log", "warn", "output"
+  )
+  for (stem in stems) {
+    flag <- paste0(stem, "_flag")
+    pkg <- make_temp_dir()
+    write_pkg(
+      pkg,
+      r_code = c(
+        sprintf("f <- function(x, %s = TRUE) {", flag),
+        sprintf("  if (%s) cat('working')", flag),
+        "  compute(x)",
+        "}"
+      )
+    )
+    expect_true(lab_print_cat_usage(pkg, verbose = FALSE)$passed, info = stem)
+  }
+
+  # The control: the same shape gated on something that is not an output flag is
+  # still the unsuppressable output the check is for.
+  pkg_bad <- make_temp_dir()
+  write_pkg(
+    pkg_bad,
+    r_code = c(
+      "f <- function(x, n) {",
+      "  if (n > 0) cat('working')",
+      "  compute(x)",
+      "}"
+    )
+  )
+  res <- lab_print_cat_usage(pkg_bad, verbose = FALSE)
+  expect_false(res$passed)
+  expect_equal(length(res$issues), 1L)
 })
 
 test_that("print_cat_usage exempts a pure emitter with a single cat()", {
@@ -113,10 +170,10 @@ test_that("print_cat_usage exempts a pure emitter with a single cat()", {
       "}"
     )
   )
-  expect_true(diagnose_print_cat_usage(pkg, verbose = FALSE)$passed)
+  expect_true(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
 })
 
-test_that("diagnose_print_cat_usage exempts cat/print in S3 print/format methods (#6)", {
+test_that("lab_print_cat_usage exempts cat/print in S3 print/format methods (#6)", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -132,10 +189,10 @@ test_that("diagnose_print_cat_usage exempts cat/print in S3 print/format methods
       "}"
     )
   )
-  expect_true(diagnose_print_cat_usage(pkg, verbose = FALSE)$passed)
+  expect_true(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
 })
 
-test_that("diagnose_print_cat_usage still flags cat in ordinary functions alongside a method", {
+test_that("lab_print_cat_usage still flags cat in ordinary functions alongside a method", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -147,14 +204,14 @@ test_that("diagnose_print_cat_usage still flags cat in ordinary functions alongs
       "}"
     )
   )
-  res <- diagnose_print_cat_usage(pkg, verbose = FALSE)
+  res <- lab_print_cat_usage(pkg, verbose = FALSE)
   expect_false(res$passed)
   expect_equal(length(res$issues), 1L) # only the ordinary function's cat
 })
 
 # ---- option changes ----------------------------------------------------------
 
-test_that("diagnose_option_changes recognises on.exit and withr::local_*", {
+test_that("lab_option_changes recognises on.exit and withr::local_*", {
   pkg_ok <- make_temp_dir()
   write_pkg(
     pkg_ok,
@@ -170,14 +227,14 @@ test_that("diagnose_option_changes recognises on.exit and withr::local_*", {
       "}"
     )
   )
-  expect_true(diagnose_option_changes(pkg_ok, verbose = FALSE)$passed)
+  expect_true(lab_option_changes(pkg_ok, verbose = FALSE)$passed)
 
   pkg_bad <- make_temp_dir()
   write_pkg(pkg_bad, r_code = "f <- function() options(scipen = 999)")
-  expect_false(diagnose_option_changes(pkg_bad, verbose = FALSE)$passed)
+  expect_false(lab_option_changes(pkg_bad, verbose = FALSE)$passed)
 })
 
-test_that("diagnose_option_changes exempts a factored on.exit restore handler", {
+test_that("lab_option_changes exempts a factored on.exit restore handler", {
   # paintr's shape: the restore is a helper the caller registers with on.exit(),
   # so its own par() writes ARE the restore even though its body has no on.exit.
   pkg_ok <- make_temp_dir()
@@ -193,7 +250,7 @@ test_that("diagnose_option_changes exempts a factored on.exit restore handler", 
       "}"
     )
   )
-  expect_true(diagnose_option_changes(pkg_ok, verbose = FALSE)$passed)
+  expect_true(lab_option_changes(pkg_ok, verbose = FALSE)$passed)
 
   # But a helper that is NOT registered with on.exit stays a genuine leak.
   pkg_bad <- make_temp_dir()
@@ -201,12 +258,12 @@ test_that("diagnose_option_changes exempts a factored on.exit restore handler", 
     pkg_bad,
     r_code = "set_margins <- function() par(mar = c(1, 1, 1, 1))"
   )
-  expect_false(diagnose_option_changes(pkg_bad, verbose = FALSE)$passed)
+  expect_false(lab_option_changes(pkg_bad, verbose = FALSE)$passed)
 })
 
 # ---- home writing ------------------------------------------------------------
 
-test_that("diagnose_home_writing does NOT flag formula tildes", {
+test_that("lab_home_writing does NOT flag formula tildes", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -216,10 +273,10 @@ test_that("diagnose_home_writing does NOT flag formula tildes", {
       "g <- function() y ~ a + b"
     )
   )
-  expect_true(diagnose_home_writing(pkg, verbose = FALSE)$passed)
+  expect_true(lab_home_writing(pkg, verbose = FALSE)$passed)
 })
 
-test_that("diagnose_home_writing flags WRITES into the home directory", {
+test_that("lab_home_writing flags WRITES into the home directory", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -229,12 +286,31 @@ test_that("diagnose_home_writing flags WRITES into the home directory", {
       'h <- function(x) write.csv(x, file = file.path(Sys.getenv("HOME"), "o.csv"))'
     )
   )
-  res <- diagnose_home_writing(pkg, verbose = FALSE)
+  res <- lab_home_writing(pkg, verbose = FALSE)
   expect_false(res$passed)
   expect_equal(length(res$issues), 3L)
 })
 
-test_that("diagnose_home_writing does not flag reads of the home path", {
+test_that("lab_home_writing knows the tabular and graphics-device writers too", {
+  # The three fixtures above exercise writeLines/saveRDS/write.csv, three of the
+  # forty entries in WRITE_FUNCTIONS. A device opened on a home path leaves a file
+  # there exactly as write.table() does, so both ends of the list are pinned.
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    r_code = c(
+      "a <- function(x) write.table(x, '~/o.tsv')",
+      "b <- function() png('~/p.png')"
+    )
+  )
+  res <- lab_home_writing(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_equal(length(res$issues), 2L)
+  expect_match(res$issues, "write.table", all = FALSE, fixed = TRUE)
+  expect_match(res$issues, "png", all = FALSE, fixed = TRUE)
+})
+
+test_that("lab_home_writing does not flag reads of the home path", {
   # The old check inspected only path.expand/normalizePath/file.path/Sys.getenv,
   # which are all reads: it flagged these while MISSING the writes above.
   pkg <- make_temp_dir()
@@ -247,12 +323,12 @@ test_that("diagnose_home_writing does not flag reads of the home path", {
       "i <- function() file.path('~', 'data.csv')"
     )
   )
-  expect_true(diagnose_home_writing(pkg, verbose = FALSE)$passed)
+  expect_true(lab_home_writing(pkg, verbose = FALSE)$passed)
 })
 
 # ---- temp cleanup ------------------------------------------------------------
 
-test_that("diagnose_temp_cleanup is per-tempfile and requires nearby cleanup", {
+test_that("lab_temp_cleanup is per-tempfile and requires nearby cleanup", {
   # Scope is package code under R/, NOT tests/. Scanning tests/ is what made this
   # report withr, fs, rlang, testthat and cli, the packages that handle temp files
   # most carefully of anyone.
@@ -273,12 +349,12 @@ test_that("diagnose_temp_cleanup is per-tempfile and requires nearby cleanup", {
     )
   )
 
-  res <- diagnose_temp_cleanup(pkg, verbose = FALSE)
+  res <- lab_temp_cleanup(pkg, verbose = FALSE)
   expect_false(res$passed)
   expect_equal(length(res$issues), 1L) # only the leaky one
 })
 
-test_that("diagnose_temp_cleanup ignores .Rd files (they are not R)", {
+test_that("lab_temp_cleanup ignores .Rd files (they are not R)", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -294,12 +370,12 @@ test_that("diagnose_temp_cleanup ignores .Rd files (they are not R)", {
     )
   )
   # No tests/ directory ⇒ nothing to inspect ⇒ passes.
-  expect_true(diagnose_temp_cleanup(pkg, verbose = FALSE)$passed)
+  expect_true(lab_temp_cleanup(pkg, verbose = FALSE)$passed)
 })
 
 # ---- globalenv modification --------------------------------------------------
 
-test_that("diagnose_globalenv_modification flags a <<- that binds nowhere", {
+test_that("lab_globalenv_mod flags a <<- that binds nowhere", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -310,12 +386,12 @@ test_that("diagnose_globalenv_modification flags a <<- that binds nowhere", {
       "}"
     )
   )
-  res <- diagnose_globalenv_modification(pkg, verbose = FALSE)
+  res <- lab_globalenv_mod(pkg, verbose = FALSE)
   expect_false(res$passed)
   expect_equal(length(res$issues), 1L)
 })
 
-test_that("diagnose_globalenv_modification exempts closures and package-level caches", {
+test_that("lab_globalenv_mod exempts closures and package-level caches", {
   # `<<-` walks the enclosing environments and assigns in the first frame where
   # the name is already bound; it only reaches .GlobalEnv when the name is bound
   # nowhere else. Flagging every `<<-` false-positives on both correct idioms.
@@ -334,12 +410,32 @@ test_that("diagnose_globalenv_modification exempts closures and package-level ca
       "reader <- function(nm) exists(nm, envir = globalenv())" # a pure READ
     )
   )
-  expect_true(diagnose_globalenv_modification(pkg, verbose = FALSE)$passed)
+  expect_true(lab_globalenv_mod(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_globalenv_mod reads the right-hand superassignment too", {
+  # `v ->> x` is the same write as `x <<- v`, with the target on the OTHER side of
+  # the operator. Nothing else in the suite writes one, so this is the only cover
+  # superassign_target()'s RIGHT_ASSIGN branch has.
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    r_code = c(
+      "leaky <- function() {",
+      "  1 ->> undeclared_global",
+      "  invisible(NULL)",
+      "}"
+    )
+  )
+  res <- lab_globalenv_mod(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_equal(length(res$issues), 1L)
+  expect_match(res$issues, "undeclared_global", all = FALSE, fixed = TRUE)
 })
 
 # ---- installed.packages ------------------------------------------------------
 
-test_that("diagnose_installed_packages_usage flags the call but not the word", {
+test_that("lab_installed_packages flags the call but not the word", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -348,14 +444,29 @@ test_that("diagnose_installed_packages_usage flags the call but not the word", {
       "f <- function() installed.packages()"
     )
   )
-  res <- diagnose_installed_packages_usage(pkg, verbose = FALSE)
+  res <- lab_installed_packages(pkg, verbose = FALSE)
   expect_false(res$passed)
   expect_equal(length(res$issues), 1L)
 })
 
+test_that("lab_installed_packages is quiet on the recommended alternatives", {
+  # The treatment line names requireNamespace() and find.package(); a package that
+  # already took that advice must come back clean.
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    r_code = c(
+      "f <- function() requireNamespace('utils', quietly = TRUE)",
+      "g <- function() find.package('utils')",
+      "h <- function() utils::available.packages()"
+    )
+  )
+  expect_true(lab_installed_packages(pkg, verbose = FALSE)$passed)
+})
+
 # ---- warn = -1 ---------------------------------------------------------------
 
-test_that("diagnose_warn_option finds warn = -1 in multi-arg and withr forms", {
+test_that("lab_warn_option finds warn = -1 in multi-arg and withr forms", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -368,14 +479,29 @@ test_that("diagnose_warn_option finds warn = -1 in multi-arg and withr forms", {
       ")"
     )
   )
-  res <- diagnose_warn_option(pkg, verbose = FALSE)
+  res <- lab_warn_option(pkg, verbose = FALSE)
   expect_false(res$passed)
-  expect_gte(length(res$issues), 3L)
+  expect_equal(length(res$issues), 3L)
+})
+
+test_that("lab_warn_option only objects to -1, not to every warn = value", {
+  # The rule is about SILENCING warnings for the rest of the session. `warn = 2`
+  # turns them into errors and `options(warn = old)` puts the user's value back;
+  # neither hides anything, so neither is a finding.
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    r_code = "f <- function(old) { options(warn = 2); options(warn = old) }"
+  )
+  expect_true(lab_warn_option(pkg, verbose = FALSE)$passed)
 })
 
 # ---- software installation ---------------------------------------------------
 
-test_that("diagnose_software_installation flags install.packages/devtools::install_*", {
+test_that("lab_software_install flags install.packages/devtools::install_*", {
+  # `fine()` is the control: requireNamespace() is the conditional-Suggests idiom
+  # Writing R Extensions prescribes, and it installs nothing. The count is exact so
+  # that treating it as an install shows up here.
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -386,9 +512,36 @@ test_that("diagnose_software_installation flags install.packages/devtools::insta
       "fine <- function() requireNamespace('utils')"
     )
   )
-  res <- diagnose_software_installation(pkg, verbose = FALSE)
+  res <- lab_software_install(pkg, verbose = FALSE)
   expect_false(res$passed)
-  expect_gte(length(res$issues), 3L)
+  expect_equal(length(res$issues), 3L)
+})
+
+# ---- Sys.setenv --------------------------------------------------------------
+
+test_that("lab_sys_setenv flags an environment variable that is never put back", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, r_code = "f <- function() Sys.setenv(MYVAR = '1')")
+  res <- lab_sys_setenv(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_equal(length(res$issues), 1L)
+})
+
+test_that("lab_sys_setenv accepts on.exit and withr::local_envvar restores", {
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    r_code = c(
+      "f <- function() {",
+      "  old <- Sys.getenv('MYVAR')",
+      "  on.exit(Sys.setenv(MYVAR = old))",
+      "  Sys.setenv(MYVAR = '1')",
+      "  invisible()",
+      "}",
+      "g <- function() withr::local_envvar(c(MYVAR = '1'))"
+    )
+  )
+  expect_true(lab_sys_setenv(pkg, verbose = FALSE)$passed)
 })
 
 # ---- core usage --------------------------------------------------------------
@@ -406,7 +559,7 @@ test_that("option_changes exempts a setter that captures and returns the old val
       "}"
     )
   )
-  expect_true(diagnose_option_changes(pkg, verbose = FALSE)$passed)
+  expect_true(lab_option_changes(pkg, verbose = FALSE)$passed)
 })
 
 test_that("option_changes still flags a bare options() whose old value is discarded", {
@@ -420,14 +573,14 @@ test_that("option_changes still flags a bare options() whose old value is discar
       "}"
     )
   )
-  res <- diagnose_option_changes(pkg, verbose = FALSE)
+  res <- lab_option_changes(pkg, verbose = FALSE)
   expect_false(res$passed)
   expect_equal(length(res$issues), 1L)
 })
 
 # ---- core usage (redesigned) --------------------------------------------------
 
-test_that("diagnose_core_usage flags an unbounded worker count across frameworks", {
+test_that("lab_core_usage flags an unbounded worker count across frameworks", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -443,12 +596,12 @@ test_that("diagnose_core_usage flags an unbounded worker count across frameworks
       "i1 <- function() doMC::registerDoMC(cores = 8)"
     )
   )
-  res <- diagnose_core_usage(pkg, verbose = FALSE)
+  res <- lab_core_usage(pkg, verbose = FALSE)
   expect_false(res$passed)
   expect_equal(length(res$issues), 9L)
 })
 
-test_that("diagnose_core_usage exempts a CRAN-guarded worker count", {
+test_that("lab_core_usage exempts a CRAN-guarded worker count", {
   # This is logitr's and cbcTools' real guard, and it is byte-for-byte R's own
   # parallel:::.check_ncores predicate. The old check flagged it anyway, because
   # it demanded an `mc.cores` argument on the detectCores() call itself, which
@@ -465,10 +618,10 @@ test_that("diagnose_core_usage exempts a CRAN-guarded worker count", {
       "}"
     )
   )
-  expect_true(diagnose_core_usage(pkg, verbose = FALSE)$passed)
+  expect_true(lab_core_usage(pkg, verbose = FALSE)$passed)
 })
 
-test_that("diagnose_core_usage exempts availableCores, a <=2 literal, and defaults", {
+test_that("lab_core_usage exempts availableCores, a <=2 literal, and defaults", {
   # Measured under _R_CHECK_LIMIT_CORES_=TRUE: detectCores() returns 12 while
   # parallelly/future availableCores() return 2, so availableCores() is the safe idiom.
   pkg <- make_temp_dir()
@@ -482,7 +635,23 @@ test_that("diagnose_core_usage exempts availableCores, a <=2 literal, and defaul
       "e <- function() parallel::makeCluster(cl_spec)" # unresolvable: do not guess
     )
   )
-  expect_true(diagnose_core_usage(pkg, verbose = FALSE)$passed)
+  expect_true(lab_core_usage(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_core_usage draws the line at two, not at some larger number", {
+  # CRAN's ceiling is a hard two ("it must never use more than two
+  # simultaneously"), so 3 is a breach even though it is modest. Every other
+  # fixture in this file sits at 8 or above, which leaves 3..5 untested and the
+  # threshold free to drift upward unnoticed.
+  pkg_bad <- make_temp_dir()
+  write_pkg(pkg_bad, r_code = "f <- function() parallel::makeCluster(3L)")
+  res <- lab_core_usage(pkg_bad, verbose = FALSE)
+  expect_false(res$passed)
+  expect_equal(length(res$issues), 1L)
+
+  pkg_ok <- make_temp_dir()
+  write_pkg(pkg_ok, r_code = "f <- function() parallel::makeCluster(2L)")
+  expect_true(lab_core_usage(pkg_ok, verbose = FALSE)$passed)
 })
 
 # --- print_cat_usage: the three WRE/CRAN carve-outs -------------------------
@@ -499,7 +668,7 @@ test_that("print_cat_usage flags output from a function that returns a value", {
       "}"
     )
   )
-  res <- diagnose_print_cat_usage(pkg, verbose = FALSE)
+  res <- lab_print_cat_usage(pkg, verbose = FALSE)
   expect_false(res$passed)
 })
 
@@ -526,7 +695,7 @@ test_that("print_cat_usage exempts a function with no visible return value", {
       "}"
     )
   )
-  expect_true(diagnose_print_cat_usage(pkg, verbose = FALSE)$passed)
+  expect_true(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
 })
 
 test_that("print_cat_usage exempts print() used as a file writer", {
@@ -543,7 +712,7 @@ test_that("print_cat_usage exempts print() used as a file writer", {
       "}"
     )
   )
-  expect_true(diagnose_print_cat_usage(pkg, verbose = FALSE)$passed)
+  expect_true(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
 })
 
 test_that("print_cat_usage still flags a plain print() in a value-returning fn", {
@@ -558,7 +727,7 @@ test_that("print_cat_usage still flags a plain print() in a value-returning fn",
       "}"
     )
   )
-  expect_false(diagnose_print_cat_usage(pkg, verbose = FALSE)$passed)
+  expect_false(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
 })
 
 test_that("print_cat_usage exempts output that sets up an interactive prompt", {
@@ -577,7 +746,7 @@ test_that("print_cat_usage exempts output that sets up an interactive prompt", {
       "}"
     )
   )
-  expect_true(diagnose_print_cat_usage(pkg, verbose = FALSE)$passed)
+  expect_true(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
 })
 
 test_that("print_cat_usage exempts output guarded by if (interactive())", {
@@ -591,7 +760,7 @@ test_that("print_cat_usage exempts output guarded by if (interactive())", {
       "}"
     )
   )
-  expect_true(diagnose_print_cat_usage(pkg, verbose = FALSE)$passed)
+  expect_true(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
 })
 
 test_that("print_cat_usage does NOT flag a void function: a documented, knowing miss", {
@@ -618,7 +787,7 @@ test_that("print_cat_usage does NOT flag a void function: a documented, knowing 
       "}"
     )
   )
-  expect_true(diagnose_print_cat_usage(pkg, verbose = FALSE)$passed)
+  expect_true(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
 })
 
 test_that("library_in_pkg exempts library() sent to a parallel worker", {
@@ -634,13 +803,38 @@ test_that("library_in_pkg exempts library() sent to a parallel worker", {
       "}"
     )
   )
-  expect_true(diagnose_library_in_pkg_code(pkg, verbose = FALSE)$passed)
+  expect_true(lab_library_in_pkg(pkg, verbose = FALSE)$passed)
 })
 
 test_that("library_in_pkg still flags library() in ordinary package code", {
   pkg <- make_temp_dir()
   write_pkg(pkg, r_code = "f <- function() { library(dplyr); mutate(x) }")
-  expect_false(diagnose_library_in_pkg_code(pkg, verbose = FALSE)$passed)
+  expect_false(lab_library_in_pkg(pkg, verbose = FALSE)$passed)
+})
+
+test_that("library_in_pkg does not read a $library() method as base::library()", {
+  # `api$library(...)` is a member of whatever `api` is, and nothing to do with
+  # attaching a package. The check carries NOT_MEMBER_ACCESS for exactly this.
+  pkg_ok <- make_temp_dir()
+  write_pkg(
+    pkg_ok,
+    r_code = "run <- function(api) { api$library('x'); api$require('y') }"
+  )
+  expect_true(lab_library_in_pkg(pkg_ok, verbose = FALSE)$passed)
+
+  # ...and the genuine call in the same shape of file is still reported, so the
+  # exemption cannot be widened into a blanket one.
+  pkg_bad <- make_temp_dir()
+  write_pkg(
+    pkg_bad,
+    r_code = c(
+      "run <- function(api) { api$library('x'); api$require('y') }",
+      "go <- function() { library(stats); median(1:3) }"
+    )
+  )
+  res <- lab_library_in_pkg(pkg_bad, verbose = FALSE)
+  expect_false(res$passed)
+  expect_equal(length(res$issues), 1L)
 })
 
 # --- detect_cores_robustness (the false negative our own audit found) --------
@@ -661,7 +855,7 @@ test_that("detect_cores_robustness flags an unguarded detectCores()", {
       "}"
     )
   )
-  res <- diagnose_detect_cores_robustness(pkg, verbose = FALSE)
+  res <- lab_detect_cores_robustness(pkg, verbose = FALSE)
   expect_false(res$passed)
   expect_match(res$issues, "may return NA", all = FALSE)
 })
@@ -678,13 +872,13 @@ test_that("detect_cores_robustness accepts an is.na() guard", {
       "}"
     )
   )
-  expect_true(diagnose_detect_cores_robustness(pkg, verbose = FALSE)$passed)
+  expect_true(lab_detect_cores_robustness(pkg, verbose = FALSE)$passed)
 })
 
 test_that("detect_cores_robustness is silent on a package that never calls it", {
   pkg <- make_temp_dir()
   write_pkg(pkg, r_code = "f <- function() parallelly::availableCores()")
-  expect_true(diagnose_detect_cores_robustness(pkg, verbose = FALSE)$passed)
+  expect_true(lab_detect_cores_robustness(pkg, verbose = FALSE)$passed)
 })
 
 test_that("print_cat_usage exempts an S4 show method and its delegates", {
@@ -713,7 +907,33 @@ test_that("print_cat_usage exempts an S4 show method and its delegates", {
       "setMethod('show', 'DBIConnection', show_DBIConnection)"
     )
   )
-  expect_true(diagnose_print_cat_usage(pkg, verbose = FALSE)$passed)
+  expect_true(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
+})
+
+# ---- internal namespace access -----------------------------------------------
+#
+# These live here, next to lab_internal_ns() in R/diagnostics-code.R, rather than
+# beside the example-side ::: check they pair with. Kept in
+# test-diagnostics-examples.R they gave a false all-clear: editing
+# R/diagnostics-code.R and running its own test file exercised none of them.
+
+test_that("::: is reported in package code, not only in examples", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, r_code = c("a.R" = "f <- function() otherpkg:::helper()"))
+  res <- lab_internal_ns(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_match(res$issues, "otherpkg:::helper", all = FALSE, fixed = TRUE)
+})
+
+test_that(":: in package code is accepted, and a string is not a call", {
+  ok <- make_temp_dir()
+  write_pkg(ok, r_code = c("a.R" = "f <- function() stats::median(1:3)"))
+  expect_true(lab_internal_ns(ok, verbose = FALSE)$passed)
+
+  # The AST is what makes this safe: the text appears, but no call does.
+  str_pkg <- make_temp_dir()
+  write_pkg(str_pkg, r_code = c("a.R" = "f <- function() nchar('pkg:::x')"))
+  expect_true(lab_internal_ns(str_pkg, verbose = FALSE)$passed)
 })
 
 # ---- hardcoded_credentials ---------------------------------------------------
@@ -726,7 +946,7 @@ test_that("hardcoded_credentials flags a token in a string literal", {
     pkg,
     r_code = sprintf("get_client <- function() '%s'", token)
   )
-  res <- diagnose_hardcoded_credentials(pkg, verbose = FALSE)
+  res <- lab_hardcoded_credentials(pkg, verbose = FALSE)
   expect_false(res$passed)
   expect_true(any(grepl("GitHub token", res$issues)))
 })
@@ -740,7 +960,7 @@ test_that("hardcoded_credentials is quiet on ordinary code", {
       "token_pattern <- 'looks like a variable name, not a secret'"
     )
   )
-  expect_true(diagnose_hardcoded_credentials(pkg, verbose = FALSE)$passed)
+  expect_true(lab_hardcoded_credentials(pkg, verbose = FALSE)$passed)
 })
 
 test_that("hardcoded_credentials ignores a secret-shaped pattern in a comment", {
@@ -752,7 +972,7 @@ test_that("hardcoded_credentials ignores a secret-shaped pattern in a comment", 
       "f <- function() TRUE"
     )
   )
-  expect_true(diagnose_hardcoded_credentials(pkg, verbose = FALSE)$passed)
+  expect_true(lab_hardcoded_credentials(pkg, verbose = FALSE)$passed)
 })
 
 test_that("hardcoded_credentials recognises multiple provider formats", {
@@ -775,7 +995,7 @@ test_that("hardcoded_credentials recognises multiple provider formats", {
   for (label in names(cases)) {
     pkg <- make_temp_dir()
     write_pkg(pkg, r_code = sprintf("f <- function() '%s'", cases[[label]]))
-    res <- diagnose_hardcoded_credentials(pkg, verbose = FALSE)
+    res <- lab_hardcoded_credentials(pkg, verbose = FALSE)
     expect_false(res$passed, info = label)
     expect_true(any(grepl(label, res$issues, fixed = TRUE)), info = label)
   }
@@ -790,5 +1010,5 @@ test_that("hardcoded_credentials does not flag a hyphenated slug or bare SHA", {
       "commit <- 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0'"
     )
   )
-  expect_true(diagnose_hardcoded_credentials(pkg, verbose = FALSE)$passed)
+  expect_true(lab_hardcoded_credentials(pkg, verbose = FALSE)$passed)
 })

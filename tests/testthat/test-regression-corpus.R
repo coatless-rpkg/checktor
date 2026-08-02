@@ -36,7 +36,7 @@ test_that("corpus: a console reporter is not unsuppressable output", {
       "}"
     )
   )
-  expect_true(diagnose_print_cat_usage(pkg, verbose = FALSE)$passed)
+  expect_true(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
 })
 
 test_that("corpus: print(doc, target) writes a file, it does not print", {
@@ -51,7 +51,7 @@ test_that("corpus: print(doc, target) writes a file, it does not print", {
       "}"
     )
   )
-  expect_true(diagnose_print_cat_usage(pkg, verbose = FALSE)$passed)
+  expect_true(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
 })
 
 test_that("corpus: output that sets up a user prompt is interactive output", {
@@ -72,7 +72,7 @@ test_that("corpus: output that sets up a user prompt is interactive output", {
       "}"
     )
   )
-  expect_true(diagnose_print_cat_usage(pkg, verbose = FALSE)$passed)
+  expect_true(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
 })
 
 test_that("corpus: a caller-supplied write destination is permission", {
@@ -92,7 +92,7 @@ test_that("corpus: a caller-supplied write destination is permission", {
       "}"
     )
   )
-  expect_true(diagnose_file_operations(pkg, verbose = FALSE)$passed)
+  expect_true(lab_file_operations(pkg, verbose = FALSE)$passed)
 })
 
 test_that("corpus: library() sent to a parallel daemon is not a search-path change", {
@@ -109,7 +109,7 @@ test_that("corpus: library() sent to a parallel daemon is not a search-path chan
       "}"
     )
   )
-  expect_true(diagnose_library_in_pkg_code(pkg, verbose = FALSE)$passed)
+  expect_true(lab_library_in_pkg(pkg, verbose = FALSE)$passed)
 })
 
 test_that("corpus: makeCluster(2L) is CRAN-compliant, not a violation", {
@@ -126,7 +126,7 @@ test_that("corpus: makeCluster(2L) is CRAN-compliant, not a violation", {
       "}"
     )
   )
-  expect_true(diagnose_core_usage(pkg, verbose = FALSE)$passed)
+  expect_true(lab_core_usage(pkg, verbose = FALSE)$passed)
 })
 
 test_that("corpus: a memoisation cache is not a .GlobalEnv write", {
@@ -143,7 +143,7 @@ test_that("corpus: a memoisation cache is not a .GlobalEnv write", {
       "}"
     )
   )
-  expect_true(diagnose_globalenv_modification(pkg, verbose = FALSE)$passed)
+  expect_true(lab_globalenv_mod(pkg, verbose = FALSE)$passed)
 })
 
 test_that("corpus: prose comments in \\examples are not commented-out code", {
@@ -166,7 +166,7 @@ test_that("corpus: prose comments in \\examples are not commented-out code", {
       )
     )
   )
-  expect_true(diagnose_commented_examples(pkg, verbose = FALSE)$passed)
+  expect_true(lab_commented_examples(pkg, verbose = FALSE)$passed)
 })
 
 test_that("corpus: \\dontrun{} around a shiny reactive context is justified", {
@@ -192,7 +192,7 @@ test_that("corpus: \\dontrun{} around a shiny reactive context is justified", {
       )
     )
   )
-  expect_true(diagnose_example_structure(pkg, verbose = FALSE)$passed)
+  expect_true(lab_example_structure(pkg, verbose = FALSE)$passed)
 })
 
 test_that("corpus: a non-syntactic S3 method is registered, not unexported", {
@@ -218,7 +218,7 @@ test_that("corpus: a non-syntactic S3 method is registered, not unexported", {
     ),
     file.path(pkg, "NAMESPACE")
   )
-  expect_true(diagnose_roxygen_usage(pkg, verbose = FALSE)$passed)
+  expect_true(lab_roxygen_usage(pkg, verbose = FALSE)$passed)
 })
 
 test_that("corpus: a 31-word single-sentence Description is not too short", {
@@ -230,7 +230,7 @@ test_that("corpus: a 31-word single-sentence Description is not too short", {
     "re-sized for sharing on social media."
   )
   expect_true(
-    diagnose_description_length(
+    lab_description_length(
       verbose = FALSE,
       desc = c(Description = desc)
     )$passed
@@ -241,7 +241,7 @@ test_that("corpus: a quoted package name in Title keeps its own capitalisation",
   # R's own toTitleCase() restores single-quoted spans, which is why R does not
   # flag 'shiny' and the homegrown word-loop did.
   expect_true(
-    diagnose_title_case(
+    lab_title_case(
       verbose = FALSE,
       desc = c(Title = "Extra Diagnostics for 'shiny' and 'rmarkdown' Packages")
     )$passed
@@ -283,7 +283,7 @@ test_that("corpus: an unguarded detectCores() is caught", {
       "}"
     )
   )
-  expect_false(diagnose_detect_cores_robustness(pkg, verbose = FALSE)$passed)
+  expect_false(lab_detect_cores_robustness(pkg, verbose = FALSE)$passed)
 })
 
 test_that("corpus: a genuine write to the user's home is caught", {
@@ -297,7 +297,7 @@ test_that("corpus: a genuine write to the user's home is caught", {
       "cache <- function(x) saveRDS(x, '~/.myapp/cache.rds')"
     )
   )
-  expect_false(diagnose_home_writing(pkg, verbose = FALSE)$passed)
+  expect_false(lab_home_writing(pkg, verbose = FALSE)$passed)
 })
 
 test_that("corpus: printing during a computation is still caught", {
@@ -313,7 +313,7 @@ test_that("corpus: printing during a computation is still caught", {
       "}"
     )
   )
-  expect_false(diagnose_print_cat_usage(pkg, verbose = FALSE)$passed)
+  expect_false(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
 })
 
 test_that("corpus: a hardcoded write destination is still caught", {
@@ -325,7 +325,7 @@ test_that("corpus: a hardcoded write destination is still caught", {
       "g <- function(x, path = '~/data.csv') writeLines(x, path)"
     )
   )
-  res <- diagnose_file_operations(pkg, verbose = FALSE)
+  res <- lab_file_operations(pkg, verbose = FALSE)
   expect_false(res$passed)
   expect_equal(length(res$issues), 2L)
 })
@@ -354,7 +354,7 @@ test_that("corpus: a Suggests used in \\examples without a guard is caught", {
       )
     )
   )
-  expect_false(diagnose_suggested_in_examples(pkg, verbose = FALSE)$passed)
+  expect_false(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
 })
 
 # ---- CRAN-corpus regressions (45-package audit) -----------------------------
@@ -393,7 +393,7 @@ test_that("corpus: a multi-line export( block is read in full", {
     )
   }
   expect_true(
-    diagnose_unexported_example_namespace(pkg, verbose = FALSE)$passed
+    lab_unexported_example_ns(pkg, verbose = FALSE)$passed
   )
 })
 
@@ -418,7 +418,7 @@ test_that("corpus: roxygen @export may name several objects at once", {
     ),
     file.path(pkg, "NAMESPACE")
   )
-  expect_true(diagnose_roxygen_usage(pkg, verbose = FALSE)$passed)
+  expect_true(lab_roxygen_usage(pkg, verbose = FALSE)$passed)
 })
 
 test_that("corpus: temp_cleanup does not scan tests/, and is not a policy check", {
@@ -436,7 +436,7 @@ test_that("corpus: temp_cleanup does not scan tests/, and is not a policy check"
     "test_that('x', { p <- tempfile(); writeLines('a', p) })",
     file.path(pkg, "tests", "testthat", "test-thing.R")
   )
-  expect_true(diagnose_temp_cleanup(pkg, verbose = FALSE)$passed)
+  expect_true(lab_temp_cleanup(pkg, verbose = FALSE)$passed)
 })
 
 test_that("corpus: options()/par() READS and RESTORES are not changes", {
@@ -454,7 +454,7 @@ test_that("corpus: options()/par() READS and RESTORES are not changes", {
       "bottom <- function(h) par('usr')[3] + h" # read
     )
   )
-  expect_true(diagnose_option_changes(pkg, verbose = FALSE)$passed)
+  expect_true(lab_option_changes(pkg, verbose = FALSE)$passed)
 })
 
 test_that("corpus: a NAMED option argument is still flagged", {
@@ -466,7 +466,7 @@ test_that("corpus: a NAMED option argument is still flagged", {
       "g <- function() par(mfrow = c(1, 2))"
     )
   )
-  res <- diagnose_option_changes(pkg, verbose = FALSE)
+  res <- lab_option_changes(pkg, verbose = FALSE)
   expect_false(res$passed)
   expect_equal(length(res$issues), 2L)
 })
@@ -495,7 +495,7 @@ test_that("corpus: obj$cat() is a method call, not base::cat()", {
       "}"
     )
   )
-  expect_true(diagnose_print_cat_usage(pkg, verbose = FALSE)$passed)
+  expect_true(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
 })
 
 test_that("corpus: base::cat() is still matched", {
@@ -510,7 +510,7 @@ test_that("corpus: base::cat() is still matched", {
       "}"
     )
   )
-  expect_false(diagnose_print_cat_usage(pkg, verbose = FALSE)$passed)
+  expect_false(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
 })
 
 test_that("corpus: obj$system() and obj$browser() are method calls too", {
@@ -527,8 +527,8 @@ test_that("corpus: obj$system() and obj$browser() are method calls too", {
       "}"
     )
   )
-  expect_true(diagnose_system_calls(pkg, verbose = FALSE)$passed)
-  expect_true(diagnose_browser_calls(pkg, verbose = FALSE)$passed)
+  expect_true(lab_system_calls(pkg, verbose = FALSE)$passed)
+  expect_true(lab_browser_calls(pkg, verbose = FALSE)$passed)
 })
 
 # ---- second CRAN-corpus wave (adversarial triage of 105 groups) -------------
@@ -547,7 +547,7 @@ test_that("corpus: an output flag named `messages` is a verbosity gate", {
       "}"
     )
   )
-  expect_true(diagnose_print_cat_usage(pkg, verbose = FALSE)$passed)
+  expect_true(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
 })
 
 test_that("corpus: a method defined with a QUOTED name is still a method", {
@@ -565,7 +565,7 @@ test_that("corpus: a method defined with a QUOTED name is still a method", {
       "}"
     )
   )
-  expect_true(diagnose_print_cat_usage(pkg, verbose = FALSE)$passed)
+  expect_true(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
   expect_equal(
     enclosing_function_name(
       xml2::xml_find_first(
@@ -594,7 +594,7 @@ test_that("corpus: `<<-` inside local() binds in the local() env, not .GlobalEnv
       "})"
     )
   )
-  expect_true(diagnose_globalenv_modification(pkg, verbose = FALSE)$passed)
+  expect_true(lab_globalenv_mod(pkg, verbose = FALSE)$passed)
 })
 
 test_that("corpus: package_size measures the COMPRESSED size CRAN limits", {
@@ -608,7 +608,7 @@ test_that("corpus: package_size measures the COMPRESSED size CRAN limits", {
     rep(paste(rep("a", 100), collapse = ""), 80000),
     file.path(pkg, "inst", "big.csv")
   )
-  res <- diagnose_package_size(pkg, verbose = FALSE)
+  res <- lab_package_size(pkg, verbose = FALSE)
   expect_true(res$passed)
   expect_lt(res$size_mb, 5)
 })
@@ -634,7 +634,7 @@ test_that("corpus: `if (require('pkg'))` IS the sanctioned guard", {
       )
     )
   )
-  expect_true(diagnose_suggested_in_examples(pkg, verbose = FALSE)$passed)
+  expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
 })
 
 test_that("corpus: interactive() is NOT a Suggests guard", {
@@ -656,7 +656,7 @@ test_that("corpus: interactive() is NOT a Suggests guard", {
       )
     )
   )
-  expect_false(diagnose_suggested_in_examples(pkg, verbose = FALSE)$passed)
+  expect_false(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
 })
 
 test_that("corpus: T/F inside expression()/substitute() are language tokens", {
@@ -672,13 +672,13 @@ test_that("corpus: T/F inside expression()/substitute() are language tokens", {
       "lab2 <- function() quote(T + F)"
     )
   )
-  expect_true(diagnose_tf_usage(pkg, verbose = FALSE)$passed)
+  expect_true(lab_tf_usage(pkg, verbose = FALSE)$passed)
 })
 
 test_that("corpus: a real bare T/F is still flagged", {
   pkg <- make_temp_dir()
   write_pkg(pkg, r_code = "f <- function() mean(x, na.rm = T)")
-  expect_false(diagnose_tf_usage(pkg, verbose = FALSE)$passed)
+  expect_false(lab_tf_usage(pkg, verbose = FALSE)$passed)
 })
 
 test_that("corpus: `na.rm = T` is flagged, `f(T = 1)` is not", {
@@ -694,14 +694,14 @@ test_that("corpus: `na.rm = T` is flagged, `f(T = 1)` is not", {
       "g <- function(x) sd(x, na.rm = F)"
     )
   )
-  res <- diagnose_tf_usage(pkg, verbose = FALSE)
+  res <- lab_tf_usage(pkg, verbose = FALSE)
   expect_false(res$passed)
   expect_equal(length(res$issues), 2L)
 
   # An argument literally named T is not a bare logical.
   ok <- make_temp_dir()
   write_pkg(ok, r_code = "h <- function() transform(df, T = 1)")
-  expect_true(diagnose_tf_usage(ok, verbose = FALSE)$passed)
+  expect_true(lab_tf_usage(ok, verbose = FALSE)$passed)
 })
 
 # ---- third wave: the 196-package corpus -------------------------------------
@@ -724,7 +724,7 @@ test_that("corpus: an `=` assignment is an assignment", {
       "}"
     )
   )
-  expect_true(diagnose_globalenv_modification(pkg, verbose = FALSE)$passed)
+  expect_true(lab_globalenv_mod(pkg, verbose = FALSE)$passed)
 })
 
 test_that("corpus: an if/else of printers is a printer", {
@@ -741,7 +741,7 @@ test_that("corpus: an if/else of printers is a printer", {
       "}"
     )
   )
-  expect_true(diagnose_print_cat_usage(pkg, verbose = FALSE)$passed)
+  expect_true(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
 })
 
 test_that("corpus: an if/else that RETURNS a value still leaks", {
@@ -756,7 +756,7 @@ test_that("corpus: an if/else that RETURNS a value still leaks", {
       "}"
     )
   )
-  expect_false(diagnose_print_cat_usage(pkg, verbose = FALSE)$passed)
+  expect_false(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
 })
 
 # ---- backlog wave: the remaining root causes --------------------------------
@@ -777,7 +777,7 @@ test_that("corpus: a call in a DEFAULT ARGUMENT does not hide the function body"
       "}"
     )
   )
-  expect_true(diagnose_temp_cleanup(pkg, verbose = FALSE)$passed)
+  expect_true(lab_temp_cleanup(pkg, verbose = FALSE)$passed)
 })
 
 test_that("corpus: a vignette's PROSE is not code", {
@@ -801,7 +801,7 @@ test_that("corpus: a vignette's PROSE is not code", {
     ),
     file.path(pkg, "vignettes", "intro.Rmd")
   )
-  expect_true(diagnose_network_operations(pkg, verbose = FALSE)$passed)
+  expect_true(lab_network_operations(pkg, verbose = FALSE)$passed)
 })
 
 test_that("corpus: a vignette chunk that REALLY downloads is still flagged", {
@@ -820,7 +820,7 @@ test_that("corpus: a vignette chunk that REALLY downloads is still flagged", {
     ),
     file.path(pkg, "vignettes", "intro.Rmd")
   )
-  expect_false(diagnose_network_operations(pkg, verbose = FALSE)$passed)
+  expect_false(lab_network_operations(pkg, verbose = FALSE)$passed)
 })
 
 test_that("corpus: a platform-branched system() call is the platform check", {
@@ -839,7 +839,7 @@ test_that("corpus: a platform-branched system() call is the platform check", {
       "}"
     )
   )
-  expect_true(diagnose_system_calls(pkg, verbose = FALSE)$passed)
+  expect_true(lab_system_calls(pkg, verbose = FALSE)$passed)
 })
 
 test_that("corpus: an install behind a consent prompt is consent", {
@@ -856,11 +856,11 @@ test_that("corpus: an install behind a consent prompt is consent", {
       "}"
     )
   )
-  expect_true(diagnose_software_installation(pkg, verbose = FALSE)$passed)
+  expect_true(lab_software_install(pkg, verbose = FALSE)$passed)
 
   bad <- make_temp_dir()
   write_pkg(bad, r_code = "f <- function() install.packages('dplyr')")
-  expect_false(diagnose_software_installation(bad, verbose = FALSE)$passed)
+  expect_false(lab_software_install(bad, verbose = FALSE)$passed)
 })
 
 test_that("corpus: set.seed() in dead code cannot touch the RNG", {
@@ -874,7 +874,7 @@ test_that("corpus: set.seed() in dead code cannot touch the RNG", {
       "}"
     )
   )
-  expect_true(diagnose_seed_setting(pkg, verbose = FALSE)$passed)
+  expect_true(lab_seed_setting(pkg, verbose = FALSE)$passed)
 })
 
 test_that("corpus: a package's OWN option is its own state", {
@@ -892,7 +892,7 @@ test_that("corpus: a package's OWN option is its own state", {
     ),
     file.path(pkg, "R", "a.R")
   )
-  res <- diagnose_option_changes(pkg, verbose = FALSE)
+  res <- lab_option_changes(pkg, verbose = FALSE)
   expect_false(res$passed)
   expect_equal(length(res$issues), 1L) # only the foreign option
 })
@@ -917,7 +917,7 @@ test_that("corpus: roxygen's @examplesIf is a guard whatever its predicate", {
       )
     )
   )
-  expect_true(diagnose_suggested_in_examples(pkg, verbose = FALSE)$passed)
+  expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
 })
 
 # ---- new-tier (packages first published under current CRAN review) -----------
@@ -940,7 +940,7 @@ test_that("corpus: `<<-` inside a Reference Class is field assignment", {
       "  ))"
     )
   )
-  expect_true(diagnose_globalenv_modification(pkg, verbose = FALSE)$passed)
+  expect_true(lab_globalenv_mod(pkg, verbose = FALSE)$passed)
 })
 
 test_that("corpus: setwd() in a callr subprocess does not touch the session", {
@@ -959,13 +959,13 @@ test_that("corpus: setwd() in a callr subprocess does not touch the session", {
       "}"
     )
   )
-  expect_true(diagnose_option_changes(pkg, verbose = FALSE)$passed)
+  expect_true(lab_option_changes(pkg, verbose = FALSE)$passed)
 })
 
 test_that("corpus: a bare setwd() in ordinary code is still flagged", {
   pkg <- make_temp_dir()
   write_pkg(pkg, r_code = "f <- function(d) { setwd(d); read.csv('x') }")
-  expect_false(diagnose_option_changes(pkg, verbose = FALSE)$passed)
+  expect_false(lab_option_changes(pkg, verbose = FALSE)$passed)
 })
 
 # ---- decisions from the new-tier review -------------------------------------
@@ -990,7 +990,7 @@ test_that("corpus: a setter that returns the captured state is not a leak", {
       "}"
     )
   )
-  expect_true(diagnose_sys_setenv_no_reset(pkg, verbose = FALSE)$passed)
+  expect_true(lab_sys_setenv(pkg, verbose = FALSE)$passed)
 })
 
 test_that("corpus: a Sys.setenv that captures nothing is still flagged", {
@@ -1004,7 +1004,7 @@ test_that("corpus: a Sys.setenv that captures nothing is still flagged", {
       "}"
     )
   )
-  expect_false(diagnose_sys_setenv_no_reset(pkg, verbose = FALSE)$passed)
+  expect_false(lab_sys_setenv(pkg, verbose = FALSE)$passed)
 })
 
 test_that("software_names flags a package name but not a programming language", {
@@ -1018,7 +1018,7 @@ test_that("software_names flags a package name but not a programming language", 
       "It does a number of useful things for the user here."
     )
   )
-  res <- diagnose_software_names_formatting(pkg, verbose = FALSE)
+  res <- lab_software_names(pkg, verbose = FALSE)
   expect_false(res$passed)
   expect_true(any(grepl("ggplot2", res$issues)))
   expect_false(any(grepl("JavaScript", res$issues)))
@@ -1034,5 +1034,5 @@ test_that("software_names accepts a properly quoted package name", {
       "It does a number of useful things for the user here."
     )
   )
-  expect_true(diagnose_software_names_formatting(pkg, verbose = FALSE)$passed)
+  expect_true(lab_software_names(pkg, verbose = FALSE)$passed)
 })
