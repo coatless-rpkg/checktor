@@ -55,10 +55,29 @@ jobs:
           build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
 
       # Dogfood: run checktor on its own sources so a regression that the tool
-      # would flag fails the build on every platform.
+      # would flag fails the build on every platform. Findings are annotated onto
+      # the diff and written to a report, then the gate decides the build.
       - name: checktor on itself
         shell: Rscript {0}
         run: |
-          if (!isTRUE(checktor::checkup("."))) {
+          results <- checktor::checktor(".", verbose = FALSE, progress = FALSE)
+
+          # Puts each finding on the line that caused it, in the pull request.
+          checktor::ci_report(results, format = "github", file = NULL)
+
+          # The same findings as a report to keep, whatever the outcome.
+          checktor::health_report(results, file = "checktor-report.md")
+
+          if (!checktor::is_healthy(results)) {
             stop("checktor reported issues in its own sources")
           }
+
+      # Kept whether or not the gate passed, so a failure is readable after the
+      # log has scrolled away.
+      - name: Upload checktor report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: checktor-report-${{ matrix.config.os }}-r${{ matrix.config.r }}
+          path: checktor-report.md
+          if-no-files-found: ignore

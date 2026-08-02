@@ -15,11 +15,25 @@
   nms[vapply(nms, function(nm) is.list(cat[[nm]]), logical(1))]
 }
 
-# Split "file.R:12" into file + integer line; non-locational issues keep the
-# raw string as `location` with file/line = NA.
+# Pull the file and line out of a finding, whatever shape it carries. Checks
+# report locations three ways, and all of them are locations:
+#
+#   a.R:12                          the plain form
+#   a.R:12 (writeLines())           with a label naming what was found
+#   example f.Rd:3 (installs)       with the kind of source it came from
+#
+# Only the first used to parse, so a finding with a label lost its file and line
+# and could not be pointed at. Anything with no location at all keeps the raw
+# string and reports NA, as before.
 .split_issue <- function(issues) {
   issues <- as.character(issues)
-  m <- regmatches(issues, regexec("^(.*):([0-9]+)$", issues))
+  pattern <- paste0(
+    "^(?:(?:example|vignette|demo|test)[[:space:]]+)?", # optional source kind
+    "([^:[:space:]]+)", # file
+    ":([0-9]+)", # line
+    "(?:[[:space:]]+\\(.*\\))?$" # optional trailing label
+  )
+  m <- regmatches(issues, regexec(pattern, issues))
   file <- vapply(
     m,
     function(g) if (length(g) == 3L) g[[2]] else NA_character_,
@@ -290,6 +304,7 @@ failed_checks.checktor_results <- function(x, ...) {
       check = character(0),
       severity = character(0),
       passed = logical(0),
+      skipped = logical(0),
       n_issues = integer(0),
       message = character(0),
       stringsAsFactors = FALSE
@@ -301,6 +316,11 @@ failed_checks.checktor_results <- function(x, ...) {
       passed = vapply(
         check_names,
         function(nm) isTRUE(cat[[nm]]$passed),
+        logical(1)
+      ),
+      skipped = vapply(
+        check_names,
+        function(nm) isTRUE(cat[[nm]]$skipped),
         logical(1)
       ),
       n_issues = vapply(
@@ -338,7 +358,9 @@ failed_checks.checktor_results <- function(x, ...) {
 #' @param x A `checktor_results` or `checktor_category_result` object.
 #' @param ... Unused.
 #' @return A `data.frame` with one row per check: `category` (results level
-#'   only), `check`, `passed`, `n_issues`, `message`.
+#'   only), `check`, `severity`, `passed`, `skipped`, `n_issues`, `message`.
+#'   `skipped` marks a check that did not run, such as the URL fetch away from
+#'   the console, so it never reads as one that passed.
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
@@ -357,6 +379,7 @@ tidy.checktor_results <- function(x, ...) {
       "check",
       "severity",
       "passed",
+      "skipped",
       "n_issues",
       "message"
     )]
@@ -384,8 +407,9 @@ as.data.frame.checktor_category_result <- function(x, ...) tidy(x)
 #' @param object A `checktor_results` or `checktor_category_result` object.
 #' @param ... Unused.
 #' @return For results: a 5-row `data.frame` (`category, checks, passed,
-#'   failed, issues`). For a category: a 1-row `data.frame` (`checks, passed,
-#'   failed, issues`).
+#'   failed, skipped, issues`). For a category: a 1-row `data.frame`
+#'   (`checks, passed, failed, skipped, issues`). `skipped` counts the checks
+#'   that did not run, which are not counted as passing.
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
@@ -406,10 +430,18 @@ summary.checktor_category_result <- function(object, ...) {
     function(nm) length(object[[nm]]$issues),
     integer(1)
   ))
+  # Counted separately from passed, so a category that skipped a check does not
+  # read as one that examined everything.
+  skipped <- sum(vapply(
+    nms,
+    function(nm) isTRUE(object[[nm]]$skipped),
+    logical(1)
+  ))
   data.frame(
     checks = checks,
     passed = passed,
     failed = checks - passed,
+    skipped = skipped,
     issues = issues,
     stringsAsFactors = FALSE
   )

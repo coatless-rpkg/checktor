@@ -6,7 +6,7 @@
 #' @details
 #' This function checks:
 #'
-#' - Package size, measured against the files that would ship in the
+#' - Package size, measured against the files that would go into the
 #'   tarball (`.Rbuildignore` and standard scratch dirs are excluded), with
 #'   a 5 MB warning threshold matching CRAN's recommendation.
 #' - `http://` URLs and URL shorteners, offline. `R CMD check --as-cran` does
@@ -15,7 +15,7 @@
 #' - Presence of a `NEWS` file documenting user-facing changes.
 #' - Relative links in the `README` that would break on CRAN.
 #'
-#' [diagnose_cran_comments_file()] is intentionally not part of this default
+#' [lab_cran_comments_file()] is intentionally not part of this default
 #' run, since a `cran-comments.md` is a workflow convention rather than a CRAN
 #' requirement; call it directly to opt in.
 #'
@@ -41,11 +41,11 @@ diagnose_general_issues <- function(path = ".", verbose = TRUE) {
   run_checks(
     c(
       list(
-        package_size = diagnose_package_size,
-        urls = diagnose_urls,
-        url_liveness = diagnose_url_liveness,
-        news_file = diagnose_news_file,
-        readme_links = diagnose_readme_relative_links
+        package_size = lab_package_size,
+        urls = lab_urls,
+        url_liveness = lab_url_liveness,
+        news_file = lab_news_file,
+        readme_links = lab_readme_links
       ),
       registered_checks_for("general")
     ),
@@ -56,7 +56,7 @@ diagnose_general_issues <- function(path = ".", verbose = TRUE) {
 
 #' Diagnose Package Size
 #'
-#' Estimates the size of the source package that would be shipped to CRAN
+#' Estimates the size of the source package that would be sent to CRAN
 #' (files matched by `.Rbuildignore`, plus standard scratch directories like
 #' `.git`, `.Rproj.user`, are excluded). Warns at the 5 MB threshold.
 #'
@@ -74,8 +74,8 @@ diagnose_general_issues <- function(path = ".", verbose = TRUE) {
 #' @examples
 #' pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                       show_content = FALSE)
-#' diagnose_package_size(pkg_path, verbose = FALSE)$size_mb
-diagnose_package_size <- function(path, verbose = TRUE) {
+#' lab_package_size(pkg_path, verbose = FALSE)$size_mb
+lab_package_size <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
   all_files <- list.files(
     path,
@@ -163,8 +163,8 @@ diagnose_package_size <- function(path, verbose = TRUE) {
 #' pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                       show_content = FALSE)
 #' file.remove(file.path(pkg_path, "NEWS.md"))   # demonstrate the failing case
-#' issues(diagnose_news_file(pkg_path, verbose = FALSE))
-diagnose_news_file <- function(path, verbose = TRUE) {
+#' issues(lab_news_file(pkg_path, verbose = FALSE))
+lab_news_file <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
   candidates <- file.path(
     path,
@@ -217,8 +217,8 @@ diagnose_news_file <- function(path, verbose = TRUE) {
 #' pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                       show_content = FALSE)
 #' file.remove(file.path(pkg_path, "cran-comments.md"))  # failing case
-#' issues(diagnose_cran_comments_file(pkg_path, verbose = FALSE))
-diagnose_cran_comments_file <- function(path, verbose = TRUE) {
+#' issues(lab_cran_comments_file(pkg_path, verbose = FALSE))
+lab_cran_comments_file <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
   has_it <- file.exists(file.path(path, "cran-comments.md"))
   issues <- if (has_it) {
@@ -265,10 +265,10 @@ is_external_or_anchor <- function(tgt) {
 #' Diagnose Relative Links in the README
 #'
 #' Relative links in `README.md`/`README.Rmd` render on GitHub but break on
-#' CRAN when the target is not shipped in the built tarball. This flags
+#' CRAN when the target is not included in the built tarball. This flags
 #' relative links whose target is missing on disk or excluded by
 #' `.Rbuildignore` (and therefore absent after `R CMD build`). Relative links
-#' to files that do ship (e.g. `man/figures/logo.png`) are not flagged.
+#' to files that are included (e.g. `man/figures/logo.png`) are not flagged.
 #'
 #' @section Source:
 #' No formal rule. A relative README link whose target is excluded from the
@@ -286,8 +286,8 @@ is_external_or_anchor <- function(tgt) {
 #'                                       show_content = FALSE)
 #' writeLines("See [the guide](docs/guide.md) for details.",
 #'            file.path(pkg_path, "README.md"))
-#' issues(diagnose_readme_relative_links(pkg_path, verbose = FALSE))
-diagnose_readme_relative_links <- function(path, verbose = TRUE) {
+#' issues(lab_readme_links(pkg_path, verbose = FALSE))
+lab_readme_links <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
   readmes <- file.path(path, c("README.md", "README.Rmd"))
   readmes <- readmes[file.exists(readmes)]
@@ -339,7 +339,7 @@ diagnose_readme_relative_links <- function(path, verbose = TRUE) {
   emit_issue_summary(
     issues,
     verbose,
-    "README relative links resolve to shipped files",
+    "README relative links resolve to files in the package",
     "README has relative links that may break on CRAN",
     "Treatment: Use full URLs, or ensure the target ships (not in .Rbuildignore)",
     level = "warning"
@@ -375,8 +375,8 @@ diagnose_readme_relative_links <- function(path, verbose = TRUE) {
 #' @examples
 #' pkg_path <- example_diagnose_scenario("description_examples/bad_description.txt",
 #'                                       show_content = FALSE)
-#' issues(diagnose_urls(pkg_path, verbose = FALSE))
-diagnose_urls <- function(path, verbose = TRUE) {
+#' issues(lab_urls(pkg_path, verbose = FALSE))
+lab_urls <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
   rd_files <- list.files(
     file.path(path, "man"),
@@ -468,38 +468,39 @@ drop_fenced_code <- function(lines) {
 }
 
 # A seam over R's own URL checker so the network fetch can be stubbed in tests.
-# It returns the check_url_db data frame that tools::check_package_urls() builds.
+# It returns the check_url_db data frame that tools::check_package_urls() builds,
+# which is why the package needs R 4.5.0, the release that added it.
 fetch_url_db <- function(path) {
   tools::check_package_urls(path)
 }
 
-#' Diagnose Broken and Redirecting URLs (Opt-In, Network)
+#' Diagnose Broken and Redirecting URLs
 #'
-#' Fetches every URL in the package -- DESCRIPTION, `.Rd` files, and vignettes --
-#' and reports the ones that fail: 404s, other error statuses, and redirects that
-#' ought to point at their final target. This is exactly what
+#' Fetches every URL in the package, across DESCRIPTION, `.Rd` files and
+#' vignettes, and reports the ones that fail: 404s, other error statuses, and
+#' redirects that ought to point at their final target. This is what
 #' `R CMD check --as-cran` does, through the same base R machinery
-#' ([tools::check_package_urls()]); checktor simply surfaces it as a check so you
-#' can run it without a full `--as-cran` pass and without depending on the
-#' `urlchecker` package.
+#' ([tools::check_package_urls()]), so you can see those findings without a full
+#' `--as-cran` pass and without depending on the `urlchecker` package.
 #'
-#' Because it needs a network and is comparatively slow, it is **opt-in** and does
-#' nothing until you enable it:
+#' It runs by default when you are working at the console, since that is when a
+#' broken link is worth knowing about and a pause for the network is fine. It stays
+#' off in scripts, in continuous integration and under `R CMD check`, where a slow
+#' or unreachable network would make results depend on the machine rather than the
+#' package. Set the option either way to decide for yourself:
 #'
 #' ```r
-#' options(checktor.url_check = TRUE)
-#' checktor(".")
+#' options(checktor.url_check = TRUE)   # always check
+#' options(checktor.url_check = FALSE)  # never check
 #' ```
 #'
-#' With the option unset -- or when the fetch cannot run, such as offline -- it
-#' passes quietly, exactly as CRAN's own URL check does without connectivity. For
-#' the fast, offline half (flagging `http://` and URL shorteners without leaving
-#' the room) see [diagnose_urls()].
+#' Without a network the fetch reports nothing and the check passes quietly, just
+#' as CRAN's own URL check does. For the offline half, which flags `http://` links
+#' and URL shorteners without leaving the room, see [lab_urls()].
 #'
 #' @section Source:
 #' The [CRAN incoming check](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages)
-#' run by `R CMD check --as-cran` fetches URLs and NOTEs 404s and redirects; it
-#' is opt-in here because it needs a network. See
+#' run by `R CMD check --as-cran` fetches URLs and NOTEs 404s and redirects. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
 #' @param path Character. Path to package directory
@@ -508,25 +509,37 @@ fetch_url_db <- function(path) {
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @export
 #' @examples
-#' # Opt in first, then run against a package directory (needs a network):
+#' # Needs a network, so this is not run automatically:
 #' \dontrun{
-#' options(checktor.url_check = TRUE)
-#' diagnose_url_liveness(".")
+#' lab_url_liveness(".")
 #' }
-diagnose_url_liveness <- function(path, verbose = TRUE) {
+lab_url_liveness <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
-  # Opt-in: it needs a network and is slow, so it stays off unless asked for.
-  if (!isTRUE(getOption("checktor.url_check", FALSE))) {
-    return(checktor_check_result(TRUE, character(0), "URL liveness check"))
+  # On at the console, off in scripts, CI and R CMD check, where a slow or missing
+  # network would make the result depend on the machine rather than the package.
+  # It also keeps examples and tests from reaching the network during a check.
+  if (!isTRUE(getOption("checktor.url_check", interactive()))) {
+    return(checktor_skipped_result(
+      "URL liveness check",
+      "runs at the console; set options(checktor.url_check = TRUE) to always run it"
+    ))
   }
 
   db <- tryCatch(
     suppressWarnings(suppressMessages(fetch_url_db(path))),
     error = function(e) NULL
   )
-  # No DESCRIPTION, no URLs, or the fetch itself failed (e.g. offline): the
-  # honest result is "nothing to report", not a wall of false failures.
-  if (is.null(db) || !is.data.frame(db) || nrow(db) == 0L) {
+  # The fetch itself failed, so nothing was examined. Reporting a pass here would
+  # make being offline -- or a change under the fetch -- read exactly like a
+  # package whose every URL resolved.
+  if (is.null(db) || !is.data.frame(db)) {
+    return(checktor_skipped_result(
+      "URL liveness check",
+      "the URL fetch did not complete, so no URL was checked"
+    ))
+  }
+  # No DESCRIPTION or no URLs at all: there is genuinely nothing to be wrong.
+  if (nrow(db) == 0L) {
     return(checktor_check_result(TRUE, character(0), "URL liveness check"))
   }
 
@@ -539,8 +552,22 @@ diagnose_url_liveness <- function(path, verbose = TRUE) {
     v[is.na(v)] <- ""
     v
   }
-  from <- col("From")
   status <- col("Status")
+
+  # A row whose status is not an HTTP code means R could not reach the host, which
+  # says something about this machine rather than about the package. When that is
+  # true of every row there is no working connection, so report nothing rather than
+  # calling every link broken. A lone unreachable host among reachable ones is a
+  # real finding and still counts.
+  unreachable <- !grepl("^[0-9]+$", status)
+  if (all(unreachable)) {
+    return(checktor_skipped_result(
+      "URL liveness check",
+      "no network reachable, so no URL could be checked"
+    ))
+  }
+
+  from <- col("From")
   message <- col("Message")
   new_target <- col("New")
 

@@ -38,6 +38,65 @@ health_report <- function(results, file = NULL, format = "markdown") {
   return(report)
 }
 
+# The categories a report walks, in the order checktor() runs them. Kept in one
+# place because every format has to agree: the CRAN policy panel was once missing
+# from the markdown report, which hid exactly the findings a reviewer acts on.
+REPORT_CATEGORIES <- c(
+  "code_issues",
+  "description_issues",
+  "documentation_issues",
+  "general_issues",
+  "policy_issues"
+)
+
+# Every failing check in a result, flattened to list(category, check, result), so
+# the markdown, text and HTML writers all report the same findings.
+report_findings <- function(results) {
+  out <- list()
+  for (category in intersect(REPORT_CATEGORIES, names(results))) {
+    cat_results <- results[[category]]
+    if (!("passed" %in% names(cat_results))) {
+      next
+    }
+    for (check in names(cat_results$passed)[!cat_results$passed]) {
+      res <- cat_results[[check]]
+      if (!is.list(res) || !("issues" %in% names(res))) {
+        next
+      }
+      out[[length(out) + 1L]] <- list(
+        category = category,
+        check = check,
+        result = res
+      )
+    }
+  }
+  out
+}
+
+# A sentence naming any check that did not run, so a report never reads as though
+# everything was examined when it was not.
+report_skipped_line <- function(results) {
+  skipped <- results$metadata$skipped_checks
+  if (length(skipped) == 0L) {
+    return(character(0))
+  }
+  paste0(
+    "Checks that did not run: ",
+    paste(skipped, collapse = ", "),
+    "."
+  )
+}
+
+pretty_label <- function(x) gsub("_", " ", tools::toTitleCase(x))
+
+# Findings carry things like <YEAR> and <COPYRIGHT HOLDER>, which would otherwise
+# be swallowed as markup by a browser.
+escape_html <- function(x) {
+  x <- gsub("&", "&amp;", x, fixed = TRUE)
+  x <- gsub("<", "&lt;", x, fixed = TRUE)
+  gsub(">", "&gt;", x, fixed = TRUE)
+}
+
 generate_markdown_report <- function(results) {
   report <- c(
     "# Package Doctor - Health Report",
@@ -72,69 +131,58 @@ generate_markdown_report <- function(results) {
       ""
     )
 
-    # Add detailed sections for each category with issues
-    categories <- c(
-      "code_issues",
-      "description_issues",
-      "documentation_issues",
-      "general_issues"
-    )
+    # The total counts only the tiers the verdict is about, so say what the
+    # sections below actually contain rather than letting the two disagree.
+    advisory <- results$metadata$advisory_issues
+    if (!is.null(advisory) && advisory > 0L) {
+      report <- c(
+        report,
+        paste0(
+          "Every failing check is listed below, including ",
+          advisory,
+          " advisory finding(s) that do not count toward that total."
+        ),
+        ""
+      )
+    }
 
-    for (category in categories) {
-      if (category %in% names(results)) {
-        cat_results <- results[[category]]
-        if ("passed" %in% names(cat_results)) {
-          failed_checks <- names(cat_results$passed)[!cat_results$passed]
-          if (length(failed_checks) > 0) {
-            cat_name <- gsub("_", " ", tools::toTitleCase(category))
-            report <- c(report, paste("## ", cat_name), "")
+    findings <- report_findings(results)
+    current <- ""
+    for (finding in findings) {
+      if (!identical(finding$category, current)) {
+        current <- finding$category
+        report <- c(report, paste("## ", pretty_label(current)), "")
+      }
+      check_result <- finding$result
+      report <- c(report, paste("### ", pretty_label(finding$check)))
 
-            for (check in failed_checks) {
-              check_result <- cat_results[[check]]
-              if (is.list(check_result) && "issues" %in% names(check_result)) {
-                report <- c(
-                  report,
-                  paste("### ", gsub("_", " ", tools::toTitleCase(check)))
-                )
+      treatment_instructions <- get_treatment_instructions(
+        finding$check,
+        check_result
+      )
+      if (!is.null(treatment_instructions)) {
+        report <- c(report, "", "**Treatment:**", treatment_instructions, "")
+      }
 
-                # Add specific treatment instructions based on check type
-                treatment_instructions <- get_treatment_instructions(
-                  check,
-                  check_result
-                )
-                if (!is.null(treatment_instructions)) {
-                  report <- c(
-                    report,
-                    "",
-                    "**Treatment:**",
-                    treatment_instructions,
-                    ""
-                  )
-                }
-
-                if (length(check_result$issues) > 0) {
-                  report <- c(report, "**Affected Areas:**")
-                  for (issue in utils::head(check_result$issues, 10)) {
-                    report <- c(report, paste("- `", issue, "`", sep = ""))
-                  }
-                  if (length(check_result$issues) > 10) {
-                    report <- c(
-                      report,
-                      paste(
-                        "- ... and",
-                        length(check_result$issues) - 10,
-                        "more"
-                      )
-                    )
-                  }
-                  report <- c(report, "")
-                }
-              }
-            }
-          }
+      if (length(check_result$issues) > 0) {
+        report <- c(report, "**Affected Areas:**")
+        for (issue in utils::head(check_result$issues, 10)) {
+          report <- c(report, paste("- `", issue, "`", sep = ""))
         }
+        if (length(check_result$issues) > 10) {
+          report <- c(
+            report,
+            paste("- ... and", length(check_result$issues) - 10, "more")
+          )
+        }
+        report <- c(report, "")
       }
     }
+  }
+
+  skipped <- report_skipped_line(results)
+  if (length(skipped) > 0L) {
+    report <- c(report, "", skipped, "")
   }
 
   report <- c(
@@ -213,11 +261,32 @@ generate_text_report <- function(results) {
       "Clean bill of health! Package appears ready for CRAN."
     )
   } else {
+    report <- c(report, "", "Findings:")
+    current <- ""
+    for (finding in report_findings(results)) {
+      if (!identical(finding$category, current)) {
+        current <- finding$category
+        report <- c(report, "", paste0("  ", pretty_label(current)))
+      }
+      report <- c(report, paste0("    ", pretty_label(finding$check)))
+      for (issue in utils::head(finding$result$issues, 10)) {
+        report <- c(report, paste0("      - ", issue))
+      }
+      extra <- length(finding$result$issues) - 10
+      if (extra > 0) {
+        report <- c(report, paste0("      - ... and ", extra, " more"))
+      }
+    }
     report <- c(
       report,
       "",
-      "Issues found - see detailed output from checktor() for treatments."
+      "Run prescribe() on the same results for treatment instructions."
     )
+  }
+
+  skipped <- report_skipped_line(results)
+  if (length(skipped) > 0L) {
+    report <- c(report, "", skipped)
   }
 
   return(report)
@@ -261,10 +330,44 @@ generate_html_report <- function(results) {
   if (results$metadata$total_issues == 0) {
     html <- c(html, "<p class='success'>Clean bill of health!</p>")
   } else {
-    html <- c(
-      html,
-      "<p class='issue'>Treatment required - see checktor() output for details.</p>"
-    )
+    current <- ""
+    for (finding in report_findings(results)) {
+      if (!identical(finding$category, current)) {
+        if (nzchar(current)) {
+          html <- c(html, "</ul>")
+        }
+        current <- finding$category
+        html <- c(
+          html,
+          paste0("<h3>", escape_html(pretty_label(current)), "</h3>"),
+          "<ul>"
+        )
+      }
+      html <- c(
+        html,
+        paste0("<li><strong>", escape_html(pretty_label(finding$check)), "</strong>")
+      )
+      if (length(finding$result$issues) > 0) {
+        html <- c(html, "<ul>")
+        for (issue in utils::head(finding$result$issues, 10)) {
+          html <- c(html, paste0("<li>", escape_html(issue), "</li>"))
+        }
+        extra <- length(finding$result$issues) - 10
+        if (extra > 0) {
+          html <- c(html, paste0("<li>... and ", extra, " more</li>"))
+        }
+        html <- c(html, "</ul>")
+      }
+      html <- c(html, "</li>")
+    }
+    if (nzchar(current)) {
+      html <- c(html, "</ul>")
+    }
+  }
+
+  skipped <- report_skipped_line(results)
+  if (length(skipped) > 0L) {
+    html <- c(html, paste0("<p>", escape_html(skipped), "</p>"))
   }
 
   html <- c(html, "</div>", "</body>", "</html>")

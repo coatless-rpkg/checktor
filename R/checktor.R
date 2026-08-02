@@ -22,7 +22,7 @@
 #'   [issues()] with its tier. What this argument decides is which findings count
 #'   against a clean bill of health. `"policy"` is a citable CRAN Repository
 #'   Policy or Writing R Extensions violation. `"robustness"` is a real defect
-#'   that CRAN will nonetheless let you ship, such as a `detectCores()` that may
+#'   that CRAN will still accept, such as a `detectCores()` that may
 #'   return `NA`. `"opinion"` is a convention with no authority behind it.
 #'
 #'   The default therefore makes "0 issues" mean *nothing here will get you
@@ -140,12 +140,31 @@ checktor <- function(
   # reported -- just not counted against a clean bill of health.
   advisory <- count_results(results, setdiff(SEVERITY_LEVELS, severity))$issues
 
+  # A check that did not run is not a check that passed, so the names travel with
+  # the results and the summary reports them.
+  skipped <- count_skipped(results)
+
   if (verbose) {
     cli::cli_text()
     cli::cli_rule(left = "Diagnosis Summary")
     if (suppression$suppressed > 0L) {
       cli::cli_alert_info(
         "{suppression$suppressed} finding{?s} muted by Config/checktor."
+      )
+    }
+    if (skipped$n > 0L) {
+      cli::cli_alert_info(
+        "{skipped$n} check{?s} did not run: {.val {skipped$names}}."
+      )
+    }
+    # Not a skip and never a penalty, just so you can find out they exist.
+    on_request <- on_request_checks()
+    if (length(on_request) > 0L) {
+      cli::cli_alert_info(
+        paste(
+          "{length(on_request)} check{?s} {?is/are} available on request:",
+          "{.val {on_request}}. Call {.code lab_<name>()} to run one."
+        )
       )
     }
     if (total_issues == 0L) {
@@ -195,6 +214,8 @@ checktor <- function(
     severity = severity,
     advisory_issues = advisory,
     suppressed = suppression$suppressed,
+    skipped_checks = skipped$names,
+    on_request_checks = on_request_checks(),
     checktor_version = utils::packageVersion("checktor")
   )
 
@@ -213,6 +234,24 @@ checktor <- function(
 # policy + robustness, makes "0 issues" mean "nothing here will get you rejected,
 # and nothing here will crash a user" -- rather than "nobody disagrees with any of
 # your stylistic choices", which is not a question anyone was asking.
+# Names the checks that did not run, so the summary can report them instead of
+# letting a skipped check read as a passing one.
+count_skipped <- function(results) {
+  out <- character(0)
+  for (cat in results) {
+    if (!is.list(cat)) {
+      next
+    }
+    for (nm in setdiff(names(cat), "passed")) {
+      check <- cat[[nm]]
+      if (is.list(check) && isTRUE(check$skipped)) {
+        out <- c(out, nm)
+      }
+    }
+  }
+  list(names = out, n = length(out))
+}
+
 count_results <- function(results, severity = SEVERITY_LEVELS) {
   issues <- 0L
   failed <- 0L
@@ -293,6 +332,14 @@ print.checktor_results <- function(x, ...) {
   if (!is.null(suppressed) && suppressed > 0L) {
     cli::cli_alert_info(
       "{suppressed} finding{?s} muted by {.file Config/checktor}."
+    )
+  }
+  # A check that sat out is not a check that passed, so say so next to the verdict
+  # rather than letting a clean result imply everything was examined.
+  skipped <- x$metadata$skipped_checks
+  if (length(skipped) > 0L) {
+    cli::cli_alert_info(
+      "{length(skipped)} check{?s} did not run: {.val {skipped}}."
     )
   }
   total_issues <- x$metadata$total_issues
