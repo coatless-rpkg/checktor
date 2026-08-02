@@ -89,21 +89,21 @@
 
 
     <p><code>R CMD check</code> is a pipeline. It builds your package, installs it, and then runs roughly fifty separate checks, each of which prints a line beginning <code>* checking ...</code> and ends with a verdict. R itself parses those lines back out of the log with a single <a href="https://github.com/wch/r-source/blob/trunk/src/library/tools/R/checktools.R" class="external-link">regular expression</a>, and this page walks through what each one is actually looking at. The checks themselves are defined in R’s own <code>tools</code> package (<a href="https://github.com/wch/r-source/blob/trunk/src/library/tools/R/check.R" class="external-link"><code>check.R</code></a>), and the manual describes the process in <a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages" class="external-link">Writing R Extensions, “Checking packages”</a>.</p>
-<p>checktor is deliberately the other half of this story: it runs the extra-CRAN checks that a human reviewer applies but that <code>R CMD check</code> never will. Knowing exactly where <code>R CMD check</code> stops is the fastest way to see where checktor begins – so this page is a map of the territory <code>R CMD check</code> already covers. For the map of checktor’s own checks, see <a href="check-sources.html">Where the Checks Come From</a>.</p>
+<p>checktor is deliberately the other half of this story: it runs the extra-CRAN checks that a human reviewer applies but that <code>R CMD check</code> never will. Knowing exactly where <code>R CMD check</code> stops is the fastest way to see where checktor begins, so this page is a map of the territory <code>R CMD check</code> already covers. For the map of checktor’s own checks, see <a href="check-sources.html">Where the Checks Come From</a>.</p>
 <section class="level2"><h2 id="the-four-verdicts">The four verdicts<a class="anchor" aria-label="anchor" href="#the-four-verdicts"></a>
 </h2>
 <p>Every step ends in one of four states, and only the last three matter.</p>
 <ul>
 <li>
-<strong>OK</strong> – nothing to report.</li>
+<code>OK</code> means nothing to report.</li>
 <li>
-<strong>NOTE</strong> – something a reviewer will likely ask about. A submission with NOTEs can still be accepted, but each one needs a reason.</li>
+<code>NOTE</code> means something a reviewer will likely ask about. A submission with NOTEs can still be accepted, but each one needs a reason.</li>
 <li>
-<strong>WARNING</strong> – a real problem. CRAN will not accept a package with a WARNING.</li>
+<code>WARNING</code> means a real problem. CRAN will not accept a package with a WARNING.</li>
 <li>
-<strong>ERROR</strong> – the check could not complete, usually because code or a test failed outright.</li>
+<code>ERROR</code> means the check could not complete, usually because code or a test failed outright.</li>
 </ul>
-<p>A clean <code>R CMD check</code> is the floor for a CRAN submission, not the ceiling. Many of its steps are structural (“is this a well-formed package?”) rather than editorial (“is this package good?”), which is exactly the gap the reviewer – and checktor – fills in.</p>
+<p>A clean <code>R CMD check</code> is the floor for a CRAN submission, not the ceiling. Many of its steps are structural (“is this a well-formed package?”) rather than editorial (“is this package good?”), which is exactly the gap a reviewer fills in, and the gap checktor is built for.</p>
 </section><section class="level2"><h2 id="packaging-and-installation">Packaging and installation<a class="anchor" aria-label="anchor" href="#packaging-and-installation"></a>
 </h2>
 <p>These run first and decide whether the package is even well-formed enough to install. A failure here stops everything else.</p>
@@ -140,7 +140,7 @@
 </tr>
 <tr class="even">
 <td><code>checking for executable files</code></td>
-<td>No stray executables ship in the sources.</td>
+<td>No stray executables are present in the sources.</td>
 </tr>
 <tr class="odd">
 <td><code>checking for hidden files and directories</code></td>
@@ -185,7 +185,7 @@
 </tr>
 <tr class="odd">
 <td><code>checking for left-over files</code></td>
-<td>No editor backups or merge-conflict leftovers ship.</td>
+<td>No editor backups or merge-conflict leftovers are present.</td>
 </tr>
 </tbody>
 </table></section><section class="level2"><h2 id="description-and-metadata">DESCRIPTION and metadata<a class="anchor" aria-label="anchor" href="#description-and-metadata"></a>
@@ -342,7 +342,7 @@
 </tr>
 <tr class="odd">
 <td><code>checking installed files from 'inst/doc'</code></td>
-<td>Files shipped under <code>inst/doc</code> are consistent with the vignettes.</td>
+<td>Files under <code>inst/doc</code> are consistent with the vignettes.</td>
 </tr>
 <tr class="even">
 <td><code>checking files in 'vignettes'</code></td>
@@ -432,27 +432,27 @@
 <tbody>
 <tr class="odd">
 <td><code>checking contents of 'data' directory</code></td>
-<td>The package ships a <code>data/</code> directory.</td>
+<td>The package includes a <code>data/</code> directory.</td>
 </tr>
 <tr class="even">
 <td><code>checking data for non-ASCII characters</code></td>
-<td>The package ships data.</td>
+<td>The package includes data.</td>
 </tr>
 <tr class="odd">
 <td><code>checking data for ASCII and uncompressed saves</code></td>
-<td>The package ships data (it prefers efficient compression).</td>
+<td>The package includes data, and efficient compression is preferred.</td>
 </tr>
 <tr class="even">
 <td><code>checking line endings in ... sources and headers</code></td>
-<td>The package ships C, C++, or Fortran code.</td>
+<td>The package includes C, C++, or Fortran code.</td>
 </tr>
 <tr class="odd">
 <td><code>checking compilation flags in Makevars</code></td>
-<td>The package ships a <code>src/Makevars</code>.</td>
+<td>The package includes a <code>src/Makevars</code>.</td>
 </tr>
 <tr class="even">
 <td><code>checking compiled code</code></td>
-<td>The package ships compiled code (it looks for calls to disallowed entry points).</td>
+<td>The package includes compiled code, and calls to disallowed entry points are reported.</td>
 </tr>
 <tr class="odd">
 <td><code>checking PDF version of manual</code></td>

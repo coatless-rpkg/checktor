@@ -1,11 +1,11 @@
 # Where checktor’s Checks Come From
 
 Every checktor check exists for a reason, and that reason has a source.
-This page maps each check to where its authority comes from – with a
-link to the exact section wherever one exists – and to the severity tier
-that authority earns. For the full argument behind any single check,
-read its help page (for example
-[`?diagnose_option_changes`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_option_changes.md)),
+This page maps each check to where its authority comes from, linking to
+the exact section wherever one exists, and to the severity tier that
+authority earns. For the full argument behind any single check, read its
+help page (for example
+[`?lab_option_changes`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_option_changes.md)),
 which spells out the reasoning and the exemptions. This page is the map
 across all of them.
 
@@ -32,9 +32,9 @@ it.
   [`par()`](https://rdrr.io/r/graphics/par.html) and the working
   directory is the clearest example: it is one of the most common
   reasons a package is sent back, and neither manual mentions it.
-- **`robustness`** is a real defect that CRAN will nonetheless let you
-  ship, such as a `detectCores()` that can return `NA`. It counts toward
-  the verdict too, because it can still crash a user.
+- **`robustness`** is a real defect that CRAN will still accept, such as
+  a `detectCores()` that can return `NA`. It counts toward the verdict
+  too, because it can still crash a user.
 - **`opinion`** is a convention that experienced maintainers and
   reviewers tend to ask for, with nothing enforcing it. Worth knowing,
   but it stays outside the default verdict, which is `policy` and
@@ -46,6 +46,26 @@ Cookbook](https://contributor.r-project.org/cran-cookbook/), the R
 Contributor guide to the problems that get packages sent back, and the
 column links to the individual recipe wherever there is one. Where a
 check has no citable source at all, it says so plainly.
+
+## Which checks run
+
+Almost every check runs every time. Five do not, and
+[`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md)
+reports those as skipped rather than passed, so a clean bill of health
+never includes a check that never happened.
+[`tidy()`](https://generics.r-lib.org/reference/tidy.html) carries a
+`skipped` column, and the names are in `metadata$skipped_checks`.
+
+| Check | Runs | Why |
+|----|----|----|
+| `url_liveness` | at the console | It fetches every URL, so it stays off in scripts and under `R CMD check`, where the network would decide the result. `options(checktor.url_check = TRUE)` runs it everywhere. |
+| `spelling` | with a backend | It needs `aspell` or `hunspell` installed. `options(checktor.spelling = FALSE)` turns it off. |
+| `cran_comments_file` | when you call it | A `cran-comments.md` is a submission workflow rather than a property of the package. |
+| `title_starts_with_article` | when you call it | No authority supports it, so it stays available without being part of a run. |
+| `description_function_quotes` | when you call it | The same, and Writing R Extensions reads the other way. |
+
+Everything else runs always, and a new check is part of the run unless
+it says otherwise, so nothing goes missing by being forgotten.
 
 ## Code checks
 
@@ -65,6 +85,7 @@ check has no citable source at all, it says so plainly.
 | `library_in_pkg` | `robustness` | [WRE: Package Dependencies](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Package-Dependencies): package code should reach dependencies through `Imports` and `::`, not attach them with [`library()`](https://rdrr.io/r/base/library.html). |
 | `detect_cores_robustness` | `robustness` | No formal rule. `?detectCores` states it returns “`NA` if the answer is unknown”, and the arithmetic that usually follows then crashes. |
 | `hardcoded_credentials` | `robustness` | No formal rule. A token or key committed to a package is public the moment it reaches CRAN and must be revoked. |
+| `internal_ns` | `robustness` | CRAN asks you to omit one colon, since `:::` reaches an object whose author may change it. `R CMD check` reports it too, under dependencies in R code. |
 | `temp_cleanup` | `opinion` | [Cookbook: Leaving Files in the Temporary Directory](https://contributor.r-project.org/cran-cookbook/code_issues.html#leaving-files-in-the-temporary-directory). [`tempdir()`](https://rdrr.io/r/base/tempfile.html) is removed at session end, so an un-[`unlink()`](https://rdrr.io/r/base/unlink.html)ed tempfile breaks no rule, which is why this stays advisory. |
 
 ## DESCRIPTION checks
@@ -83,12 +104,12 @@ check has no citable source at all, it says so plainly.
 | `description_starts_with` | `policy` | [WRE: The DESCRIPTION file](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file): “It is good practice not to start with the package name, ‘This package’ or similar”; flagged by the [incoming check](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages). |
 | `references` | `policy` | [CRAN incoming check](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages): it NOTEs a reference not written in the `<doi:...>` or `<arXiv:...>` form. Recipe: [References](https://contributor.r-project.org/cran-cookbook/description_issues.html#references). |
 | `identifier_format` | `policy` | [CRAN incoming check](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages): it NOTEs a malformed ORCID or ROR identifier in `Authors@R`. |
-| `license_year` | `robustness` | No binding rule. An unfilled `LICENSE` template, with `<YEAR>` or `<COPYRIGHT HOLDER>` left in, ships a placeholder. Recipe: [LICENSE files](https://contributor.r-project.org/cran-cookbook/description_issues.html#license-files). |
+| `license_year` | `robustness` | No binding rule. An unfilled `LICENSE` template, with `<YEAR>` or `<COPYRIGHT HOLDER>` left in, leaves a placeholder. Recipe: [LICENSE files](https://contributor.r-project.org/cran-cookbook/description_issues.html#license-files). |
 | `spelling` | `opinion` | [CRAN incoming check](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages) (aspell), but it needs a spell-check backend and is noisy, so checktor keeps it advisory. |
 | `acronyms` | `opinion` | [Cookbook: Explaining Acronyms](https://contributor.r-project.org/cran-cookbook/description_issues.html#explaining-acronyms). Reviewers ask for an acronym to be spelled out once, but nothing enforces it. |
 | `cph_role` | `opinion` | [Cookbook: Using Authors@R](https://contributor.r-project.org/cran-cookbook/description_issues.html#using-authorsr) covers the roles, and a copyright-holder (`cph`) is commonly expected, though not required. |
 | `description_length` | `opinion` | [Cookbook: Description Length](https://contributor.r-project.org/cran-cookbook/general_issues.html#description-length). A one-line `Description` is thin, and reviewers ask for more. |
-| `title_length` | `opinion` | Convention only. A `Title` under about 65 characters is a common preference. |
+| `title_length` | `opinion` | [WRE: The DESCRIPTION file](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file): “Some package listings may truncate the title to 65 characters”. That is a display width, not a limit, so a `Title` filling it exactly still shows in full and nothing rejects a longer one. |
 | `title_redundant_phrases` | `opinion` | Convention only. Phrases like “R package to” are redundant in a `Title`. |
 | `title_starts_with_article` | `opinion` | No rule. A mis-transplant of a real CRAN rule, kept callable but off by default. |
 | `description_function_quotes` | `opinion` | No rule. An invented rule, kept callable but off by default. |
@@ -106,24 +127,56 @@ check has no citable source at all, it says so plainly.
 | `missing_examples` | `opinion` | [Cookbook: Structuring of Examples](https://contributor.r-project.org/cran-cookbook/general_issues.html#structuring-of-examples). Exported functions are expected to carry an `\examples{}` block. |
 | `commented_examples` | `opinion` | Convention only. An `\examples{}` block that is entirely commented out demonstrates nothing. |
 
+## Example, vignette and demo checks
+
+These cover the code outside `R/` that CRAN reads, where several of the
+most common rejections land. Each rule below is one a maintainer has
+received verbatim.
+
+| Check | Tier | Source |
+|----|----|----|
+| `example_interactive` | `policy` | [Cookbook: Structuring of Examples](https://contributor.r-project.org/cran-cookbook/general_issues.html#structuring-of-examples): a function that only runs interactively belongs in `if (interactive())`, so a reader sees it is not for a script, rather than in `\dontrun{}`. |
+| `example_installs` | `policy` | [Cookbook: Installing Software](https://contributor.r-project.org/cran-cookbook/code_issues.html#installing-software): do not install packages from a function, an example or a vignette. |
+| `example_writes` | `policy` | [Cookbook: Writing Files and Directories to the Home Filespace](https://contributor.r-project.org/cran-cookbook/code_issues.html#writing-files-and-directories-to-the-home-filespace): an example, vignette or test may write only to [`tempdir()`](https://rdrr.io/r/base/tempfile.html). |
+| `example_state` | `policy` | [Cookbook: Change of Options, Graphical Parameters and Working Directory](https://contributor.r-project.org/cran-cookbook/code_issues.html#change-of-options-graphical-parameters-and-working-directory): restore [`options()`](https://rdrr.io/r/base/options.html), [`par()`](https://rdrr.io/r/graphics/par.html) and the working directory changed in an example, vignette or demo. |
+| `example_internal_ns` | `policy` | CRAN asks you to omit one colon, since `:::` reaches an object whose behaviour the author may change. |
+
 ## General checks
 
 | Check | Tier | Source |
 |----|----|----|
 | `package_size` | `policy` | [CRAN Policy](https://cran.r-project.org/web/packages/policies.html): CRAN limits the size of the built tarball. Recipe: [Package Size](https://contributor.r-project.org/cran-cookbook/general_issues.html#package-size), which gives the practical figures. |
-| `url_liveness` | `robustness` | [CRAN incoming check](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages): `--as-cran` fetches URLs and NOTEs 404s and redirects. It is opt-in here because it needs a network. |
+| `url_liveness` | `robustness` | [CRAN incoming check](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages): `--as-cran` fetches URLs and NOTEs 404s and redirects. It runs at the console and stays off in scripts and checks, where the network would decide the result. |
 | `readme_links` | `robustness` | No formal rule. A relative README link whose target is excluded from the tarball breaks on the package page. |
 | `urls` | `opinion` | Convention only. Preferring `https://` is good advice, but CRAN’s NOTE is about broken URLs rather than the scheme. |
 | `news_file` | `opinion` | Convention only. A `NEWS` file is expected but not required. |
+| `cran_comments_file` | `opinion` | Convention only. A `cran-comments.md` is a submission workflow rather than a property of the package, which is why it runs only when you call it. |
 
 ## CRAN policy checks
 
 | Check | Tier | Source |
 |----|----|----|
-| `browser_calls` | `policy` | [CRAN Policy](https://cran.r-project.org/web/packages/policies.html): checks run non-interactively, so a debugging leftover such as [`browser()`](https://rdrr.io/r/base/browser.html) must not ship. |
+| `browser_calls` | `policy` | [CRAN Policy](https://cran.r-project.org/web/packages/policies.html): checks run non-interactively, so a debugging leftover such as [`browser()`](https://rdrr.io/r/base/browser.html) must not be left in. |
 | `file_operations` | `policy` | [CRAN Policy](https://cran.r-project.org/web/packages/policies.html): “Packages should not write … anywhere … apart from the R session’s temporary directory”. Recipe: [Writing Files and Directories to the Home Filespace](https://contributor.r-project.org/cran-cookbook/code_issues.html#writing-files-and-directories-to-the-home-filespace). |
 | `network_operations` | `policy` | [CRAN Policy](https://cran.r-project.org/web/packages/policies.html): “Packages which use Internet resources should fail gracefully with an informative message if the resource is not available”. |
 | `system_calls` | `robustness` | No flat rule. A raw [`system()`](https://rdrr.io/r/base/system.html) or [`system2()`](https://rdrr.io/r/base/system2.html) call needs review for portability rather than being an automatic violation. |
+
+## What the Cookbook covers that checktor does not
+
+checktor has a check for every [CRAN
+Cookbook](https://contributor.r-project.org/cran-cookbook/) recipe that
+describes a pattern in your sources. Two recipes do not, and neither is
+something a static reader can answer.
+
+*Overall Checktime* is about a measurement rather than a pattern. The
+NOTE reads “Overall checktime 20 min \> 10 min”, and nothing in your
+sources says how long they will take to run. `R CMD check` reports the
+figure, and the fix is fewer or smaller examples, vignettes and tests.
+
+*Communicating with CRAN* is advice on writing to CRAN, including
+copying `cran-submissions@r-project.org` and explaining yourself in
+`cran-comments.md`. The one checkable part of it, whether that file is
+there, is `cran_comments_file`.
 
 ## When checktor and an authority disagree
 

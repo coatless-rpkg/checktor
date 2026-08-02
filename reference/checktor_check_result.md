@@ -43,8 +43,8 @@ An object of class `checktor_check_result` containing:
 ## See also
 
 Individual diagnostic functions like
-[`diagnose_tf_usage()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_tf_usage.md),
-[`diagnose_seed_setting()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_seed_setting.md)
+[`lab_tf_usage()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_tf_usage.md),
+[`lab_seed_setting()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_seed_setting.md)
 
 ## Examples
 

@@ -77,7 +77,7 @@ into specific code, documentation, or DESCRIPTION categories.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>This function checks:</p><ul><li><p>Package size, measured against the files that would ship in the
+    <p>This function checks:</p><ul><li><p>Package size, measured against the files that would go into the
 tarball (<code>.Rbuildignore</code> and standard scratch dirs are excluded), with
 a 5 MB warning threshold matching CRAN's recommendation.</p></li>
 <li><p><code>http://</code> URLs and URL shorteners, offline. <code>R CMD check --as-cran</code> does
@@ -85,7 +85,7 @@ fetch every URL, but only with a network and only under <code>--as-cran</code>; 
 is the fast local pass.</p></li>
 <li><p>Presence of a <code>NEWS</code> file documenting user-facing changes.</p></li>
 <li><p>Relative links in the <code>README</code> that would break on CRAN.</p></li>
-</ul><p><code><a href="diagnose_cran_comments_file.html">diagnose_cran_comments_file()</a></code> is intentionally not part of this default
+</ul><p><code><a href="lab_cran_comments_file.html">lab_cran_comments_file()</a></code> is intentionally not part of this default
 run, since a <code>cran-comments.md</code> is a workflow convention rather than a CRAN
 requirement; call it directly to opt in.</p>
     </div>

@@ -119,7 +119,7 @@ results <- checktor(pkg, verbose = FALSE, progress = FALSE)
 results
 #> ── Package Doctor - Diagnosis Summary ──────────────────────────────────────────
 #> Patient: examplepackage
-#> Examined: 2026-07-26 17:58:37.281756
+#> Examined: 2026-08-02 00:24:11.818303
 #> Doctor version: 0.2.0
 #> 
 #> CODE ISSUES: 1 failing check
@@ -128,6 +128,7 @@ results
 #> GENERAL ISSUES: HEALTHY
 #> POLICY ISSUES: HEALTHY
 #> 
+#> ℹ 2 checks did not run: "spelling" and "url_liveness".
 #> ! Overall health: NEEDS ATTENTION (7 issues)
 #> Run `summary()`, `issues()`, or `prescribe()` for details
 ```
@@ -152,20 +153,20 @@ reach for the accessors. They return plain data frames, so you never
 spelunk through nested lists.
 
 ![The one checktor_results object fans out into three plain data frames.
-summary() gives 5 rows, one per category. issues() gives 10 rows, one
-per issue, carrying the file and line. tidy() gives 46 rows, one per
-check, whether it passed or
+summary() gives 5 rows, one per category. issues() gives 8 rows, one per
+issue, carrying the file and line. tidy() gives 51 rows, one per check,
+whether it passed or
 not.](figures/result-shapes-light.svg)![](figures/result-shapes-dark.svg)
 
 ``` r
 
 summary(results)   # one row per category
-#>        category checks passed failed issues
-#> 1          code     15     14      1      7
-#> 2   description     19     18      1      1
-#> 3 documentation      8      8      0      0
-#> 4       general      5      5      0      0
-#> 5        policy      4      4      0      0
+#>        category checks passed failed skipped issues
+#> 1          code     16     15      1       0      7
+#> 2   description     19     18      1       1      1
+#> 3 documentation     13     13      0       0      0
+#> 4       general      5      5      0       1      0
+#> 5        policy      4      4      0       0      0
 ```
 
 ``` r
@@ -193,7 +194,10 @@ issues(results)    # one row per issue, with file and line
 
 `tidy(results)` gives one row per check, passed or not, and
 [`as.data.frame()`](https://rdrr.io/r/base/as.data.frame.html) is its
-alias. Three predicates answer the yes/no questions directly:
+alias. Its `skipped` column marks any check that did not run, such as
+the URL fetch when you are not at the console, so a check that sat out
+never reads as one that passed. Three predicates answer the yes/no
+questions directly:
 
 ``` r
 

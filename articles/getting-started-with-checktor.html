@@ -172,7 +172,7 @@
 <span><span class="va">results</span></span>
 <span><span class="co">#&gt; ── Package Doctor - Diagnosis Summary ──────────────────────────────────────────</span></span>
 <span><span class="co">#&gt; Patient: examplepackage</span></span>
-<span><span class="co">#&gt; Examined: 2026-07-26 17:58:37.281756</span></span>
+<span><span class="co">#&gt; Examined: 2026-08-02 00:24:11.818303</span></span>
 <span><span class="co">#&gt; Doctor version: 0.2.0</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; CODE ISSUES: 1 failing check</span></span>
@@ -181,6 +181,7 @@
 <span><span class="co">#&gt; GENERAL ISSUES: HEALTHY</span></span>
 <span><span class="co">#&gt; POLICY ISSUES: HEALTHY</span></span>
 <span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; ℹ 2 checks did not run: "spelling" and "url_liveness".</span></span>
 <span><span class="co">#&gt; ! Overall health: NEEDS ATTENTION (7 issues)</span></span>
 <span><span class="co">#&gt; Run `summary()`, `issues()`, or `prescribe()` for details</span></span></code></pre></div>
 </div>
@@ -191,16 +192,16 @@
 </section><section class="level2"><h2 id="reading-the-results-as-data">Reading the results as data<a class="anchor" aria-label="anchor" href="#reading-the-results-as-data"></a>
 </h2>
 <p>The printed report is for humans. When you want to <em>compute</em> on the findings, filter them, count them, fold them into a report of your own, reach for the accessors. They return plain data frames, so you never spelunk through nested lists.</p>
-<p><img src="figures/result-shapes-light.svg" class="ct-fig ct-light" alt="The one checktor_results object fans out into three plain data frames. summary() gives 5 rows, one per category. issues() gives 10 rows, one per issue, carrying the file and line. tidy() gives 46 rows, one per check, whether it passed or not."><img src="figures/result-shapes-dark.svg" class="ct-fig ct-dark" aria-hidden="true"></p>
+<p><img src="figures/result-shapes-light.svg" class="ct-fig ct-light" alt="The one checktor_results object fans out into three plain data frames. summary() gives 5 rows, one per category. issues() gives 8 rows, one per issue, carrying the file and line. tidy() gives 51 rows, one per check, whether it passed or not."><img src="figures/result-shapes-dark.svg" class="ct-fig ct-dark" aria-hidden="true"></p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span>   <span class="co"># one row per category</span></span>
-<span><span class="co">#&gt;        category checks passed failed issues</span></span>
-<span><span class="co">#&gt; 1          code     15     14      1      7</span></span>
-<span><span class="co">#&gt; 2   description     19     18      1      1</span></span>
-<span><span class="co">#&gt; 3 documentation      8      8      0      0</span></span>
-<span><span class="co">#&gt; 4       general      5      5      0      0</span></span>
-<span><span class="co">#&gt; 5        policy      4      4      0      0</span></span></code></pre></div>
+<span><span class="co">#&gt;        category checks passed failed skipped issues</span></span>
+<span><span class="co">#&gt; 1          code     16     15      1       0      7</span></span>
+<span><span class="co">#&gt; 2   description     19     18      1       1      1</span></span>
+<span><span class="co">#&gt; 3 documentation     13     13      0       0      0</span></span>
+<span><span class="co">#&gt; 4       general      5      5      0       1      0</span></span>
+<span><span class="co">#&gt; 5        policy      4      4      0       0      0</span></span></code></pre></div>
 </div>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb8"><pre class="downlit sourceCode r">
@@ -224,7 +225,7 @@
 <span><span class="co">#&gt; 7                                 tf_usage_bad.R:29 T/F usage check</span></span>
 <span><span class="co">#&gt; 8 Authors@R lacks any [cph] (copyright holder) role  cph role check</span></span></code></pre></div>
 </div>
-<p><code>tidy(results)</code> gives one row per check, passed or not, and <code><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame()</a></code> is its alias. Three predicates answer the yes/no questions directly:</p>
+<p><code>tidy(results)</code> gives one row per check, passed or not, and <code><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame()</a></code> is its alias. Its <code>skipped</code> column marks any check that did not run, such as the URL fetch when you are not at the console, so a check that sat out never reads as one that passed. Three predicates answer the yes/no questions directly:</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/predicates.html">is_healthy</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span>

@@ -49,8 +49,8 @@ pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)
 code_results <- diagnose_code_issues(pkg, verbose = FALSE)
 summary(code_results)   # per-category overview
-#>   checks passed failed issues
-#> 1     15     14      1      7
+#>   checks passed failed skipped issues
+#> 1     16     15      1       0      7
 issues(code_results)    # the issues found
 #>      check   severity           file line          location         message
 #> 1 tf_usage robustness tf_usage_bad.R    8  tf_usage_bad.R:8 T/F usage check

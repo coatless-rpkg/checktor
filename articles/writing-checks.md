@@ -1,6 +1,6 @@
 # Writing Your Own Checks
 
-`checktor` ships more than forty diagnostics, but every team has house
+`checktor` includes more than forty checks, but every team has house
 rules too local to upstream: a function you have banned, a header you
 insist on, a habit you keep relapsing into. This vignette is for those.
 It walks through the handful of helpers in `R/ast.R` and shows how to
@@ -10,8 +10,8 @@ XPath, with the orchestrator handling the bookkeeping.
 Every check walks the same road. Your sources are parsed once into a
 syntax tree, an XPath query picks out the nodes you object to, and each
 match comes back as a `file:line` string inside a result that knows how
-to print itself. The figure traces that road for a check that ships in
-the box, the one that flags an
+to print itself. The figure traces that road for one of the built-in
+checks, the one that flags an
 [`options()`](https://rdrr.io/r/base/options.html) call whose enclosing
 function never puts the setting back.
 
@@ -24,10 +24,20 @@ FALSE.](figures/check-pipeline-light.svg)![](figures/check-pipeline-dark.svg)
 
 ## The shape of a check
 
-Every diagnostic function follows the same contract:
+An individual check is named `lab_<name>()`, where `<name>` is the check
+name that
+[`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md)
+reports in `tidy()$check` and that `Config/checktor` fields refer to.
+Keeping those the same means a reader who sees a finding knows the
+function to call. The five category functions keep their own names,
+since each runs a whole panel rather than one test. Four are
+`diagnose_<category>_issues()`, and the policy panel is
+[`diagnose_policy_violations()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_policy_violations.md).
+
+Every check follows the same contract:
 
 ``` r
-diagnose_<name> <- function(path, verbose = TRUE, parsed = NULL) {
+lab_<name> <- function(path, verbose = TRUE, parsed = NULL) {
   if (is.null(parsed)) parsed <- read_r_xml(path)
   if (length(parsed) == 0L) {
     return(checktor_check_result(TRUE, character(0), "<message>"))
@@ -142,12 +152,12 @@ Suppose we want a check that flags any
 [`Sys.setenv()`](https://rdrr.io/r/base/Sys.setenv.html) call whose
 enclosing function doesn’t also call `on.exit(Sys.unsetenv(...))` or
 [`withr::local_envvar()`](https://withr.r-lib.org/reference/with_envvar.html).
-This is the same shape as `diagnose_option_changes` and ships in
-checktor as `diagnose_sys_setenv_no_reset`. Here is the essential shape:
+This is the same shape as `lab_option_changes` and is built into
+checktor as `lab_sys_setenv`. Here is the essential shape:
 
 ``` r
 
-diagnose_sys_setenv_no_reset <- function(path, verbose = TRUE,
+lab_sys_setenv <- function(path, verbose = TRUE,
                                          parsed = NULL) {
   # reuse the parse-cache when checktor() supplies one, else parse fresh
   if (is.null(parsed)) parsed <- read_r_xml(path)
@@ -167,19 +177,19 @@ diagnose_sys_setenv_no_reset <- function(path, verbose = TRUE,
   )
   issues <- xpath_lints(parsed, xpath)
   passed <- length(issues) == 0L
-  # a shipped check also calls emit_issue_summary(issues, verbose, ...) here
+  # a built-in check also calls emit_issue_summary(issues, verbose, ...) here
   # to print the cli summary when verbose = TRUE
   checktor_check_result(passed, issues, "Sys.setenv reset check")
 }
 ```
 
 Twenty lines, and the interesting one is the XPath predicate. Everything
-else is bookkeeping shared with every other check. The version that
-ships adds one refinement, exempting a setter that captures the old
-value and hands it back
-(`old <- get_env(); Sys.setenv(...); invisible(old)`), since that is a
-restore contract rather than a leak. Refinements like that are where a
-real check earns its keep, but the skeleton is exactly this.
+else is bookkeeping shared with every other check. The built-in version
+adds one refinement, exempting a setter that captures the old value and
+hands it back (`old <- get_env(); Sys.setenv(...); invisible(old)`),
+since that is a restore contract rather than a leak. Refinements like
+that are where a real check earns its keep, but the skeleton is exactly
+this.
 
 ## The xmlparsedata XML structure
 
@@ -231,7 +241,7 @@ xpath_lints(parsed,
 
 ## Wiring it into `checktor()`
 
-A finished `diagnose_*` function does nothing until
+A finished `lab_*` function does nothing until
 [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md)
 knows to call it.
 [`register_check()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/register_check.md)
@@ -239,13 +249,13 @@ connects the two at run time, with no edit to checktor’s own source:
 
 ``` r
 
-diagnose_my_check <- function(path, verbose = TRUE, parsed = NULL) {
+lab_my_check <- function(path, verbose = TRUE, parsed = NULL) {
   if (is.null(parsed)) parsed <- read_r_xml(path)
   issues <- undesirable_function_check(parsed, "banned")
   checktor_check_result(length(issues) == 0L, issues, "no banned()")
 }
 
-register_check("my_check", diagnose_my_check,
+register_check("my_check", lab_my_check,
                category = "code", severity = "policy")
 ```
 
@@ -261,7 +271,7 @@ A few things worth knowing:
 
 - The function returns a
   [`checktor_check_result()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor_check_result.md),
-  the same shape as every shipped check, so `run_checks()` handles its
+  the same shape as every built-in check, so `run_checks()` handles its
   error catching and `$passed` bookkeeping.
 - checktor calls it as `fn(path, verbose)`. If the function also
   declares a `parsed` argument (for `code` and `policy` checks) or a
@@ -297,12 +307,11 @@ and
 [`collect_rd_text()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/collect_rd_text.md).
 
 > Contributing a check to checktor itself? Then skip the registry and
-> wire it the way the shipped checks are: drop `diagnose_my_check()`
-> into the right `R/diagnostics-*.R` file, add one line to that file’s
-> `diagnose_<category>_issues()` function inside its
-> `run_checks(list(...))` call
-> (`my_check = function(p, v) diagnose_my_check(p, v, parsed = parsed)`),
-> and give it a tier in `CHECK_SEVERITY` (`R/severity.R`).
+> wire it the way the built-in checks are: add `lab_my_check()` to the
+> right `R/diagnostics-*.R` file, add one line to that file’s category
+> function inside its `run_checks(list(...))` call
+> (`my_check = function(p, v) lab_my_check(p, v, parsed = parsed)`), and
+> give it a tier in `CHECK_SEVERITY` (`R/severity.R`).
 
 ## Without writing code
 
@@ -315,13 +324,13 @@ from `Config/checktor/*` fields in its own `DESCRIPTION`:
     Config/checktor/disable: news_file               # turn a check off entirely
 
 `software_names` and `acronyms` extend the vocabularies those checks
-already use; `allow` mutes a specific finding (a whole check, or
-`check:substring`), which is the escape hatch a green
+already use; `allow` mutes a specific finding, either a whole check or a
+`check:substring`, which is what a green
 [`checkup()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checkup.md)
-gate needs; and `disable` skips a check outright. Reach for a
-hand-written check when the rule is genuinely yours; reach for
-`Config/checktor/*` when you only need to teach or quiet a check that
-already ships.
+gate needs when a finding has been reviewed and accepted. `disable`
+skips a check outright. Write a check of your own when the rule is
+genuinely yours, and reach for `Config/checktor/*` when you only need to
+teach or quiet a check checktor already includes.
 
 ## Conclusion
 
@@ -337,7 +346,7 @@ SYMBOL, so only the SYMBOL is a bare T and only it is
 flagged.](figures/ast-vs-regex-light.svg)![](figures/ast-vs-regex-dark.svg)
 
 Write the XPath, let `run_checks()` carry the rest, and your house rule
-is enforced as rigorously as the checks that ship in the box.
+is enforced as rigorously as the built-in checks.
 
 ## See also
 

@@ -44,8 +44,8 @@ pkg <- example_diagnose_scenario("code_examples/browser_calls_bad.R",
                                  show_content = FALSE)
 policy <- diagnose_policy_violations(pkg, verbose = FALSE)
 summary(policy)
-#>   checks passed failed issues
-#> 1      4      3      1      3
+#>   checks passed failed skipped issues
+#> 1      4      3      1       0      3
 issues(policy)
 #>           check severity                file line               location
 #> 1 browser_calls   policy browser_calls_bad.R    6  browser_calls_bad.R:6

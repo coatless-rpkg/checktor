@@ -20,175 +20,212 @@ Functions you call directly to diagnose a package.
   : Treatment Recommendations
 - [`health_report()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/health_report.md)
   : Comprehensive Health Report
+- [`ci_report()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/ci_report.md)
+  : Report Findings in the Format Your CI Understands
 - [`configure_doctor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/configure_doctor.md)
   : Configure Package Doctor Defaults
 
-## Code-pattern diagnostics
+## Category diagnostics
 
-Per-check entry points for R source patterns. Each operates on the
-parsed AST and can be called independently of
-[`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md).
+One per category. Each runs the panel of `lab_*()` checks below it and
+returns them together, which is what
+[`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md)
+calls.
 
 - [`diagnose_code_issues()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_code_issues.md)
   : Diagnose Code Health Issues
+- [`diagnose_description_issues()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_description_issues.md)
+  : Diagnose DESCRIPTION File Issues
+- [`diagnose_documentation_issues()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_documentation_issues.md)
+  : Diagnose Documentation Issues
+- [`diagnose_general_issues()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_general_issues.md)
+  : Diagnose General Package Issues
+- [`diagnose_policy_violations()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_policy_violations.md)
+  : Check for Common CRAN Policy Violations
 
-- [`diagnose_tf_usage()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_tf_usage.md)
+## Code checks
+
+Individual checks on R source, run against the parsed syntax tree. The
+name after `lab_` is the check name that
+[`tidy()`](https://generics.r-lib.org/reference/tidy.html) reports.
+
+- [`lab_tf_usage()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_tf_usage.md)
   :
 
   Diagnose `T`/`F` Usage in R Code
 
-- [`diagnose_seed_setting()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_seed_setting.md)
+- [`lab_seed_setting()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_seed_setting.md)
   : Diagnose Hardcoded Seed Setting
 
-- [`diagnose_print_cat_usage()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_print_cat_usage.md)
+- [`lab_print_cat_usage()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_print_cat_usage.md)
   : Diagnose Print/Cat Usage in Functions
 
-- [`diagnose_detect_cores_robustness()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_detect_cores_robustness.md)
+- [`lab_detect_cores_robustness()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_detect_cores_robustness.md)
   :
 
   Diagnose Unguarded `detectCores()`
 
-- [`diagnose_option_changes()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_option_changes.md)
+- [`lab_option_changes()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_option_changes.md)
   : Diagnose Unrestored Option Changes
 
-- [`diagnose_home_writing()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_home_writing.md)
+- [`lab_home_writing()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_home_writing.md)
   : Diagnose Writes to the User's Home Directory
 
-- [`diagnose_temp_cleanup()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_temp_cleanup.md)
+- [`lab_temp_cleanup()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_temp_cleanup.md)
   : Diagnose Missing Temp-File Cleanup
 
-- [`diagnose_globalenv_modification()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_globalenv_modification.md)
+- [`lab_globalenv_mod()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_globalenv_mod.md)
   : Diagnose Writes to the Global Environment
 
-- [`diagnose_installed_packages_usage()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_installed_packages_usage.md)
+- [`lab_installed_packages()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_installed_packages.md)
   : Diagnose installed.packages() Usage
 
-- [`diagnose_warn_option()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_warn_option.md)
+- [`lab_warn_option()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_warn_option.md)
   : Diagnose Changes to options(warn=)
 
-- [`diagnose_software_installation()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_software_installation.md)
+- [`lab_software_install()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_software_install.md)
   : Diagnose Package Installation From Package Code
 
-- [`diagnose_core_usage()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_core_usage.md)
+- [`lab_core_usage()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_core_usage.md)
   : Diagnose Parallel Core Usage
 
-- [`diagnose_library_in_pkg_code()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_library_in_pkg_code.md)
+- [`lab_library_in_pkg()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_library_in_pkg.md)
   : Diagnose library() in Package Code
 
-- [`diagnose_sys_setenv_no_reset()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_sys_setenv_no_reset.md)
+- [`lab_sys_setenv()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_sys_setenv.md)
   : Diagnose Unrestored Environment Variables
 
-- [`diagnose_hardcoded_credentials()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_hardcoded_credentials.md)
+- [`lab_hardcoded_credentials()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_hardcoded_credentials.md)
   : Diagnose Hardcoded Credentials in Package Code
 
-## DESCRIPTION-field diagnostics
+- [`lab_internal_ns()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_internal_ns.md)
+  :
 
-Checks against the DESCRIPTION file, parsed via
+  Diagnose `:::` in Package Code
+
+## DESCRIPTION checks
+
+Individual checks on the DESCRIPTION file, parsed via
 [`base::read.dcf()`](https://rdrr.io/r/base/dcf.html).
 
-- [`diagnose_description_issues()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_description_issues.md)
-  : Diagnose DESCRIPTION File Issues
-- [`diagnose_software_names_formatting()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_software_names_formatting.md)
+- [`lab_software_names()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_software_names.md)
   : Diagnose Unquoted Software Names in DESCRIPTION
-- [`diagnose_language_names()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_language_names.md)
+- [`lab_language_names()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_language_names.md)
   : Diagnose Programming-Language Names in DESCRIPTION
-- [`diagnose_acronym_explanation()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_acronym_explanation.md)
+- [`lab_acronyms()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_acronyms.md)
   : Diagnose Unexplained Acronyms in DESCRIPTION
-- [`diagnose_license_formatting()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_license_formatting.md)
+- [`lab_license()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_license.md)
   : Diagnose the License Field
-- [`diagnose_license_year()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_license_year.md)
+- [`lab_license_year()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_license_year.md)
   : Diagnose an Unfilled LICENSE Template
-- [`diagnose_title_case()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_title_case.md)
+- [`lab_title_case()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_title_case.md)
   : Diagnose Title Case in DESCRIPTION
-- [`diagnose_title_length()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_title_length.md)
+- [`lab_title_length()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_title_length.md)
   : Diagnose Title Length
-- [`diagnose_title_starts_with_article()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_title_starts_with_article.md)
+- [`lab_title_starts_with_article()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_title_starts_with_article.md)
   : Diagnose Title Starting With an Article
-- [`diagnose_title_redundant_phrases()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_title_redundant_phrases.md)
+- [`lab_title_redundant_phrases()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_title_redundant_phrases.md)
   : Diagnose Redundant Phrases in Title
-- [`diagnose_description_function_quotes()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_description_function_quotes.md)
+- [`lab_description_function_quotes()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_description_function_quotes.md)
   : Diagnose Single-Quoted Function Names
-- [`diagnose_authors_field()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_authors_field.md)
+- [`lab_authors()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_authors.md)
   : Diagnose the Authors@R Field
-- [`diagnose_identifier_format()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_identifier_format.md)
+- [`lab_identifier_format()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_identifier_format.md)
   : Diagnose Author Identifier Formatting
-- [`diagnose_cph_role()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_cph_role.md)
+- [`lab_cph_role()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_cph_role.md)
   : Diagnose a Missing Copyright-Holder Role
-- [`diagnose_references_formatting()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_references_formatting.md)
+- [`lab_references()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_references.md)
   : Diagnose Reference Formatting in DESCRIPTION
-- [`diagnose_date_format()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_date_format.md)
+- [`lab_date_format()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_date_format.md)
   : Diagnose the DESCRIPTION Date Field
-- [`diagnose_encoding_utf8()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_encoding_utf8.md)
+- [`lab_encoding_utf8()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_encoding_utf8.md)
   : Diagnose a Non-Portable DESCRIPTION Encoding
-- [`diagnose_version_format()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_version_format.md)
+- [`lab_version_format()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_version_format.md)
   : Diagnose the DESCRIPTION Version Field
-- [`diagnose_spelling()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_spelling.md)
+- [`lab_spelling()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_spelling.md)
   : Diagnose Possibly Misspelled Words in DESCRIPTION
-- [`diagnose_description_length()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_description_length.md)
+- [`lab_description_length()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_description_length.md)
   : Diagnose Description Length
-- [`diagnose_description_starts_with()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_description_starts_with.md)
+- [`lab_description_starts_with()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_description_starts_with.md)
   : Diagnose the Description Opening
-- [`diagnose_description_quoted_quotes()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_description_quoted_quotes.md)
+- [`lab_description_quoted_quotes()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_description_quoted_quotes.md)
   : Diagnose Double-Quoted Software Names
 
-## Documentation diagnostics
+## Documentation checks
 
-Checks against `.Rd` files, walked via
+Individual checks on `.Rd` files, walked via
 [`tools::parse_Rd()`](https://rdrr.io/r/tools/parse_Rd.html).
 
-- [`diagnose_documentation_issues()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_documentation_issues.md)
-  : Diagnose Documentation Issues
-- [`diagnose_value_tags()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_value_tags.md)
+- [`lab_value_tags()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_value_tags.md)
   : Diagnose Missing Value Tags in Documentation
-- [`diagnose_missing_examples()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_missing_examples.md)
+- [`lab_missing_examples()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_missing_examples.md)
   : Diagnose Exported Functions Missing Examples
-- [`diagnose_roxygen_usage()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_roxygen_usage.md)
+- [`lab_roxygen_usage()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_roxygen_usage.md)
   : Diagnose Stale Generated Documentation
-- [`diagnose_example_structure()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_example_structure.md)
+- [`lab_example_structure()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_example_structure.md)
   : Diagnose Example Structure
-- [`diagnose_unexported_example_namespace()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_unexported_example_namespace.md)
+- [`lab_unexported_example_ns()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_unexported_example_ns.md)
   : Diagnose Bare Calls to Unexported Functions in Examples
-- [`diagnose_commented_examples()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_commented_examples.md)
+- [`lab_commented_examples()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_commented_examples.md)
   : Diagnose Examples That Run Nothing
-- [`diagnose_donttest_vs_dontrun()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_donttest_vs_dontrun.md)
+- [`lab_donttest_vs_dontrun()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_donttest_vs_dontrun.md)
   : Diagnose dontrun Where donttest Belongs
-- [`diagnose_suggested_in_examples()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_suggested_in_examples.md)
+- [`lab_suggested_in_examples()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_suggested_in_examples.md)
   : Diagnose Suggested Packages Used in Examples Without a Guard
 
-## General-purpose diagnostics
+## Example, vignette and demo checks
 
-Package-level checks (size, URLs, NEWS, README links) that don’t fit
-other categories.
+Individual checks on the code CRAN reads outside `R/`: the examples in
+`.Rd` files, vignette chunks, and demos.
 
-- [`diagnose_general_issues()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_general_issues.md)
-  : Diagnose General Package Issues
-- [`diagnose_package_size()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_package_size.md)
+- [`lab_example_interactive()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_example_interactive.md)
+  :
+
+  Diagnose Interactive Examples Wrapped in `\\dontrun{}`
+
+- [`lab_example_installs()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_example_installs.md)
+  : Diagnose Installs in Examples, Vignettes and Demos
+
+- [`lab_example_writes()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_example_writes.md)
+  : Diagnose Writes Outside the Temporary Directory in Examples
+
+- [`lab_example_state()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_example_state.md)
+  : Diagnose Session State Left Changed by Examples
+
+- [`lab_example_internal_ns()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_example_internal_ns.md)
+  :
+
+  Diagnose `:::` in Examples
+
+## General checks
+
+Package-level checks covering size, URLs, NEWS and README links.
+
+- [`lab_package_size()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_package_size.md)
   : Diagnose Package Size
-- [`diagnose_urls()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_urls.md)
+- [`lab_urls()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_urls.md)
   : Diagnose URL Issues in Package Files
-- [`diagnose_url_liveness()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_url_liveness.md)
-  : Diagnose Broken and Redirecting URLs (Opt-In, Network)
-- [`diagnose_news_file()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_news_file.md)
+- [`lab_url_liveness()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_url_liveness.md)
+  : Diagnose Broken and Redirecting URLs
+- [`lab_news_file()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_news_file.md)
   : Diagnose a Missing NEWS File
-- [`diagnose_readme_relative_links()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_readme_relative_links.md)
+- [`lab_readme_links()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_readme_links.md)
   : Diagnose Relative Links in the README
-- [`diagnose_cran_comments_file()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_cran_comments_file.md)
+- [`lab_cran_comments_file()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_cran_comments_file.md)
   : Diagnose a Missing cran-comments.md File
 
-## CRAN policy diagnostics
+## CRAN policy checks
 
-Checks targeting common CRAN policy violations (debugging leftovers, raw
-shell calls, file/network access).
+Individual checks for common CRAN policy violations, covering debugging
+leftovers, raw shell calls, and file and network access.
 
-- [`diagnose_policy_violations()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_policy_violations.md)
-  : Check for Common CRAN Policy Violations
-- [`diagnose_browser_calls()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_browser_calls.md)
+- [`lab_browser_calls()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_browser_calls.md)
   : Diagnose Leftover browser() Calls
-- [`diagnose_system_calls()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_system_calls.md)
+- [`lab_system_calls()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_system_calls.md)
   : Diagnose System Calls
-- [`diagnose_file_operations()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_file_operations.md)
+- [`lab_file_operations()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_file_operations.md)
   : Diagnose Writes to the User's Filespace
-- [`diagnose_network_operations()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_network_operations.md)
+- [`lab_network_operations()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_network_operations.md)
   : Diagnose Unguarded Network Access
 
 ## Result classes

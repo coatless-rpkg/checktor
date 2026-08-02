@@ -159,16 +159,96 @@
 <p>CI is chatty by nature, so quiet the doctor down. <code><a href="../reference/configure_doctor.html">configure_doctor()</a></code> sets the verbosity and progress defaults once, at the top of a script, and every later call inherits them:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">checktor</span><span class="fu">::</span><span class="fu"><a href="../reference/configure_doctor.html">configure_doctor</a></span><span class="op">(</span>verbose_default <span class="op">=</span> <span class="cn">FALSE</span>, progress_default <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
-<p>You can also run a single category when that is all you care about, since each <code>diagnose_*_issues()</code> function stands on its own:</p>
+<p>You can also run a single category when that is all you care about, since each <code>diagnose_*_issues()</code> function stands on its own, and a single check the same way through its <code>lab_*()</code> function:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Gate only on DESCRIPTION-field problems</span></span>
-<span><span class="va">desc</span> <span class="op">&lt;-</span> <span class="fu">checktor</span><span class="fu">::</span><span class="fu"><a href="../reference/diagnose_description_issues.html">diagnose_description_issues</a></span><span class="op">(</span><span class="st">"."</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">desc</span> <span class="op">&lt;-</span> <span class="fu">checktor</span><span class="fu">::</span><span class="fu"><a href="../reference/diagnose_description_issues.html">diagnose_description_issues</a></span><span class="op">(</span><span class="st">"."</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Or one check on its own</span></span>
+<span><span class="va">tf</span> <span class="op">&lt;-</span> <span class="fu">checktor</span><span class="fu">::</span><span class="fu"><a href="../reference/lab_tf_usage.html">lab_tf_usage</a></span><span class="op">(</span><span class="st">"."</span><span class="op">)</span></span></code></pre></div>
+</section><section class="level2"><h2 id="findings-on-the-diff-not-in-the-log">Findings on the diff, not in the log<a class="anchor" aria-label="anchor" href="#findings-on-the-diff-not-in-the-log"></a>
+</h2>
+<p>A log someone has to scroll is the weakest way to deliver a finding. Every forge can put one next to the line that caused it, and <code><a href="../reference/ci_report.html">ci_report()</a></code> writes whichever shape yours reads. With no arguments it examines the package, works out where it is running, and emits the right thing.</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">checktor</span><span class="fu">::</span><span class="fu"><a href="../reference/ci_report.html">ci_report</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p>On GitHub Actions that prints workflow commands, and each finding appears on the pull request diff:</p>
+<pre><code>::error file=R/plot.R,line=42,title=checktor: option_changes::Option changes check: plot.R:42</code></pre>
+<p>Gitea and Forgejo Actions read the same commands, so the same call covers them. Elsewhere, name the format and the file your configuration expects:</p>
+<table class="table caption-top">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead><tr class="header">
+<th>Forge</th>
+<th>Format</th>
+<th>What to do with it</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>GitHub, Gitea, Forgejo</td>
+<td><code>"github"</code></td>
+<td>Printed to the log, shown on the diff</td>
+</tr>
+<tr class="even">
+<td>GitLab</td>
+<td><code>"gitlab"</code></td>
+<td>Name it in <code>artifacts:reports:codequality:</code>
+</td>
+</tr>
+<tr class="odd">
+<td>Azure Pipelines</td>
+<td><code>"azure"</code></td>
+<td>Printed to the log</td>
+</tr>
+<tr class="even">
+<td>Jenkins, reviewdog, review bots</td>
+<td><code>"checkstyle"</code></td>
+<td>Read the XML with the warnings plugin</td>
+</tr>
+<tr class="odd">
+<td>GitHub code scanning</td>
+<td><code>"sarif"</code></td>
+<td>Upload with <code>github/codeql-action/upload-sarif</code>
+</td>
+</tr>
+</tbody>
+</table>
+<p>A GitLab job needs only this:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">checktor</span><span class="kw">:</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">image</span><span class="kw">:</span><span class="at"> rocker/r-ver:latest</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">script</span><span class="kw">:</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="kw">-</span><span class="at"> Rscript -e 'install.packages("checktor"); checktor::ci_report(format = "gitlab")'</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">artifacts</span><span class="kw">:</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">reports</span><span class="kw">:</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">codequality</span><span class="kw">:</span><span class="at"> gl-code-quality-report.json</span></span></code></pre></div>
+<p><code><a href="../reference/ci_report.html">ci_report()</a></code> reports every tier, since an annotation is information rather than a verdict. Keep <code><a href="../reference/checkup.html">checkup()</a></code> for the verdict, so what fails a build stays a separate decision from what gets pointed at. If you want an opinion to fail a build, that is <code>checkup(severity = SEVERITY_LEVELS)</code>, and the threshold stays in one place rather than being spelled two ways that can disagree.</p>
+<p>Checks that did not run are named once at the end, rather than one annotation each, because a check that never happened should not compete for space with a finding:</p>
+<pre><code>::notice title=checktor: skipped::2 checks did not run: spelling, url_liveness</code></pre>
+<p>For the report formats that note goes to the job log instead, keeping the artifact a clean document. Pass <code>skipped = FALSE</code> if you would rather not hear about it.</p>
+</section><section class="level2"><h2 id="keeping-the-report">Keeping the report<a class="anchor" aria-label="anchor" href="#keeping-the-report"></a>
+</h2>
+<p><code><a href="../reference/health_report.html">health_report()</a></code> writes the whole consultation to a file, which an artifact step can keep for later:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> Upload checktor report</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">if</span><span class="kw">:</span><span class="at"> always()</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> actions/upload-artifact@v7</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">with</span><span class="kw">:</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="at">          </span><span class="fu">name</span><span class="kw">:</span><span class="at"> checktor-report</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="at">          </span><span class="fu">path</span><span class="kw">:</span><span class="at"> checktor-report.md</span></span></code></pre></div>
+<p>Writing the report before the gate runs, and uploading it with <code>if: always()</code>, means a failing build still leaves the findings behind after its log has scrolled away. checktor’s own workflow does exactly this.</p>
+</section><section class="level2"><h2 id="what-a-runner-does-not-check">What a runner does not check<a class="anchor" aria-label="anchor" href="#what-a-runner-does-not-check"></a>
+</h2>
+<p>Two checks sit out in CI, because the result would say more about the runner than about your package. The URL fetch waits until you are at the console, and spelling waits until a spell-check backend is installed. Neither is reported as a pass. They come back marked skipped, they are named in <code>metadata$skipped_checks</code>, <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code> carries a <code>skipped</code> column, and <code><a href="../reference/ci_report.html">ci_report()</a></code> says so on the build itself, so a green build never implies a check that never happened.</p>
+<p>Turn the URL fetch on in a job that should do it, keeping in mind that a network hiccup then becomes a red build:</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>checktor.url_check <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 </section><section class="level2"><h2 id="closer-to-the-keyboard">Closer to the keyboard<a class="anchor" aria-label="anchor" href="#closer-to-the-keyboard"></a>
 </h2>
 <p>CI is the backstop, not the first line. If you would rather hear about a problem before it reaches a pull request, the same one-liner works as a local Git pre-commit hook:</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># .git/hooks/pre-commit  (make it executable: chmod +x)</span></span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="co">#!/usr/bin/env bash</span></span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">'if (!checktor::checkup()) quit(status = 1)'</span></span></code></pre></div>
+<div class="sourceCode" id="cb12"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co"># .git/hooks/pre-commit  (make it executable: chmod +x)</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="co">#!/usr/bin/env bash</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">'if (!checktor::checkup()) quit(status = 1)'</span></span></code></pre></div>
 <p>Now a commit that would have embarrassed you on CRAN never leaves your laptop.</p>
 <p>It is the same call in both places, and the only thing that changes is how long you wait to hear about it.</p>
 <p><img src="figures/ci-gates-light.svg" class="ct-fig ct-light" alt="The same checkup() call at three latencies. In a .git/hooks/pre-commit hook on your laptop it answers in seconds. In GitHub Actions on the pull request it answers in minutes. If you skip both, the same finding reaches you from a CRAN reviewer weeks later."><img src="figures/ci-gates-dark.svg" class="ct-fig ct-dark" aria-hidden="true"></p>

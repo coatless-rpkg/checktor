@@ -98,8 +98,8 @@ and scope-aware patterns (an <code><a href="https://rdrr.io/r/base/options.html"
 <span class="r-in"><span>                                 show_content <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">code_results</span> <span class="op">&lt;-</span> <span class="fu">diagnose_code_issues</span><span class="op">(</span><span class="va">pkg</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">code_results</span><span class="op">)</span>   <span class="co"># per-category overview</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   checks passed failed issues</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1     15     14      1      7</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   checks passed failed skipped issues</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1     16     15      1       0      7</span>
 <span class="r-in"><span><span class="fu"><a href="issues.html">issues</a></span><span class="op">(</span><span class="va">code_results</span><span class="op">)</span>    <span class="co"># the issues found</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>      check   severity           file line          location         message</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1 tf_usage robustness tf_usage_bad.R    8  tf_usage_bad.R:8 T/F usage check</span>

@@ -2,181 +2,244 @@
 
 ## checktor 0.2.0
 
-Every check now carries a severity tier, so a clean bill of health tells
-you something precise. Your package is submission ready, and nothing
-here will crash a user. New checks widen that ground by bringing part of
-CRAN’s incoming filter offline, covering the `Date`, `Encoding` and
-`Version` fields, the structure of `Authors@R`, ORCID and ROR
-identifiers, a `detectCores()` that can return `NA`, and a scan for a
-leaked credential. Many existing checks are sharper and quieter, every
-diagnostic is now exported and callable on its own, checktor runs from
-anywhere inside a package tree, and a package can tune checktor through
-`Config/checktor/*` fields in its own DESCRIPTION.
+Every check now carries a severity tier, so a clean bill of health means
+something precise rather than merely quiet. Checks read your examples,
+vignettes and demos as well as `R/`, which is where several of the most
+common rejections actually land. New checks bring part of CRAN’s
+incoming filter offline, covering the `Date`, `Encoding` and `Version`
+fields, the structure of `Authors@R`, ORCID and ROR identifiers, a
+`detectCores()` that can return `NA`, and a scan for a leaked
+credential. Existing checks are sharper and quieter, every check is
+callable on its own, findings can go straight to your build system,
+checktor runs from anywhere inside a package tree, and a package can
+tune checktor through `Config/checktor/*` fields in its own DESCRIPTION.
 
 ### Breaking changes
 
-- Every check now carries a severity tier, and
+- checktor needs R 4.5.0 or later, where 0.1.0 asked only for R 3.5.0. R
+  4.5.0 added
+  [`tools::check_package_urls()`](https://rdrr.io/r/tools/urltools.html),
+  which the new `url_liveness` check uses. An older installation stays
+  on 0.1.0.
+
+- The individual checks are now `lab_*()`, so the doctor orders a panel
+  of labs. `diagnose_tf_usage()` is
+  [`lab_tf_usage()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_tf_usage.md),
+  and the name after `lab_` is the check name
+  [`tidy()`](https://generics.r-lib.org/reference/tidy.html) reports and
+  `Config/checktor` refers to, which several old names did not match.
+  The five category functions such as
+  [`diagnose_code_issues()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_code_issues.md)
+  keep their names, since they run a panel rather than one test. The
+  names released in 0.1.0 were renamed outright rather than deprecated,
+  so update any call to `diagnose_tf_usage()`,
+  `diagnose_seed_setting()`, `diagnose_print_cat_usage()`,
+  `diagnose_roxygen_usage()`, `diagnose_value_tags()`,
+  `diagnose_example_structure()`, `diagnose_package_size()` or
+  `diagnose_urls()`.
+
+- Every check carries a severity tier, and
   [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md)
-  gained a `severity` argument that decides which tiers the verdict is
+  gained a `severity` argument deciding which tiers the verdict is
   about. It defaults to policy and robustness.
 
   - A policy finding is a citable violation of CRAN Repository Policy or
     Writing R Extensions.
-  - A robustness finding is a real defect that CRAN will still let you
-    ship, such as a `detectCores()` that may return `NA`.
+  - A robustness finding is a real defect that CRAN will still accept,
+    such as a `detectCores()` that may return `NA`.
   - An opinion finding is a convention with no authority behind it.
 
   Every check still runs and every finding is still reported with its
-  tier. The tier only decides whether a finding counts against a clean
-  bill of health, so zero issues now means your package is submission
-  ready and nothing here will crash a user.
+  tier. The tier only decides what counts against a clean bill of
+  health, so zero issues now means your package is submission ready and
+  nothing here will crash a user.
   [`checkup()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checkup.md)
   follows the same default, so a missing `NEWS.md` no longer fails a
-  build. A check’s tier reflects where its authority sits rather than
-  how much we like it, which is why `value_tags` and `missing_examples`
-  sit at opinion, since no `R CMD check` equivalent exists for either.
+  build.
 
-- Every `diagnose_*` function is now exported. The old split was
-  accidental, with
-  [`diagnose_tf_usage()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_tf_usage.md)
-  public while
-  [`diagnose_option_changes()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_option_changes.md)
-  was not. The DESCRIPTION checks used to take a pre-parsed
-  `DESCRIPTION` as their first argument, which is not something a caller
-  has, so they now take `(path, verbose, desc = NULL)` like every other
-  check.
+- A check that does not run is reported as skipped rather than as
+  passing, so a clean bill of health never includes a check that never
+  happened. [`tidy()`](https://generics.r-lib.org/reference/tidy.html)
+  gained a `skipped` column and
+  [`summary()`](https://rdrr.io/r/base/summary.html) a `skipped` count,
+  the names are in `metadata$skipped_checks`, and the printed result and
+  every
+  [`health_report()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/health_report.md)
+  format name the checks that sat out.
 
-- [`issues()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/issues.md)
+- Every check is exported, so any check
+  [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md)
+  runs is one you can call yourself. The DESCRIPTION checks take
+  `(path, verbose, desc = NULL)` like every other check, and
+  [`issues()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/issues.md)
   and [`tidy()`](https://generics.r-lib.org/reference/tidy.html) gained
   a `severity` column.
 
-- `description_bare_r` was removed. It flagged every bare `R` in the
-  `Description` and asked you to quote it, but Writing R Extensions
-  reserves single quotes for other packages and external software, and
-  `R` is the host language, so most packages write it bare and stay on
-  CRAN. The new `language_names` check settles the question the right
-  way by leaving `R` alone.
+- `description_bare_r` was removed. It asked you to quote every bare `R`
+  in the `Description`, but Writing R Extensions reserves single quotes
+  for other packages and external software, and `R` is the host
+  language. The new `language_names` check settles the question by
+  leaving `R` alone.
 
-- Two checks were dropped from the default run because no authority
-  supports them, and each stays exported and callable for anyone who
-  wants it.
-
-  - `title_starts_with_article` was a mis-transplant of a real CRAN rule
-    that applies to the `Description` field and requires the literal
-    word “package” after the article. Plenty of packages sit on CRAN
-    with titles that begin with an article.
-  - `description_function_quotes` asserted that single quotes are
-    reserved for software names. Writing R Extensions actually treats
-    them as an inclusive list for non-English usage that includes other
-    packages, so a quoted function name breaks no rule.
+- Two checks left the default run because no authority supports them,
+  and each stays exported for anyone who wants it. The CRAN rule behind
+  `title_starts_with_article` applies to the `Description` and requires
+  the word “package” after the article, not to the `Title`. And Writing
+  R Extensions treats single quotes as an inclusive list for non-English
+  usage that a quoted function name fits, which is what
+  `description_function_quotes` ruled out.
 
 ### New checks
 
-- `detect_cores_robustness` flags a `detectCores()` result used without
-  an `NA` guard. The help for `detectCores()` says plainly that it
-  returns an integer, or `NA` when the answer is unknown, and `NA - 1`
-  is `NA`, so the next comparison dies with
-  `missing value where TRUE/FALSE needed`. The fix is
-  `parallelly::availableCores()`, which never returns `NA`.
+- `detect_cores_robustness` catches a `detectCores()` result used
+  without an `NA` guard. The help says it returns an integer, or `NA`
+  when the answer is unknown, and `NA - 1` is `NA`, so the next
+  comparison dies with `missing value where TRUE/FALSE needed`. The fix
+  is `parallelly::availableCores()`.
 
-- A family of new checks mirrors CRAN’s incoming filter, the run that
-  happens under `R CMD check --as-cran` against a built tarball, so you
-  can see the same findings offline against your own sources before you
-  submit.
+- A family of checks mirrors CRAN’s incoming filter, so you see those
+  findings offline against your own sources before you submit.
 
-  - `date_format` flags a `Date` field that is not ISO 8601
-    `yyyy-mm-dd`, is over a month old, or lies in the future.
-  - `version_format` flags a `Version` component with a leading zero or
-    a suspiciously large one, while leaving a calendar-year version
+  - `date_format` catches a `Date` that is not ISO 8601 `yyyy-mm-dd`, is
+    over a month old, or lies in the future.
+  - `version_format` catches a `Version` component with a leading zero
+    or a suspiciously large one, while leaving a calendar-year version
     alone.
-  - `encoding_utf8` flags a non-portable `Encoding`, meaning one outside
-    the `UTF-8`, `latin1` and `latin2` that Writing R Extensions names
-    as portable.
+  - `encoding_utf8` catches an `Encoding` outside the portable `UTF-8`,
+    `latin1` and `latin2`.
   - `identifier_format` validates the ORCID and ROR identifiers in
-    `Authors@R`, checking ORCID against its checksum and ROR against its
-    shape.
+    `Authors@R`.
 
 - `hardcoded_credentials` scans string literals in `R/` for a leaked
-  secret. It knows the tokens and keys used by providers such as GitHub,
+  secret, knowing the tokens and keys used by providers such as GitHub,
   AWS, Google, OpenAI, Anthropic and Stripe, along with PEM private keys
-  and JSON Web Tokens, each recognised by its published prefix.
-  `R CMD check` does not look for these, and a token published to CRAN
-  is public and must be revoked. Only string literals are examined, so
-  the same text in a comment never matches. See
-  [`?diagnose_hardcoded_credentials`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_hardcoded_credentials.md)
+  and JSON Web Tokens. A token published to CRAN is public and must be
+  revoked, and `R CMD check` does not look for these. Only string
+  literals are examined, so the same text in a comment never matches.
+  See
+  [`?lab_hardcoded_credentials`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_hardcoded_credentials.md)
   for the full list.
 
 - `spelling` runs
   [`utils::aspell()`](https://rdrr.io/r/utils/aspell.html) over the
-  `Title` and `Description` to mirror CRAN’s incoming spelling pass and
-  report words that look misspelled. It reads any `.aspell/` dictionary,
-  `inst/WORDLIST`, or `Config/checktor` vocabulary you already keep, so
-  you can silence it however you prefer. It needs a spell-check backend
-  to run and passes quietly without one, exactly as CRAN’s check skips
-  spelling when none is present, which is why it sits at opinion tier
-  and can be turned off with `options(checktor.spelling = FALSE)`. When
-  it fires,
+  `Title` and `Description` to mirror CRAN’s incoming spelling pass. It
+  reads any `.aspell/` dictionary, `inst/WORDLIST`, or `Config/checktor`
+  vocabulary you already keep, and passes quietly without a spell-check
+  backend installed. Turn it off with
+  `options(checktor.spelling = FALSE)`. When it reports a word,
   [`prescribe()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/prescribe.md)
-  prints a ready-to-paste `.aspell/` snippet with the flagged words
-  filled in, since `inst/WORDLIST` alone does not clear CRAN’s aspell
-  NOTE but a `.aspell/` dictionary does.
+  prints a ready-to-paste `.aspell/` snippet, since `inst/WORDLIST`
+  alone does not clear CRAN’s aspell NOTE but a `.aspell/` dictionary
+  does.
 
 - `url_liveness` fetches every URL in the DESCRIPTION, `.Rd` files and
   vignettes and reports the ones that return an error, a 404, or a
-  redirect. This is what `R CMD check --as-cran` does through the same
-  base R machinery in
-  [`tools::check_package_urls()`](https://rdrr.io/r/tools/urltools.html),
-  with no dependency on the `urlchecker` package. Because it needs a
-  network and is slow, it is opt-in and does nothing until you set
-  `options(checktor.url_check = TRUE)`, passing quietly whenever it is
-  off. It is the online half of the URL story, and `urls` remains the
-  fast offline half that flags `http://` and shorteners without leaving
+  redirect, which is what `R CMD check --as-cran` does through
+  [`tools::check_package_urls()`](https://rdrr.io/r/tools/urltools.html).
+  It runs when you are at the console and stays off in scripts, in
+  continuous integration and under `R CMD check`, where a slow or
+  unreachable network would make the result depend on the machine rather
+  than the package. Set `options(checktor.url_check = TRUE)` or `FALSE`
+  to decide for yourself. With no network reachable it comes back marked
+  as a check that did not run, rather than calling every link broken or
+  quietly reading as though every link resolved, while a single
+  unreachable host among reachable ones still counts. `urls` remains the
+  offline half, catching `http://` links and shorteners without leaving
   the room.
 
-- `language_names` flags a bare programming-language, markup, or
+- A family of checks reads the code outside `R/`, where several of the
+  most common rejections land. Every code check used to read `R/` alone,
+  so an install in an example, a write to the working directory in a
+  vignette, or an [`options()`](https://rdrr.io/r/base/options.html)
+  call in `inst/demo` that was never put back all went unseen. Each rule
+  below is one a maintainer has received verbatim from CRAN.
+
+  - `example_interactive` asks for `if (interactive())` where an
+    interactive function is hidden in `\dontrun{}`, so a reader sees it
+    is not for a script.
+  - `example_installs` catches installing a package from an example, a
+    vignette or a demo.
+  - `example_writes` catches a write to anywhere but
+    [`tempdir()`](https://rdrr.io/r/base/tempfile.html), judged with the
+    same destination logic the `R/` check uses. The write checks now
+    share one list of what counts as a write, so they agree with each
+    other, and it covers the readr, data.table, arrow, spreadsheet and
+    JSON writers alongside the base ones. `write_csv()`, `write_rds()`,
+    `fwrite()`, `write_xlsx()`, `write_parquet()` and `ggsave()` are all
+    seen now, in `R/` and in examples alike.
+  - `example_state` catches
+    [`options()`](https://rdrr.io/r/base/options.html),
+    [`par()`](https://rdrr.io/r/graphics/par.html) or the working
+    directory changed and never restored.
+  - `example_internal_ns` catches `:::` in an example or vignette.
+
+  `internal_ns` covers the same rule in `R/`, where a `:::` call reaches
+  an object another author is free to change in routine maintenance.
+  `unexported_example_ns` used to suggest adding `:::` to an example,
+  which is the change CRAN asks you to undo, so it now says to export
+  the object or keep the topic internal instead.
+
+- `language_names` catches a bare programming-language, markup or
   statistical-computing name in the `Title` or `Description` that CRAN
   asks to see single-quoted, covering names like `Python`, `Java`,
   `C++`, `SQL`, `HTML`, `MATLAB` and `SAS`. It is the language
-  counterpart to `software_names`, and both are policy-tier quoting
-  checks kept separate because a language name and a package name are
-  different kinds of thing. Single-letter and common-word names are left
-  out to avoid false positives, and you can extend the list with
-  `Config/checktor/language_names`.
+  counterpart to `software_names`, kept separate because a language name
+  and a package name are different kinds of thing. Single-letter and
+  common-word names are left out so ordinary prose stays quiet, and you
+  can extend the list with `Config/checktor/language_names`.
 
 ### Configuration and extension
 
-- checktor now runs from anywhere inside a package
-  ([\#12](https://github.com/coatless-rpkg/checktor/issues/12)). It
-  walks up from the path you give it to find the `DESCRIPTION`, so a
-  call with your working directory in `R/` or `tests/testthat/` examines
-  the whole package instead of failing, and pointing it at a file works
-  as well as pointing it at a directory. Every entry point resolves the
-  root the same way, from
-  [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md)
-  and
-  [`checkup()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checkup.md)
-  down to each individual `diagnose_*()`, and
+- checktor runs from anywhere inside a package
+  ([\#12](https://github.com/coatless-rpkg/checktor/issues/12), thanks
+  [@january3](https://github.com/january3)). It walks up from the path
+  you give it to find the `DESCRIPTION`, so a call with your working
+  directory in `R/` or `tests/testthat/` examines the whole package
+  instead of failing, and a file works as well as a directory. Every
+  entry point resolves the root the same way, and
   [`find_package_root()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/find_package_root.md)
-  is exported for custom checks that want the same rule. A directory
-  that really is outside a package still says so.
+  is exported for custom checks. A directory outside any package still
+  says so.
 
-- A package can now configure checktor through `Config/checktor/*`
-  fields in its own DESCRIPTION. The `disable` field skips a check,
-  `allow` mutes reviewed findings for either a whole check or a
-  `check:substring` and gives a green
+- A package can configure checktor through `Config/checktor/*` fields in
+  its own DESCRIPTION. `disable` skips a check, `allow` mutes reviewed
+  findings for a whole check or a `check:substring`, and
+  `software_names`, `language_names` and `acronyms` extend those checks’
+  vocabularies. A package with no such fields is unaffected.
+
+- [`ci_report()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/ci_report.md)
+  writes findings in the shape your build system reads, so each one
+  lands on the line that caused it rather than in a log somebody has to
+  scroll. Called with no arguments it examines the package, works out
+  where it is running, and emits the right thing. GitHub Actions gets
+  workflow commands that annotate the pull request diff, and Gitea and
+  Forgejo read the same ones. GitLab gets a Code Quality report for the
+  merge request diff, Azure Pipelines gets logging commands, and
+  Checkstyle XML covers Jenkins, reviewdog and the review bots. SARIF is
+  there for GitHub code scanning. It reports every tier, since an
+  annotation is information rather than a verdict, and
   [`checkup()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checkup.md)
-  gate the escape hatch it needs, and `software_names`, `language_names`
-  and `acronyms` extend those checks’ vocabularies. A package with no
-  such fields is unaffected.
+  stays the gate. Checks that did not run are named once alongside the
+  findings, so a quiet pipeline never implies a check that never
+  happened, and the report formats write a document even when nothing
+  was found, which is what lets a forge clear the findings an earlier
+  run left behind.
+
+- A few checks sit outside every run, because no authority backs them or
+  they ask about a submission workflow rather than the package itself.
+  The summary now names them so you can find out they are there, and
+  `metadata$on_request_checks` carries the list. Calling one is the only
+  way to run it, and since they sit in the opinion tier, running one
+  never changes a verdict.
 
 - [`register_check()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/register_check.md)
-  adds a custom diagnostic to every
+  adds a check of your own to every
   [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md)
-  run without editing checktor’s source. You give it a name, a function
-  that returns a
+  run without editing checktor’s source. Give it a name, a function
+  returning a
   [`checktor_check_result()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor_check_result.md),
-  a category, and a severity tier, and the check then runs alongside the
-  built-ins, appears in
+  a category and a severity tier, and it runs alongside the built-ins,
+  appears in
   [`issues()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/issues.md)
   and [`tidy()`](https://generics.r-lib.org/reference/tidy.html), and
   counts toward the verdict at its tier.
@@ -185,8 +248,8 @@ anywhere inside a package tree, and a package can tune checktor through
   [`registered_checks()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/registered_checks.md)
   manage the registry.
 
-- The AST toolkit that the built-in checks use is now exported, so a
-  registered check has the same tools available. These include
+- The AST toolkit the built-in checks use is exported, so a registered
+  check has the same tools:
   [`read_r_xml()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/read_r_xml.md),
   [`xpath_lints()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/xpath_lints.md),
   [`xpath_per_file()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/xpath_per_file.md),
@@ -201,67 +264,62 @@ anywhere inside a package tree, and a package can tune checktor through
 
 ### Checks improved
 
-Several checks are now substantially more accurate, and a few hand off
-to R’s own engines instead of reimplementing them.
+Several checks are more accurate, and a few hand off to R’s own engines
+instead of reimplementing them.
 
-- `option_changes` now prescribes a fix. When it fires,
+- `option_changes` suggests a fix.
   [`prescribe()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/prescribe.md)
   shows the two ways out, namespacing a setting you keep for the session
   as `options(<PackageName>.key = ...)`, or restoring a temporary change
   with [`on.exit()`](https://rdrr.io/r/base/on.exit.html).
 
-- `home_writing` now flags a write whose destination resolves to the
-  user’s home, such as `writeLines(x, "~/leaked.txt")` or
-  `saveRDS(x, "~/.cache/x.rds")`. It previously looked only at reads
-  like `Sys.getenv("HOME")`, so the writes that actually matter slipped
-  past.
+- `home_writing` catches a write whose destination resolves to the
+  user’s home, such as `writeLines(x, "~/leaked.txt")`, rather than
+  reads like `Sys.getenv("HOME")`.
 
-- `globalenv_mod` now flags a `<<-` only when its target genuinely
-  reaches `.GlobalEnv`, meaning it binds in neither an enclosing
-  function nor the package. The two correct idioms, a closure updating
-  its parent frame and the package-level cache written as
-  `.cache <<- ...`, both come out clean.
+- `globalenv_mod` reports a `<<-` only when its target genuinely reaches
+  `.GlobalEnv`, so a closure updating its parent frame and a
+  package-level cache written as `.cache <<- ...` both come out clean.
 
-- `core_usage` now inspects the worker count itself and understands the
+- `core_usage` inspects the worker count itself and understands the
   `parallel`, `snow`, `foreach`, `future`, `furrr`, `mirai`,
   `RcppParallel`, `data.table` and `BiocParallel` frameworks. It no
   longer keys off an `mc.cores` argument, which belongs to `mclapply()`
-  alone, so `detectCores()` and a compliant `makeCluster(2L)` are no
-  longer flagged.
+  alone, so `detectCores()` and a compliant `makeCluster(2L)` come out
+  clean.
 
-- `roxygen_usage` now detects roxygen that never reached `NAMESPACE`,
-  such as a function tagged `@export` that is not actually exported.
-  That is the real cost of a forgotten `devtools::document()`, and it is
-  something `R CMD check` cannot see. It reads `NAMESPACE` rather than
-  file timestamps, so it behaves the same in CI, where `git` does not
-  preserve modification times.
+- `roxygen_usage` spots roxygen that never reached `NAMESPACE`, such as
+  a function tagged `@export` that is not actually exported, which is
+  the real cost of a forgotten `document()` run and something
+  `R CMD check` cannot see. It reads `NAMESPACE` rather than file
+  timestamps, so it behaves the same in CI.
 
-- `license_year` now flags a genuinely unfilled `LICENSE` template,
-  meaning a leftover `<YEAR>` or `<COPYRIGHT HOLDER>` that CRAN asks you
-  to complete, rather than a valid but non-current year.
+- `license_year` looks for a genuinely unfilled `LICENSE` template, a
+  leftover `<YEAR>` or `<COPYRIGHT HOLDER>`, rather than a valid but
+  non-current year.
 
-- `authors` now catches an unfilled `usethis` template such as
+- `authors` catches an unfilled `usethis` template such as
   `person("First", "Last", , "you@example.com", ...)`, which
-  `R CMD check` passes because the field is present but a CRAN reviewer
-  sends back. It also validates the structure of the field and flags a
-  person with no name, a person with no role, an `Authors@R` that does
-  not parse, or a missing maintainer.
+  `R CMD check` passes because the field is present but a reviewer sends
+  back. It also validates the field’s structure, including a person with
+  no name or no role, an `Authors@R` that does not parse, and a missing
+  maintainer.
 
-- `title_case` and `license` now hand off to R’s own engines in
+- `title_case` and `license` hand off to R’s own
   [`tools::toTitleCase()`](https://rdrr.io/r/tools/toTitleCase.html) and
   [`tools::analyze_license()`](https://rdrr.io/r/tools/licensetools.html),
-  so they match R’s behaviour, and `title_case` handles quoted package
-  names and punctuation the way R does. `license` also flags a bare
-  `MIT`, which needs `MIT + file LICENSE` pointing at a file that
-  exists. `value_tags` walks each `.Rd` with
+  so they match R’s behaviour. `license` also catches a bare `MIT`,
+  which needs `MIT + file LICENSE` pointing at a file that exists.
+  `value_tags` walks each `.Rd` with
   [`tools::parse_Rd()`](https://rdrr.io/r/tools/parse_Rd.html) and
   exempts data, class, package and `\keyword{internal}` topics, so its
   verdict no longer depends on the R version.
 
-- `print_cat_usage` now flags unsuppressable console output only from a
-  function that also returns a value, and it treats a verbosity gate as
-  the guard rather than any enclosing `if`, `for` or `while`
-  ([\#10](https://github.com/coatless-rpkg/checktor/issues/10)).
+- `print_cat_usage` reports unsuppressable console output only from a
+  function that also returns a value, and treats a verbosity gate as the
+  guard rather than any enclosing `if`, `for` or `while`
+  ([\#10](https://github.com/coatless-rpkg/checktor/issues/10), thanks
+  [@january3](https://github.com/january3)).
 
 ### Understands more of R
 
@@ -272,15 +330,11 @@ run reflects the code you wrote.
   [`base::parseNamespaceFile()`](https://rdrr.io/r/base/ns-internal.html),
   so a multi-line `export()` block, an `exportPattern()`, and a method
   under a quoted non-syntactic generic such as `S3method("[", foo)` all
-  read correctly. Every “is this exported?” check now sees a package’s
-  full set of exports rather than just the first.
+  read correctly. An `=` assignment is read as an assignment, and a
+  classic `"print.foo" <- function(x)` definition, whose name parses as
+  a `STR_CONST`, is visible to every name-based exemption.
 
-- An `=` assignment is read as an assignment, and a classic
-  `"print.foo" <- function(x)` definition, whose name parses as a
-  `STR_CONST`, is visible to every name-based exemption. A package that
-  defines nearly all of its functions that way now reads correctly.
-
-- An S4 `setMethod("show", ...)` is treated as an output method where
+- An S4 `setMethod("show", ...)` is an output method where
   [`cat()`](https://rdrr.io/r/base/cat.html) is the required idiom,
   `app$cat(...)` is a method call rather than
   [`base::cat`](https://rdrr.io/r/base/cat.html), and a verbosity flag
@@ -289,43 +343,27 @@ run reflects the code you wrote.
 - A `<<-` inside [`local()`](https://rdrr.io/r/base/eval.html),
   `setRefClass()` or `R6Class()` binds in that scope rather than
   `.GlobalEnv`, a call in a default argument is scoped to that argument
-  rather than the function body, which preserves the
-  [`on.exit()`](https://rdrr.io/r/base/on.exit.html) that
-  `option_changes`, `temp_cleanup` and `sys_setenv` rely on, and only
-  the R chunks of a vignette are parsed, so its prose stays prose.
-
-checktor also tells a read apart from a write, and a package’s own state
-apart from the user’s.
+  rather than the function body, and only the R chunks of a vignette are
+  parsed, so its prose stays prose.
 
 - [`options()`](https://rdrr.io/r/base/options.html) and
   [`par()`](https://rdrr.io/r/graphics/par.html) both read and write,
   and only a named argument makes the call a write, so `par("usr")[3]`
   and a package’s own `reset_options()` stay clean. A restore factored
-  into its own helper and registered by the caller with
-  `on.exit(restore_par(op))` is recognised as the restore it is, not
-  flagged as an unreset change.
-
-- A package’s own namespaced option such as
-  `options(datatable.verbose = ...)` is its own state, and a
+  into its own helper and registered with `on.exit(restore_par(op))` is
+  recognised as the restore it is. A package’s own namespaced option
+  such as `options(datatable.verbose = ...)` is its own state, and a
   [`setwd()`](https://rdrr.io/r/base/getwd.html) or
   [`options()`](https://rdrr.io/r/base/options.html) inside a `callr`
-  subprocess cannot reach the calling session.
+  subprocess cannot reach the calling session. A
+  [`Sys.setenv()`](https://rdrr.io/r/base/Sys.setenv.html) setter that
+  captures the prior state and hands it back honours the same restore
+  contract.
 
 - `file_operations` proves where a write lands, so
-  `writeLines(x, "out.csv")` is flagged, `writeLines(x, out_file)` is
+  `writeLines(x, "out.csv")` is reported, `writeLines(x, out_file)` is
   trusted to the caller who passed the path, and a formal that defaults
   into `~` is still caught.
-
-- `package_size` measures the gzipped tarball that CRAN actually limits,
-  which is often far smaller than the files on disk.
-
-- A [`Sys.setenv()`](https://rdrr.io/r/base/Sys.setenv.html) setter that
-  captures the prior state and hands it back, as in
-  `old <- get_path(); Sys.setenv(...); invisible(old)`, honours the same
-  restore contract `option_changes` already follows. Many packages’
-  env-var and path setters are shaped that way.
-
-checktor recognises the guards CRAN sanctions, too.
 
 - `if (require("pkgB"))` and roxygen’s `@examplesIf` both count as the
   conditional-Suggests guard in an example, while
@@ -334,78 +372,102 @@ checktor recognises the guards CRAN sanctions, too.
   [`system()`](https://rdrr.io/r/base/system.html) call inside an OS
   branch is the platform check the fix asks for, and an
   [`install.packages()`](https://rdrr.io/r/utils/install.packages.html)
-  behind a consent prompt is consent.
-
-- `set.seed(123)` inside `if (FALSE)` cannot reach the RNG, and `T` or
-  `F` inside [`quote()`](https://rdrr.io/r/base/substitute.html),
+  behind a consent prompt is consent. `set.seed(123)` inside
+  `if (FALSE)` cannot reach the RNG, and `T` or `F` inside
+  [`quote()`](https://rdrr.io/r/base/substitute.html),
   [`expression()`](https://rdrr.io/r/base/expression.html) or
   [`substitute()`](https://rdrr.io/r/base/substitute.html) are language
   tokens rather than logicals.
 
-- `commented_examples` fires only when an entire `\examples{}` block is
-  commented out, so a prose comment beside working code is left alone
-  ([\#9](https://github.com/coatless-rpkg/checktor/issues/9)).
-  `example_structure` accepts a database, a prompt, or a Shiny reactive
-  context as a reason for `\dontrun{}`, and it now takes an install or
-  launcher call or a `path/to/...` placeholder the same way. And
+- `commented_examples` reports only an `\examples{}` block commented out
+  entirely, so a prose comment beside working code is left alone
+  ([\#9](https://github.com/coatless-rpkg/checktor/issues/9), thanks
+  [@TanguyBarthelemy](https://github.com/TanguyBarthelemy)).
+  `example_structure` accepts a database, a prompt or a Shiny reactive
+  context as a reason for `\dontrun{}`, and a `path/to/...` placeholder
+  the same way. An install or a launcher call is not among them, since
+  CRAN asks for `if (interactive())` there rather than for `\dontrun{}`.
   `library_in_pkg` exempts code sent to a parallel worker, whose search
   path starts empty.
 
-- `software_names` flags the R-package and software-product names CRAN
-  asks to see quoted, along with `WebAssembly`, a specific format the R
-  WebAssembly ecosystem and CRAN quote consistently, and it recognises
-  `WASM`, `webR` and `Shinylive` when quoted. Programming-language and
-  markup names moved to their own `language_names` check. A package can
-  add its own names with `Config/checktor/software_names`.
+- `software_names` catches the R-package and software-product names CRAN
+  asks to see quoted, along with `WebAssembly`, and recognises `WASM`,
+  `webR` and `Shinylive` when quoted. Programming-language and markup
+  names moved to `language_names`, and a package can add its own with
+  `Config/checktor/software_names`.
 
-- A few smaller sharpenings round this out. `description_quoted_quotes`
-  flags only a recognised software name rather than scare-quoted jargon,
+- Smaller sharpenings round this out. `description_quoted_quotes` looks
+  only for a recognised software name rather than scare-quoted jargon,
   `description_length` counts words, `description_starts_with` gained
-  its initial-capital rule, `acronyms` no longer flags `CMD`, and `urls`
-  names the offending URL while skipping fenced code and `\verb{}`
-  spans.
+  its initial-capital rule, `acronyms` no longer reports `CMD`, and
+  `urls` names the offending URL while skipping fenced code and
+  `\verb{}` spans.
 
 ### Bug fixes
 
-- `package_size` now honours a bare directory entry in `.Rbuildignore`,
-  such as the `^docs$` a pkgdown package uses. R CMD build excludes a
-  matched directory’s whole subtree, so an untracked `docs/` or
-  `.quarto` cache never reaches the tarball. `package_size` matched only
-  leaf paths, so it counted those trees and could report a package many
-  times its real tarball size. It now tests each file’s ancestor
-  directories too, case-insensitively, the way R does.
+- [`health_report()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/health_report.md)
+  reports the CRAN policy findings. It skipped that panel entirely, so
+  the citable rejections were missing from every report, and the text
+  and HTML formats carried no findings at all. Every format now lists
+  each failing check, and says when the sections include advisory
+  findings that the headline total leaves out.
+
+- A treatment line renders its markup instead of printing braces. The
+  report showed `{.code message()}` on screen, because the treatment
+  reached `cli` as a value rather than as part of the format string.
+
+- `package_size` measures what CRAN actually limits. It honours a bare
+  directory entry in `.Rbuildignore`, such as the `^docs$` a pkgdown
+  package uses, testing each file’s ancestor directories as R does, so a
+  pkgdown `docs/` or a build directory left beside your sources no
+  longer counts. It also estimates the gzipped tarball rather than
+  summing the files on disk, which over-reported any package whose bulk
+  is compressible text.
+
+- [`issues()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/issues.md)
+  keeps the file and line of a finding that carries a label. Only the
+  plain `file.R:12` form used to parse, so a finding such as
+  `a.R:3 (otherpkg:::helper)` or one from an example lost its location
+  and could not be pointed at.
+
+- `library_in_pkg` no longer reports a method that happens to be named
+  `library` or `require`. An object calling its own `api$library()` was
+  read as a call to the base function, which made the check awkward for
+  packages built on reference classes.
+
+- `title_length` treats the width a package listing may truncate to as a
+  width rather than a limit, so a `Title` that exactly fills it is no
+  longer reported. It shows in full, and only a longer one loses its
+  tail. The message now says how much would be cut instead of only that
+  the title is long.
 
 - `mean(x, na.rm = T)`, the most common bare `T` in R, is now reported.
   An argument name parses as `SYMBOL_SUB` rather than `SYMBOL`, so a
-  guard meant to skip `f(T = 1)` was inadvertently skipping the argument
-  value too.
+  guard meant to skip `f(T = 1)` was skipping the argument value too.
 
 - [`prescribe()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/prescribe.md)
-  now surfaces every failed check. It previously walked only the curated
+  surfaces every failed check. It previously walked only the curated
   treatment list, so a check could fail and
   [`prescribe()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/prescribe.md)
   would say nothing
   ([\#4](https://github.com/coatless-rpkg/checktor/issues/4), thanks
-  [@january3](https://github.com/january3)).
+  [@january3](https://github.com/january3)). Its output no longer shows
+  raw markup either.
 
-- [`prescribe()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/prescribe.md)
-  no longer prints raw `cli` markup. Treatment strings carry inline
-  markup such as `{.code TRUE}`, and it reached `cli` as an interpolated
-  value rather than as part of the format string.
-
-- [`diagnose_print_cat_usage()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_print_cat_usage.md)
-  no longer flags [`cat()`](https://rdrr.io/r/base/cat.html) inside S3
-  `print.*` and `format.*` methods, where it is the required idiom, and
-  base R’s own
+- `print_cat_usage` no longer reports
+  [`cat()`](https://rdrr.io/r/base/cat.html) inside S3 `print.*` and
+  `format.*` methods, where it is the required idiom and base R’s own
   [`print.default()`](https://rdrr.io/r/base/print.default.html) uses it
   ([\#6](https://github.com/coatless-rpkg/checktor/issues/6), thanks
   [@jhelvy](https://github.com/jhelvy)).
 
 - The `acronyms` check treats `principal component analysis (PCA)` and
-  `PCA (principal component analysis)` alike as explained, and it
-  detects a line-wrapped gloss
+  `PCA (principal component analysis)` alike as explained, and reads a
+  line-wrapped gloss
   ([\#5](https://github.com/coatless-rpkg/checktor/issues/5), thanks
-  [@january3](https://github.com/january3)).
+  [@january3](https://github.com/january3)). A gloss whose expansion is
+  a quoted software name counts too, so writing `'WebAssembly' (WASM)`
+  as `software_names` asks satisfies both checks at once.
 
 - [`example_diagnose_scenario()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/example_diagnose_scenario.md)
   no longer prints the temporary package path, keeping machine-specific
@@ -414,15 +476,15 @@ checktor recognises the guards CRAN sanctions, too.
 ### Documentation and website
 
 - Two new vignettes explain where the rules come from
-  ([\#8](https://github.com/coatless-rpkg/checktor/issues/8)). *Where
-  the Checks Come From* maps every check to the CRAN Repository Policy
-  or Writing R Extensions section it rests on, and to the CRAN Cookbook
-  recipe where the authority is a convention rather than a rule, linking
-  to each. *What R CMD check Checks* walks through every step
-  `R CMD check` performs so the line between the standard checks and
-  checktor’s is clear.
+  ([\#8](https://github.com/coatless-rpkg/checktor/issues/8), thanks
+  [@TanguyBarthelemy](https://github.com/TanguyBarthelemy)). *Where the
+  Checks Come From* maps every check to the CRAN Repository Policy or
+  Writing R Extensions section it rests on, and to the CRAN Cookbook
+  recipe where the authority is a convention rather than a rule. *What R
+  CMD check Checks* walks through every step `R CMD check` performs, so
+  the line between the standard checks and checktor’s is clear.
 
-- Every check’s help page gained a *Source* section that names the rule
+- Every check’s help page gained a *Source* section naming the rule
   behind it, a CRAN policy clause, a Writing R Extensions section, a
   CRAN Cookbook recipe, or an honest note that no rule applies, with a
   link wherever one exists.
@@ -435,19 +497,8 @@ checktor recognises the guards CRAN sanctions, too.
   the road from source to finding alongside the XPath axes around a
   `SYMBOL_FUNCTION_CALL` anchor.
 
-- Two claims in Getting Started were corrected. `R CMD check` does flag
-  a `Title` that is not in title case, and `lintr` does flag a bare `T`,
-  so neither belongs in the list of things only checktor catches.
-
 - The pkgdown site picked up a theme drawn from the package logo, with a
   light and dark toggle in the navbar.
-
-### Continuous integration
-
-- Bumped `actions/checkout` to v7 and
-  `JamesIves/github-pages-deploy-action` to v4.8.0, and added
-  `quarto-dev/quarto-actions/setup` so the Quarto vignette engine builds
-  against a pinned Quarto.
 
 ## checktor 0.1.0
 
@@ -455,16 +506,16 @@ CRAN release: 2026-07-02
 
 - Initial release.
 - Adds
-  \[[`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md)\]
+  [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md)
   as the top-level orchestrator, running five categories of diagnostics
   (code, DESCRIPTION, documentation, general, CRAN policy) against an R
   package directory.
 - Adds the
-  \[[`checkup()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checkup.md)\]
+  [`checkup()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checkup.md)
   boolean wrapper for CI use,
-  \[[`prescribe()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/prescribe.md)\]
+  [`prescribe()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/prescribe.md)
   for treatment recommendations, and
-  \[[`health_report()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/health_report.md)\]
+  [`health_report()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/health_report.md)
   for Markdown / HTML / text reports.
 - All code-side diagnostics run XPath queries against the parsed AST via
   `xmlparsedata` + `xml2`. Documentation-side checks walk `.Rd` files
@@ -487,15 +538,13 @@ CRAN release: 2026-07-02
   result is equivalent to
   [`tidy()`](https://generics.r-lib.org/reference/tidy.html).
 - Expanded the CRAN-submission diagnostics with additional heuristics:
-  - General: flags a missing `NEWS` file
-    ([`diagnose_news_file()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_news_file.md))
-    and `README` relative links whose target is missing or excluded by
+  - General: flags a missing `NEWS` file (`diagnose_news_file()`) and
+    `README` relative links whose target is missing or excluded by
     `.Rbuildignore` and so absent from the built tarball
-    ([`diagnose_readme_relative_links()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_readme_relative_links.md)).
-    [`diagnose_cran_comments_file()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_cran_comments_file.md)
-    is also provided but, since a `cran-comments.md` is a workflow
-    convention rather than a CRAN requirement, it is opt-in and not part
-    of the default
+    (`diagnose_readme_relative_links()`).
+    `diagnose_cran_comments_file()` is also provided but, since a
+    `cran-comments.md` is a workflow convention rather than a CRAN
+    requirement, it is opt-in and not part of the default
     [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md)
     run.
   - DESCRIPTION: flags `Title` fields of 65 or more characters,
@@ -503,9 +552,7 @@ CRAN release: 2026-07-02
     for software names), and over-capitalized small words in the
     `Title`.
   - Documentation: flags exported functions whose `.Rd` lacks an
-    `\examples` section
-    ([`diagnose_missing_examples()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_missing_examples.md))
-    and examples that use a Suggested package without a
+    `\examples` section (`diagnose_missing_examples()`) and examples
+    that use a Suggested package without a
     [`requireNamespace()`](https://rdrr.io/r/base/ns-load.html) /
-    `@examplesIf` guard
-    ([`diagnose_suggested_in_examples()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_suggested_in_examples.md)).
+    `@examplesIf` guard (`diagnose_suggested_in_examples()`).

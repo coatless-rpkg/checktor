@@ -102,7 +102,7 @@ any of <code>"policy"</code>, <code>"robustness"</code>, <code>"opinion"</code>.
 <code><a href="issues.html">issues()</a></code> with its tier. What this argument decides is which findings count
 against a clean bill of health. <code>"policy"</code> is a citable CRAN Repository
 Policy or Writing R Extensions violation. <code>"robustness"</code> is a real defect
-that CRAN will nonetheless let you ship, such as a <code>detectCores()</code> that may
+that CRAN will still accept, such as a <code>detectCores()</code> that may
 return <code>NA</code>. <code>"opinion"</code> is a convention with no authority behind it.</p>
 <p>The default therefore makes "0 issues" mean <em>nothing here will get you
 rejected, and nothing here will crash a user</em>. Pass all three tiers to hold
@@ -159,7 +159,7 @@ recommendations, <code><a href="checkup.html">checkup()</a></code> for quick hea
 <span class="r-in"><span><span class="va">results</span>              <span class="co"># the diagnosis summary</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> ── Package Doctor - Diagnosis Summary ──────────────────────────────────────────</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Patient: <span style="color: #0000BB;">examplepackage</span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> Examined: 2026-07-26 17:58:18.020009</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> Examined: 2026-08-02 00:23:54.403342</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Doctor version: 0.2.0</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">CODE ISSUES</span>: 1 failing check</span>
@@ -168,15 +168,16 @@ recommendations, <code><a href="checkup.html">checkup()</a></code> for quick hea
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">GENERAL ISSUES</span>: HEALTHY</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">POLICY ISSUES</span>: HEALTHY</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> 2 checks did not run: <span style="color: #0000BB;">"spelling"</span> and <span style="color: #0000BB;">"url_liveness"</span>.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #BBBB00;">!</span> Overall health: NEEDS ATTENTION (7 issues)</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Run `summary()`, `issues()`, or `prescribe()` for details</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span>     <span class="co"># per-category overview</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>        category checks passed failed issues</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1          code     15     14      1      7</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2   description     19     18      1      1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3 documentation      8      8      0      0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4       general      5      5      0      0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5        policy      4      4      0      0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>        category checks passed failed skipped issues</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1          code     16     15      1       0      7</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2   description     19     18      1       1      1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 documentation     13     13      0       0      0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4       general      5      5      0       1      0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5        policy      4      4      0       0      0</span>
 <span class="r-in"><span><span class="fu"><a href="issues.html">issues</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span>      <span class="co"># every issue as a tidy data frame</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>      category    check   severity           file line</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1        code tf_usage robustness tf_usage_bad.R    8</span>

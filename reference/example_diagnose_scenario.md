@@ -77,8 +77,8 @@ The temporary package created has this structure:
 ## See also
 
 Used in examples for diagnostic functions like
-[`diagnose_tf_usage()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_tf_usage.md),
-[`diagnose_seed_setting()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_seed_setting.md),
+[`lab_tf_usage()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_tf_usage.md),
+[`lab_seed_setting()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_seed_setting.md),
 etc.
 
 ## Examples
@@ -120,7 +120,7 @@ pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R")
 #> 
 #> === End of example ===
 #> 
-result <- diagnose_tf_usage(pkg_path, verbose = TRUE)
+result <- lab_tf_usage(pkg_path, verbose = TRUE)
 #> ✖ Found `T`/`F` usage (should use `TRUE`/`FALSE`)
 #> • tf_usage_bad.R:8
 #> • tf_usage_bad.R:11
@@ -186,7 +186,7 @@ desc_result <- diagnose_description_issues(pkg_path)
 #> • Title is not in title case. R would write it as: Example Package for Data
 #> Analysis
 #> Treatment: Use the capitalisation tools::toTitleCase() proposes
-#> ✔ Title length is within the 65-character guideline
+#> ✔ Title fits the 65 characters a listing may truncate to
 #> ✔ Title is free of redundant phrases
 #> ✖ Problems in the author fields
 #> • Missing Authors@R field

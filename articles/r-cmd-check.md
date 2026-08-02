@@ -14,7 +14,7 @@ packages”](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checki
 checktor is deliberately the other half of this story: it runs the
 extra-CRAN checks that a human reviewer applies but that `R CMD check`
 never will. Knowing exactly where `R CMD check` stops is the fastest way
-to see where checktor begins – so this page is a map of the territory
+to see where checktor begins, so this page is a map of the territory
 `R CMD check` already covers. For the map of checktor’s own checks, see
 [Where the Checks Come
 From](https://r-pkg.thecoatlessprofessor.com/checktor/articles/check-sources.md).
@@ -23,18 +23,18 @@ From](https://r-pkg.thecoatlessprofessor.com/checktor/articles/check-sources.md)
 
 Every step ends in one of four states, and only the last three matter.
 
-- **OK** – nothing to report.
-- **NOTE** – something a reviewer will likely ask about. A submission
+- `OK` means nothing to report.
+- `NOTE` means something a reviewer will likely ask about. A submission
   with NOTEs can still be accepted, but each one needs a reason.
-- **WARNING** – a real problem. CRAN will not accept a package with a
+- `WARNING` means a real problem. CRAN will not accept a package with a
   WARNING.
-- **ERROR** – the check could not complete, usually because code or a
+- `ERROR` means the check could not complete, usually because code or a
   test failed outright.
 
 A clean `R CMD check` is the floor for a CRAN submission, not the
 ceiling. Many of its steps are structural (“is this a well-formed
 package?”) rather than editorial (“is this package good?”), which is
-exactly the gap the reviewer – and checktor – fills in.
+exactly the gap a reviewer fills in, and the gap checktor is built for.
 
 ## Packaging and installation
 
@@ -48,7 +48,7 @@ enough to install. A failure here stops everything else.
 | `checking package dependencies` | Every package in `Depends`, `Imports`, `LinkingTo`, and `Suggests` is installed and available. |
 | `checking if this is a source package` | The tree looks like a source package, not an already-built binary. |
 | `checking if there is a namespace` | A `NAMESPACE` file is present. |
-| `checking for executable files` | No stray executables ship in the sources. |
+| `checking for executable files` | No stray executables are present in the sources. |
 | `checking for hidden files and directories` | Flags hidden files (`.foo`) that are usually build detritus. |
 | `checking for portable file names` | File names are ASCII, case-insensitively unique, and free of characters that break on other platforms. |
 | `checking for sufficient/correct file permissions` | Every file is readable, and nothing is unexpectedly executable. |
@@ -59,7 +59,7 @@ enough to install. A failure here stops everything else.
 | `checking index information` | `INDEX` and demo/vignette indices are present and consistent. |
 | `checking package subdirectories` | Subdirectories are named and cased as R requires, with no empty ones. |
 | `checking top-level files` | Only recognised files sit at the package root. |
-| `checking for left-over files` | No editor backups or merge-conflict leftovers ship. |
+| `checking for left-over files` | No editor backups or merge-conflict leftovers are present. |
 
 ## DESCRIPTION and metadata
 
@@ -113,7 +113,7 @@ The dynamic checks: R actually runs your code and fails on any error.
 |----|----|
 | `checking for unstated dependencies in examples` | Examples use only declared packages. |
 | `checking examples` | Every `\examples{}` block runs without error (`\dontrun{}` is skipped). |
-| `checking installed files from 'inst/doc'` | Files shipped under `inst/doc` are consistent with the vignettes. |
+| `checking installed files from 'inst/doc'` | Files under `inst/doc` are consistent with the vignettes. |
 | `checking files in 'vignettes'` | The `vignettes/` sources are well-formed. |
 | `checking for unstated dependencies in 'tests'` | Tests use only declared packages. |
 | `checking tests` | The test suite runs; any failure is an ERROR. |
@@ -147,12 +147,12 @@ Several checks run only when the package has the matching content.
 
 | Step | Runs when |
 |----|----|
-| `checking contents of 'data' directory` | The package ships a `data/` directory. |
-| `checking data for non-ASCII characters` | The package ships data. |
-| `checking data for ASCII and uncompressed saves` | The package ships data (it prefers efficient compression). |
-| `checking line endings in ... sources and headers` | The package ships C, C++, or Fortran code. |
-| `checking compilation flags in Makevars` | The package ships a `src/Makevars`. |
-| `checking compiled code` | The package ships compiled code (it looks for calls to disallowed entry points). |
+| `checking contents of 'data' directory` | The package includes a `data/` directory. |
+| `checking data for non-ASCII characters` | The package includes data. |
+| `checking data for ASCII and uncompressed saves` | The package includes data, and efficient compression is preferred. |
+| `checking line endings in ... sources and headers` | The package includes C, C++, or Fortran code. |
+| `checking compilation flags in Makevars` | The package includes a `src/Makevars`. |
+| `checking compiled code` | The package includes compiled code, and calls to disallowed entry points are reported. |
 | `checking PDF version of manual` | The manual is built (skipped by `--no-manual`). |
 
 ## Where checktor fits

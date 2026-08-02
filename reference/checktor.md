@@ -50,9 +50,9 @@ checktor(
   with its tier. What this argument decides is which findings count
   against a clean bill of health. `"policy"` is a citable CRAN
   Repository Policy or Writing R Extensions violation. `"robustness"` is
-  a real defect that CRAN will nonetheless let you ship, such as a
-  `detectCores()` that may return `NA`. `"opinion"` is a convention with
-  no authority behind it.
+  a real defect that CRAN will still accept, such as a `detectCores()`
+  that may return `NA`. `"opinion"` is a convention with no authority
+  behind it.
 
   The default therefore makes "0 issues" mean *nothing here will get you
   rejected, and nothing here will crash a user*. Pass all three tiers to
@@ -131,7 +131,7 @@ results <- checktor(pkg, verbose = FALSE, progress = FALSE)
 results              # the diagnosis summary
 #> ── Package Doctor - Diagnosis Summary ──────────────────────────────────────────
 #> Patient: examplepackage
-#> Examined: 2026-07-26 17:58:18.020009
+#> Examined: 2026-08-02 00:23:54.403342
 #> Doctor version: 0.2.0
 #> 
 #> CODE ISSUES: 1 failing check
@@ -140,15 +140,16 @@ results              # the diagnosis summary
 #> GENERAL ISSUES: HEALTHY
 #> POLICY ISSUES: HEALTHY
 #> 
+#> ℹ 2 checks did not run: "spelling" and "url_liveness".
 #> ! Overall health: NEEDS ATTENTION (7 issues)
 #> Run `summary()`, `issues()`, or `prescribe()` for details
 summary(results)     # per-category overview
-#>        category checks passed failed issues
-#> 1          code     15     14      1      7
-#> 2   description     19     18      1      1
-#> 3 documentation      8      8      0      0
-#> 4       general      5      5      0      0
-#> 5        policy      4      4      0      0
+#>        category checks passed failed skipped issues
+#> 1          code     16     15      1       0      7
+#> 2   description     19     18      1       1      1
+#> 3 documentation     13     13      0       0      0
+#> 4       general      5      5      0       1      0
+#> 5        policy      4      4      0       0      0
 issues(results)      # every issue as a tidy data frame
 #>      category    check   severity           file line
 #> 1        code tf_usage robustness tf_usage_bad.R    8

@@ -29,7 +29,7 @@ objects plus a `passed` summary.
 
 This function checks:
 
-- Package size, measured against the files that would ship in the
+- Package size, measured against the files that would go into the
   tarball (`.Rbuildignore` and standard scratch dirs are excluded), with
   a 5 MB warning threshold matching CRAN's recommendation.
 
@@ -41,7 +41,7 @@ This function checks:
 
 - Relative links in the `README` that would break on CRAN.
 
-[`diagnose_cran_comments_file()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/diagnose_cran_comments_file.md)
+[`lab_cran_comments_file()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_cran_comments_file.md)
 is intentionally not part of this default run, since a
 `cran-comments.md` is a workflow convention rather than a CRAN
 requirement; call it directly to opt in.

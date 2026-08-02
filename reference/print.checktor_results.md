@@ -42,7 +42,7 @@ results <- checktor(pkg, verbose = FALSE, progress = FALSE)
 print(results)
 #> ── Package Doctor - Diagnosis Summary ──────────────────────────────────────────
 #> Patient: examplepackage
-#> Examined: 2026-07-26 17:58:29.860715
+#> Examined: 2026-08-02 00:24:05.171779
 #> Doctor version: 0.2.0
 #> 
 #> CODE ISSUES: 1 failing check
@@ -51,6 +51,7 @@ print(results)
 #> GENERAL ISSUES: HEALTHY
 #> POLICY ISSUES: HEALTHY
 #> 
+#> ℹ 2 checks did not run: "spelling" and "url_liveness".
 #> ! Overall health: NEEDS ATTENTION (7 issues)
 #> Run `summary()`, `issues()`, or `prescribe()` for details
 ```
