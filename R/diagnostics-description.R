@@ -436,13 +436,17 @@ lab_acronyms <- function(
   #   "principal component analysis (PCA)"  or  "PCA (principal component ...)".
   # Whitespace is collapsed first so a line-wrapped gloss is still detected.
   # The `word (ACRONYM)` pattern is anchored to a preceding word char so a bare
-  # "(PCA)" with no expansion in front of it is still flagged.
+  # "(PCA)" with no expansion in front of it is still flagged. A closing quote may
+  # sit between the two, because the expansion is often a software name and
+  # `software_names` requires those to be quoted -- "'WebAssembly' (WASM)" is a
+  # gloss, and reading it as an unexplained acronym would have checktor contradict
+  # its own policy check.
   flat <- gsub("\\s+", " ", text)
   explained <- vapply(
     candidates,
     function(a) {
       expansion_then_acronym <- grepl(
-        paste0("\\w\\s*\\(", a, "\\)"),
+        paste0("\\w['\u2019\"]?\\s*\\(", a, "\\)"),
         flat,
         perl = TRUE
       )
@@ -1337,16 +1341,18 @@ lab_cph_role <- function(path = ".", verbose = TRUE, desc = NULL) {
   checktor_check_result(passed, issues, "cph role check")
 }
 
-# Title should stay under CRAN's ~65-character guideline.
+# A Title longer than 65 characters risks being cut off in a package listing.
 #' Diagnose Title Length
 #'
-#' Flags a `Title` of 65 or more characters.
+#' Flags a `Title` longer than 65 characters.
 #'
 #' @section Source:
-#' No formal rule. A `Title` under about 65 characters is a common
-#' preference, which is why this sits at `opinion` tier. See
-#' `vignette("check-sources", package = "checktor")` for how every check maps to its
-#' source.
+#' *Writing R Extensions* §1.1.1 notes that some package listings may truncate the
+#' title to 65 characters. That is a display width rather than a limit, so a title
+#' of exactly 65 characters still shows in full and only a longer one loses its
+#' tail. Nothing rejects a long title, which is why this sits at `opinion` tier.
+#' See `vignette("check-sources", package = "checktor")` for how every check maps
+#' to its source.
 #' @param path Character. Path to the package directory. Default: `"."`.
 #' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
 #' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
@@ -1368,8 +1374,14 @@ lab_title_length <- function(path = ".", verbose = TRUE, desc = NULL) {
   }
   flat <- trimws(gsub("\\s+", " ", title))
   n <- nchar(flat)
-  issues <- if (n >= 65L) {
-    paste0("Title is ", n, " characters; CRAN prefers under 65")
+  # 65 is the width a listing may truncate to, so 65 characters still show in
+  # full and only a longer title loses its tail.
+  issues <- if (n > 65L) {
+    over <- n - 65L
+    paste0(
+      "Title is ", n, " characters, so a listing that truncates at 65 would cut ",
+      "the last ", over, if (over == 1L) " character" else " characters"
+    )
   } else {
     character(0)
   }
@@ -1377,9 +1389,9 @@ lab_title_length <- function(path = ".", verbose = TRUE, desc = NULL) {
   emit_issue_summary(
     issues,
     verbose,
-    "Title length is within the 65-character guideline",
-    "Title exceeds the 65-character guideline",
-    "Treatment: Shorten the Title to under 65 characters",
+    "Title fits the 65 characters a listing may truncate to",
+    "Title is longer than a listing may show",
+    "Treatment: Bring the Title down to 65 characters so none of it is cut off",
     level = "warning"
   )
   checktor_check_result(passed, issues, "Title length check", nchar = n)

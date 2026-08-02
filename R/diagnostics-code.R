@@ -1481,8 +1481,10 @@ lab_library_in_pkg <- function(path, verbose = TRUE, parsed = NULL) {
   )
   xpath <- sprintf(
     "//SYMBOL_FUNCTION_CALL[text() = 'library' or text() = 'require'][
-       not(ancestor::expr[expr[1]/SYMBOL_FUNCTION_CALL[%s]])
+       %s
+       and not(ancestor::expr[expr[1]/SYMBOL_FUNCTION_CALL[%s]])
      ]",
+    NOT_MEMBER_ACCESS, # `api$library(...)` is a method, not base::library
     remote
   )
   issues <- xpath_per_file(parsed, xpath, function(file, nodes) {
