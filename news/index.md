@@ -38,6 +38,9 @@ tune checktor through `Config/checktor/*` fields in its own DESCRIPTION.
   `diagnose_example_structure()`, `diagnose_package_size()` or
   `diagnose_urls()`.
 
+  Check names themselves are unchanged, so a `Config/checktor` field
+  written against 0.1.0 keeps working.
+
 - Every check carries a severity tier, and
   [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md)
   gained a `severity` argument deciding which tiers the verdict is
@@ -469,6 +472,18 @@ run reflects the code you wrote.
   [@january3](https://github.com/january3)). A gloss whose expansion is
   a quoted software name counts too, so writing `'WebAssembly' (WASM)`
   as `software_names` asks satisfies both checks at once.
+
+- `readme_links` no longer reads `[[` subsetting in an R code block as a
+  link ([\#13](https://github.com/coatless-rpkg/checktor/issues/13),
+  thanks [@TanguyBarthelemy](https://github.com/TanguyBarthelemy)).
+
+- Checks skip whatever `.Rbuildignore` excludes, such as {devtag} `@dev`
+  help pages and `vignettes/articles/`
+  ([\#14](https://github.com/coatless-rpkg/checktor/issues/14), thanks
+  [@TanguyBarthelemy](https://github.com/TanguyBarthelemy)).
+
+- `urls` skips tilde-fenced and nested code blocks, and drops the
+  backtick from a quoted URL.
 
 - [`example_diagnose_scenario()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/example_diagnose_scenario.md)
   no longer prints the temporary package path, keeping machine-specific

@@ -172,7 +172,7 @@
 <span><span class="va">results</span></span>
 <span><span class="co">#&gt; ── Package Doctor - Diagnosis Summary ──────────────────────────────────────────</span></span>
 <span><span class="co">#&gt; Patient: examplepackage</span></span>
-<span><span class="co">#&gt; Examined: 2026-08-02 01:17:31.809211</span></span>
+<span><span class="co">#&gt; Examined: 2026-08-23 06:03:35.650035</span></span>
 <span><span class="co">#&gt; Doctor version: 0.2.0</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; CODE ISSUES: 1 failing check</span></span>
@@ -284,6 +284,11 @@
 <span><span class="fu"><a href="../reference/diagnose_general_issues.html">diagnose_general_issues</a></span><span class="op">(</span><span class="op">)</span>        <span class="co"># size, URLs</span></span>
 <span><span class="fu"><a href="../reference/diagnose_policy_violations.html">diagnose_policy_violations</a></span><span class="op">(</span><span class="op">)</span>     <span class="co"># CRAN policy</span></span></code></pre></div>
 </div>
+</section><section class="level2"><h2 id="checking-only-what-is-included">Checking only what is included<a class="anchor" aria-label="anchor" href="#checking-only-what-is-included"></a>
+</h2>
+<p><code>R CMD build</code> drops whatever <code>.Rbuildignore</code> matches, and checktor drops the same files. A help topic or vignette held back from the tarball is never checked.</p>
+<p>The <a href="https://github.com/moodymudskipper/devtag" class="external-link">devtag</a> package uses this to document unexported functions: <code>@dev</code> writes the help page and adds the <code>.Rd</code> to <code>.Rbuildignore</code>, so contributors see it and users do not. Those examples can call <code>:::</code> and checktor will not object. The pkgdown-only articles <code>usethis::use_article()</code> writes to <code>vignettes/articles/</code> work the same way.</p>
+<p><code>roxygen_usage</code> is the exception. It reads all of <code>man/</code>, since it asks whether your working tree is in sync with roxygen rather than what is included.</p>
 </section><section class="level2"><h2 id="turning-down-the-volume">Turning down the volume<a class="anchor" aria-label="anchor" href="#turning-down-the-volume"></a>
 </h2>
 <p><code><a href="../reference/checktor.html">checktor()</a></code> is chatty by design. In a script, quiet it once and every later call inherits the setting:</p>

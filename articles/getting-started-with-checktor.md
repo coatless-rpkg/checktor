@@ -119,7 +119,7 @@ results <- checktor(pkg, verbose = FALSE, progress = FALSE)
 results
 #> ── Package Doctor - Diagnosis Summary ──────────────────────────────────────────
 #> Patient: examplepackage
-#> Examined: 2026-08-02 01:17:31.809211
+#> Examined: 2026-08-23 06:03:35.650035
 #> Doctor version: 0.2.0
 #> 
 #> CODE ISSUES: 1 failing check
@@ -280,6 +280,23 @@ diagnose_documentation_issues()  # just the .Rd files
 diagnose_general_issues()        # size, URLs
 diagnose_policy_violations()     # CRAN policy
 ```
+
+## Checking only what is included
+
+`R CMD build` drops whatever `.Rbuildignore` matches, and checktor drops
+the same files. A help topic or vignette held back from the tarball is
+never checked.
+
+The [devtag](https://github.com/moodymudskipper/devtag) package uses
+this to document unexported functions: `@dev` writes the help page and
+adds the `.Rd` to `.Rbuildignore`, so contributors see it and users do
+not. Those examples can call `:::` and checktor will not object. The
+pkgdown-only articles `usethis::use_article()` writes to
+`vignettes/articles/` work the same way.
+
+`roxygen_usage` is the exception. It reads all of `man/`, since it asks
+whether your working tree is in sync with roxygen rather than what is
+included.
 
 ## Turning down the volume
 

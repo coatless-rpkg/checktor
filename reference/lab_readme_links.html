@@ -85,6 +85,13 @@ to files that are included (e.g. <code>man/figures/logo.png</code>) are not flag
     <p><code><a href="checktor_check_result.html">checktor_check_result()</a></code> with <code>passed</code>, <code>issues</code>, <code>message</code>.</p>
     </div>
     <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>Only what a renderer turns into a link counts. Fenced code blocks, inline
+code spans and HTML comments are left out of the scan, so a setup chunk
+calling <code>knitr::opts_chunk[["set"]](...)</code> is read as the code it is rather
+than as a link to a file named after its arguments.</p>
+    </div>
+    <div class="section level2">
     <h2 id="source">Source<a class="anchor" aria-label="anchor" href="#source"></a></h2>
 
 

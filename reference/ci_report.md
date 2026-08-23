@@ -35,9 +35,13 @@ ci_report(
 
 - file:
 
-  Character. Where to write. Defaults to standard output for the
-  comment-style formats and to a conventional file name for the report
-  styles.
+  Character. Where to write. Omit it for the format's natural
+  destination, standard output for the comment styles and a conventional
+  file name for the report styles. Pass `NULL` to emit nothing and only
+  return the lines, which is what you want when testing or
+  post-processing a report rather than handing it to a build. Pass
+  [`stdout()`](https://rdrr.io/r/base/showConnections.html) to print
+  regardless of format.
 
 - severity:
 
@@ -101,18 +105,10 @@ pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)
 results <- checktor(pkg, verbose = FALSE, progress = FALSE)
 
-# What a GitHub Actions job would emit
-writeLines(head(ci_report(results, format = "github", file = NULL), 3))
-#> ::error file=R/tf_usage_bad.R,line=8,title=checktor%3A tf_usage::T/F usage check: tf_usage_bad.R:8
-#> ::error file=R/tf_usage_bad.R,line=11,title=checktor%3A tf_usage::T/F usage check: tf_usage_bad.R:11
-#> ::error file=R/tf_usage_bad.R,line=15,title=checktor%3A tf_usage::T/F usage check: tf_usage_bad.R:15
-#> ::error file=R/tf_usage_bad.R,line=18,title=checktor%3A tf_usage::T/F usage check: tf_usage_bad.R:18
-#> ::error file=R/tf_usage_bad.R,line=22,title=checktor%3A tf_usage::T/F usage check: tf_usage_bad.R:22
-#> ::error file=R/tf_usage_bad.R,line=25,title=checktor%3A tf_usage::T/F usage check: tf_usage_bad.R:25
-#> ::error file=R/tf_usage_bad.R,line=29,title=checktor%3A tf_usage::T/F usage check: tf_usage_bad.R:29
-#> ::notice file=DESCRIPTION,line=1,title=checktor%3A cph_role::cph role check: Authors@R lacks any [cph] (copyright holder) role
-#> ::notice title=checktor%3A skipped::2 checks did not run: spelling, url_liveness
-#> ::error file=R/tf_usage_bad.R,line=8,title=checktor%3A tf_usage::T/F usage check: tf_usage_bad.R:8
-#> ::error file=R/tf_usage_bad.R,line=11,title=checktor%3A tf_usage::T/F usage check: tf_usage_bad.R:11
-#> ::error file=R/tf_usage_bad.R,line=15,title=checktor%3A tf_usage::T/F usage check: tf_usage_bad.R:15
+# What a GitHub Actions job would emit. Indented here, because a runner reads
+# any line starting with `::` as a command, including one this example printed.
+writeLines(paste0("  ", head(ci_report(results, format = "github", file = NULL), 3)))
+#>   ::error file=R/tf_usage_bad.R,line=8,title=checktor%3A tf_usage::T/F usage check: tf_usage_bad.R:8
+#>   ::error file=R/tf_usage_bad.R,line=11,title=checktor%3A tf_usage::T/F usage check: tf_usage_bad.R:11
+#>   ::error file=R/tf_usage_bad.R,line=15,title=checktor%3A tf_usage::T/F usage check: tf_usage_bad.R:15
 ```

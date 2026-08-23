@@ -28,6 +28,13 @@ lab_readme_links(path, verbose = TRUE)
 [`checktor_check_result()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor_check_result.md)
 with `passed`, `issues`, `message`.
 
+## Details
+
+Only what a renderer turns into a link counts. Fenced code blocks,
+inline code spans and HTML comments are left out of the scan, so a setup
+chunk calling `knitr::opts_chunk[["set"]](...)` is read as the code it
+is rather than as a link to a file named after its arguments.
+
 ## Source
 
 No formal rule. A relative README link whose target is excluded from the
