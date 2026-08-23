@@ -253,11 +253,7 @@ lab_example_state <- function(path = ".", verbose = TRUE) {
 #' lab_example_interactive(pkg, verbose = FALSE)$passed
 lab_example_interactive <- function(path = ".", verbose = TRUE) {
   path <- find_package_root(path)
-  rd_files <- list.files(
-    file.path(path, "man"),
-    pattern = "\\.Rd$",
-    full.names = TRUE
-  )
+  rd_files <- list_rd_files(path)
   if (length(rd_files) == 0L) {
     return(checktor_check_result(
       TRUE,

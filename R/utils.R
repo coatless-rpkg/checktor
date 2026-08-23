@@ -160,6 +160,37 @@ list_r_files <- function(path) {
   list.files(r_dir, pattern = "\\.R$", full.names = TRUE, recursive = TRUE)
 }
 
+# Lists the files under <path>/<subdir> that the built tarball includes:
+# everything matching `pattern`, minus whatever .Rbuildignore excludes. Returns
+# character(0) when the directory is absent.
+#
+# The filter is the point. `R CMD build` drops every file .Rbuildignore matches,
+# so an excluded file is not in the tarball and no reviewer ever opens it. Two
+# ordinary workflows rely on that. The {devtag} package's `@dev` tag documents an
+# unexported function and adds the .Rd to .Rbuildignore, so contributors get the
+# help page and users do not. `usethis::use_article()` puts a pkgdown-only piece
+# in `vignettes/articles/` and excludes the directory. Reading either told
+# maintainers to go and fix code that CRAN will never see.
+list_included_files <- function(path, subdir, pattern, recursive = FALSE) {
+  dir <- file.path(path, subdir)
+  if (!dir.exists(dir)) {
+    return(character(0))
+  }
+  files <- list.files(dir, pattern = pattern, recursive = recursive)
+  if (length(files) == 0L) {
+    return(character(0))
+  }
+  ignore <- build_ignore_matcher(path)
+  file.path(dir, files[!ignore(file.path(subdir, files))])
+}
+
+# The help topics the tarball includes. Only the top level of man/ is listed,
+# because only `man/*.Rd` becomes a topic: `man/figures/` holds images and
+# `man/macros/` holds \newcommand definitions, and neither is one to check.
+list_rd_files <- function(path) {
+  list_included_files(path, "man", "\\.Rd$")
+}
+
 # Reads .Rbuildignore patterns and returns a function(rel_path) -> logical
 # that's TRUE when the path matches any ignore pattern. The always-skip set
 # (.git, .Rproj.user, .DS_Store, etc.) is applied unconditionally.

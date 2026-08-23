@@ -16,11 +16,7 @@ EXAMPLE_SOURCE_DIRS <- list(
 
 # R code from a package's `.Rd` examples, one entry per file that has any.
 rd_example_code <- function(path) {
-  files <- list.files(
-    file.path(path, "man"),
-    pattern = "\\.Rd$",
-    full.names = TRUE
-  )
+  files <- list_rd_files(path)
   out <- list()
   for (file in files) {
     rd <- tryCatch(tools::parse_Rd(file), error = function(e) NULL)
@@ -44,11 +40,7 @@ rd_example_code <- function(path) {
 
 # R code from vignette sources, taking only the chunks that run.
 vignette_code <- function(path) {
-  files <- list.files(
-    file.path(path, "vignettes"),
-    pattern = "\\.(Rmd|rmd|qmd|Rnw)$",
-    full.names = TRUE
-  )
+  files <- list_included_files(path, "vignettes", "\\.(Rmd|rmd|qmd|Rnw)$")
   out <- list()
   for (file in files) {
     code <- vignette_r_code(file)
@@ -64,11 +56,7 @@ vignette_code <- function(path) {
 script_code <- function(path, dirs, kind) {
   out <- list()
   for (dir in dirs) {
-    full <- file.path(path, dir)
-    if (!dir.exists(full)) {
-      next
-    }
-    files <- list.files(full, pattern = "\\.[Rr]$", full.names = TRUE)
+    files <- list_included_files(path, dir, "\\.[Rr]$")
     for (file in files) {
       code <- paste(safe_read_lines(file), collapse = "\n")
       if (!nzchar(trimws(code))) {

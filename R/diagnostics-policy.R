@@ -289,16 +289,11 @@ lab_file_operations <- function(path, verbose = TRUE, parsed = NULL) {
 #' lab_network_operations(pkg, verbose = FALSE)$passed
 lab_network_operations <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
-  rd_files <- list.files(
-    file.path(path, "man"),
-    pattern = "\\.Rd$",
-    full.names = TRUE,
-    recursive = TRUE
-  )
-  vignette_files <- list.files(
-    file.path(path, "vignettes"),
-    pattern = "\\.(Rmd|qmd|md)$",
-    full.names = TRUE,
+  rd_files <- list_rd_files(path)
+  vignette_files <- list_included_files(
+    path,
+    "vignettes",
+    "\\.(Rmd|qmd|md)$",
     recursive = TRUE
   )
   if (length(rd_files) == 0L && length(vignette_files) == 0L) {

@@ -110,11 +110,7 @@ is_non_function_rd_obj <- function(rd) {
 #' issues(lab_value_tags(pkg_path, verbose = FALSE))
 lab_value_tags <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
-  rd_files <- list.files(
-    file.path(path, "man"),
-    pattern = "\\.Rd$",
-    full.names = TRUE
-  )
+  rd_files <- list_rd_files(path)
   if (length(rd_files) == 0L) {
     if (verbose) {
       cli::cli_alert_info("No .Rd files found")
@@ -204,11 +200,7 @@ lab_value_tags <- function(path, verbose = TRUE) {
 #' lab_example_structure(pkg_path, verbose = FALSE)
 lab_example_structure <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
-  rd_files <- list.files(
-    file.path(path, "man"),
-    pattern = "\\.Rd$",
-    full.names = TRUE
-  )
+  rd_files <- list_rd_files(path)
   if (length(rd_files) == 0L) {
     return(checktor_check_result(TRUE, character(0), "Example structure check"))
   }
@@ -340,11 +332,7 @@ contains_dontrun <- function(node) contains_rd_tag(node, "\\dontrun")
 #' lab_commented_examples(pkg, verbose = FALSE)$passed
 lab_commented_examples <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
-  rd_files <- list.files(
-    file.path(path, "man"),
-    pattern = "\\.Rd$",
-    full.names = TRUE
-  )
+  rd_files <- list_rd_files(path)
   if (length(rd_files) == 0L) {
     return(checktor_check_result(
       TRUE,
@@ -536,11 +524,7 @@ rd_aliases <- function(rd) {
 #' lab_donttest_vs_dontrun(pkg, verbose = FALSE)$passed
 lab_donttest_vs_dontrun <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
-  rd_files <- list.files(
-    file.path(path, "man"),
-    pattern = "\\.Rd$",
-    full.names = TRUE
-  )
+  rd_files <- list_rd_files(path)
   if (length(rd_files) == 0L) {
     return(checktor_check_result(
       TRUE,
@@ -627,11 +611,7 @@ lab_donttest_vs_dontrun <- function(path, verbose = TRUE) {
 #' issues(lab_missing_examples(pkg_path, verbose = FALSE))
 lab_missing_examples <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
-  rd_files <- list.files(
-    file.path(path, "man"),
-    pattern = "\\.Rd$",
-    full.names = TRUE
-  )
+  rd_files <- list_rd_files(path)
   if (length(rd_files) == 0L) {
     return(checktor_check_result(TRUE, character(0), "Missing examples check"))
   }
@@ -727,11 +707,7 @@ parse_package_list <- function(field) {
 #' issues(lab_suggested_in_examples(pkg_path, verbose = FALSE))
 lab_suggested_in_examples <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
-  rd_files <- list.files(
-    file.path(path, "man"),
-    pattern = "\\.Rd$",
-    full.names = TRUE
-  )
+  rd_files <- list_rd_files(path)
   desc_file <- file.path(path, "DESCRIPTION")
   if (length(rd_files) == 0L || !file.exists(desc_file)) {
     return(checktor_check_result(
@@ -917,6 +893,12 @@ lab_roxygen_usage <- function(path, verbose = TRUE) {
   }
 
   # Signal 2: an Rd pointing back at a source file that is gone.
+  #
+  # This is the one .Rd scan that reads man/ whole rather than through
+  # list_rd_files(). Every other check asks what CRAN will see; this one asks
+  # whether your working tree is in sync with roxygen, and a topic held back
+  # from the tarball is still a topic document() maintains. Leaving out the
+  # .Rbuildignore'd files here would just stop reporting stale ones.
   rd_files <- list.files(
     file.path(path, "man"),
     pattern = "\\.Rd$",
@@ -1057,11 +1039,7 @@ roxygen_exported_names <- function(parsed) {
 #' lab_unexported_example_ns(pkg_path, verbose = FALSE)$passed
 lab_unexported_example_ns <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
-  rd_files <- list.files(
-    file.path(path, "man"),
-    pattern = "\\.Rd$",
-    full.names = TRUE
-  )
+  rd_files <- list_rd_files(path)
   if (length(rd_files) == 0L) {
     return(checktor_check_result(
       TRUE,
