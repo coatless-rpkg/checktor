@@ -27,6 +27,9 @@ fields in its own DESCRIPTION.
   `diagnose_roxygen_usage()`, `diagnose_value_tags()`, `diagnose_example_structure()`,
   `diagnose_package_size()` or `diagnose_urls()`.
 
+  Check names themselves are unchanged, so a `Config/checktor` field written
+  against 0.1.0 keeps working.
+
 * Every check carries a severity tier, and `checktor()` gained a `severity` argument
   deciding which tiers the verdict is about. It defaults to policy and robustness.
 
@@ -347,6 +350,15 @@ the code you wrote.
   gloss (#5, thanks @january3). A gloss whose expansion is a quoted software name
   counts too, so writing `'WebAssembly' (WASM)` as `software_names` asks satisfies
   both checks at once.
+
+* `readme_links` no longer reads `[[` subsetting in an R code block as a link
+  (#13, thanks @TanguyBarthelemy).
+
+* Checks skip whatever `.Rbuildignore` excludes, such as {devtag} `@dev` help pages
+  and `vignettes/articles/` (#14, thanks @TanguyBarthelemy).
+
+* `urls` skips tilde-fenced and nested code blocks, and drops the backtick from a
+  quoted URL.
 
 * `example_diagnose_scenario()` no longer prints the temporary package path, keeping
   machine-specific paths out of help pages.
