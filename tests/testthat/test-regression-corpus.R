@@ -11,9 +11,11 @@
 #
 # Each block cites the package and file it came from.
 
-# ---- false positives: these must stay silent --------------------------------
+# false positives: these must stay silent
 
-test_that("corpus: a console reporter is not unsuppressable output", {
+# Test lab_print_cat_usage() ----
+
+test_that("lab_print_cat_usage(): a console reporter is not unsuppressable output", {
   # logitr/R/utils.R statusCodes(), cbcTools/R/priors.R cbc_suggest_priors().
   # Both exist to print. WRE permits console output when producing it IS the
   # function's purpose.
@@ -39,7 +41,7 @@ test_that("corpus: a console reporter is not unsuppressable output", {
   expect_true(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
 })
 
-test_that("corpus: print(doc, target) writes a file, it does not print", {
+test_that("lab_print_cat_usage(): print(doc, target) writes a file, it does not print", {
   # renderthis/R/pptx.R to_pptx(). officer's print.rpptx(x, target) SAVES.
   pkg <- make_temp_dir()
   write_pkg(
@@ -54,7 +56,7 @@ test_that("corpus: print(doc, target) writes a file, it does not print", {
   expect_true(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
 })
 
-test_that("corpus: output that sets up a user prompt is interactive output", {
+test_that("lab_print_cat_usage(): output that sets up a user prompt is interactive output", {
   # surveydown/R/util.R sd_create_survey(). CRAN's rule ends "(except for print,
   # summary, interactive functions)".
   pkg <- make_temp_dir()
@@ -75,7 +77,9 @@ test_that("corpus: output that sets up a user prompt is interactive output", {
   expect_true(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
 })
 
-test_that("corpus: a caller-supplied write destination is permission", {
+# Test lab_file_operations() ----
+
+test_that("lab_file_operations(): a caller-supplied write destination is permission", {
   # surveydown/R/db.R and config.R. CRAN forbids writing to the user's filespace
   # WITHOUT PERMISSION; a path the caller passed in is permission.
   pkg <- make_temp_dir()
@@ -95,7 +99,9 @@ test_that("corpus: a caller-supplied write destination is permission", {
   expect_true(lab_file_operations(pkg, verbose = FALSE)$passed)
 })
 
-test_that("corpus: library() sent to a parallel daemon is not a search-path change", {
+# Test lab_library_in_pkg() ----
+
+test_that("lab_library_in_pkg(): library() sent to a parallel daemon is not a search-path change", {
   # logitr/R/optimLoop.R. A daemon starts with an empty search path.
   pkg <- make_temp_dir()
   write_pkg(
@@ -112,7 +118,9 @@ test_that("corpus: library() sent to a parallel daemon is not a search-path chan
   expect_true(lab_library_in_pkg(pkg, verbose = FALSE)$passed)
 })
 
-test_that("corpus: makeCluster(2L) is CRAN-compliant, not a violation", {
+# Test lab_core_usage() ----
+
+test_that("lab_core_usage(): makeCluster(2L) is CRAN-compliant, not a violation", {
   # cbcTools/R/design.R. The old rule demanded an mc.cores argument, which
   # makeCluster() does not take, so a compliant call was flagged 100% of the time.
   pkg <- make_temp_dir()
@@ -129,7 +137,9 @@ test_that("corpus: makeCluster(2L) is CRAN-compliant, not a violation", {
   expect_true(lab_core_usage(pkg, verbose = FALSE)$passed)
 })
 
-test_that("corpus: a memoisation cache is not a .GlobalEnv write", {
+# Test lab_globalenv_mod() ----
+
+test_that("lab_globalenv_mod(): a memoisation cache is not a .GlobalEnv write", {
   # `<<-` binds in the first ENCLOSING frame where the name exists, reaching
   # .GlobalEnv only when it is bound nowhere. A package-level cache never is.
   pkg <- make_temp_dir()
@@ -146,7 +156,9 @@ test_that("corpus: a memoisation cache is not a .GlobalEnv write", {
   expect_true(lab_globalenv_mod(pkg, verbose = FALSE)$passed)
 })
 
-test_that("corpus: prose comments in \\examples are not commented-out code", {
+# Test lab_commented_examples() ----
+
+test_that("lab_commented_examples(): prose comments in \\examples are not commented-out code", {
   # cbcTools. All 41 comment lines across the 9 flagged Rd files were English.
   pkg <- make_temp_dir()
   write_pkg(
@@ -169,7 +181,9 @@ test_that("corpus: prose comments in \\examples are not commented-out code", {
   expect_true(lab_commented_examples(pkg, verbose = FALSE)$passed)
 })
 
-test_that("corpus: \\dontrun{} around a shiny reactive context is justified", {
+# Test lab_example_structure() ----
+
+test_that("lab_example_structure(): \\dontrun{} around a shiny reactive context is justified", {
   # surveydown/man/sd_value.Rd. Cannot run outside a live app, but never says
   # the word "shiny".
   pkg <- make_temp_dir()
@@ -195,7 +209,9 @@ test_that("corpus: \\dontrun{} around a shiny reactive context is justified", {
   expect_true(lab_example_structure(pkg, verbose = FALSE)$passed)
 })
 
-test_that("corpus: a non-syntactic S3 method is registered, not unexported", {
+# Test lab_roxygen_usage() ----
+
+test_that("lab_roxygen_usage(): a non-syntactic S3 method is registered, not unexported", {
   # cbcTools/NAMESPACE. S3method("[",cbc_profiles) quotes the generic; keeping
   # the quotes made every [.foo / names<-.foo method look unregistered.
   pkg <- make_temp_dir()
@@ -221,7 +237,9 @@ test_that("corpus: a non-syntactic S3 method is registered, not unexported", {
   expect_true(lab_roxygen_usage(pkg, verbose = FALSE)$passed)
 })
 
-test_that("corpus: a 31-word single-sentence Description is not too short", {
+# Test lab_description_length() ----
+
+test_that("lab_description_length(): a 31-word single-sentence Description is not too short", {
   # renderthis/DESCRIPTION. The old rule demanded 2+ sentences, which has no
   # authority behind it.
   desc <- paste(
@@ -237,7 +255,9 @@ test_that("corpus: a 31-word single-sentence Description is not too short", {
   )
 })
 
-test_that("corpus: a quoted package name in Title keeps its own capitalisation", {
+# Test lab_title_case() ----
+
+test_that("lab_title_case(): a quoted package name in Title keeps its own capitalisation", {
   # R's own toTitleCase() restores single-quoted spans, which is why R does not
   # flag 'shiny' and the homegrown word-loop did.
   expect_true(
@@ -248,9 +268,11 @@ test_that("corpus: a quoted package name in Title keeps its own capitalisation",
   )
 })
 
-# ---- false negatives: these must be caught ----------------------------------
+# false negatives: these must be caught
 
-test_that("corpus: an unfilled usethis Authors@R template is caught", {
+# Test diagnose_description_issues() ----
+
+test_that("diagnose_description_issues(): an unfilled usethis Authors@R template is caught", {
   # pcaR2/DESCRIPTION ships person("First", "Last", ...) -- a hard CRAN
   # rejection. checktor 0.1.0 passed it, because it only tested that the field
   # EXISTS. R CMD check says nothing either, for the same reason.
@@ -267,7 +289,9 @@ test_that("corpus: an unfilled usethis Authors@R template is caught", {
   expect_true(any(grepl("placeholder", res$issues)))
 })
 
-test_that("corpus: an unguarded detectCores() is caught", {
+# Test lab_detect_cores_robustness() ----
+
+test_that("lab_detect_cores_robustness(): an unguarded detectCores() is caught", {
   # logitr/R/modelInputs.R setNumCores(), cbcTools/R/util.R. ?detectCores: "An
   # integer, NA if the answer is unknown". NA - 1 is NA, and the comparison below
   # then errors with "missing value where TRUE/FALSE needed" -- reproduced live.
@@ -286,7 +310,9 @@ test_that("corpus: an unguarded detectCores() is caught", {
   expect_false(lab_detect_cores_robustness(pkg, verbose = FALSE)$passed)
 })
 
-test_that("corpus: a genuine write to the user's home is caught", {
+# Test lab_home_writing() ----
+
+test_that("lab_home_writing(): a genuine write to the user's home is caught", {
   # The violation home_writing claimed to detect and did not: it inspected only
   # read functions (Sys.getenv, path.expand) and missed every actual write.
   pkg <- make_temp_dir()
@@ -300,7 +326,9 @@ test_that("corpus: a genuine write to the user's home is caught", {
   expect_false(lab_home_writing(pkg, verbose = FALSE)$passed)
 })
 
-test_that("corpus: printing during a computation is still caught", {
+# Test lab_print_cat_usage() ----
+
+test_that("lab_print_cat_usage(): printing during a computation is still caught", {
   # The rule the exemptions must never swallow: the caller wants a value and gets
   # the noise as well.
   pkg <- make_temp_dir()
@@ -316,7 +344,9 @@ test_that("corpus: printing during a computation is still caught", {
   expect_false(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
 })
 
-test_that("corpus: a hardcoded write destination is still caught", {
+# Test lab_file_operations() ----
+
+test_that("lab_file_operations(): a hardcoded write destination is still caught", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -330,7 +360,9 @@ test_that("corpus: a hardcoded write destination is still caught", {
   expect_equal(length(res$issues), 2L)
 })
 
-test_that("corpus: a Suggests used in \\examples without a guard is caught", {
+# Test lab_suggested_in_examples() ----
+
+test_that("lab_suggested_in_examples(): a Suggests used in \\examples without a guard is caught", {
   # surveydown/man/sd_question_custom.Rd guards on interactive() rather than
   # requireNamespace(), which does not make the package available. This one was
   # a TRUE positive that an earlier audit pass wrongly dismissed.
@@ -357,12 +389,14 @@ test_that("corpus: a Suggests used in \\examples without a guard is caught", {
   expect_false(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
 })
 
-# ---- CRAN-corpus regressions (45-package audit) -----------------------------
+# CRAN-corpus regressions (45-package audit)
 # checktor was re-run against 45 CRAN packages, 15 of them expert-maintained
 # (cli, rlang, testthat, withr, jsonlite, digest, curl, zoo, ...). It produced 831
 # findings and NOT ONE of the 15 came out clean. These pin the root causes.
 
-test_that("corpus: a multi-line export( block is read in full", {
+# Test lab_unexported_example_ns() ----
+
+test_that("lab_unexported_example_ns(): a multi-line export( block is read in full", {
   # digest/NAMESPACE. The line-wise regex returned exactly one entry -- the string
   # "AES," -- when the truth is nine exports, so digest::digest(), the package's
   # flagship function, was reported as unexported. It explains 121 of the 831.
@@ -397,7 +431,9 @@ test_that("corpus: a multi-line export( block is read in full", {
   )
 })
 
-test_that("corpus: roxygen @export may name several objects at once", {
+# Test lab_roxygen_usage() ----
+
+test_that("lab_roxygen_usage(): roxygen @export may name several objects at once", {
   # jsonlite/R/fromJSON.R line 21 is `#' @export fromJSON toJSON`. Storing that
   # whole string as one name invented a function called "fromJSON toJSON".
   pkg <- make_temp_dir()
@@ -421,7 +457,9 @@ test_that("corpus: roxygen @export may name several objects at once", {
   expect_true(lab_roxygen_usage(pkg, verbose = FALSE)$passed)
 })
 
-test_that("corpus: temp_cleanup does not scan tests/, and is not a policy check", {
+# Test lab_temp_cleanup() ----
+
+test_that("lab_temp_cleanup(): does not scan tests/, and is not a policy check", {
   # It reported withr, fs, rlang, testthat and cli -- the packages that handle temp
   # files most carefully of anyone -- for tempfile() calls in their TEST files.
   # CRAN's policy expressly PERMITS writing to the session temp directory, and
@@ -439,7 +477,9 @@ test_that("corpus: temp_cleanup does not scan tests/, and is not a policy check"
   expect_true(lab_temp_cleanup(pkg, verbose = FALSE)$passed)
 })
 
-test_that("corpus: options()/par() READS and RESTORES are not changes", {
+# Test lab_option_changes() ----
+
+test_that("lab_option_changes(): options()/par() READS and RESTORES are not changes", {
   # withr/R/options.R:12 is `reset_options <- function(old) options(old)`. That is
   # withr's own CLEANUP function, and checktor reported it as an unrestored change.
   # zoo/R/xblocks.R reads plot coordinates with par("usr")[3].
@@ -457,7 +497,7 @@ test_that("corpus: options()/par() READS and RESTORES are not changes", {
   expect_true(lab_option_changes(pkg, verbose = FALSE)$passed)
 })
 
-test_that("corpus: a NAMED option argument is still flagged", {
+test_that("lab_option_changes(): a NAMED option argument is still flagged", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -471,7 +511,9 @@ test_that("corpus: a NAMED option argument is still flagged", {
   expect_equal(length(res$issues), 2L)
 })
 
-test_that("corpus: `urls` is advice, not policy", {
+# Test check_severity() ----
+
+test_that("check_severity(): `urls` is advice, not policy", {
   # It flags any http:// link. CRAN's NOTE is for URLs that are INVALID or that
   # REDIRECT, which R determines by FETCHING them; checktor is offline and cannot
   # know whether a host even offers https. testthat, stringr, rlang, curl,
@@ -479,7 +521,9 @@ test_that("corpus: `urls` is advice, not policy", {
   expect_equal(check_severity("urls"), "opinion")
 })
 
-test_that("corpus: obj$cat() is a method call, not base::cat()", {
+# Test lab_print_cat_usage() ----
+
+test_that("lab_print_cat_usage(): obj$cat() is a method call, not base::cat()", {
   # cli is built on objects with a `$cat` member, and was reported 25 times for
   # calling its own method. R's parser emits a SYMBOL_FUNCTION_CALL for the member
   # name, so //SYMBOL_FUNCTION_CALL[text()='cat'] matches it. tf_usage has always
@@ -498,7 +542,7 @@ test_that("corpus: obj$cat() is a method call, not base::cat()", {
   expect_true(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
 })
 
-test_that("corpus: base::cat() is still matched", {
+test_that("lab_print_cat_usage(): base::cat() is still matched", {
   # The member-access guard must not let a namespaced call slip through.
   pkg <- make_temp_dir()
   write_pkg(
@@ -513,7 +557,9 @@ test_that("corpus: base::cat() is still matched", {
   expect_false(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
 })
 
-test_that("corpus: obj$system() and obj$browser() are method calls too", {
+# Test lab_system_calls() ----
+
+test_that("lab_system_calls(): obj$system() and obj$browser() are method calls too", {
   # The same defect in undesirable_function_check(), which backs system_calls,
   # browser_calls, library_in_pkg and the install checks.
   pkg <- make_temp_dir()
@@ -531,9 +577,11 @@ test_that("corpus: obj$system() and obj$browser() are method calls too", {
   expect_true(lab_browser_calls(pkg, verbose = FALSE)$passed)
 })
 
-# ---- second CRAN-corpus wave (adversarial triage of 105 groups) -------------
+# second CRAN-corpus wave (adversarial triage of 105 groups)
 
-test_that("corpus: an output flag named `messages` is a verbosity gate", {
+# Test lab_print_cat_usage() ----
+
+test_that("lab_print_cat_usage(): an output flag named `messages` is a verbosity gate", {
   # geoR gates every message on `messages.screen`. checktor's verbosity whitelist
   # was 8 hardcoded stems with no "message" among them, so all 117 of geoR's
   # correctly-guarded cat() calls were reported.
@@ -550,7 +598,7 @@ test_that("corpus: an output flag named `messages` is a verbosity gate", {
   expect_true(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
 })
 
-test_that("corpus: a method defined with a QUOTED name is still a method", {
+test_that("lab_print_cat_usage(): a method defined with a QUOTED name is still a method", {
   # R's classic idiom: `"print.summary.xvalid" <- function(x, ...)`. The LHS parses
   # as STR_CONST, not SYMBOL, so every SYMBOL-only XPath was blind to it. geoR
   # writes 201 of its 208 top-level functions this way.
@@ -577,7 +625,9 @@ test_that("corpus: a method defined with a QUOTED name is still a method", {
   )
 })
 
-test_that("corpus: `<<-` inside local() binds in the local() env, not .GlobalEnv", {
+# Test lab_globalenv_mod() ----
+
+test_that("lab_globalenv_mod(): `<<-` inside local() binds in the local() env, not .GlobalEnv", {
   # curl's make_option_type_table <- local({ cache <- NULL; function() ... }).
   # local() is a CALL, not a function, so an ancestor::expr[FUNCTION] search walks
   # straight past the scope that holds the binding. curl, cli and rlang all do this.
@@ -597,7 +647,9 @@ test_that("corpus: `<<-` inside local() binds in the local() env, not .GlobalEnv
   expect_true(lab_globalenv_mod(pkg, verbose = FALSE)$passed)
 })
 
-test_that("corpus: package_size measures the COMPRESSED size CRAN limits", {
+# Test lab_package_size() ----
+
+test_that("lab_package_size(): measures the COMPRESSED size CRAN limits", {
   # CRAN's 5 MB limit is on the gzipped tarball. billboarder is 6.3 MB on disk and
   # 2.93 MB as a tarball; every package_size finding in the audit was this mistake.
   pkg <- make_temp_dir()
@@ -613,7 +665,9 @@ test_that("corpus: package_size measures the COMPRESSED size CRAN limits", {
   expect_lt(res$size_mb, 5)
 })
 
-test_that("corpus: `if (require('pkg'))` IS the sanctioned guard", {
+# Test lab_suggested_in_examples() ----
+
+test_that("lab_suggested_in_examples(): `if (require('pkg'))` IS the sanctioned guard", {
   # Writing R Extensions sanctions exactly this for conditional Suggests use in
   # examples. The old guard recognised only requireNamespace(), and only quoted,
   # while the USE pattern matched require() -- so the guard was the violation.
@@ -637,7 +691,7 @@ test_that("corpus: `if (require('pkg'))` IS the sanctioned guard", {
   expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
 })
 
-test_that("corpus: interactive() is NOT a Suggests guard", {
+test_that("lab_suggested_in_examples(): interactive() is NOT a Suggests guard", {
   # It does not make the package available, so the example still fails without it.
   pkg <- make_temp_dir()
   write_pkg(
@@ -659,7 +713,9 @@ test_that("corpus: interactive() is NOT a Suggests guard", {
   expect_false(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
 })
 
-test_that("corpus: T/F inside expression()/substitute() are language tokens", {
+# Test lab_tf_usage() ----
+
+test_that("lab_tf_usage(): T/F inside expression()/substitute() are language tokens", {
   # EL builds plotmath labels: substitute(expression(F[a] - F[b]), ...). That F is
   # the cumulative distribution function, not FALSE.
   pkg <- make_temp_dir()
@@ -675,13 +731,13 @@ test_that("corpus: T/F inside expression()/substitute() are language tokens", {
   expect_true(lab_tf_usage(pkg, verbose = FALSE)$passed)
 })
 
-test_that("corpus: a real bare T/F is still flagged", {
+test_that("lab_tf_usage(): a real bare T/F is still flagged", {
   pkg <- make_temp_dir()
   write_pkg(pkg, r_code = "f <- function() mean(x, na.rm = T)")
   expect_false(lab_tf_usage(pkg, verbose = FALSE)$passed)
 })
 
-test_that("corpus: `na.rm = T` is flagged, `f(T = 1)` is not", {
+test_that("lab_tf_usage(): `na.rm = T` is flagged, `f(T = 1)` is not", {
   # A FALSE NEGATIVE, not a false positive. An argument NAME parses as SYMBOL_SUB,
   # so //SYMBOL never matched `f(T = 1)` anyway; the guard that claimed to exclude
   # it actually excluded the argument VALUE, making `mean(x, na.rm = T)` -- the
@@ -704,9 +760,11 @@ test_that("corpus: `na.rm = T` is flagged, `f(T = 1)` is not", {
   expect_true(lab_tf_usage(ok, verbose = FALSE)$passed)
 })
 
-# ---- third wave: the 196-package corpus -------------------------------------
+# third wave: the 196-package corpus
 
-test_that("corpus: an `=` assignment is an assignment", {
+# Test lab_globalenv_mod() ----
+
+test_that("lab_globalenv_mod(): an `=` assignment is an assignment", {
   # knitr binds `defaults = value` in a closure factory and updates it with
   # `defaults <<- ...` from a nested function: a textbook closure that never
   # approaches .GlobalEnv. But `x = 1` parses as expr_or_assign_or_help, not expr,
@@ -727,7 +785,9 @@ test_that("corpus: an `=` assignment is an assignment", {
   expect_true(lab_globalenv_mod(pkg, verbose = FALSE)$passed)
 })
 
-test_that("corpus: an if/else of printers is a printer", {
+# Test lab_print_cat_usage() ----
+
+test_that("lab_print_cat_usage(): an if/else of printers is a printer", {
   # knitr's normal_print = function(x, ...) if (isS4(x)) methods::show(x) else print(x)
   # An `if` evaluates to the branch TAKEN, so it is side-effect-only when every
   # branch is. Reading ./expr[1] inspects the CONDITION instead, so this pure
@@ -744,7 +804,7 @@ test_that("corpus: an if/else of printers is a printer", {
   expect_true(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
 })
 
-test_that("corpus: an if/else that RETURNS a value still leaks", {
+test_that("lab_print_cat_usage(): an if/else that RETURNS a value still leaks", {
   # The branch rule must not swallow the real thing.
   pkg <- make_temp_dir()
   write_pkg(
@@ -759,9 +819,11 @@ test_that("corpus: an if/else that RETURNS a value still leaks", {
   expect_false(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
 })
 
-# ---- backlog wave: the remaining root causes --------------------------------
+# backlog wave: the remaining root causes
 
-test_that("corpus: a call in a DEFAULT ARGUMENT does not hide the function body", {
+# Test lab_temp_cleanup() ----
+
+test_that("lab_temp_cleanup(): a call in a DEFAULT ARGUMENT does not hide the function body", {
   # `ancestor::expr[parent::expr/FUNCTION][1]` was meant to name the body, but a
   # function's DEFAULT-VALUE exprs are children of the same node and match the same
   # predicate. For a call in a default, the nearest match was the default itself, so
@@ -780,7 +842,9 @@ test_that("corpus: a call in a DEFAULT ARGUMENT does not hide the function body"
   expect_true(lab_temp_cleanup(pkg, verbose = FALSE)$passed)
 })
 
-test_that("corpus: a vignette's PROSE is not code", {
+# Test lab_network_operations() ----
+
+test_that("lab_network_operations(): a vignette's PROSE is not code", {
   # curl's intro.Rmd calls itself "a drop-in replacement for `download.file` in
   # r-base" and was reported for saying so. Only the R chunks are code.
   pkg <- make_temp_dir()
@@ -804,7 +868,7 @@ test_that("corpus: a vignette's PROSE is not code", {
   expect_true(lab_network_operations(pkg, verbose = FALSE)$passed)
 })
 
-test_that("corpus: a vignette chunk that REALLY downloads is still flagged", {
+test_that("lab_network_operations(): a vignette chunk that REALLY downloads is still flagged", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   dir.create(file.path(pkg, "vignettes"), showWarnings = FALSE)
@@ -823,7 +887,9 @@ test_that("corpus: a vignette chunk that REALLY downloads is still flagged", {
   expect_false(lab_network_operations(pkg, verbose = FALSE)$passed)
 })
 
-test_that("corpus: a platform-branched system() call is the platform check", {
+# Test lab_system_calls() ----
+
+test_that("lab_system_calls(): a platform-branched system() call is the platform check", {
   # The check's own remediation asks for a platform check. beepr and cli branch on
   # the OS and were reported anyway.
   pkg <- make_temp_dir()
@@ -842,7 +908,9 @@ test_that("corpus: a platform-branched system() call is the platform check", {
   expect_true(lab_system_calls(pkg, verbose = FALSE)$passed)
 })
 
-test_that("corpus: an install behind a consent prompt is consent", {
+# Test lab_software_install() ----
+
+test_that("lab_software_install(): an install behind a consent prompt is consent", {
   # CRAN's objection is installing WITHOUT ASKING. rlang, devtools and usethis all
   # prompt first, which is the only way an install helper can exist at all.
   pkg <- make_temp_dir()
@@ -863,7 +931,9 @@ test_that("corpus: an install behind a consent prompt is consent", {
   expect_false(lab_software_install(bad, verbose = FALSE)$passed)
 })
 
-test_that("corpus: set.seed() in dead code cannot touch the RNG", {
+# Test lab_seed_setting() ----
+
+test_that("lab_seed_setting(): set.seed() in dead code cannot touch the RNG", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -877,7 +947,9 @@ test_that("corpus: set.seed() in dead code cannot touch the RNG", {
   expect_true(lab_seed_setting(pkg, verbose = FALSE)$passed)
 })
 
-test_that("corpus: a package's OWN option is its own state", {
+# Test lab_option_changes() ----
+
+test_that("lab_option_changes(): a package's OWN option is its own state", {
   # data.table toggles `datatable.verbose`, cli sets `cli.*`, knitr sets `knitr.*`.
   # CRAN's concern is a package disturbing options that OTHER code depends on.
   pkg <- make_temp_dir()
@@ -897,7 +969,9 @@ test_that("corpus: a package's OWN option is its own state", {
   expect_equal(length(res$issues), 1L) # only the foreign option
 })
 
-test_that("corpus: roxygen's @examplesIf is a guard whatever its predicate", {
+# Test lab_suggested_in_examples() ----
+
+test_that("lab_suggested_in_examples(): roxygen's @examplesIf is a guard whatever its predicate", {
   # It compiles to \dontshow{if (COND) ...}, and COND can be anything: cli writes
   # `cli:::has_packages(c("htmltools"))`. The GUARD IS THE STRUCTURE.
   pkg <- make_temp_dir()
@@ -920,9 +994,11 @@ test_that("corpus: roxygen's @examplesIf is a guard whatever its predicate", {
   expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
 })
 
-# ---- new-tier (packages first published under current CRAN review) -----------
+# new-tier (packages first published under current CRAN review)
 
-test_that("corpus: `<<-` inside a Reference Class is field assignment", {
+# Test lab_globalenv_mod() ----
+
+test_that("lab_globalenv_mod(): `<<-` inside a Reference Class is field assignment", {
   # chapensk's setRefClass initialize() does `coeff <<- ...` to set its own field,
   # the documented RC idiom. 52 findings in one file. R6's active-binding setters
   # use `<<-` the same way.
@@ -943,7 +1019,9 @@ test_that("corpus: `<<-` inside a Reference Class is field assignment", {
   expect_true(lab_globalenv_mod(pkg, verbose = FALSE)$passed)
 })
 
-test_that("corpus: setwd() in a callr subprocess does not touch the session", {
+# Test lab_option_changes() ----
+
+test_that("lab_option_changes(): setwd() in a callr subprocess does not touch the session", {
   # aisdk runs `callr::r(function(code, wd) { setwd(wd); ... })`. The child process
   # exits and takes its working directory with it.
   pkg <- make_temp_dir()
@@ -962,15 +1040,17 @@ test_that("corpus: setwd() in a callr subprocess does not touch the session", {
   expect_true(lab_option_changes(pkg, verbose = FALSE)$passed)
 })
 
-test_that("corpus: a bare setwd() in ordinary code is still flagged", {
+test_that("lab_option_changes(): a bare setwd() in ordinary code is still flagged", {
   pkg <- make_temp_dir()
   write_pkg(pkg, r_code = "f <- function(d) { setwd(d); read.csv('x') }")
   expect_false(lab_option_changes(pkg, verbose = FALSE)$passed)
 })
 
-# ---- decisions from the new-tier review -------------------------------------
+# decisions from the new-tier review
 
-test_that("corpus: a setter that returns the captured state is not a leak", {
+# Test lab_sys_setenv() ----
+
+test_that("lab_sys_setenv(): a setter that returns the captured state is not a leak", {
   # withr's set_path(): `old <- get_path(); Sys.setenv(PATH = path); invisible(old)`.
   # It hands the prior state back so a caller can restore, the base-R contract
   # option_changes already honours.
@@ -993,7 +1073,7 @@ test_that("corpus: a setter that returns the captured state is not a leak", {
   expect_true(lab_sys_setenv(pkg, verbose = FALSE)$passed)
 })
 
-test_that("corpus: a Sys.setenv that captures nothing is still flagged", {
+test_that("lab_sys_setenv(): a Sys.setenv that captures nothing is still flagged", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -1007,7 +1087,9 @@ test_that("corpus: a Sys.setenv that captures nothing is still flagged", {
   expect_false(lab_sys_setenv(pkg, verbose = FALSE)$passed)
 })
 
-test_that("software_names flags a package name but not a programming language", {
+# Test lab_software_names() ----
+
+test_that("lab_software_names(): flags a package name but not a programming language", {
   # Empirically split: ggplot2 is quoted in 96% of CRAN Descriptions that mention
   # it (a convention); JavaScript in 46%, HTML in 20% (a coin flip, not a rule).
   pkg <- make_temp_dir()
@@ -1025,7 +1107,7 @@ test_that("software_names flags a package name but not a programming language", 
   expect_false(any(grepl("HTML", res$issues)))
 })
 
-test_that("software_names accepts a properly quoted package name", {
+test_that("lab_software_names(): accepts a properly quoted package name", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,

@@ -2,7 +2,9 @@
 # registered_checks). Every test that registers cleans up on exit so the registry
 # never leaks into other test files.
 
-test_that("registered_checks() is empty by default and grows with registration", {
+# Test registered_checks() ----
+
+test_that("registered_checks(): is empty by default, grows with registration", {
   on.exit(unregister_check(), add = TRUE)
   unregister_check()
   expect_equal(nrow(registered_checks()), 0L)
@@ -23,7 +25,9 @@ test_that("registered_checks() is empty by default and grows with registration",
   expect_identical(rc$severity, "opinion")
 })
 
-test_that("checktor() runs a registered check and surfaces it in the results", {
+# Test checktor() ----
+
+test_that("checktor(): runs a registered check and reports it in the results", {
   on.exit(unregister_check(), add = TRUE)
   register_check(
     "no_banned",
@@ -48,7 +52,7 @@ test_that("checktor() runs a registered check and surfaces it in the results", {
   expect_true("no_banned" %in% tidy(r)$check)
 })
 
-test_that("a registered check's tier governs whether it counts toward the verdict", {
+test_that("checktor(): a registered check's tier governs the verdict", {
   on.exit(unregister_check(), add = TRUE)
   pkg <- make_temp_dir()
   write_pkg(pkg, r_code = "f <- function() banned_helper(1)")
@@ -83,7 +87,7 @@ test_that("a registered check's tier governs whether it counts toward the verdic
   expect_gt(r_op$metadata$advisory_issues, 0L) # but it is still reported
 })
 
-test_that("checktor() forwards the parse cache to a registered code check", {
+test_that("checktor(): forwards the parse cache to a registered code check", {
   on.exit(unregister_check(), add = TRUE)
   seen <- new.env()
   register_check(
@@ -101,7 +105,7 @@ test_that("checktor() forwards the parse cache to a registered code check", {
   expect_true(isTRUE(seen$got_cache))
 })
 
-test_that("checktor() forwards the parsed DESCRIPTION to a registered description check", {
+test_that("checktor(): forwards the parsed DESCRIPTION to a registered check", {
   on.exit(unregister_check(), add = TRUE)
   seen <- new.env()
   register_check(
@@ -119,7 +123,7 @@ test_that("checktor() forwards the parsed DESCRIPTION to a registered descriptio
   expect_true(isTRUE(seen$got_desc))
 })
 
-test_that("a registered check with no cache argument is still called", {
+test_that("checktor(): a check with no cache argument is still called", {
   on.exit(unregister_check(), add = TRUE)
   seen <- new.env()
   register_check(
@@ -137,7 +141,7 @@ test_that("a registered check with no cache argument is still called", {
   expect_true(isTRUE(seen$ran))
 })
 
-test_that("a registered check that errors is caught, not fatal", {
+test_that("checktor(): a check that errors is caught, not fatal", {
   on.exit(unregister_check(), add = TRUE)
   register_check(
     "boom",
@@ -150,7 +154,7 @@ test_that("a registered check that errors is caught, not fatal", {
   expect_false(r$general_issues$boom$passed)
 })
 
-test_that("a registered check returning the wrong type is caught, not fatal", {
+test_that("checktor(): a check returning the wrong type is caught, not fatal", {
   on.exit(unregister_check(), add = TRUE)
   register_check(
     "wrongtype",
@@ -163,7 +167,9 @@ test_that("a registered check returning the wrong type is caught, not fatal", {
   expect_false(r$general_issues$wrongtype$passed)
 })
 
-test_that("register_check() rejects bad input", {
+# Test register_check() ----
+
+test_that("register_check(): rejects bad input", {
   on.exit(unregister_check(), add = TRUE)
   ok <- function(path, verbose = TRUE) {
     checktor_check_result(TRUE, character(0), "x")
@@ -176,11 +182,15 @@ test_that("register_check() rejects bad input", {
   expect_error(register_check("", ok))
 })
 
-test_that("unregister_check() rejects a non-character, non-NULL argument", {
+# Test unregister_check() ----
+
+test_that("unregister_check(): rejects a non-character, non-NULL argument", {
   expect_error(unregister_check(42), "character")
 })
 
-test_that("re-registering a name overwrites it with a message", {
+# Test register_check() ----
+
+test_that("register_check(): re-registering a name overwrites with a message", {
   on.exit(unregister_check(), add = TRUE)
   ok <- function(path, verbose = TRUE) {
     checktor_check_result(TRUE, character(0), "x")
@@ -195,7 +205,9 @@ test_that("re-registering a name overwrites it with a message", {
   expect_identical(rc$severity[rc$check == "dup"], "opinion")
 })
 
-test_that("unregister_check() removes one or all", {
+# Test unregister_check() ----
+
+test_that("unregister_check(): removes one or all", {
   on.exit(unregister_check(), add = TRUE)
   ok <- function(path, verbose = TRUE) {
     checktor_check_result(TRUE, character(0), "x")

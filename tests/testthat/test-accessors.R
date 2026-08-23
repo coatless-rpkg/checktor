@@ -1,4 +1,6 @@
-test_that("category objects are classed checktor_category_result", {
+# Test checktor() ----
+
+test_that("checktor(): category objects are classed checktor_category_result", {
   pkg <- example_diagnose_scenario(
     "code_examples/tf_usage_bad.R",
     show_content = FALSE
@@ -14,7 +16,9 @@ test_that("category objects are classed checktor_category_result", {
   expect_type(r$code_issues$passed, "logical")
 })
 
-test_that("issues() returns a tidy per-issue frame at each level", {
+# Test issues() ----
+
+test_that("issues(): returns a tidy per-issue frame at each level", {
   pkg <- example_diagnose_scenario(
     "code_examples/tf_usage_bad.R",
     show_content = FALSE
@@ -45,7 +49,7 @@ test_that("issues() returns a tidy per-issue frame at each level", {
   expect_equal(one$line[1], 8L)
 })
 
-test_that("issues() on a healthy package is a 0-row typed frame", {
+test_that("issues(): on a healthy package is a 0-row typed frame", {
   pkg <- make_temp_dir()
   write_pkg(pkg) # clean fixture (0 issues)
   r <- checktor(pkg, verbose = FALSE, progress = FALSE)
@@ -58,7 +62,9 @@ test_that("issues() on a healthy package is a 0-row typed frame", {
   expect_type(di$line, "integer")
 })
 
-test_that("predicates report status without sublist navigation", {
+# Test is_healthy() ----
+
+test_that("is_healthy(): predicates report status without sublist navigation", {
   pkg <- example_diagnose_scenario(
     "code_examples/tf_usage_bad.R",
     show_content = FALSE
@@ -86,7 +92,9 @@ test_that("predicates report status without sublist navigation", {
   expect_equal(n_issues(clean), 0L)
 })
 
-test_that("tidy() is per-check and summary() is per-category", {
+# Test tidy() ----
+
+test_that("tidy(): is per-check and summary() is per-category", {
   pkg <- example_diagnose_scenario(
     "code_examples/tf_usage_bad.R",
     show_content = FALSE
@@ -120,7 +128,9 @@ test_that("tidy() is per-check and summary() is per-category", {
   expect_equal(s$failed[s$category == "description"], 1L)
 })
 
-test_that("accessors are robust to early-return categories (no R/ dir)", {
+# Test summary() ----
+
+test_that("summary(): robust to early-return categories (no R/ dir)", {
   d <- make_temp_dir()
   writeLines(
     c(
@@ -141,7 +151,7 @@ test_that("accessors are robust to early-return categories (no R/ dir)", {
   expect_equal(n_issues(r$code_issues), 0L)
 })
 
-test_that("summary check counts agree with tidy for early-return categories", {
+test_that("summary(): check counts agree with tidy for early returns", {
   d <- make_temp_dir()
   writeLines(
     c(
@@ -165,7 +175,9 @@ test_that("summary check counts agree with tidy for early-return categories", {
   expect_equal(n_failed_checks(r$code_issues), 0L)
 })
 
-test_that("print footer points to accessors and Patient shows package name", {
+# Test print.checktor_results() ----
+
+test_that("print.checktor_results(): footer points to accessors", {
   pkg <- example_diagnose_scenario(
     "code_examples/tf_usage_bad.R",
     show_content = FALSE

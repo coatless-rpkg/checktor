@@ -1,4 +1,6 @@
-test_that("build_ignore_matcher recognises .Rbuildignore entries", {
+# Test build_ignore_matcher() ----
+
+test_that("build_ignore_matcher(): recognises .Rbuildignore entries", {
   pkg <- tempfile()
   dir.create(pkg)
   on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
@@ -9,7 +11,7 @@ test_that("build_ignore_matcher recognises .Rbuildignore entries", {
   expect_false(matcher("baz.R"))
 })
 
-test_that("build_ignore_matcher always skips .git and friends", {
+test_that("build_ignore_matcher(): always skips .git and friends", {
   pkg <- tempfile()
   dir.create(pkg)
   on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
@@ -19,7 +21,7 @@ test_that("build_ignore_matcher always skips .git and friends", {
   expect_false(matcher("R/code.R"))
 })
 
-test_that("build_ignore_matcher honours a bare directory pattern like ^docs$", {
+test_that("build_ignore_matcher(): honours a bare directory pattern ^docs$", {
   # R CMD build excludes a matched directory's whole subtree, so a top-level
   # `^docs$` drops every file under docs/. Matching a leaf path alone missed this
   # and counted a pkgdown docs/ or a .quarto cache against the size limit.
@@ -36,7 +38,9 @@ test_that("build_ignore_matcher honours a bare directory pattern like ^docs$", {
   expect_false(matcher("documentation.R")) # not the docs/ directory
 })
 
-test_that("read_r_xml parses every R/*.R file and reports per-file errors", {
+# Test read_r_xml() ----
+
+test_that("read_r_xml(): parses every R/*.R file and reports per-file errors", {
   pkg <- tempfile()
   dir.create(file.path(pkg, "R"), recursive = TRUE)
   on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
@@ -53,7 +57,9 @@ test_that("read_r_xml parses every R/*.R file and reports per-file errors", {
   expect_true(is.null(bad$xml))
 })
 
-test_that("undesirable_function_check ignores function names inside strings", {
+# Test undesirable_function_check() ----
+
+test_that("undesirable_function_check(): ignores function names in strings", {
   pkg <- tempfile()
   dir.create(file.path(pkg, "R"), recursive = TRUE)
   on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
@@ -70,7 +76,9 @@ test_that("undesirable_function_check ignores function names inside strings", {
   expect_match(hits, "f\\.R:2")
 })
 
-test_that("extract_rd_section finds a top-level Rd section by tag", {
+# Test extract_rd_section() ----
+
+test_that("extract_rd_section(): finds a top-level Rd section by tag", {
   rd_file <- tempfile(fileext = ".Rd")
   on.exit(unlink(rd_file), add = TRUE)
   writeLines(
@@ -88,7 +96,9 @@ test_that("extract_rd_section finds a top-level Rd section by tag", {
   expect_null(extract_rd_section(rd, "\\seealso"))
 })
 
-test_that("collect_rd_text honours the skip argument", {
+# Test collect_rd_text() ----
+
+test_that("collect_rd_text(): honours the skip argument", {
   rd_file <- tempfile(fileext = ".Rd")
   on.exit(unlink(rd_file), add = TRUE)
   writeLines(
@@ -113,9 +123,9 @@ test_that("collect_rd_text honours the skip argument", {
   expect_false(grepl("hidden_part", skipped))
 })
 
-# ---- is_commented_out_code: prose vs disabled code ----------------------------
+# Test is_commented_out_code() ----
 
-test_that("is_commented_out_code separates prose from commented-out calls", {
+test_that("is_commented_out_code(): separates prose from commented-out calls", {
   prose <- c(
     "# --- end", # separator: parses as unary minus
     "# --- welcome",
@@ -133,4 +143,89 @@ test_that("is_commented_out_code separates prose from commented-out calls", {
   )
   expect_false(any(vapply(prose, is_commented_out_code, logical(1))))
   expect_true(all(vapply(code, is_commented_out_code, logical(1))))
+})
+
+# Test list_included_files() ----
+
+test_that("list_included_files(): returns the matching files under subdir", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  dir.create(file.path(pkg, "vignettes"))
+  writeLines("x", file.path(pkg, "vignettes", "intro.Rmd"))
+  writeLines("x", file.path(pkg, "vignettes", "notes.txt"))
+  expect_equal(
+    basename(list_included_files(pkg, "vignettes", "\\.Rmd$")),
+    "intro.Rmd"
+  )
+})
+
+test_that("list_included_files(): drops what .Rbuildignore excludes", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  dir.create(file.path(pkg, "vignettes", "articles"), recursive = TRUE)
+  writeLines("x", file.path(pkg, "vignettes", "intro.Rmd"))
+  writeLines("x", file.path(pkg, "vignettes", "articles", "extra.Rmd"))
+  writeLines("^vignettes/articles$", file.path(pkg, ".Rbuildignore"))
+  expect_equal(
+    basename(list_included_files(pkg, "vignettes", "\\.Rmd$", recursive = TRUE)),
+    "intro.Rmd"
+  )
+})
+
+test_that("list_included_files(): descends only when asked", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  dir.create(file.path(pkg, "vignettes", "articles"), recursive = TRUE)
+  writeLines("x", file.path(pkg, "vignettes", "articles", "extra.Rmd"))
+  expect_identical(
+    list_included_files(pkg, "vignettes", "\\.Rmd$"),
+    character(0)
+  )
+  expect_equal(
+    basename(list_included_files(pkg, "vignettes", "\\.Rmd$", recursive = TRUE)),
+    "extra.Rmd"
+  )
+})
+
+test_that("list_included_files(): is empty when the directory is absent", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  expect_identical(
+    list_included_files(pkg, "vignettes", "\\.Rmd$"),
+    character(0)
+  )
+})
+
+# Test list_rd_files() ----
+
+test_that("list_rd_files(): returns man/*.Rd and nothing else", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, rd_files = list("a.Rd" = "\\name{a}", "b.Rd" = "\\name{b}"))
+  dir.create(file.path(pkg, "man", "figures"), recursive = TRUE)
+  writeLines("x", file.path(pkg, "man", "figures", "logo.png"))
+  writeLines("notes", file.path(pkg, "man", "README.txt"))
+  expect_equal(sort(basename(list_rd_files(pkg))), c("a.Rd", "b.Rd"))
+})
+
+test_that("list_rd_files(): drops the topics .Rbuildignore holds back", {
+  # {devtag}'s @dev tag writes exactly this: an .Rd plus an .Rbuildignore line
+  # naming it, so the topic never enters the tarball.
+  pkg <- make_temp_dir()
+  write_pkg(pkg, rd_files = list("a.Rd" = "\\name{a}", "dev.Rd" = "\\name{dev}"))
+  writeLines("^man/dev\\.Rd$", file.path(pkg, ".Rbuildignore"))
+  expect_equal(basename(list_rd_files(pkg)), "a.Rd")
+})
+
+test_that("list_rd_files(): keeps man/ when .Rbuildignore is about something else", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, rd_files = list("a.Rd" = "\\name{a}"))
+  writeLines(c("^docs$", "^README\\.Rmd$"), file.path(pkg, ".Rbuildignore"))
+  expect_equal(basename(list_rd_files(pkg)), "a.Rd")
+})
+
+test_that("list_rd_files(): is empty when there is no man/", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  unlink(file.path(pkg, "man"), recursive = TRUE)
+  expect_identical(list_rd_files(pkg), character(0))
 })

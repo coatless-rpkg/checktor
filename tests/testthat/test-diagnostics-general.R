@@ -1,6 +1,6 @@
-# ---- package size ------------------------------------------------------------
+# Test lab_package_size() ----
 
-test_that("lab_package_size excludes .Rbuildignore'd directories", {
+test_that("lab_package_size(): excludes .Rbuildignore'd directories", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
 
@@ -20,7 +20,7 @@ test_that("lab_package_size excludes .Rbuildignore'd directories", {
   expect_true(res$passed)
 })
 
-test_that("lab_package_size excludes a large .Rbuildignore'd docs/ tree", {
+test_that("lab_package_size(): excludes a large .Rbuildignore'd docs/ tree", {
   # The pkgdown case: an untracked docs/ excluded by a bare `^docs$` must not
   # count. 6 MB of incompressible bytes would blow the 5 MB limit if counted.
   pkg <- make_temp_dir()
@@ -37,7 +37,7 @@ test_that("lab_package_size excludes a large .Rbuildignore'd docs/ tree", {
   expect_true(res$passed)
 })
 
-test_that("lab_package_size still flags genuinely large packages", {
+test_that("lab_package_size(): still flags genuinely large packages", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   # 6 MB of INCOMPRESSIBLE bytes in inst/. The size check measures the gzipped
@@ -55,11 +55,9 @@ test_that("lab_package_size still flags genuinely large packages", {
   expect_gt(res$size_mb, 5)
 })
 
-# ---- URLs --------------------------------------------------------------------
+# Test lab_news_file() ----
 
-# ---- NEWS file ---------------------------------------------------------------
-
-test_that("lab_news_file flags a missing NEWS, accepts one present", {
+test_that("lab_news_file(): flags a missing NEWS, accepts one present", {
   pkg <- make_temp_dir()
   write_pkg(pkg, news = FALSE)
   expect_false(lab_news_file(pkg, verbose = FALSE)$passed)
@@ -69,7 +67,7 @@ test_that("lab_news_file flags a missing NEWS, accepts one present", {
   expect_true(lab_news_file(pkg_ok, verbose = FALSE)$passed)
 })
 
-test_that("lab_news_file accepts NEWS under inst/", {
+test_that("lab_news_file(): accepts NEWS under inst/", {
   pkg <- make_temp_dir()
   write_pkg(pkg, news = FALSE)
   dir.create(file.path(pkg, "inst"))
@@ -77,9 +75,9 @@ test_that("lab_news_file accepts NEWS under inst/", {
   expect_true(lab_news_file(pkg, verbose = FALSE)$passed)
 })
 
-# ---- cran-comments.md --------------------------------------------------------
+# Test lab_cran_comments_file() ----
 
-test_that("lab_cran_comments_file flags absence, accepts presence", {
+test_that("lab_cran_comments_file(): flags absence, accepts presence", {
   pkg <- make_temp_dir()
   write_pkg(pkg, cran_comments = FALSE)
   expect_false(lab_cran_comments_file(pkg, verbose = FALSE)$passed)
@@ -89,9 +87,9 @@ test_that("lab_cran_comments_file flags absence, accepts presence", {
   expect_true(lab_cran_comments_file(pkg_ok, verbose = FALSE)$passed)
 })
 
-# ---- README relative links ---------------------------------------------------
+# Test lab_readme_links() ----
 
-test_that("lab_readme_links flags a link to a missing file", {
+test_that("lab_readme_links(): flags a link to a missing file", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   writeLines(
@@ -102,7 +100,7 @@ test_that("lab_readme_links flags a link to a missing file", {
   expect_false(res$passed)
 })
 
-test_that("lab_readme_links flags links to .Rbuildignore'd files", {
+test_that("lab_readme_links(): flags links to .Rbuildignore'd files", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   writeLines(
@@ -115,7 +113,7 @@ test_that("lab_readme_links flags links to .Rbuildignore'd files", {
   expect_false(res$passed)
 })
 
-test_that("lab_readme_links accepts absolute URLs and shipped files", {
+test_that("lab_readme_links(): accepts absolute URLs and shipped files", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   dir.create(file.path(pkg, "man", "figures"), recursive = TRUE)
@@ -132,15 +130,15 @@ test_that("lab_readme_links accepts absolute URLs and shipped files", {
   expect_true(res$passed)
 })
 
-test_that("lab_readme_links passes when there is no README", {
+test_that("lab_readme_links(): passes when there is no README", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   expect_true(lab_readme_links(pkg, verbose = FALSE)$passed)
 })
 
-# --- urls (restored, improved) ---------------------------------------------
+# Test lab_urls() ----
 
-test_that("lab_urls flags an insecure http:// and names the URL", {
+test_that("lab_urls(): flags an insecure http:// and names the URL", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   writeLines(
@@ -154,7 +152,7 @@ test_that("lab_urls flags an insecure http:// and names the URL", {
   expect_match(res$issues, "http://example.com/docs", fixed = TRUE, all = FALSE)
 })
 
-test_that("lab_urls ignores an http:// inside a fenced code block", {
+test_that("lab_urls(): ignores an http:// inside a fenced code block", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   writeLines(
@@ -171,7 +169,7 @@ test_that("lab_urls ignores an http:// inside a fenced code block", {
   expect_true(lab_urls(pkg, verbose = FALSE)$passed)
 })
 
-test_that("lab_urls ignores an http:// inside an Rd \\verb or \\code span", {
+test_that("lab_urls(): ignores an http:// inside an Rd \\verb or \\code span", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   dir.create(file.path(pkg, "man"), showWarnings = FALSE)
@@ -189,7 +187,7 @@ test_that("lab_urls ignores an http:// inside an Rd \\verb or \\code span", {
   expect_true(lab_urls(pkg, verbose = FALSE)$passed)
 })
 
-test_that("lab_urls still flags a real Rd link outside a literal span", {
+test_that("lab_urls(): still flags a real Rd link outside a literal span", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   dir.create(file.path(pkg, "man"), showWarnings = FALSE)
@@ -208,7 +206,9 @@ test_that("lab_urls still flags a real Rd link outside a literal span", {
   expect_false(res$passed)
 })
 
-test_that("lab_url_liveness does not reach the network outside the console", {
+# Test lab_url_liveness() ----
+
+test_that("lab_url_liveness(): never reaches the network outside the console", {
   # The default is interactive(), so a script, a CI run and R CMD check all leave
   # it off. That is what keeps examples and tests from needing a network.
   pkg <- make_temp_dir()
@@ -230,7 +230,7 @@ test_that("lab_url_liveness does not reach the network outside the console", {
   expect_length(res$issues, 0L)
 })
 
-test_that("lab_url_liveness reaches the network when asked to", {
+test_that("lab_url_liveness(): reaches the network when asked to", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   fetched <- FALSE
@@ -247,7 +247,7 @@ test_that("lab_url_liveness reaches the network when asked to", {
   expect_true(fetched)
 })
 
-test_that("lab_url_liveness surfaces the broken URLs the fetch reports", {
+test_that("lab_url_liveness(): surfaces the broken URLs the fetch reports", {
   # Stub the network fetch so the test is deterministic and never leaves the
   # machine. The real fetch is base R's tools::check_package_urls(), whose
   # behaviour is environment-dependent (and absent without a network).
@@ -271,7 +271,7 @@ test_that("lab_url_liveness surfaces the broken URLs the fetch reports", {
   expect_match(res$issues, "404", all = FALSE)
 })
 
-test_that("lab_url_liveness passes when the fetch reports nothing", {
+test_that("lab_url_liveness(): passes when the fetch reports nothing", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   old <- options(checktor.url_check = TRUE)
@@ -284,7 +284,7 @@ test_that("lab_url_liveness passes when the fetch reports nothing", {
   expect_false(isTRUE(res$skipped))
 })
 
-test_that("lab_url_liveness reports a failed fetch as not checked, not as a pass", {
+test_that("lab_url_liveness(): a failed fetch is not checked, not a pass", {
   # Being offline -- or a change under the fetch -- used to read exactly like a
   # package whose every URL resolved, which is the one thing a skip exists to
   # prevent.
@@ -299,7 +299,9 @@ test_that("lab_url_liveness reports a failed fetch as not checked, not as a pass
   expect_true(res$skipped)
 })
 
-test_that("fetch_url_db really calls base R and returns the columns we read", {
+# Test fetch_url_db() ----
+
+test_that("fetch_url_db(): really calls base R and returns the columns read", {
   # Every other liveness test mocks fetch_url_db, so a broken tools:: call would
   # leave every URL unchecked with the suite still green. This pins the seam.
   #
@@ -317,7 +319,9 @@ test_that("fetch_url_db really calls base R and returns the columns we read", {
   expect_true(all(c("URL", "From", "Status", "Message", "New") %in% names(db)))
 })
 
-test_that("lab_url_liveness passes a reachable URL end to end", {
+# Test lab_url_liveness() ----
+
+test_that("lab_url_liveness(): passes a reachable URL end to end", {
   skip_on_cran() # CRAN policy: tests must not require network access
   # A real run against tools::check_package_urls(), no mock. A reachable URL must
   # not be flagged. This direction is robust to a network-less runner: with no
@@ -331,4 +335,185 @@ test_that("lab_url_liveness passes a reachable URL end to end", {
   res <- lab_url_liveness(pkg, verbose = FALSE)
   expect_true(res$passed)
   expect_length(res$issues, 0L)
+})
+
+# Test lab_readme_links() ----
+
+test_that("lab_readme_links(): does not read R code in a chunk as a link", {
+  # `knitr::opts_chunk[["set"]](...)` contains `](` and a closing paren, so a
+  # regex over the raw file reported the chunk's arguments as a missing file.
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  writeLines(
+    c(
+      "---",
+      "output: github_document",
+      "---",
+      "",
+      "```{r parameters, include = FALSE}",
+      'knitr::opts_chunk[["set"]](',
+      "    collapse = TRUE,",
+      '    comment = "#>"',
+      ")",
+      "```",
+      "",
+      "# my_pkg"
+    ),
+    file.path(pkg, "README.Rmd")
+  )
+  expect_true(lab_readme_links(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_readme_links(): reads code fences the way a renderer does", {
+  # A ````-fence quoting a ```-fence is how a README shows markdown, and the
+  # inner fence must not be read as closing the outer one.
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  writeLines(
+    c(
+      "````md",
+      "```r",
+      'x[["a"]](1)',
+      "```",
+      "[quoted](never/written.md)",
+      "````",
+      "",
+      "~~~",
+      'y[["b"]](2)',
+      "~~~",
+      "",
+      "Also `[inline](nope.md)` and <!-- [commented](gone.md) --> prose."
+    ),
+    file.path(pkg, "README.md")
+  )
+  expect_true(lab_readme_links(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_readme_links(): still sees the links around the code", {
+  # The guard against blanking too much: a badge block sits between two
+  # comments rather than inside one, and the real link must survive.
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  writeLines(
+    c(
+      "<!-- badges: start -->",
+      "[![cov](man/figures/cov.svg)](missing/target.md)",
+      "<!-- badges: end -->",
+      "",
+      "```r",
+      'opts[["set"]](a = 1)',
+      "```",
+      "",
+      "See [the guide](docs/guide.md)."
+    ),
+    file.path(pkg, "README.md")
+  )
+  res <- lab_readme_links(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_setequal(
+    res$issues,
+    paste0(
+      "README.md: relative link to missing file '",
+      c("man/figures/cov.svg", "missing/target.md", "docs/guide.md"),
+      "'"
+    )
+  )
+})
+
+test_that("lab_readme_links(): accepts a destination in pointy brackets", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  writeLines("x", file.path(pkg, "a file.md"))
+  writeLines("See [it](<a file.md>).", file.path(pkg, "README.md"))
+  expect_true(lab_readme_links(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_readme_links(): knows a knitr chunk header from a code span", {
+  # A chunk may set an option from inline R, so its header carries backticks of
+  # its own. CommonMark would call that a code span rather than a fence; knitr
+  # calls it a chunk, and the body must not be read as prose either way.
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  writeLines(
+    c(
+      "```{r, eval = `r ok`}",
+      'opts[["set"]](a = 1)',
+      "```",
+      "",
+      "Use `` `x` `` for code, then see [the guide](docs/guide.md)."
+    ),
+    file.path(pkg, "README.Rmd")
+  )
+  res <- lab_readme_links(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_identical(
+    res$issues,
+    "README.Rmd: relative link to missing file 'docs/guide.md'"
+  )
+})
+
+test_that("lab_readme_links(): does not let one stray backtick hide a link", {
+  # Pairing code spans across the whole file would match the quote character in
+  # the first line to the one in the last and blank the broken link between them.
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  writeLines(
+    c(
+      "Use ` as a quote character.",
+      "",
+      "See [the guide](docs/guide.md).",
+      "",
+      "And a closing ` here."
+    ),
+    file.path(pkg, "README.md")
+  )
+  expect_false(lab_readme_links(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_readme_links(): skips a comment that runs over several lines", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  writeLines(
+    c("<!--", "[the old guide](docs/gone.md)", "-->", "", "# pkg"),
+    file.path(pkg, "README.md")
+  )
+  expect_true(lab_readme_links(pkg, verbose = FALSE)$passed)
+})
+
+# Test lab_urls() ----
+
+test_that("lab_urls(): skips tilde-fenced and nested code blocks too", {
+  # The URL check counted ``` fences off in pairs, which a README quoting
+  # markdown inside a ````-fence puts out of step, and it never knew ~~~ at all.
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  writeLines(
+    c(
+      "~~~",
+      "http://tilde.example/",
+      "~~~",
+      "",
+      "````md",
+      "```r",
+      'download.file("http://nested.example/")',
+      "```",
+      "````",
+      "",
+      "# pkg"
+    ),
+    file.path(pkg, "README.md")
+  )
+  expect_true(lab_urls(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_urls(): names the URL without the backtick that quoted it", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  writeLines("Use `http://example.com/docs` here.", file.path(pkg, "README.md"))
+  res <- lab_urls(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_identical(
+    res$issues,
+    "README.md: http://example.com/docs (use https://)"
+  )
 })

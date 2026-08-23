@@ -1,4 +1,6 @@
-test_that("checktor_config reads Config/checktor/* fields, comma-split and trimmed", {
+# Test checktor_config() ----
+
+test_that("checktor_config(): splits and trims Config/checktor/* fields", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -16,7 +18,7 @@ test_that("checktor_config reads Config/checktor/* fields, comma-split and trimm
   expect_equal(cfg$allow, c("urls:README.md", "temp_cleanup"))
 })
 
-test_that("checktor_config returns empty vectors when fields or DESCRIPTION are absent", {
+test_that("checktor_config(): returns empty vectors when nothing is set", {
   pkg <- make_temp_dir()
   write_pkg(pkg) # no Config/checktor/* fields
   cfg <- checktor_config(pkg)
@@ -29,7 +31,9 @@ test_that("checktor_config returns empty vectors when fields or DESCRIPTION are 
   expect_equal(cfg2$disable, character(0))
 })
 
-test_that("Config/checktor/software_names makes an extra name flagged when unquoted", {
+# Test lab_software_names() ----
+
+test_that("lab_software_names(): a configured name is flagged when unquoted", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -41,7 +45,7 @@ test_that("Config/checktor/software_names makes an extra name flagged when unquo
   expect_true(any(grepl("brms", res$issues)))
 })
 
-test_that("without config, the extra name is NOT flagged", {
+test_that("lab_software_names(): without config, the name is NOT flagged", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -50,7 +54,9 @@ test_that("without config, the extra name is NOT flagged", {
   expect_true(lab_software_names(pkg, verbose = FALSE)$passed)
 })
 
-test_that("Config software_names also reaches the double-quote check", {
+# Test lab_description_quoted_quotes() ----
+
+test_that("lab_description_quoted_quotes(): honours Config software_names", {
   # The two-list trap: the include list (software_names) and SOFTWARE_NAMES must
   # both honour the config, or one check obeys it and the other ignores it.
   pkg <- make_temp_dir()
@@ -62,7 +68,9 @@ test_that("Config software_names also reaches the double-quote check", {
   expect_false(lab_description_quoted_quotes(pkg, verbose = FALSE)$passed)
 })
 
-test_that("Config/checktor/acronyms suppresses an acronym finding", {
+# Test lab_acronyms() ----
+
+test_that("lab_acronyms(): Config/checktor/acronyms suppresses a finding", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -85,7 +93,9 @@ test_that("Config/checktor/acronyms suppresses an acronym finding", {
   cat
 }
 
-test_that("apply_suppressions: disable removes a check and its passed entry", {
+# Test apply_suppressions() ----
+
+test_that("apply_suppressions(): disable drops a check and its passed entry", {
   results <- list(
     code_issues = .mk_cat(list(
       tf_usage = .mk_check(FALSE, c("a.R:1", "a.R:2")),
@@ -102,7 +112,7 @@ test_that("apply_suppressions: disable removes a check and its passed entry", {
   expect_true("tf_usage" %in% names(cat)) # untouched
 })
 
-test_that("apply_suppressions: allow with a substring mutes only matching findings", {
+test_that("apply_suppressions(): an allow substring mutes matching findings", {
   results <- list(
     g = .mk_cat(list(
       urls = .mk_check(
@@ -121,7 +131,7 @@ test_that("apply_suppressions: allow with a substring mutes only matching findin
   expect_equal(out$suppressed, 1L)
 })
 
-test_that("apply_suppressions: allow on a whole check flips it to passed", {
+test_that("apply_suppressions(): allow on a whole check flips it to passed", {
   results <- list(
     g = .mk_cat(list(
       temp_cleanup = .mk_check(FALSE, c("t.R:1", "t.R:2"))
@@ -138,7 +148,9 @@ test_that("apply_suppressions: allow on a whole check flips it to passed", {
   expect_equal(out$suppressed, 2L)
 })
 
-test_that("checktor() honours disable and allow end to end", {
+# Test checktor() ----
+
+test_that("checktor(): honours disable and allow end to end", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -155,7 +167,7 @@ test_that("checktor() honours disable and allow end to end", {
   expect_false("news_file" %in% tidy(r2)$check)
 })
 
-test_that("suppression reaches a DESCRIPTION-category check", {
+test_that("checktor(): suppression reaches a DESCRIPTION-category check", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -166,7 +178,9 @@ test_that("suppression reaches a DESCRIPTION-category check", {
   expect_false("title_case" %in% tidy(r)$check)
 })
 
-test_that("an unknown check name in allow/disable warns", {
+# Test apply_suppressions() ----
+
+test_that("apply_suppressions(): warns on an unknown name in allow/disable", {
   results <- list(g = .mk_cat(list(tf_usage = .mk_check(TRUE, character(0)))))
   expect_warning(
     apply_suppressions(

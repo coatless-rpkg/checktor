@@ -28,7 +28,9 @@ tiered_pkg <- function(envir = parent.frame()) {
 # adding another `console`/`backend` check means updating this vector too.
 CI_SKIPPED <- c("spelling", "url_liveness")
 
-test_that("a finding keeps its file and line whatever label it carries", {
+# Test issues() ----
+
+test_that("issues(): a finding keeps its location whatever label it carries", {
   # The parser used to read only "a.R:2", so a labelled finding lost its location
   # and could not be pointed at.
   r <- checktor(ci_pkg(), verbose = FALSE, progress = FALSE)
@@ -39,7 +41,26 @@ test_that("a finding keeps its file and line whatever label it carries", {
   expect_equal(located$line[located$check == "internal_ns"], 3L)
 })
 
-test_that("github annotations name a path a forge can open", {
+# Test ci_report() ----
+
+test_that("ci_report(): file = NULL returns the lines without emitting them", {
+  # A runner reads any line starting with `::` as a command, so a fixture's
+  # findings printed during a test become annotations against the repo under
+  # test. Asking for the lines and asking for them to be emitted are different
+  # requests, and only omitting `file` is the second one.
+  r <- checktor(ci_pkg(), verbose = FALSE, progress = FALSE)
+
+  for (fmt in c("github", "azure", "text")) {
+    printed <- capture.output(out <- ci_report(r, format = fmt, file = NULL))
+    expect_length(printed, 0L)
+    expect_gt(length(out), 0L)
+  }
+  # Omitting `file` is how you ask a log format to reach the log.
+  printed <- capture.output(invisible(ci_report(r, format = "github")))
+  expect_true(any(grepl("^::", printed)))
+})
+
+test_that("ci_report(): github annotations name a path a forge can open", {
   r <- checktor(ci_pkg(), verbose = FALSE, progress = FALSE)
   out <- ci_report(r, format = "github", file = NULL)
   expect_true(any(grepl("^::(error|warning|notice) file=", out)))
@@ -48,7 +69,40 @@ test_that("github annotations name a path a forge can open", {
   expect_true(any(grepl("title=checktor", out, fixed = TRUE)))
 })
 
-test_that("the gitlab report is valid JSON in the shape GitLab reads", {
+test_that("ci_report(): azure annotations carry the path, line and check", {
+  r <- checktor(ci_pkg(), verbose = FALSE, progress = FALSE)
+  out <- ci_report(r, format = "azure", file = NULL)
+  expect_true(any(grepl("^##vso\\[task\\.logissue type=(error|warning)", out)))
+  expect_true(any(grepl("sourcepath=R/[^;]+\\.R;linenumber=2", out)))
+})
+
+# The forge parses these formats literally, so the exact text is the contract and
+# the assertions above cover only part of a line. The snapshots record all of it.
+# testthat skips a snapshot on CRAN, so they run in development and in CI while
+# the assertions above keep covering CRAN.
+#
+# The leading marker is masked: testthat prints a snapshot diff on failure, that
+# diff reaches the runner's log, and an unmasked line would be read there as a
+# real annotation against this repository.
+mask_ci_markers <- function(lines) sub("^(::|##vso)", "~\\1", lines)
+
+test_that("ci_report(): github annotation is exactly what a forge parses", {
+  r <- checktor(ci_pkg(), verbose = FALSE, progress = FALSE)
+  expect_snapshot(
+    writeLines(ci_report(r, format = "github", file = NULL)),
+    transform = mask_ci_markers
+  )
+})
+
+test_that("ci_report(): azure annotation is exactly what a pipeline parses", {
+  r <- checktor(ci_pkg(), verbose = FALSE, progress = FALSE)
+  expect_snapshot(
+    writeLines(ci_report(r, format = "azure", file = NULL)),
+    transform = mask_ci_markers
+  )
+})
+
+test_that("ci_report(): the gitlab report is valid JSON in GitLab's shape", {
   skip_if_not_installed("jsonlite")
   r <- checktor(ci_pkg(), verbose = FALSE, progress = FALSE)
   f <- file.path(make_temp_dir(), "cq.json")
@@ -68,7 +122,7 @@ test_that("the gitlab report is valid JSON in the shape GitLab reads", {
   expect_identical(readLines(f), readLines(f2))
 })
 
-test_that("the checkstyle report is valid XML", {
+test_that("ci_report(): the checkstyle report is valid XML", {
   r <- checktor(ci_pkg(), verbose = FALSE, progress = FALSE)
   f <- file.path(make_temp_dir(), "cs.xml")
   ci_report(r, format = "checkstyle", file = f)
@@ -81,7 +135,7 @@ test_that("the checkstyle report is valid XML", {
                     c("error", "warning", "info")))
 })
 
-test_that("the sarif report is valid JSON at version 2.1.0", {
+test_that("ci_report(): the sarif report is valid JSON at version 2.1.0", {
   skip_if_not_installed("jsonlite")
   r <- checktor(ci_pkg(), verbose = FALSE, progress = FALSE)
   f <- file.path(make_temp_dir(), "out.sarif")
@@ -93,7 +147,9 @@ test_that("the sarif report is valid JSON at version 2.1.0", {
   expect_gt(nrow(parsed$runs$results[[1]]), 0L)
 })
 
-test_that("severity maps to each forge's own words", {
+# Test ci_severity() ----
+
+test_that("ci_severity(): maps to each forge's own words", {
   expect_equal(ci_severity("policy", "github"), "error")
   expect_equal(ci_severity("opinion", "github"), "notice")
   expect_equal(ci_severity("policy", "gitlab"), "blocker")
@@ -103,7 +159,9 @@ test_that("severity maps to each forge's own words", {
   expect_equal(ci_severity("something_new", "github"), "error")
 })
 
-test_that("the forge is detected from the variables each one sets", {
+# Test detect_ci() ----
+
+test_that("detect_ci(): detects the forge from the variables each one sets", {
   # These tests run ON a forge, which sets its own variable in the real
   # environment. Setting GITLAB_CI while GITHUB_ACTIONS is already set does not
   # test GitLab detection, it tests precedence -- so clear every forge variable
@@ -133,7 +191,9 @@ test_that("the forge is detected from the variables each one sets", {
   )
 })
 
-test_that("a clean package reports nothing at all", {
+# Test ci_report() ----
+
+test_that("ci_report(): a clean package reports nothing at all", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   r <- checktor(pkg, verbose = FALSE, progress = FALSE)
@@ -147,7 +207,7 @@ test_that("a clean package reports nothing at all", {
   )
 })
 
-test_that("severity reports the tiers asked for and no others", {
+test_that("ci_report(): severity reports the tiers asked for and no others", {
   r <- checktor(tiered_pkg(), verbose = FALSE, progress = FALSE)
 
   policy <- ci_report(r, format = "text", file = NULL, severity = "policy",
@@ -167,12 +227,12 @@ test_that("severity reports the tiers asked for and no others", {
                c("seed_setting", "tf_usage"))
 })
 
-test_that("a mistyped severity tier errors instead of reading as clean", {
+test_that("ci_report(): a mistyped tier errors instead of reading as clean", {
   r <- checktor(tiered_pkg(), verbose = FALSE, progress = FALSE)
   expect_error(ci_report(r, format = "text", file = NULL, severity = "opinions"))
 })
 
-test_that("a check that did not run is named once in the log formats", {
+test_that("ci_report(): a check that did not run is named once in the log", {
   r <- checktor(ci_pkg(), verbose = FALSE, progress = FALSE)
   expect_equal(r$metadata$skipped_checks, CI_SKIPPED)
 
@@ -195,14 +255,14 @@ test_that("a check that did not run is named once in the log formats", {
   expect_match(txt, "^skipped: 2 checks did not run: spelling, url_liveness$")
 })
 
-test_that("skipped = FALSE leaves the note out entirely", {
+test_that("ci_report(): skipped = FALSE leaves the note out entirely", {
   r <- checktor(ci_pkg(), verbose = FALSE, progress = FALSE)
   out <- ci_report(r, format = "github", file = NULL, skipped = FALSE)
   expect_false(any(grepl("did not run", out)))
   expect_length(out, 2L) # the two findings, and nothing else
 })
 
-test_that("the skipped note stays out of the artifact formats", {
+test_that("ci_report(): the skipped note stays out of the artifact formats", {
   # gitlab/checkstyle/sarif documents are consumed by a machine, so the note goes
   # to the job log rather than becoming a finding with no location.
   r <- checktor(ci_pkg(), verbose = FALSE, progress = FALSE)
@@ -214,7 +274,7 @@ test_that("the skipped note stays out of the artifact formats", {
   }
 })
 
-test_that("nothing to report still writes a valid empty artifact", {
+test_that("ci_report(): nothing to report still writes a valid empty file", {
   skip_if_not_installed("jsonlite")
   # GitLab cannot clear the findings a previous run left on the branch without a
   # fresh report, so an empty one still has to be written and still has to parse.
@@ -239,16 +299,17 @@ test_that("nothing to report still writes a valid empty artifact", {
   expect_length(parsed$runs$results[[1]], 0L)
 })
 
-test_that("a finding with no location is still reported somewhere openable", {
+test_that("ci_report(): a finding with no location is still openable", {
+  # DESCRIPTION findings carry no line, so they are reported against the file.
   pkg <- make_temp_dir()
   write_pkg(pkg, description = "Too short.")
   r <- checktor(pkg, verbose = FALSE, progress = FALSE)
-  out <- ci_report(r, format = "text", file = NULL)
-  # DESCRIPTION findings carry no line, so they are reported against the file.
-  expect_true(any(grepl("^DESCRIPTION:1", out)))
+  text_report <- ci_report(r, format = "text", file = NULL)
+  expect_true(any(grepl("^DESCRIPTION:1", text_report)))
+  expect_snapshot(writeLines(text_report))
 })
 
-test_that("a multi-line finding stays one line in the line-oriented formats", {
+test_that("ci_report(): a multi-line finding stays on one line", {
   # register_check() means a message is arbitrary text, so this is reachable
   # rather than theoretical. A raw newline would split one Azure logging command
   # into two lines, leaving the tail as plain output, and would turn one text
@@ -278,7 +339,9 @@ test_that("a multi-line finding stays one line in the line-oriented formats", {
   expect_match(az, "second part", fixed = TRUE)
 })
 
-test_that("azure escapes the characters that delimit its own command", {
+# Test escape_azure_property() ----
+
+test_that("escape_azure_property(): escapes Azure's command delimiters", {
   # `;` separates properties and `]` closes the block, so a property carrying
   # either would be misparsed. The message body sits after `]` and keeps them.
   expect_equal(escape_azure_property("a;b]c"), "a%3Bb%5Dc")
@@ -287,7 +350,9 @@ test_that("azure escapes the characters that delimit its own command", {
   expect_equal(flatten_lines("a\r\n  b"), "a b")
 })
 
-test_that("special characters do not break a format", {
+# Test ci_report() ----
+
+test_that("ci_report(): special characters do not break a format", {
   # A finding carrying <YEAR> or a quote would otherwise produce invalid XML.
   pkg <- make_temp_dir()
   write_pkg(pkg)

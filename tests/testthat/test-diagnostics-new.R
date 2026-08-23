@@ -1,10 +1,8 @@
 # Detection tests for the checks added in the CRAN-readiness expansion.
 
-# ---- description_starts_with -------------------------------------------------
+# Test lab_description_quoted_quotes() ----
 
-# ---- description_quoted_quotes -----------------------------------------------
-
-test_that("description_quoted_quotes flags a double-quoted SOFTWARE name", {
+test_that("lab_description_quoted_quotes(): flags a double-quoted SOFTWARE name", {
   # Writing R Extensions: double quotes are for quotations, single quotes for
   # "names of other packages and external software".
   pkg <- make_temp_dir()
@@ -20,7 +18,7 @@ test_that("description_quoted_quotes flags a double-quoted SOFTWARE name", {
   expect_true(any(grepl("shiny", res$description_quoted_quotes$issues)))
 })
 
-test_that("description_quoted_quotes does not flag scare-quoted jargon", {
+test_that("lab_description_quoted_quotes(): does not flag scare-quoted jargon", {
   # cbcTools ships "labeled" and "no choice" on CRAN today. Those ARE the
   # quotations that double quotes are reserved for, not software names.
   pkg <- make_temp_dir()
@@ -46,9 +44,9 @@ test_that("description_quoted_quotes does not flag scare-quoted jargon", {
   expect_true(res2$description_quoted_quotes$passed)
 })
 
-# ---- title_starts_with_article -----------------------------------------------
+# Test lab_title_starts_with_article() ----
 
-test_that("title_starts_with_article is NOT part of a default run", {
+test_that("lab_title_starts_with_article(): is NOT part of a default run", {
   # A mis-transplant of CRAN's real rule, whose source requires the literal noun
   # "package" after the article AND applies to the Description field, not the
   # Title. jsonlite ("A Simple and Robust JSON Parser and Generator for R") and
@@ -64,9 +62,9 @@ test_that("title_starts_with_article is NOT part of a default run", {
   )
 })
 
-# ---- title_redundant_phrases -------------------------------------------------
+# Test lab_title_redundant_phrases() ----
 
-test_that("title_redundant_phrases flags 'for R' and 'Tools for' patterns", {
+test_that("lab_title_redundant_phrases(): flags 'for R' and 'Tools for' patterns", {
   for (bad in c(
     "Statistical Models for R",
     "A Toolkit for Imaging",
@@ -93,9 +91,9 @@ test_that("title_redundant_phrases flags 'for R' and 'Tools for' patterns", {
   )
 })
 
-# ---- cph_role ----------------------------------------------------------------
+# Test lab_cph_role() ----
 
-test_that("cph_role check accepts cph-bearing Authors@R and flags otherwise", {
+test_that("lab_cph_role(): accepts cph-bearing Authors@R and flags otherwise", {
   pkg <- make_temp_dir()
   write_pkg(pkg, authors_r = "person('A','B', role = c('aut','cre'))")
   expect_false(
@@ -109,11 +107,9 @@ test_that("cph_role check accepts cph-bearing Authors@R and flags otherwise", {
   )
 })
 
-# ---- license_year ------------------------------------------------------------
+# Test lab_library_in_pkg() ----
 
-# ---- library_in_pkg_code -----------------------------------------------------
-
-test_that("library_in_pkg_code flags library()/require() but not pkg::fn", {
+test_that("lab_library_in_pkg(): flags library()/require() but not pkg::fn", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -130,9 +126,9 @@ test_that("library_in_pkg_code flags library()/require() but not pkg::fn", {
   expect_equal(length(res$issues), 2L)
 })
 
-# ---- sys_setenv_no_reset -----------------------------------------------------
+# Test lab_sys_setenv() ----
 
-test_that("sys_setenv_no_reset flags naked Sys.setenv and accepts cleanup", {
+test_that("lab_sys_setenv(): flags naked Sys.setenv and accepts cleanup", {
   pkg_bad <- make_temp_dir()
   write_pkg(pkg_bad, r_code = "f <- function() Sys.setenv(FOO = 1)")
   expect_false(lab_sys_setenv(pkg_bad, verbose = FALSE)$passed)
@@ -151,9 +147,9 @@ test_that("sys_setenv_no_reset flags naked Sys.setenv and accepts cleanup", {
   expect_true(lab_sys_setenv(pkg_ok, verbose = FALSE)$passed)
 })
 
-# ---- commented_examples ------------------------------------------------------
+# Test lab_commented_examples() ----
 
-test_that("commented_examples flags an \\examples block that runs nothing", {
+test_that("lab_commented_examples(): flags an \\examples block that runs nothing", {
   # A commented-out call is only a defect when it is ALL the example has. Beside
   # live code it is illustration, which is why the live `actual_call()` this
   # fixture used to carry made it a false positive.
@@ -175,7 +171,7 @@ test_that("commented_examples flags an \\examples block that runs nothing", {
   expect_false(res$passed)
 })
 
-test_that("commented_examples accepts explanatory comments", {
+test_that("lab_commented_examples(): accepts explanatory comments", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -195,11 +191,9 @@ test_that("commented_examples accepts explanatory comments", {
   expect_true(res$passed)
 })
 
-# ---- unexported_example_namespace --------------------------------------------
+# Test lab_donttest_vs_dontrun() ----
 
-# ---- donttest_vs_dontrun -----------------------------------------------------
-
-test_that("donttest_vs_dontrun suggests \\donttest{} for slow-only code", {
+test_that("lab_donttest_vs_dontrun(): suggests \\donttest{} for slow-only code", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -220,7 +214,7 @@ test_that("donttest_vs_dontrun suggests \\donttest{} for slow-only code", {
   expect_false(res$passed)
 })
 
-test_that("donttest_vs_dontrun accepts \\dontrun for justified cases", {
+test_that("lab_donttest_vs_dontrun(): accepts \\dontrun for justified cases", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,

@@ -1,6 +1,6 @@
-# ---- browser() ---------------------------------------------------------------
+# Test lab_browser_calls() ----
 
-test_that("lab_browser_calls flags browser() and not the word in strings", {
+test_that("lab_browser_calls(): flags browser() and not the word in strings", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -14,9 +14,9 @@ test_that("lab_browser_calls flags browser() and not the word in strings", {
   expect_equal(length(res$issues), 1L)
 })
 
-# ---- system() ----------------------------------------------------------------
+# Test lab_system_calls() ----
 
-test_that("lab_system_calls flags system()/system2()/shell()", {
+test_that("lab_system_calls(): flags system()/system2()/shell()", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -31,9 +31,9 @@ test_that("lab_system_calls flags system()/system2()/shell()", {
   expect_gte(length(res$issues), 3L)
 })
 
-# ---- file operations ---------------------------------------------------------
+# Test lab_file_operations() ----
 
-test_that("lab_file_operations does NOT double-match saveRDS as save()", {
+test_that("lab_file_operations(): does NOT double-match saveRDS as save()", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -48,7 +48,7 @@ test_that("lab_file_operations does NOT double-match saveRDS as save()", {
   expect_false(any(grepl(":\\d+ \\(save\\(\\)\\)", res$issues)))
 })
 
-test_that("lab_file_operations exempts tempfile/tempdir targets", {
+test_that("lab_file_operations(): exempts tempfile/tempdir targets", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -64,16 +64,16 @@ test_that("lab_file_operations exempts tempfile/tempdir targets", {
   expect_true(res$passed)
 })
 
-test_that("lab_file_operations flags writes outside tempdir", {
+test_that("lab_file_operations(): flags writes outside tempdir", {
   pkg <- make_temp_dir()
   write_pkg(pkg, r_code = "f <- function() write.csv(mtcars, '/etc/foo.csv')")
   res <- lab_file_operations(pkg, verbose = FALSE)
   expect_false(res$passed)
 })
 
-# ---- network ops in docs -----------------------------------------------------
+# Test lab_network_operations() ----
 
-test_that("lab_network_operations flags download.file in Rd without wrapper", {
+test_that("lab_network_operations(): flags an unwrapped download.file in Rd", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -92,7 +92,7 @@ test_that("lab_network_operations flags download.file in Rd without wrapper", {
   expect_false(res$passed)
 })
 
-test_that("lab_network_operations accepts \\dontrun-wrapped network code", {
+test_that("lab_network_operations(): accepts \\dontrun-wrapped network code", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -112,7 +112,9 @@ test_that("lab_network_operations accepts \\dontrun-wrapped network code", {
   expect_true(lab_network_operations(pkg, verbose = FALSE)$passed)
 })
 
-test_that("file_operations exempts a write to a caller-supplied destination", {
+# Test lab_file_operations() ----
+
+test_that("lab_file_operations(): exempts a write to a caller-supplied path", {
   # CRAN's rule is about writing without permission, and a path the caller
   # passed in is permission.
   pkg <- make_temp_dir()
@@ -127,7 +129,7 @@ test_that("file_operations exempts a write to a caller-supplied destination", {
   expect_true(lab_file_operations(pkg, verbose = FALSE)$passed)
 })
 
-test_that("file_operations still flags a formal that defaults into the user's filespace", {
+test_that("lab_file_operations(): flags a formal that defaults into the user's filespace", {
   # The destination is a formal, but calling report() with no arguments writes
   # to $HOME, so the exemption must not apply.
   pkg <- make_temp_dir()
@@ -142,7 +144,7 @@ test_that("file_operations still flags a formal that defaults into the user's fi
   expect_false(lab_file_operations(pkg, verbose = FALSE)$passed)
 })
 
-test_that("file_operations does not exempt on the strength of a non-destination arg", {
+test_that("lab_file_operations(): does not exempt on the strength of a non-destination arg", {
   # `x` is a formal, but it is the DATA argument. The destination is a literal
   # home path and must still be flagged.
   pkg <- make_temp_dir()
@@ -157,9 +159,9 @@ test_that("file_operations does not exempt on the strength of a non-destination 
   expect_false(lab_file_operations(pkg, verbose = FALSE)$passed)
 })
 
-# --- file_operations: only a provable destination is a violation -------------
+# Only a provable destination is a violation.
 
-test_that("file_operations flags a hardcoded literal destination", {
+test_that("lab_file_operations(): flags a hardcoded literal destination", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -173,7 +175,7 @@ test_that("file_operations flags a hardcoded literal destination", {
   expect_equal(length(res$issues), 2L)
 })
 
-test_that("file_operations allows a caller-supplied or computed destination", {
+test_that("lab_file_operations(): allows a caller-supplied or computed path", {
   # CRAN's rule is about writing WITHOUT PERMISSION. A path the caller passed in
   # is permission, and a computed path proves nothing either way. surveydown's
   # `writeLines(template, env_file)` builds env_file from a user-given directory.
@@ -192,7 +194,7 @@ test_that("file_operations allows a caller-supplied or computed destination", {
   expect_true(lab_file_operations(pkg, verbose = FALSE)$passed)
 })
 
-test_that("file_operations still catches a formal that defaults into $HOME", {
+test_that("lab_file_operations(): catches a formal that defaults into $HOME", {
   # The hole the literal rule would otherwise leave: the destination IS a symbol,
   # but calling with no argument writes to the user's home.
   pkg <- make_temp_dir()
@@ -203,7 +205,7 @@ test_that("file_operations still catches a formal that defaults into $HOME", {
   expect_false(lab_file_operations(pkg, verbose = FALSE)$passed)
 })
 
-test_that("file_operations reads file.create()'s destination as its FIRST arg", {
+test_that("lab_file_operations(): reads file.create()'s destination as its FIRST arg", {
   # write.csv(x, file) puts the path second; file.create(path) puts it first.
   # Assuming "always the second argument" read file.create()'s path as content.
   pkg <- make_temp_dir()
@@ -211,7 +213,7 @@ test_that("file_operations reads file.create()'s destination as its FIRST arg", 
   expect_false(lab_file_operations(pkg, verbose = FALSE)$passed)
 })
 
-test_that("file_operations judges a path by its ROOT, not any literal in it", {
+test_that("lab_file_operations(): judges a path by its ROOT, not any literal", {
   # `file.path(temp_pkg, "NEWS.md")` is rooted at a variable, so the basename
   # literal proves nothing. checktor's own example_diagnose_scenario() does this,
   # and an earlier version of the rule flagged it.
@@ -229,7 +231,7 @@ test_that("file_operations judges a path by its ROOT, not any literal in it", {
   expect_true(lab_file_operations(pkg, verbose = FALSE)$passed)
 })
 
-test_that("file_operations flags a path whose ROOT is a literal", {
+test_that("lab_file_operations(): flags a path whose ROOT is a literal", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -241,4 +243,22 @@ test_that("file_operations flags a path whose ROOT is a literal", {
   res <- lab_file_operations(pkg, verbose = FALSE)
   expect_false(res$passed)
   expect_equal(length(res$issues), 2L)
+})
+
+# Test lab_network_operations() ----
+
+test_that("lab_network_operations(): skips a build-ignored pkgdown article", {
+  # usethis::use_article() writes vignettes/articles/ and excludes the directory
+  # in .Rbuildignore, so nothing under it reaches CRAN.
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  dir.create(file.path(pkg, "vignettes", "articles"), recursive = TRUE)
+  writeLines(
+    c("```{r}", "download.file('https://example.com', 'f')", "```"),
+    file.path(pkg, "vignettes", "articles", "extra.Rmd")
+  )
+  expect_false(lab_network_operations(pkg, verbose = FALSE)$passed)
+
+  writeLines("^vignettes/articles$", file.path(pkg, ".Rbuildignore"))
+  expect_true(lab_network_operations(pkg, verbose = FALSE)$passed)
 })

@@ -2,7 +2,9 @@
 # Both used to be spread across unrelated places, so these tests hold the table to
 # what the package actually does.
 
-test_that("every check that runs has a severity entry", {
+# Test check_severity() ----
+
+test_that("check_severity(): every check that runs has a severity entry", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   ran <- tidy(checktor(pkg, verbose = FALSE, progress = FALSE))$check
@@ -10,7 +12,9 @@ test_that("every check that runs has a severity entry", {
   expect_true(all(CHECK_SEVERITY %in% SEVERITY_LEVELS))
 })
 
-test_that("CHECK_WHEN agrees with what a default run actually does", {
+# Test check_when() ----
+
+test_that("check_when(): agrees with what a default run actually does", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   ran <- tidy(checktor(pkg, verbose = FALSE, progress = FALSE))$check
@@ -24,7 +28,9 @@ test_that("CHECK_WHEN agrees with what a default run actually does", {
   expect_setequal(ran, expected)
 })
 
-test_that("an on-request check is discoverable without being a skip or a penalty", {
+# Test checktor() ----
+
+test_that("checktor(): an on-request check is discoverable, not a skip", {
   # Two different things that a single "did not run" line would blur. A skipped
   # check wanted to run and could not. An on-request check was never asked for,
   # so naming it is only so you can find out it is there.
@@ -51,7 +57,9 @@ test_that("an on-request check is discoverable without being a skip or a penalty
   expect_match(txt, on_request[[1]], fixed = TRUE)
 })
 
-test_that("check_when defaults to always for anything unlisted", {
+# Test check_when() ----
+
+test_that("check_when(): defaults to always for anything unlisted", {
   expect_equal(check_when("tf_usage"), "always")
   expect_equal(check_when("a_check_that_does_not_exist"), "always")
   expect_equal(check_when("url_liveness"), "console")
@@ -59,7 +67,9 @@ test_that("check_when defaults to always for anything unlisted", {
   expect_equal(check_when("cran_comments_file"), "request")
 })
 
-test_that("a check that did not run is reported as skipped, not as passing", {
+# Test checktor() ----
+
+test_that("checktor(): a check that did not run is skipped, not passing", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   # setup.R turns both gated checks off, which is the same state as a CI run.
@@ -81,7 +91,7 @@ test_that("a check that did not run is reported as skipped, not as passing", {
   expect_true("url_liveness" %in% r$metadata$skipped_checks)
 })
 
-test_that("a check that ran is not marked skipped", {
+test_that("checktor(): a check that ran is not marked skipped", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   old <- options(checktor.url_check = TRUE)
@@ -93,7 +103,9 @@ test_that("a check that ran is not marked skipped", {
   expect_false("url_liveness" %in% r$metadata$skipped_checks)
 })
 
-test_that("Config/checktor accepts the name of a registered check", {
+# Test register_check() ----
+
+test_that("register_check(): Config/checktor accepts a registered name", {
   # The typo guard used to know only the built-ins, so naming a custom check in
   # Config/checktor warned that a real, working name was unknown.
   lab_custom <- function(path, verbose = TRUE, parsed = NULL) {
@@ -110,7 +122,9 @@ test_that("Config/checktor accepts the name of a registered check", {
   expect_true("custom_thing" %in% all_check_names())
 })
 
-test_that("each check has a lab_ function named after it", {
+# Test check_severity() ----
+
+test_that("check_severity(): each check has a lab_ function named after it", {
   # The rename exists so `tidy()$check` and the function you call line up. A new
   # check that breaks that pairing should fail here.
   exported <- getNamespaceExports("checktor")
@@ -119,7 +133,9 @@ test_that("each check has a lab_ function named after it", {
   }
 })
 
-test_that("url_liveness stays quiet when no host could be reached", {
+# Test lab_url_liveness() ----
+
+test_that("lab_url_liveness(): stays quiet when no host could be reached", {
   # Every row failing to resolve says the machine has no connection, not that the
   # package's links are broken, and the help page promises a quiet pass.
   pkg <- make_temp_dir()
@@ -144,7 +160,7 @@ test_that("url_liveness stays quiet when no host could be reached", {
   expect_true(isTRUE(res$skipped))
 })
 
-test_that("url_liveness still reports one dead host among reachable ones", {
+test_that("lab_url_liveness(): reports one dead host among reachable ones", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   old <- options(checktor.url_check = TRUE)
@@ -166,7 +182,9 @@ test_that("url_liveness still reports one dead host among reachable ones", {
   expect_length(res$issues, 2L)
 })
 
-test_that("software_names does not match plain English through a dotted name", {
+# Test lab_software_names() ----
+
+test_that("lab_software_names(): a dotted name does not match plain English", {
   # data.table is a regular expression unless escaped, where the dot would match
   # the space in "data table".
   pkg <- make_temp_dir()
@@ -178,7 +196,9 @@ test_that("software_names does not match plain English through a dotted name", {
   expect_false(lab_software_names(named, verbose = FALSE)$passed)
 })
 
-test_that("a treatment line renders its markup instead of printing braces", {
+# Test lab_print_cat_usage() ----
+
+test_that("lab_print_cat_usage(): a treatment line renders its markup", {
   # The fixture has to FAIL the check: a passing one emits the success alert and
   # never reaches the treatment line, so the markup assertion would be checked
   # against the wrong message. `f` returns a value, so its print() is a leak

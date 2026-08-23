@@ -1,6 +1,6 @@
-# ---- value tags --------------------------------------------------------------
+# Test lab_value_tags() ----
 
-test_that("lab_value_tags flags missing \\value{} in function topics", {
+test_that("lab_value_tags(): flags missing \\value{} in function topics", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -18,7 +18,7 @@ test_that("lab_value_tags flags missing \\value{} in function topics", {
   expect_equal(res$missing, "fn.Rd")
 })
 
-test_that("lab_value_tags accepts well-documented topics", {
+test_that("lab_value_tags(): accepts well-documented topics", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -34,7 +34,7 @@ test_that("lab_value_tags accepts well-documented topics", {
   expect_true(lab_value_tags(pkg, verbose = FALSE)$passed)
 })
 
-test_that("lab_value_tags skips data, class, package, and re-export topics", {
+test_that("lab_value_tags(): skips data, class, package and re-export topics", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -66,7 +66,7 @@ test_that("lab_value_tags skips data, class, package, and re-export topics", {
   expect_true(lab_value_tags(pkg, verbose = FALSE)$passed)
 })
 
-test_that("lab_value_tags leaves the real roxygen -package and reexports topics", {
+test_that("lab_value_tags(): leaves roxygen's -package and reexports topics", {
   # Pins behaviour that is already correct, against a refactor of the guards.
   # These are the literal shapes roxygen2 emits (copied from checktor's own
   # man/reexports.Rd and man/checktor-package.Rd), and three separate guards
@@ -125,9 +125,9 @@ test_that("lab_value_tags leaves the real roxygen -package and reexports topics"
   expect_equal(res$missing, "fn.Rd")
 })
 
-# ---- example structure -------------------------------------------------------
+# Test lab_example_structure() ----
 
-test_that("lab_example_structure flags unjustified \\dontrun{}", {
+test_that("lab_example_structure(): flags unjustified \\dontrun{}", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -148,7 +148,7 @@ test_that("lab_example_structure flags unjustified \\dontrun{}", {
   expect_false(res$passed)
 })
 
-test_that("lab_example_structure accepts \\dontrun{} with a justifying keyword", {
+test_that("lab_example_structure(): accepts \\dontrun{} justified by a keyword", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -169,7 +169,7 @@ test_that("lab_example_structure accepts \\dontrun{} with a justifying keyword",
   expect_true(lab_example_structure(pkg, verbose = FALSE)$passed)
 })
 
-test_that("lab_example_structure extracts only the \\examples{} block", {
+test_that("lab_example_structure(): extracts only the \\examples{} block", {
   # Verifies the balanced-brace extractor doesn't bleed into other sections.
   pkg <- make_temp_dir()
   write_pkg(
@@ -191,11 +191,9 @@ test_that("lab_example_structure extracts only the \\examples{} block", {
   expect_true(lab_example_structure(pkg, verbose = FALSE)$passed)
 })
 
-# ---- roxygen usage -----------------------------------------------------------
+# Test lab_missing_examples() ----
 
-# ---- missing examples --------------------------------------------------------
-
-test_that("lab_missing_examples flags an exported topic without \\examples", {
+test_that("lab_missing_examples(): flags exported topics without \\examples", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -215,7 +213,7 @@ test_that("lab_missing_examples flags an exported topic without \\examples", {
   expect_equal(res$missing, "fn.Rd")
 })
 
-test_that("lab_missing_examples accepts an exported topic with \\examples", {
+test_that("lab_missing_examples(): accepts an exported topic with \\examples", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -235,7 +233,7 @@ test_that("lab_missing_examples accepts an exported topic with \\examples", {
   expect_true(lab_missing_examples(pkg, verbose = FALSE)$passed)
 })
 
-test_that("lab_missing_examples skips unexported topics and missing NAMESPACE", {
+test_that("lab_missing_examples(): skips unexported topics and no NAMESPACE", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -266,9 +264,9 @@ test_that("lab_missing_examples skips unexported topics and missing NAMESPACE", 
   expect_true(lab_missing_examples(pkg2, verbose = FALSE)$passed)
 })
 
-# ---- Suggested packages in examples ------------------------------------------
+# Test lab_suggested_in_examples() ----
 
-test_that("lab_suggested_in_examples flags unguarded Suggested-package use", {
+test_that("lab_suggested_in_examples(): flags an unguarded Suggested package", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -289,7 +287,7 @@ test_that("lab_suggested_in_examples flags unguarded Suggested-package use", {
   expect_false(res$passed)
 })
 
-test_that("lab_suggested_in_examples accepts a requireNamespace guard", {
+test_that("lab_suggested_in_examples(): accepts a requireNamespace guard", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -310,7 +308,7 @@ test_that("lab_suggested_in_examples accepts a requireNamespace guard", {
   expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
 })
 
-test_that("lab_suggested_in_examples ignores usage inside \\dontrun", {
+test_that("lab_suggested_in_examples(): ignores usage inside \\dontrun", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -331,7 +329,7 @@ test_that("lab_suggested_in_examples ignores usage inside \\dontrun", {
   expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
 })
 
-test_that("lab_suggested_in_examples passes when the package has no Suggests", {
+test_that("lab_suggested_in_examples(): passes when there are no Suggests", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -349,9 +347,9 @@ test_that("lab_suggested_in_examples passes when the package has no Suggests", {
   expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
 })
 
-# ---- commented_examples: prose vs commented-out code --------------------------
+# Test lab_commented_examples() ----
 
-test_that("commented_examples does not flag ordinary prose comments", {
+test_that("lab_commented_examples(): does not flag ordinary prose comments", {
   # The old rule was "a comment containing an open paren", which flags English.
   # All 41 comment lines across the 9 Rd files this fired on in the wild were
   # prose; not one was a disabled call.
@@ -378,7 +376,7 @@ test_that("commented_examples does not flag ordinary prose comments", {
   expect_true(lab_commented_examples(pkg, verbose = FALSE)$passed)
 })
 
-test_that("commented_examples flags an example that runs nothing", {
+test_that("lab_commented_examples(): flags an example that runs nothing", {
   # The real defect: every line that would demonstrate the function is commented
   # out, so the example block executes nothing at all.
   pkg <- make_temp_dir()
@@ -404,7 +402,7 @@ test_that("commented_examples flags an example that runs nothing", {
   expect_match(res$issues, "runs nothing", all = FALSE)
 })
 
-test_that("commented_examples allows a comment alongside live code", {
+test_that("lab_commented_examples(): allows a comment alongside live code", {
   # surveydown's examples comment out the server and .qmd snippets that belong in
   # the USER's files, then call sd_create_survey() for real. That is illustration,
   # not a disabled example, and flagging it flagged the docs for doing their job.
@@ -432,9 +430,9 @@ test_that("commented_examples allows a comment alongside live code", {
   expect_true(lab_commented_examples(pkg, verbose = FALSE)$passed)
 })
 
-# ---- missing_examples honours \keyword{internal} ------------------------------
+# Test lab_missing_examples() ----
 
-test_that("missing_examples exempts \\keyword{internal} topics", {
+test_that("lab_missing_examples(): exempts \\keyword{internal} topics", {
   # R's own checkRdContents grants keyword-internal pages substantive leniency,
   # keying off the keyword alone and never reading NAMESPACE.
   pkg <- make_temp_dir()
@@ -457,9 +455,9 @@ test_that("missing_examples exempts \\keyword{internal} topics", {
   expect_true(lab_missing_examples(pkg, verbose = FALSE)$passed)
 })
 
-# ---- value_tags delegates to tools::checkRdContents ---------------------------
+# Test lab_value_tags() ----
 
-test_that("value_tags flags a missing \\value and exempts internal topics", {
+test_that("lab_value_tags(): flags missing \\value, exempts internal topics", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -487,7 +485,7 @@ test_that("value_tags flags a missing \\value and exempts internal topics", {
   expect_equal(res$issues, "f.Rd")
 })
 
-# --- roxygen_usage (rebuilt: NAMESPACE/roxygen drift, no clocks) ------------
+# Test lab_roxygen_usage() ----
 
 # A roxygen-managed package: NAMESPACE carries the banner, so the check engages.
 write_roxy_pkg <- function(pkg, r_code, namespace) {
@@ -499,7 +497,7 @@ write_roxy_pkg <- function(pkg, r_code, namespace) {
   invisible(pkg)
 }
 
-test_that("roxygen_usage flags an @export that never reached NAMESPACE", {
+test_that("lab_roxygen_usage(): flags an @export missing from NAMESPACE", {
   # The real cost of a forgotten devtools::document(): the function is tagged
   # for export, is not exported, and R CMD check says nothing.
   pkg <- make_temp_dir()
@@ -514,7 +512,7 @@ test_that("roxygen_usage flags an @export that never reached NAMESPACE", {
   expect_match(res$issues, "add is tagged @export", all = FALSE)
 })
 
-test_that("roxygen_usage passes when the export is registered", {
+test_that("lab_roxygen_usage(): passes when the export is registered", {
   pkg <- make_temp_dir()
   write_roxy_pkg(
     pkg,
@@ -524,7 +522,7 @@ test_that("roxygen_usage passes when the export is registered", {
   expect_true(lab_roxygen_usage(pkg, verbose = FALSE)$passed)
 })
 
-test_that("roxygen_usage counts an S3method registration as an export", {
+test_that("lab_roxygen_usage(): counts an S3method registration as an export", {
   # `#' @export` on print.foo generates S3method(print, foo), not export().
   pkg <- make_temp_dir()
   write_roxy_pkg(
@@ -535,7 +533,7 @@ test_that("roxygen_usage counts an S3method registration as an export", {
   expect_true(lab_roxygen_usage(pkg, verbose = FALSE)$passed)
 })
 
-test_that("roxygen_usage flags an Rd orphaned by a deleted source file", {
+test_that("lab_roxygen_usage(): flags an Rd orphaned by a deleted file", {
   pkg <- make_temp_dir()
   write_roxy_pkg(
     pkg,
@@ -561,7 +559,7 @@ test_that("roxygen_usage flags an Rd orphaned by a deleted source file", {
   expect_match(res$issues, "no longer exists", all = FALSE)
 })
 
-test_that("roxygen_usage ignores a package with a hand-written NAMESPACE", {
+test_that("lab_roxygen_usage(): ignores a hand-written NAMESPACE", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -571,7 +569,7 @@ test_that("roxygen_usage ignores a package with a hand-written NAMESPACE", {
   expect_true(lab_roxygen_usage(pkg, verbose = FALSE)$passed)
 })
 
-test_that("roxygen_usage does not confuse @exportS3Method with @export", {
+test_that("lab_roxygen_usage(): never confuses @exportS3Method with @export", {
   pkg <- make_temp_dir()
   write_roxy_pkg(
     pkg,
@@ -585,7 +583,7 @@ test_that("roxygen_usage does not confuse @exportS3Method with @export", {
   expect_true(lab_roxygen_usage(pkg, verbose = FALSE)$passed)
 })
 
-# --- unexported_example_namespace (restored as a static pre-flight) ---------
+# Test lab_unexported_example_ns() ----
 
 write_unexported_rd <- function(pkg, examples) {
   dir.create(file.path(pkg, "man"), showWarnings = FALSE)
@@ -602,7 +600,7 @@ write_unexported_rd <- function(pkg, examples) {
   )
 }
 
-test_that("unexported_example_namespace flags a bare call to an unexported topic", {
+test_that("lab_unexported_example_ns(): flags a bare call to an unexported topic", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   writeLines("export(add)", file.path(pkg, "NAMESPACE"))
@@ -613,7 +611,7 @@ test_that("unexported_example_namespace flags a bare call to an unexported topic
   expect_match(res$issues, "helper", all = FALSE)
 })
 
-test_that("unexported_example_namespace accepts a ::: -qualified call", {
+test_that("lab_unexported_example_ns(): accepts a ::: -qualified call", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   writeLines("export(add)", file.path(pkg, "NAMESPACE"))
@@ -624,7 +622,7 @@ test_that("unexported_example_namespace accepts a ::: -qualified call", {
   )
 })
 
-test_that("unexported_example_namespace ignores \\dontrun{} examples", {
+test_that("lab_unexported_example_ns(): ignores \\dontrun{} examples", {
   # \dontrun{} is never executed, so a bare call there cannot fail. R CMD check
   # would not run it either.
   pkg <- make_temp_dir()
@@ -637,7 +635,7 @@ test_that("unexported_example_namespace ignores \\dontrun{} examples", {
   )
 })
 
-test_that("unexported_example_namespace does not flag an exported topic", {
+test_that("lab_unexported_example_ns(): does not flag an exported topic", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   writeLines("export(helper)", file.path(pkg, "NAMESPACE"))
@@ -648,10 +646,11 @@ test_that("unexported_example_namespace does not flag an exported topic", {
   )
 })
 
-# --- what the parse tree buys these two checks ------------------------------
+# Test lab_roxygen_usage() ----
+
 # Each case below is one the previous regex implementation got wrong.
 
-test_that("roxygen_usage sees an assignment split across lines", {
+test_that("lab_roxygen_usage(): sees an assignment split across lines", {
   # `add <-` and `function(a, b)` on separate lines. A "regex the next line for
   # `name <-`" approach misses this entirely.
   pkg <- make_temp_dir()
@@ -665,7 +664,7 @@ test_that("roxygen_usage sees an assignment split across lines", {
   expect_match(res$issues, "add is tagged @export", all = FALSE)
 })
 
-test_that("roxygen_usage reads a backticked or `=` assigned name", {
+test_that("lab_roxygen_usage(): reads a backticked or `=` assigned name", {
   pkg <- make_temp_dir()
   write_roxy_pkg(
     pkg,
@@ -677,7 +676,7 @@ test_that("roxygen_usage reads a backticked or `=` assigned name", {
   expect_match(res$issues, "odd name", all = FALSE)
 })
 
-test_that("roxygen_usage ignores an @export inside a string or a plain comment", {
+test_that("lab_roxygen_usage(): ignores @export in a string or plain comment", {
   # Neither is a roxygen tag. Only a `#'` COMMENT token counts.
   pkg <- make_temp_dir()
   write_roxy_pkg(
@@ -692,7 +691,9 @@ test_that("roxygen_usage ignores an @export inside a string or a plain comment",
   expect_true(lab_roxygen_usage(pkg, verbose = FALSE)$passed)
 })
 
-test_that("unexported_example_ns ignores a call named only in a comment or string", {
+# Test lab_unexported_example_ns() ----
+
+test_that("lab_unexported_example_ns(): ignores a call in a comment or a string", {
   # The exact false positive the AST rewrite exists to prevent.
   pkg <- make_temp_dir()
   write_pkg(pkg)
@@ -710,7 +711,7 @@ test_that("unexported_example_ns ignores a call named only in a comment or strin
   )
 })
 
-test_that("unexported_example_ns is not fooled by a same-named object that is not a call", {
+test_that("lab_unexported_example_ns(): is not fooled by a same-named object", {
   # `helper` as a value, never invoked, is not a namespace problem.
   pkg <- make_temp_dir()
   write_pkg(pkg)
@@ -721,7 +722,9 @@ test_that("unexported_example_ns is not fooled by a same-named object that is no
   )
 })
 
-test_that("package_exports reads a MULTI-LINE export( block", {
+# Test package_exports() ----
+
+test_that("package_exports(): reads a MULTI-LINE export( block", {
   # The bug that broke everything. The old reader regexed NAMESPACE line by line,
   # so an export( block spanning lines lost every name after the first. On the
   # real `digest` package it returned exactly one entry, the string "AES,"
@@ -747,7 +750,7 @@ test_that("package_exports reads a MULTI-LINE export( block", {
   expect_true(all(c("[.foo", "names<-.foo", "print.foo") %in% ex$names))
 })
 
-test_that("package_exports honours exportPattern()", {
+test_that("package_exports(): honours exportPattern()", {
   # A name can be exported without ever being listed.
   pkg <- make_temp_dir()
   write_pkg(pkg)
@@ -757,7 +760,7 @@ test_that("package_exports honours exportPattern()", {
   expect_false(name_is_exported(".hidden_fn", ex))
 })
 
-test_that("package_exports returns NULL when it cannot read NAMESPACE, and callers then skip", {
+test_that("package_exports(): returns NULL when it cannot read NAMESPACE", {
   # "Cannot tell" must never become "is unexported". Guessing here is how a check
   # starts accusing a package's flagship function of not existing.
   pkg <- make_temp_dir()
@@ -767,7 +770,9 @@ test_that("package_exports returns NULL when it cannot read NAMESPACE, and calle
   expect_true(name_is_exported("anything", NULL))
 })
 
-test_that("roxygen_usage accepts an @export on a non-syntactic S3 method", {
+# Test lab_roxygen_usage() ----
+
+test_that("lab_roxygen_usage(): accepts @export on a non-syntactic S3 method", {
   pkg <- make_temp_dir()
   write_roxy_pkg(
     pkg,
@@ -784,7 +789,9 @@ test_that("roxygen_usage accepts an @export on a non-syntactic S3 method", {
   expect_true(lab_roxygen_usage(pkg, verbose = FALSE)$passed)
 })
 
-test_that("example_structure accepts \\dontrun{} around a shiny reactive context", {
+# Test lab_example_structure() ----
+
+test_that("lab_example_structure(): accepts \\dontrun{} around a shiny server", {
   # surveydown's examples define server <- function(input, output, session),
   # which cannot run outside a live app -- but never say the word "shiny", so a
   # literal search for it reported three correct \dontrun{} blocks as needless.
@@ -811,7 +818,7 @@ test_that("example_structure accepts \\dontrun{} around a shiny reactive context
   expect_true(lab_example_structure(pkg, verbose = FALSE)$passed)
 })
 
-test_that("example_structure accepts an install/launcher \\dontrun{} with a placeholder path", {
+test_that("lab_example_structure(): accepts an install/launcher \\dontrun{}", {
   # shinyelectron ships install_*() and run_electron_app("path/to/app") examples:
   # they install software or open a placeholder path, so \dontrun{} is justified.
   pkg <- make_temp_dir()
@@ -836,7 +843,7 @@ test_that("example_structure accepts an install/launcher \\dontrun{} with a plac
   expect_true(lab_example_structure(pkg, verbose = FALSE)$passed)
 })
 
-test_that("example_structure still flags \\dontrun{} with no justification", {
+test_that("lab_example_structure(): still flags an unjustified \\dontrun{}", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -858,8 +865,6 @@ test_that("example_structure still flags \\dontrun{} with no justification", {
   expect_false(lab_example_structure(pkg, verbose = FALSE)$passed)
 })
 
-# ---- example_structure: one fixture per justifier ----------------------------
-
 # The credential/network justifiers were covered by a single fixture that read
 # "# Requires API token" and called authenticate(api_key = 'secret') -- that one
 # example matches FIVE alternatives at once (API, token, key, secret, auth), so
@@ -876,7 +881,7 @@ justifier_fixtures <- c(
 for (justifier in names(justifier_fixtures)) {
   test_that(
     paste0(
-      "example_structure accepts \\dontrun{} justified by '",
+      "lab_example_structure(): accepts \\dontrun{} justified by '",
       justifier,
       "' alone"
     ),
@@ -904,9 +909,9 @@ for (justifier in names(justifier_fixtures)) {
   )
 }
 
-# ---- donttest vs dontrun -----------------------------------------------------
+# Test lab_donttest_vs_dontrun() ----
 
-test_that("donttest_vs_dontrun leaves slow code that ALSO cannot run alone", {
+test_that("lab_donttest_vs_dontrun(): leaves slow code that ALSO cannot run", {
   # \dontrun{ Sys.sleep(60); download.file(...) } is slow *and* network-bound.
   # Telling the author to move it to \donttest{} is telling them to hand CRAN an
   # example CRAN then executes, on a machine with no network. Only the file that

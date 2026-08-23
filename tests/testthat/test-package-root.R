@@ -1,14 +1,16 @@
 # checktor is meant to run from anywhere inside a package tree, rather than only
 # from the directory holding DESCRIPTION. These tests pin that behaviour down.
 
-test_that("find_package_root returns a root path untouched", {
+# Test find_package_root() ----
+
+test_that("find_package_root(): returns a root path untouched", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   # Returned verbatim, so an existing caller sees exactly what it passed in.
   expect_identical(find_package_root(pkg), pkg)
 })
 
-test_that("find_package_root walks up from a subdirectory", {
+test_that("find_package_root(): walks up from a subdirectory", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   dir.create(file.path(pkg, "tests", "testthat"), recursive = TRUE)
@@ -20,7 +22,7 @@ test_that("find_package_root walks up from a subdirectory", {
   }
 })
 
-test_that("find_package_root accepts a file inside the package", {
+test_that("find_package_root(): accepts a file inside the package", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   found <- find_package_root(file.path(pkg, "R", "test.R"))
@@ -30,7 +32,7 @@ test_that("find_package_root accepts a file inside the package", {
   )
 })
 
-test_that("find_package_root leaves a non-package path alone", {
+test_that("find_package_root(): leaves a non-package path alone", {
   # No DESCRIPTION anywhere above a temp directory, so the caller still gets the
   # path it asked about and can report against that.
   bare <- make_temp_dir()
@@ -38,7 +40,7 @@ test_that("find_package_root leaves a non-package path alone", {
   expect_identical(find_package_root("/no/such/directory"), "/no/such/directory")
 })
 
-test_that("find_package_root stops at the nearest root", {
+test_that("find_package_root(): stops at the nearest root", {
   outer <- make_temp_dir()
   write_pkg(outer, package = "outerpkg")
   inner <- file.path(outer, "inst", "innerpkg")
@@ -52,7 +54,9 @@ test_that("find_package_root stops at the nearest root", {
   )
 })
 
-test_that("checktor() from a subdirectory matches a run from the root", {
+# Test checktor() ----
+
+test_that("checktor(): from a subdirectory matches a run from the root", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
 
@@ -64,7 +68,7 @@ test_that("checktor() from a subdirectory matches a run from the root", {
   expect_equal(n_issues(from_sub), n_issues(from_root))
 })
 
-test_that("checktor() resolves the package from the working directory", {
+test_that("checktor(): resolves the package from the working directory", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
 
@@ -78,7 +82,9 @@ test_that("checktor() resolves the package from the working directory", {
   expect_true(is_healthy(res))
 })
 
-test_that("every path-taking entry point resolves the root as its first act", {
+# Test find_package_root() ----
+
+test_that("find_package_root(): every path-taking entry point resolves first", {
   # The regression this guards against is a new check forgetting the resolution
   # line. Comparing results alone cannot see that, because a check pointed at the
   # wrong directory finds no R/ and passes, exactly as it does on a clean package.
@@ -109,7 +115,7 @@ test_that("every path-taking entry point resolves the root as its first act", {
   }
 })
 
-test_that("checks called from a subdirectory find the same real issues", {
+test_that("find_package_root(): subdirectory checks find the same issues", {
   # A fixture that actually trips checks, so the comparison below has teeth: a
   # check that failed to resolve would report nothing and the equality would break.
   pkg <- make_temp_dir()
@@ -151,7 +157,9 @@ test_that("checks called from a subdirectory find the same real issues", {
   expect_equal(checkup(sub), checkup(pkg))
 })
 
-test_that("a directory outside any package still errors clearly", {
+# Test checktor() ----
+
+test_that("checktor(): a directory outside any package still errors clearly", {
   bare <- make_temp_dir()
   expect_error(
     checktor(bare, verbose = FALSE, progress = FALSE),

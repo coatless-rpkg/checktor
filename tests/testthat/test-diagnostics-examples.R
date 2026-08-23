@@ -23,21 +23,23 @@ script_pkg <- function(lines, dir, file, envir = parent.frame()) {
   pkg
 }
 
+# Test lab_example_interactive() ----
+
 # "Functions which are supposed to only run interactively (e.g. shiny) should be
 # wrapped in if(interactive()). Please replace \dontrun{} with if(interactive()){}"
-test_that("an interactive example hidden in dontrun is reported", {
+test_that("lab_example_interactive(): reports an interactive call in dontrun", {
   pkg <- rd_pkg(c("\\dontrun{", "  run_electron_app(app)", "}"))
   res <- lab_example_interactive(pkg, verbose = FALSE)
   expect_false(res$passed)
   expect_match(res$issues, "dontrun", all = FALSE)
 })
 
-test_that("an interactive example guarded by interactive() is accepted", {
+test_that("lab_example_interactive(): accepts an interactive() guard", {
   pkg <- rd_pkg("if (interactive()) { runApp(app) }")
   expect_true(lab_example_interactive(pkg, verbose = FALSE)$passed)
 })
 
-test_that("dontrun AROUND an interactive() guard is accepted", {
+test_that("lab_example_interactive(): accepts dontrun AROUND a guard", {
   # The test above has no \dontrun{} at all, so it never gets past the "nothing is
   # hidden" guard and never reaches the interactive() exemption. This shape does:
   # something IS hidden, and it is an interactive call, and the author has already
@@ -46,7 +48,7 @@ test_that("dontrun AROUND an interactive() guard is accepted", {
   expect_true(lab_example_interactive(pkg, verbose = FALSE)$passed)
 })
 
-test_that("an interactive() guard outside dontrun does not excuse what is inside", {
+test_that("lab_example_interactive(): a guard outside dontrun is no excuse", {
   # The exemption used to be read against the whole \examples{} block, so an
   # unrelated guard anywhere in it waved through the hidden call. Worse, the
   # hidden text was derived by subtracting the runnable text from the whole
@@ -58,13 +60,15 @@ test_that("an interactive() guard outside dontrun does not excuse what is inside
   expect_match(res$issues, "dontrun", all = FALSE)
 })
 
-test_that("dontrun around a non-interactive call is left alone", {
+test_that("lab_example_interactive(): leaves a non-interactive dontrun alone", {
   pkg <- rd_pkg(c("\\dontrun{", "  long_running_fit(data)", "}"))
   expect_true(lab_example_interactive(pkg, verbose = FALSE)$passed)
 })
 
+# Test lab_example_installs() ----
+
 # "Please do not install packages in your functions, examples or vignette."
-test_that("an install in an example or a vignette is reported", {
+test_that("lab_example_installs(): reports an install in example or vignette", {
   pkg <- rd_pkg("install.packages('somepkg')")
   expect_false(lab_example_installs(pkg, verbose = FALSE)$passed)
 
@@ -80,21 +84,23 @@ test_that("an install in an example or a vignette is reported", {
   expect_match(res$issues, "vignette", all = FALSE)
 })
 
-test_that("a conditional use of an installed package is not an install", {
+test_that("lab_example_installs(): a conditional use is not an install", {
   pkg <- rd_pkg("if (requireNamespace('pkg', quietly = TRUE)) pkg::fn()")
   expect_true(lab_example_installs(pkg, verbose = FALSE)$passed)
 })
 
+# Test lab_example_writes() ----
+
 # "Please ensure that your functions do not write by default or in your
 # examples/vignettes/tests in the user's home filespace"
-test_that("a write to a literal path from an example is reported", {
+test_that("lab_example_writes(): reports a write to a literal path", {
   pkg <- rd_pkg("writeLines('x', 'out.txt')")
   res <- lab_example_writes(pkg, verbose = FALSE)
   expect_false(res$passed)
   expect_match(res$issues, "writeLines", all = FALSE)
 })
 
-test_that("a write into tempdir from an example is accepted", {
+test_that("lab_example_writes(): accepts a write into tempdir", {
   expect_true(lab_example_writes(rd_pkg("writeLines('x', tempfile())"),
                                  verbose = FALSE)$passed)
   expect_true(lab_example_writes(
@@ -103,16 +109,18 @@ test_that("a write into tempdir from an example is accepted", {
   )$passed)
 })
 
+# Test lab_example_state() ----
+
 # "Please always make sure to reset to user's options(), working directory or par()
 # after you changed it in examples and vignettes and demos" -> in your inst/demo folder
-test_that("state changed in a demo and never restored is reported", {
+test_that("lab_example_state(): reports state never restored in a demo", {
   pkg <- script_pkg(c("options(digits = 3)", "plot(1:10)"), file.path("inst", "demo"), "d.R")
   res <- lab_example_state(pkg, verbose = FALSE)
   expect_false(res$passed)
   expect_match(res$issues, "demo", all = FALSE)
 })
 
-test_that("state captured and put back is accepted", {
+test_that("lab_example_state(): accepts state captured and put back", {
   pkg <- script_pkg(
     c("old <- options(digits = 3)", "plot(1:10)", "options(old)"),
     file.path("inst", "demo"), "d.R"
@@ -126,7 +134,7 @@ test_that("state captured and put back is accepted", {
   expect_true(lab_example_state(par_pkg, verbose = FALSE)$passed)
 })
 
-test_that("an assignment that is not a restore does not count as one", {
+test_that("lab_example_state(): an unrelated assignment is not a restore", {
   # The restore predicate wants an assignment that CAPTURES options()/par()/getwd().
   # Every other must-fail fixture here contains no assignment at all, so a rule
   # that accepted any assignment whatsoever would still pass them. This one assigns
@@ -140,26 +148,30 @@ test_that("an assignment that is not a restore does not count as one", {
   expect_match(res$issues, "never restored", all = FALSE, fixed = TRUE)
 })
 
-test_that("reading options or par is not a change", {
+test_that("lab_example_state(): reading options or par is not a change", {
   pkg <- script_pkg(c("u <- par('usr')", "d <- options('digits')"),
                     file.path("inst", "demo"), "d.R")
   expect_true(lab_example_state(pkg, verbose = FALSE)$passed)
 })
 
+# Test lab_example_internal_ns() ----
+
 # "Used ::: in documentation: man/paint_format.Rd: paintr:::paint_format(...)"
-test_that("a triple colon in an example is reported", {
+test_that("lab_example_internal_ns(): reports a triple colon in an example", {
   pkg <- rd_pkg("t:::internal_fn(1)")
   res <- lab_example_internal_ns(pkg, verbose = FALSE)
   expect_false(res$passed)
   expect_match(res$issues, ":::", all = FALSE, fixed = TRUE)
 })
 
-test_that("a double colon in an example is accepted", {
+test_that("lab_example_internal_ns(): accepts a double colon in an example", {
   expect_true(lab_example_internal_ns(rd_pkg("stats::median(1:3)"),
                                       verbose = FALSE)$passed)
 })
 
-test_that("the example checks run as part of checktor()", {
+# Test checktor() ----
+
+test_that("checktor(): runs the example checks", {
   pkg <- rd_pkg("install.packages('somepkg')")
   td <- tidy(checktor(pkg, verbose = FALSE, progress = FALSE))
   for (nm in c("example_interactive", "example_installs", "example_writes",
@@ -169,13 +181,17 @@ test_that("the example checks run as part of checktor()", {
   expect_false(td$passed[td$check == "example_installs"])
 })
 
-test_that("example_structure no longer treats an install as a reason for dontrun", {
+# Test lab_example_structure() ----
+
+test_that("lab_example_structure(): an install is not a reason for dontrun", {
   # checktor used to accept this shape, which is the one CRAN sent back.
   pkg <- rd_pkg(c("\\dontrun{", "  install_nodejs()", "  run_electron_app()", "}"))
   expect_false(lab_example_structure(pkg, verbose = FALSE)$passed)
 })
 
-test_that("the write checks know the tidyverse and other common writers", {
+# Test lab_example_writes() ----
+
+test_that("lab_example_writes(): knows the tidyverse and common writers", {
   # The three write-related checks each carried their own list, so one knew about
   # a function the others did not. They share WRITE_FUNCTIONS now.
   for (fn in c("write_csv", "write_rds", "write_tsv", "fwrite", "write_xlsx",
@@ -196,7 +212,9 @@ test_that("the write checks know the tidyverse and other common writers", {
   expect_true(lab_example_writes(safe, verbose = FALSE)$passed)
 })
 
-test_that("a write function's destination position resolves to that argument", {
+# Test write_destination() ----
+
+test_that("write_destination(): resolves each writer's destination argument", {
   # This used to read expect_setequal(WRITE_FUNCTIONS, names(WRITE_DEST_ARG)),
   # which is x == x: WRITE_FUNCTIONS is DEFINED as names(WRITE_DEST_ARG), so no
   # edit to either could ever fail it. The expectations below are written out
@@ -238,7 +256,9 @@ test_that("a write function's destination position resolves to that argument", {
   }
 })
 
-test_that("the two ::: checks agree rather than contradict", {
+# Test lab_unexported_example_ns() ----
+
+test_that("lab_unexported_example_ns(): agrees with the other ::: check", {
   # unexported_example_ns used to tell a maintainer to add ::: to an example,
   # which is the change CRAN asks them to undo.
   #
@@ -268,4 +288,23 @@ test_that("the two ::: checks agree rather than contradict", {
   )
   expect_false(grepl("use `pkg:::", out, fixed = TRUE))
   expect_match(out, "Export the object", fixed = TRUE)
+})
+
+# Test lab_example_internal_ns() ----
+
+test_that("lab_example_internal_ns(): skips an .Rbuildignore'd .Rd", {
+  # {devtag}'s @dev tag documents an unexported function and adds the .Rd to
+  # .Rbuildignore, so the topic never reaches CRAN. Reading it anyway told a
+  # maintainer to remove a ::: from a file no reviewer will ever see.
+  pkg <- rd_pkg("t:::internal_fn(1)")
+  writeLines("^man/f\\.Rd$", file.path(pkg, ".Rbuildignore"))
+  expect_true(lab_example_internal_ns(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_example_internal_ns(): reads an .Rd the tarball keeps", {
+  # The guard against over-filtering: an unrelated .Rbuildignore entry must not
+  # take the rest of man/ with it.
+  pkg <- rd_pkg("t:::internal_fn(1)")
+  writeLines("^docs$", file.path(pkg, ".Rbuildignore"))
+  expect_false(lab_example_internal_ns(pkg, verbose = FALSE)$passed)
 })

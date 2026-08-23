@@ -1,4 +1,6 @@
-test_that("checktor returns a checktor_results object with all categories", {
+# Test checktor() ----
+
+test_that("checktor(): returns a checktor_results object with all categories", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
 
@@ -27,7 +29,7 @@ test_that("checktor returns a checktor_results object with all categories", {
   ))
 })
 
-test_that("a clean package has zero issues", {
+test_that("checktor(): a clean package has zero issues", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
 
@@ -37,7 +39,7 @@ test_that("a clean package has zero issues", {
   expect_equal(results$metadata$failed_checks, 0L)
 })
 
-test_that("total_issues counts every individual issue, not failed checks", {
+test_that("checktor(): total_issues counts every issue, not failed checks", {
   pkg <- make_temp_dir()
   # Three distinct T/F issues on three lines plus one hardcoded seed
   r_code <- c(
@@ -56,7 +58,7 @@ test_that("total_issues counts every individual issue, not failed checks", {
   expect_lt(results$metadata$failed_checks, results$metadata$total_issues)
 })
 
-test_that("policy violations are part of the main run", {
+test_that("checktor(): policy violations are part of the main run", {
   pkg <- make_temp_dir()
   write_pkg(pkg, r_code = c("f <- function() { browser(); 1 }"))
 
@@ -65,12 +67,14 @@ test_that("policy violations are part of the main run", {
   expect_false(results$policy_issues$browser_calls$passed)
 })
 
-test_that("checktor errors clearly on a non-package directory", {
+test_that("checktor(): errors clearly on a non-package directory", {
   empty <- make_temp_dir()
   expect_error(checktor(empty, verbose = FALSE), "No DESCRIPTION file found")
 })
 
-test_that("diagnose_* functions tolerate missing R/man directories", {
+# Test diagnose_code_issues() ----
+
+test_that("diagnose_code_issues(): tolerates missing R/ and man/", {
   empty <- make_temp_dir()
   expect_no_error(diagnose_code_issues(empty, verbose = FALSE))
   expect_no_error(diagnose_documentation_issues(empty, verbose = FALSE))
@@ -78,7 +82,7 @@ test_that("diagnose_* functions tolerate missing R/man directories", {
   expect_no_error(diagnose_policy_violations(empty, verbose = FALSE))
 })
 
-test_that("a check whose function errors surfaces as a failure", {
+test_that("diagnose_code_issues(): a check that errors surfaces as a failure", {
   # Stub a diagnostic that always throws; check that the orchestrator records
   # it as a failure with a non-empty message rather than silently dropping it.
   with_mocked_bindings(
@@ -95,14 +99,18 @@ test_that("a check whose function errors surfaces as a failure", {
   )
 })
 
-test_that("print.checktor_results runs without error", {
+# Test print.checktor_results() ----
+
+test_that("print.checktor_results(): runs without error", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   results <- checktor(pkg, verbose = FALSE, progress = FALSE)
   expect_no_error(print(results))
 })
 
-test_that("configure_doctor changes the defaults consumed by checktor", {
+# Test configure_doctor() ----
+
+test_that("configure_doctor(): changes the defaults consumed by checktor", {
   orig <- options(checktor.verbose = NULL, checktor.progress = NULL)
   on.exit(options(orig), add = TRUE)
 
@@ -118,7 +126,9 @@ test_that("configure_doctor changes the defaults consumed by checktor", {
   expect_length(cli::cli_fmt(checktor(pkg)), 0L)
 })
 
-test_that("validate_package_directory enforces DESCRIPTION presence", {
+# Test validate_package_directory() ----
+
+test_that("validate_package_directory(): enforces DESCRIPTION presence", {
   empty <- make_temp_dir()
   expect_error(validate_package_directory(empty), "DESCRIPTION")
 
@@ -126,16 +136,18 @@ test_that("validate_package_directory enforces DESCRIPTION presence", {
   expect_true(validate_package_directory(empty))
 })
 
-test_that("safe_read_lines handles missing files", {
+# Test safe_read_lines() ----
+
+test_that("safe_read_lines(): handles missing files", {
   expect_equal(
     safe_read_lines(file.path(tempdir(), "definitely-missing.R")),
     character(0)
   )
 })
 
-# ---- prescribe() -------------------------------------------------------------
+# Test prescribe() ----
 
-test_that("prescribe() surfaces failed checks that have no curated treatment", {
+test_that("prescribe(): surfaces failed checks with no curated treatment", {
   # A package whose only defect is a missing NEWS file. The news_file check has
   # no entry in the curated `treatments` list, so before the fix prescribe()
   # printed only its header and stayed silent about the actual problem (#4).
@@ -152,7 +164,7 @@ test_that("prescribe() surfaces failed checks that have no curated treatment", {
   expect_match(txt, "No NEWS file found", fixed = TRUE)
 })
 
-test_that("prescribe() still emits curated treatments for known checks", {
+test_that("prescribe(): still emits curated treatments for known checks", {
   pkg <- make_temp_dir()
   write_pkg(pkg, r_code = "bad <- function() T")
 

@@ -1,7 +1,9 @@
 # Regression tests for the DESCRIPTION-file diagnostics, especially that
 # multi-line fields (Description, Title) are read in full via read.dcf.
 
-test_that("description_length reads continuation lines, not just the first line", {
+# Test lab_description_length() ----
+
+test_that("lab_description_length(): reads continuation lines, not just line 1", {
   pkg <- make_temp_dir()
   long_desc <- paste(
     "First sentence with enough words to fool nobody.",
@@ -16,14 +18,16 @@ test_that("description_length reads continuation lines, not just the first line"
   expect_gte(res$description_length$sentences, 2L)
 })
 
-test_that("description_length still flags genuinely short descriptions", {
+test_that("lab_description_length(): still flags short descriptions", {
   pkg <- make_temp_dir()
   write_pkg(pkg, description = "Short.")
   res <- diagnose_description_issues(pkg, verbose = FALSE)
   expect_false(res$description_length$passed)
 })
 
-test_that("software_names_formatting inspects continuation lines of Description", {
+# Test lab_software_names() ----
+
+test_that("lab_software_names(): inspects continuation lines of Description", {
   pkg <- make_temp_dir()
   desc <- paste(
     "Provides utilities.",
@@ -36,14 +40,14 @@ test_that("software_names_formatting inspects continuation lines of Description"
   expect_true(any(grepl("ggplot2", res$software_names$issues)))
 })
 
-test_that("software_names_formatting accepts properly quoted names", {
+test_that("lab_software_names(): accepts properly quoted names", {
   pkg <- make_temp_dir()
   write_pkg(pkg, description = "Wraps 'ggplot2' and 'dplyr' for convenience.")
   res <- diagnose_description_issues(pkg, verbose = FALSE)
   expect_true(res$software_names$passed)
 })
 
-test_that("software_names_formatting does NOT flag the bare letter R", {
+test_that("lab_software_names(): does NOT flag the bare letter R", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -53,7 +57,7 @@ test_that("software_names_formatting does NOT flag the bare letter R", {
   expect_true(res$software_names$passed)
 })
 
-test_that("software_names_formatting flags an unquoted WebAssembly", {
+test_that("lab_software_names(): flags an unquoted WebAssembly", {
   pkg <- make_temp_dir()
   write_pkg(pkg, description = "Runs R code in a WebAssembly runtime.")
   res <- lab_software_names(pkg, verbose = FALSE)
@@ -67,7 +71,9 @@ test_that("software_names_formatting flags an unquoted WebAssembly", {
   )
 })
 
-test_that("language_names flags bare programming-language names", {
+# Test lab_language_names() ----
+
+test_that("lab_language_names(): flags bare programming-language names", {
   pkg <- make_temp_dir()
   write_pkg(pkg, description = "Bridges R with Python and an SQL backend.")
   res <- lab_language_names(pkg, verbose = FALSE)
@@ -76,13 +82,13 @@ test_that("language_names flags bare programming-language names", {
   expect_true(any(grepl("SQL", res$issues)))
 })
 
-test_that("language_names accepts quoted names and does not flag bare R", {
+test_that("lab_language_names(): accepts quoted names, does not flag bare R", {
   pkg <- make_temp_dir()
   write_pkg(pkg, description = "Bridges R with 'Python' and an 'SQL' backend.")
   expect_true(lab_language_names(pkg, verbose = FALSE)$passed)
 })
 
-test_that("language_names is a distinct policy check from software_names", {
+test_that("lab_language_names(): is a policy check, not software_names", {
   pkg <- make_temp_dir()
   write_pkg(pkg, description = "Bridges R with Python and 'ggplot2'.")
   r <- checktor(pkg, verbose = FALSE, progress = FALSE)
@@ -92,7 +98,7 @@ test_that("language_names is a distinct policy check from software_names", {
   expect_true("description.language_names" %in% failed_checks(r))
 })
 
-test_that("language_names flags C++ but never matches inside a larger token", {
+test_that("lab_language_names(): flags C++ but not inside a larger token", {
   # "C++" carries regex metacharacters; quoting it clears the flag.
   bad <- make_temp_dir()
   write_pkg(bad, description = "Exposes a C++ engine to R.")
@@ -110,7 +116,7 @@ test_that("language_names flags C++ but never matches inside a larger token", {
   expect_true(lab_language_names(edge, verbose = FALSE)$passed)
 })
 
-test_that("language_names covers statistical-computing environments", {
+test_that("lab_language_names(): covers statistical-computing environments", {
   pkg <- make_temp_dir()
   write_pkg(pkg, description = "Imports data from MATLAB and SAS into R.")
   res <- lab_language_names(pkg, verbose = FALSE)
@@ -119,7 +125,7 @@ test_that("language_names covers statistical-computing environments", {
   expect_true(any(grepl("SAS", res$issues)))
 })
 
-test_that("language_names covers scripting, markup and data formats", {
+test_that("lab_language_names(): covers scripting, markup and data formats", {
   pkg <- make_temp_dir()
   write_pkg(pkg, description = "Renders Markdown, reads YAML, and drives Tcl widgets.")
   res <- lab_language_names(pkg, verbose = FALSE)
@@ -134,7 +140,9 @@ test_that("language_names covers scripting, markup and data formats", {
   expect_true(lab_language_names(ok, verbose = FALSE)$passed)
 })
 
-test_that("description_quoted_quotes flags double-quoted software names", {
+# Test lab_description_quoted_quotes() ----
+
+test_that("lab_description_quoted_quotes(): flags double-quoted names", {
   # The check only inspects DOUBLE-quoted spans, so a single-quoted fixture
   # exits before is_software_name() is ever consulted and proves nothing about
   # the vocabulary. Double quotes are what put SOFTWARE_NAMES under test.
@@ -155,7 +163,7 @@ test_that("description_quoted_quotes flags double-quoted software names", {
   expect_match(res$issues, "Shinylive", all = FALSE)
 })
 
-test_that("description_quoted_quotes leaves scare-quoted English alone", {
+test_that("lab_description_quoted_quotes(): ignores scare-quoted English", {
   # Double-quoted ordinary jargon IS what double quotes are reserved for; only
   # a recognised software name is a finding.
   pkg <- make_temp_dir()
@@ -169,7 +177,7 @@ test_that("description_quoted_quotes leaves scare-quoted English alone", {
   expect_true(lab_description_quoted_quotes(pkg, verbose = FALSE)$passed)
 })
 
-test_that("quoted WebAssembly/WASM/webR are recognised, not scare-quoted", {
+test_that("lab_description_quoted_quotes(): accepts single-quoted names", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -178,9 +186,9 @@ test_that("quoted WebAssembly/WASM/webR are recognised, not scare-quoted", {
   expect_true(lab_description_quoted_quotes(pkg, verbose = FALSE)$passed)
 })
 
-# ---- title_length ------------------------------------------------------------
+# Test lab_title_length() ----
 
-test_that("title_length flags a title longer than 65 characters", {
+test_that("lab_title_length(): flags a title longer than 65 characters", {
   pkg <- make_temp_dir()
   write_pkg(pkg, title = paste(rep("Word", 20), collapse = " ")) # > 65 chars
   res <- diagnose_description_issues(pkg, verbose = FALSE)
@@ -193,7 +201,7 @@ test_that("title_length flags a title longer than 65 characters", {
   )
 })
 
-test_that("title_length puts the boundary between 65 and 66 characters", {
+test_that("lab_title_length(): puts the boundary between 65 and 66 chars", {
   # The other fixtures are 99 and 21 characters, which leaves the threshold free
   # to move anywhere in 22..99 undetected. Pin it exactly.
   #
@@ -214,9 +222,9 @@ test_that("title_length puts the boundary between 65 and 66 characters", {
   expect_match(bad$issues, "last 1 character", all = FALSE)
 })
 
-# ---- description_function_quotes ---------------------------------------------
+# Test lab_description_function_quotes() ----
 
-test_that("description_function_quotes flags single-quoted function names", {
+test_that("lab_description_function_quotes(): flags single-quoted functions", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -239,7 +247,7 @@ test_that("description_function_quotes flags single-quoted function names", {
   )
 })
 
-test_that("description_function_quotes accepts quoted software names", {
+test_that("lab_description_function_quotes(): accepts quoted software names", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -253,7 +261,9 @@ test_that("description_function_quotes accepts quoted software names", {
   )
 })
 
-test_that("authors_field is OK when Authors@R is present, fails otherwise", {
+# Test lab_authors() ----
+
+test_that("lab_authors(): is OK when Authors@R is present, fails otherwise", {
   pkg_ok <- make_temp_dir()
   write_pkg(pkg_ok)
   expect_true(
@@ -272,7 +282,9 @@ test_that("authors_field is OK when Authors@R is present, fails otherwise", {
   )
 })
 
-test_that("acronym detection knows common abbreviations and reads continuations", {
+# Test lab_acronyms() ----
+
+test_that("lab_acronyms(): knows common abbreviations, reads continuations", {
   pkg <- make_temp_dir()
   desc <- paste(
     "Provides bindings to the OS for HTTP work.", # OS in unexplained set
@@ -288,7 +300,7 @@ test_that("acronym detection knows common abbreviations and reads continuations"
   expect_false("HTTP" %in% res$acronyms$issues)
 })
 
-test_that("acronym check treats 'expansion (ACRONYM)' as explained (#5)", {
+test_that("lab_acronyms(): treats 'expansion (ACRONYM)' as explained (#5)", {
   pkg <- make_temp_dir()
   desc <- paste(
     "Calculate and plot r2 coefficients between principal component",
@@ -302,7 +314,7 @@ test_that("acronym check treats 'expansion (ACRONYM)' as explained (#5)", {
   expect_false("PCA" %in% res$acronyms$issues)
 })
 
-test_that("acronym check reads a gloss whose expansion is a quoted software name", {
+test_that("lab_acronyms(): reads a gloss whose expansion is a quoted name", {
   # software_names requires a software name to be single-quoted, so the standard
   # gloss is "'WebAssembly' (WASM)". Anchoring the gloss to a word character put
   # the closing quote in the way, and checktor reported an acronym as unexplained
@@ -323,7 +335,7 @@ test_that("acronym check reads a gloss whose expansion is a quoted software name
   expect_true("WASM" %in% bare$issues)
 })
 
-test_that("acronym check treats 'ACRONYM (expansion)' as explained", {
+test_that("lab_acronyms(): treats 'ACRONYM (expansion)' as explained", {
   pkg <- make_temp_dir()
   desc <- paste(
     "Runs PCA (principal component analysis) over supplied matrices and",
@@ -336,7 +348,7 @@ test_that("acronym check treats 'ACRONYM (expansion)' as explained", {
   expect_false("PCA" %in% res$acronyms$issues)
 })
 
-test_that("acronym check still flags genuinely unexplained acronyms", {
+test_that("lab_acronyms(): still flags genuinely unexplained acronyms", {
   pkg <- make_temp_dir()
   desc <- paste(
     "Provides FOOBAR utilities for the analysis of tabular data and the",
@@ -349,9 +361,9 @@ test_that("acronym check still flags genuinely unexplained acronyms", {
   expect_true("FOOBAR" %in% res$acronyms$issues)
 })
 
-# ---- authors: template placeholders (the pcaR2 false negative) ----------------
+# Test lab_authors() ----
 
-test_that("authors_field flags an unfilled usethis template", {
+test_that("lab_authors(): flags an unfilled usethis template", {
   # pcaR2 shipped exactly this and checktor's presence-only check passed it, even
   # though it is a hard CRAN rejection. R CMD check says nothing: the field IS
   # present, so it has nothing to complain about.
@@ -368,7 +380,7 @@ test_that("authors_field flags an unfilled usethis template", {
   expect_true(any(grepl("placeholder", res$issues)))
 })
 
-test_that("authors_field flags a placeholder email and Your Name", {
+test_that("lab_authors(): flags a placeholder email and Your Name", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -385,7 +397,7 @@ test_that("authors_field flags a placeholder email and Your Name", {
   expect_match(res$issues, "you@example.com", all = FALSE)
 })
 
-test_that("authors_field does not invent placeholders in a real name", {
+test_that("lab_authors(): does not invent placeholders in a real name", {
   # "Firstname Lastly" contains the placeholder words as substrings; the word
   # boundaries in the matcher are what keep this a pass.
   pkg <- make_temp_dir()
@@ -401,15 +413,15 @@ test_that("authors_field does not invent placeholders in a real name", {
   expect_equal(length(res$issues), 0L)
 })
 
-test_that("authors_field passes a real, filled-in Authors@R", {
+test_that("lab_authors(): passes a real, filled-in Authors@R", {
   pkg <- make_temp_dir()
   write_pkg(pkg) # helper default is a real name/email
   expect_true(diagnose_description_issues(pkg, verbose = FALSE)$authors$passed)
 })
 
-# --- title_case (restored, now delegating to tools::toTitleCase) ------------
+# Test lab_title_case() ----
 
-test_that("lab_title_case does not flag a quoted software name", {
+test_that("lab_title_case(): does not flag a quoted software name", {
   # This is the false positive that made the homegrown word-loop unusable.
   # R's own engine restores single-quoted spans before comparing, so 'shiny'
   # keeps its lowercase s.
@@ -417,7 +429,7 @@ test_that("lab_title_case does not flag a quoted software name", {
   expect_true(lab_title_case(verbose = FALSE, desc = desc)$passed)
 })
 
-test_that("lab_title_case flags a genuinely non-title-case Title", {
+test_that("lab_title_case(): flags a genuinely non-title-case Title", {
   desc <- c(Title = "A package for running extra checks")
   res <- lab_title_case(verbose = FALSE, desc = desc)
   expect_false(res$passed)
@@ -425,14 +437,14 @@ test_that("lab_title_case flags a genuinely non-title-case Title", {
   expect_match(res$issues, "Running Extra Checks", fixed = TRUE, all = FALSE)
 })
 
-test_that("lab_title_case accepts a correct Title", {
+test_that("lab_title_case(): accepts a correct Title", {
   desc <- c(Title = "Extra CRAN Diagnostics for R Packages")
   expect_true(lab_title_case(verbose = FALSE, desc = desc)$passed)
 })
 
-# --- license (restored, now delegating to tools::analyze_license) -----------
+# Test lab_license() ----
 
-test_that("lab_license accepts a standardizable license", {
+test_that("lab_license(): accepts a standardizable license", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   # `MIT + file LICENSE` is only valid when the file it points at exists.
@@ -456,7 +468,7 @@ test_that("lab_license accepts a standardizable license", {
   )
 })
 
-test_that("lab_license flags a non-standardizable license", {
+test_that("lab_license(): flags a non-standardizable license", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   res <- lab_license(
@@ -467,7 +479,7 @@ test_that("lab_license flags a non-standardizable license", {
   expect_false(res$passed)
 })
 
-test_that("lab_license flags a missing referenced LICENSE file", {
+test_that("lab_license(): flags a missing referenced LICENSE file", {
   pkg <- make_temp_dir()
   write_pkg(pkg) # no LICENSE file written
   res <- lab_license(
@@ -479,9 +491,9 @@ test_that("lab_license flags a missing referenced LICENSE file", {
   expect_match(res$issues, "LICENSE", all = FALSE)
 })
 
-# --- description_starts_with (restored, broadened) --------------------------
+# Test lab_description_starts_with() ----
 
-test_that("lab_description_starts_with flags CRAN's forbidden openers", {
+test_that("lab_description_starts_with(): flags CRAN's forbidden openers", {
   for (bad in c(
     "This package provides tools for X.",
     "A package that does X.",
@@ -495,7 +507,7 @@ test_that("lab_description_starts_with flags CRAN's forbidden openers", {
   }
 })
 
-test_that("lab_description_starts_with flags a lowercase initial", {
+test_that("lab_description_starts_with(): flags a lowercase initial", {
   # R's own descr_bad_initial rule, which checktor previously lacked.
   res <- lab_description_starts_with(
     verbose = FALSE,
@@ -504,7 +516,7 @@ test_that("lab_description_starts_with flags a lowercase initial", {
   expect_false(res$passed)
 })
 
-test_that("lab_description_starts_with accepts a well-formed Description", {
+test_that("lab_description_starts_with(): accepts a well-formed Description", {
   expect_true(
     lab_description_starts_with(
       verbose = FALSE,
@@ -513,9 +525,9 @@ test_that("lab_description_starts_with accepts a well-formed Description", {
   )
 })
 
-# --- license_year (rebuilt: template placeholders, not year staleness) ------
+# Test lab_license_year() ----
 
-test_that("lab_license_year flags an unfilled LICENSE template", {
+test_that("lab_license_year(): flags an unfilled LICENSE template", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   writeLines(
@@ -526,7 +538,7 @@ test_that("lab_license_year flags an unfilled LICENSE template", {
   expect_false(res$passed)
 })
 
-test_that("lab_license_year does not flag an old but filled-in year", {
+test_that("lab_license_year(): does not flag an old but filled-in year", {
   # The old rule fired on every package not touched this calendar year. A
   # LICENSE reading `YEAR: 1999` passes R CMD check --as-cran in silence.
   pkg <- make_temp_dir()
@@ -538,13 +550,15 @@ test_that("lab_license_year does not flag an old but filled-in year", {
   expect_true(lab_license_year(pkg, verbose = FALSE)$passed)
 })
 
-test_that("lab_license_year passes when there is no LICENSE file", {
+test_that("lab_license_year(): passes when there is no LICENSE file", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   expect_true(lab_license_year(pkg, verbose = FALSE)$passed)
 })
 
-test_that("description_length measures words, not sentences", {
+# Test lab_description_length() ----
+
+test_that("lab_description_length(): measures words, not sentences", {
   # renderthis ships a complete 31-word single-sentence Description. Demanding
   # "2+ sentences" has no authority and flagged it.
   one_sentence <- paste(
@@ -560,7 +574,7 @@ test_that("description_length measures words, not sentences", {
   )
 })
 
-test_that("description_length still flags a Description that says nothing", {
+test_that("lab_description_length(): flags a Description that says nothing", {
   res <- lab_description_length(
     verbose = FALSE,
     desc = c(Description = "Does stuff.")
@@ -568,28 +582,28 @@ test_that("description_length still flags a Description that says nothing", {
   expect_false(res$passed)
 })
 
-# ---- date_format -------------------------------------------------------------
+# Test lab_date_format() ----
 
-test_that("date_format passes when Date is absent (the preferred case)", {
+test_that("lab_date_format(): passes when Date is absent, the preferred case", {
   expect_true(
     lab_date_format(verbose = FALSE, desc = list(Package = "x"))$passed
   )
 })
 
-test_that("date_format passes on a current ISO-8601 date", {
+test_that("lab_date_format(): passes on a current ISO-8601 date", {
   today <- format(Sys.Date())
   expect_true(
     lab_date_format(verbose = FALSE, desc = list(Date = today))$passed
   )
 })
 
-test_that("date_format flags a non-ISO-8601 Date", {
+test_that("lab_date_format(): flags a non-ISO-8601 Date", {
   res <- lab_date_format(verbose = FALSE, desc = list(Date = "Jan 2020"))
   expect_false(res$passed)
   expect_true(any(grepl("ISO 8601", res$issues)))
 })
 
-test_that("date_format flags a stale Date read from the package file", {
+test_that("lab_date_format(): flags a stale Date read from the package file", {
   pkg <- make_temp_dir()
   write_pkg(pkg, extra = "Date: 2000-01-01")
   res <- diagnose_description_issues(pkg, verbose = FALSE)$date_format
@@ -597,7 +611,7 @@ test_that("date_format flags a stale Date read from the package file", {
   expect_true(any(grepl("month old", res$issues)))
 })
 
-test_that("date_format flags a future Date", {
+test_that("lab_date_format(): flags a future Date", {
   expect_false(
     lab_date_format(
       verbose = FALSE,
@@ -606,9 +620,9 @@ test_that("date_format flags a future Date", {
   )
 })
 
-# ---- encoding_utf8 -----------------------------------------------------------
+# Test lab_encoding_utf8() ----
 
-test_that("encoding_utf8 accepts the portable set (UTF-8, latin1, latin2) or none", {
+test_that("lab_encoding_utf8(): accepts UTF-8, latin1, latin2 or none", {
   for (enc in c("UTF-8", "utf-8", "latin1", "latin2")) {
     expect_true(
       lab_encoding_utf8(
@@ -623,7 +637,7 @@ test_that("encoding_utf8 accepts the portable set (UTF-8, latin1, latin2) or non
   )
 })
 
-test_that("encoding_utf8 flags a non-portable Encoding", {
+test_that("lab_encoding_utf8(): flags a non-portable Encoding", {
   res <- lab_encoding_utf8(
     verbose = FALSE,
     desc = list(Encoding = "KOI8-R")
@@ -632,9 +646,9 @@ test_that("encoding_utf8 flags a non-portable Encoding", {
   expect_true(any(grepl("portable", res$issues)))
 })
 
-# ---- version_format ----------------------------------------------------------
+# Test lab_version_format() ----
 
-test_that("version_format passes on ordinary versions and dated ones", {
+test_that("lab_version_format(): passes on ordinary versions and dated ones", {
   expect_true(
     lab_version_format(
       verbose = FALSE,
@@ -650,7 +664,7 @@ test_that("version_format passes on ordinary versions and dated ones", {
   )
 })
 
-test_that("version_format flags a leading-zero component", {
+test_that("lab_version_format(): flags a leading-zero component", {
   res <- lab_version_format(
     verbose = FALSE,
     desc = list(Version = "0.02.0")
@@ -659,7 +673,7 @@ test_that("version_format flags a leading-zero component", {
   expect_true(any(grepl("leading zero", res$issues)))
 })
 
-test_that("version_format flags a suspiciously large component", {
+test_that("lab_version_format(): flags a suspiciously large component", {
   expect_false(
     lab_version_format(
       verbose = FALSE,
@@ -668,7 +682,7 @@ test_that("version_format flags a suspiciously large component", {
   )
 })
 
-test_that("version_format flags an unparseable version", {
+test_that("lab_version_format(): flags an unparseable version", {
   res <- lab_version_format(
     verbose = FALSE,
     desc = list(Version = "not.a.version")
@@ -677,7 +691,7 @@ test_that("version_format flags an unparseable version", {
   expect_true(any(grepl("not a valid", res$issues)))
 })
 
-test_that("version_format exempts dated (prior-year, zero-padded) and dev versions", {
+test_that("lab_version_format(): exempts dated and dev versions", {
   # a calendar-versioned package from a prior year, a zero-padded month, and the
   # ubiquitous .9000 development suffix are all legitimate, not oversized.
   expect_true(
@@ -700,9 +714,9 @@ test_that("version_format exempts dated (prior-year, zero-padded) and dev versio
   )
 })
 
-# ---- authors_field structural validity ---------------------------------------
+# Test lab_authors() ----
 
-test_that("authors_field passes a well-formed Authors@R", {
+test_that("lab_authors(): passes a well-formed Authors@R", {
   aar <- "person('Jane', 'Doe', email = 'jane@example.org', role = c('aut', 'cre'))"
   expect_true(
     lab_authors(
@@ -712,21 +726,21 @@ test_that("authors_field passes a well-formed Authors@R", {
   )
 })
 
-test_that("authors_field flags Authors@R with no maintainer (cre)", {
+test_that("lab_authors(): flags Authors@R with no maintainer (cre)", {
   aar <- "person('Jane', 'Doe', role = 'aut')"
   res <- lab_authors(verbose = FALSE, desc = list(`Authors@R` = aar))
   expect_false(res$passed)
   expect_true(any(grepl("cre", res$issues)))
 })
 
-test_that("authors_field flags a person with no name", {
+test_that("lab_authors(): flags a person with no name", {
   aar <- "person(role = c('aut', 'cre'))"
   res <- lab_authors(verbose = FALSE, desc = list(`Authors@R` = aar))
   expect_false(res$passed)
   expect_true(any(grepl("no name", res$issues)))
 })
 
-test_that("authors_field flags an Authors@R that does not parse", {
+test_that("lab_authors(): flags an Authors@R that does not parse", {
   res <- lab_authors(
     verbose = FALSE,
     desc = list(`Authors@R` = "person('Jane',,")
@@ -735,9 +749,9 @@ test_that("authors_field flags an Authors@R that does not parse", {
   expect_true(any(grepl("does not parse", res$issues)))
 })
 
-# ---- identifier_format -------------------------------------------------------
+# Test lab_identifier_format() ----
 
-test_that("identifier_format passes a valid ORCID and no-identifier case", {
+test_that("lab_identifier_format(): passes a valid ORCID and no identifier", {
   ok <- "person('J', 'D', role = 'cre', comment = c(ORCID = '0000-0002-1825-0097'))"
   expect_true(
     lab_identifier_format(
@@ -754,7 +768,7 @@ test_that("identifier_format passes a valid ORCID and no-identifier case", {
   )
 })
 
-test_that("identifier_format flags an ORCID that fails its checksum", {
+test_that("lab_identifier_format(): flags an ORCID that fails its checksum", {
   bad <- "person('J', 'D', role = 'cre', comment = c(ORCID = '0000-0002-1825-0090'))"
   res <- lab_identifier_format(
     verbose = FALSE,
@@ -764,7 +778,7 @@ test_that("identifier_format flags an ORCID that fails its checksum", {
   expect_true(any(grepl("ORCID", res$issues)))
 })
 
-test_that("identifier_format accepts an X check-digit and a URL-wrapped ORCID", {
+test_that("lab_identifier_format(): accepts an X check-digit and a URL form", {
   xd <- "person('J', 'D', role = 'cre', comment = c(ORCID = '0000-0002-1694-233X'))"
   expect_true(
     lab_identifier_format(
@@ -781,7 +795,7 @@ test_that("identifier_format accepts an X check-digit and a URL-wrapped ORCID", 
   )
 })
 
-test_that("identifier_format validates ROR ids and ignores free-text comments", {
+test_that("lab_identifier_format(): validates ROR ids and ignores free text", {
   good <- "person('J', 'D', role = 'cre', comment = c(ROR = '05dxps055'))"
   expect_true(
     lab_identifier_format(
@@ -805,14 +819,16 @@ test_that("identifier_format validates ROR ids and ignores free-text comments", 
   )
 })
 
-test_that("authors_field flags a person with no role", {
+# Test lab_authors() ----
+
+test_that("lab_authors(): flags a person with no role", {
   aar <- "c(person('Jane', 'Doe', role = 'cre'), person('No', 'Role'))"
   res <- lab_authors(verbose = FALSE, desc = list(`Authors@R` = aar))
   expect_false(res$passed)
   expect_true(any(grepl("no role", res$issues)))
 })
 
-test_that("authors_field reports a field that evaluates to a non-person", {
+test_that("lab_authors(): reports a field that evaluates to a non-person", {
   res <- lab_authors(
     verbose = FALSE,
     desc = list(`Authors@R` = "list(1, 2)")
@@ -821,7 +837,7 @@ test_that("authors_field reports a field that evaluates to a non-person", {
   expect_true(any(grepl("does not (parse|evaluate)", res$issues)))
 })
 
-test_that("Authors@R is not executed while diagnosing (no arbitrary code)", {
+test_that("lab_authors(): Authors@R is not executed while diagnosing", {
   # checktor lints other people's packages; a malicious Authors@R must not run.
   marker <- tempfile()
   on.exit(unlink(marker), add = TRUE)
@@ -831,9 +847,9 @@ test_that("Authors@R is not executed while diagnosing (no arbitrary code)", {
   expect_false(res$passed) # and the field is reported, not silently accepted
 })
 
-# ---- spelling ----------------------------------------------------------------
+# Test lab_spelling() ----
 
-test_that("lab_spelling flags DESCRIPTION words and honours a whitelist", {
+test_that("lab_spelling(): flags DESCRIPTION words and honours a whitelist", {
   skip_if_not(
     nzchar(Sys.which("aspell")) || nzchar(Sys.which("hunspell")),
     "no spell-check backend"
@@ -868,7 +884,9 @@ test_that("lab_spelling flags DESCRIPTION words and honours a whitelist", {
   expect_true(lab_spelling(pkg3, verbose = FALSE)$passed)
 })
 
-test_that("spelling_accepted_words gathers every whitelist mechanism", {
+# Test spelling_accepted_words() ----
+
+test_that("spelling_accepted_words(): gathers every whitelist mechanism", {
   # The detection test above is gated behind a backend that no CI leg installs,
   # so the whitelist plumbing is pinned here instead: no aspell/hunspell needed.
   pkg <- make_temp_dir()
@@ -891,13 +909,15 @@ test_that("spelling_accepted_words gathers every whitelist mechanism", {
   )
 })
 
-test_that("spelling_accepted_words is empty for a package with no whitelist", {
+test_that("spelling_accepted_words(): is empty when there is no whitelist", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   expect_equal(spelling_accepted_words(pkg), character(0))
 })
 
-test_that("lab_spelling reports a skip, not a pass, when turned off", {
+# Test lab_spelling() ----
+
+test_that("lab_spelling(): reports a skip, not a pass, when turned off", {
   # A skipped check that reads as a passing one is exactly the failure mode the
   # skipped-result contract exists to prevent: the printed summary would drop
   # spelling from "checks did not run".
@@ -911,7 +931,7 @@ test_that("lab_spelling reports a skip, not a pass, when turned off", {
   expect_equal(length(res$issues), 0L)
 })
 
-test_that("lab_spelling reports a skip when no backend is installed", {
+test_that("lab_spelling(): reports a skip when no backend is installed", {
   old <- options(checktor.spelling = TRUE)
   on.exit(options(old), add = TRUE)
   # Empty the PATH so Sys.which() finds neither aspell nor hunspell, which is
