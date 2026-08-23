@@ -21,6 +21,12 @@ relative links whose target is missing on disk or excluded by
 \code{.Rbuildignore} (and therefore absent after \verb{R CMD build}). Relative links
 to files that are included (e.g. \code{man/figures/logo.png}) are not flagged.
 }
+\details{
+Only what a renderer turns into a link counts. Fenced code blocks, inline
+code spans and HTML comments are left out of the scan, so a setup chunk
+calling \code{knitr::opts_chunk[["set"]](...)} is read as the code it is rather
+than as a link to a file named after its arguments.
+}
 \section{Source}{
 
 No formal rule. A relative README link whose target is excluded from the

@@ -239,11 +239,20 @@ lab_cran_comments_file <- function(path, verbose = TRUE) {
 
 # Pull link/image targets out of README text. Handles markdown `](target)`
 # and `<a href=...>` / `<img src=...>` HTML attributes. Returns raw targets.
+#
+# A destination written bare cannot contain whitespace; one that does is
+# `<pointy bracketed>` or it is not a destination. That check is what tells a
+# real link from a stray `](` in prose, and it is deliberately kept even though
+# strip_markdown_code() already removes the usual source of those.
 extract_link_targets <- function(text) {
   md <- regmatches(text, gregexpr("\\]\\([^)]+\\)", text, perl = TRUE))[[1L]]
   md <- sub("^\\]\\(", "", md)
   md <- sub("\\)$", "", md)
   md <- sub("\\s+[\"'].*$", "", md) # strip optional link title
+  md <- trimws(md)
+  pointy <- grepl("^<.*>$", md)
+  md[pointy] <- sub("^<(.*)>$", "\\1", md[pointy])
+  md <- md[pointy | !grepl("[[:space:]]", md)]
   html <- regmatches(
     text,
     gregexpr("(?:href|src)\\s*=\\s*[\"'][^\"']+[\"']", text, perl = TRUE)
@@ -269,6 +278,11 @@ is_external_or_anchor <- function(tgt) {
 #' relative links whose target is missing on disk or excluded by
 #' `.Rbuildignore` (and therefore absent after `R CMD build`). Relative links
 #' to files that are included (e.g. `man/figures/logo.png`) are not flagged.
+#'
+#' Only what a renderer turns into a link counts. Fenced code blocks, inline
+#' code spans and HTML comments are left out of the scan, so a setup chunk
+#' calling `knitr::opts_chunk[["set"]](...)` is read as the code it is rather
+#' than as a link to a file named after its arguments.
 #'
 #' @section Source:
 #' No formal rule. A relative README link whose target is excluded from the
@@ -306,7 +320,7 @@ lab_readme_links <- function(path, verbose = TRUE) {
     if (length(content) == 0L) {
       next
     }
-    text <- paste(content, collapse = "\n")
+    text <- strip_markdown_code(content)
     for (tgt in extract_link_targets(text)) {
       if (is_external_or_anchor(tgt)) {
         next
@@ -378,16 +392,8 @@ lab_readme_links <- function(path, verbose = TRUE) {
 #' issues(lab_urls(pkg_path, verbose = FALSE))
 lab_urls <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
-  rd_files <- list.files(
-    file.path(path, "man"),
-    pattern = "\\.Rd$",
-    full.names = TRUE
-  )
-  vignette_files <- list.files(
-    file.path(path, "vignettes"),
-    pattern = "\\.(Rmd|qmd|md)$",
-    full.names = TRUE
-  )
+  rd_files <- list_rd_files(path)
+  vignette_files <- list_included_files(path, "vignettes", "\\.(Rmd|qmd|md)$")
   text_files <- c(
     file.path(path, "DESCRIPTION"),
     file.path(path, "README.md"),
@@ -400,8 +406,8 @@ lab_urls <- function(path, verbose = TRUE) {
     return(checktor_check_result(TRUE, character(0), "URLs check"))
   }
 
-  http_re <- "http://(?!localhost|127\\.0\\.0\\.1|0\\.0\\.0\\.0)[^\\s\"'>)\\]]*"
-  shortener_re <- "\\bhttps?://(bit\\.ly|tinyurl\\.com|goo\\.gl|t\\.co|ow\\.ly)/[^\\s\"'>)\\]]*"
+  http_re <- "http://(?!localhost|127\\.0\\.0\\.1|0\\.0\\.0\\.0)[^\\s\"'>)\\]`]*"
+  shortener_re <- "\\bhttps?://(bit\\.ly|tinyurl\\.com|goo\\.gl|t\\.co|ow\\.ly)/[^\\s\"'>)\\]`]*"
 
   report <- function(file, text) {
     out <- character(0)
@@ -456,15 +462,16 @@ lab_urls <- function(path, verbose = TRUE) {
   checktor_check_result(passed, issues, "URLs check")
 }
 
-# Drop fenced code blocks (``` ... ```) from markdown-ish text. They are literal
-# spans: text inside them is being shown, not linked.
+# Drop fenced code blocks from markdown-ish text. They are literal spans: text
+# inside them is being shown, not linked.
+#
+# This counted backtick fences off against each other in pairs, which a README
+# quoting markdown inside a ````-fence puts out of step: from the inner fence on,
+# every code block read as prose and every paragraph read as code. It shares
+# blank_fenced_code() with the README link scan now, so both know a tilde fence
+# and a nested one.
 drop_fenced_code <- function(lines) {
-  fence <- grepl("^\\s*```", lines)
-  if (!any(fence)) {
-    return(lines)
-  }
-  inside <- cumsum(fence) %% 2L == 1L
-  lines[!(inside | fence)]
+  blank_fenced_code(sub("\r+$", "", lines))
 }
 
 # A seam over R's own URL checker so the network fetch can be stubbed in tests.
