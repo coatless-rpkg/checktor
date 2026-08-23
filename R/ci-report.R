@@ -292,8 +292,11 @@ fingerprint <- function(check, path, line, detail) {
 #' @param format Character. One of `"auto"`, `"github"`, `"gitlab"`,
 #'   `"checkstyle"`, `"sarif"`, `"azure"` or `"text"`. `"auto"` reads the
 #'   environment variables each forge sets.
-#' @param file Character. Where to write. Defaults to standard output for the
-#'   comment-style formats and to a conventional file name for the report styles.
+#' @param file Character. Where to write. Omit it for the format's natural
+#'   destination, standard output for the comment styles and a conventional file
+#'   name for the report styles. Pass `NULL` to emit nothing and only return the
+#'   lines, which is what you want when testing or post-processing a report rather
+#'   than handing it to a build. Pass `stdout()` to print regardless of format.
 #' @param severity Character. Which tiers to report. Defaults to every tier, since
 #'   an annotation is information rather than a verdict.
 #' @param skipped Logical. Report the checks that did not run. Defaults to `TRUE`,
@@ -310,8 +313,9 @@ fingerprint <- function(check, path, line, detail) {
 #'                                  show_content = FALSE)
 #' results <- checktor(pkg, verbose = FALSE, progress = FALSE)
 #'
-#' # What a GitHub Actions job would emit
-#' writeLines(head(ci_report(results, format = "github", file = NULL), 3))
+#' # What a GitHub Actions job would emit. Indented here, because a runner reads
+#' # any line starting with `::` as a command, including one this example printed.
+#' writeLines(paste0("  ", head(ci_report(results, format = "github", file = NULL), 3)))
 ci_report <- function(
   results = NULL,
   format = c("auto", "github", "gitlab", "checkstyle", "sarif", "azure", "text"),
@@ -402,6 +406,14 @@ ci_report <- function(
     sarif = "checktor.sarif",
     NULL
   )
+  # Omitting `file` asks for the format's natural destination. Passing NULL asks
+  # for the lines and nothing else, which is what a test, an example or a caller
+  # post-processing the result wants. Those are different requests, and conflating
+  # them meant checktor could not be exercised on a runner without its fixtures'
+  # workflow commands being read as real annotations against the repo under test.
+  if (!missing(file) && is.null(file)) {
+    return(invisible(out))
+  }
   target <- if (missing(file)) default_file else file
   # An artifact is written even with nothing to report, so a forge can clear the
   # findings a previous run left on the same branch.

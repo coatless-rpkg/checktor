@@ -21,8 +21,11 @@ ci_report(
 \code{"checkstyle"}, \code{"sarif"}, \code{"azure"} or \code{"text"}. \code{"auto"} reads the
 environment variables each forge sets.}
 
-\item{file}{Character. Where to write. Defaults to standard output for the
-comment-style formats and to a conventional file name for the report styles.}
+\item{file}{Character. Where to write. Omit it for the format's natural
+destination, standard output for the comment styles and a conventional file
+name for the report styles. Pass \code{NULL} to emit nothing and only return the
+lines, which is what you want when testing or post-processing a report rather
+than handing it to a build. Pass \code{stdout()} to print regardless of format.}
 
 \item{severity}{Character. Which tiers to report. Defaults to every tier, since
 an annotation is information rather than a verdict.}
@@ -67,8 +70,9 @@ pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)
 results <- checktor(pkg, verbose = FALSE, progress = FALSE)
 
-# What a GitHub Actions job would emit
-writeLines(head(ci_report(results, format = "github", file = NULL), 3))
+# What a GitHub Actions job would emit. Indented here, because a runner reads
+# any line starting with `::` as a command, including one this example printed.
+writeLines(paste0("  ", head(ci_report(results, format = "github", file = NULL), 3)))
 }
 \seealso{
 \code{\link[=checkup]{checkup()}} for the pass or fail gate, \code{\link[=health_report]{health_report()}} for a report
