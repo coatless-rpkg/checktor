@@ -346,6 +346,27 @@ test_that("lab_example_writes(): accepts a write into tempdir", {
   )$passed)
 })
 
+test_that("lab_example_writes(): knows the tidyverse and common writers", {
+  # The three write-related checks each carried their own list, so one knew about
+  # a function the others did not. They share WRITE_FUNCTIONS now.
+  for (fn in c("write_csv", "write_rds", "write_tsv", "fwrite", "write_xlsx",
+               "write_json", "write_parquet", "ggsave", "writeBin")) {
+    expect_true(fn %in% WRITE_FUNCTIONS, info = fn)
+    expect_false(is.null(WRITE_DEST_ARG[[fn]]), info = fn)
+    # NA is a legitimate entry -- it means "named argument only", as in
+    # `save(x, file = )` -- but it makes write_destination() return NULL for a
+    # positional call, so an NA here would silently unjudge the function. These
+    # writers all take their destination positionally.
+    expect_false(is.na(WRITE_DEST_ARG[[fn]]), info = fn)
+  }
+
+  pkg <- rd_pkg("write_csv(x, 'out.csv')")
+  expect_false(lab_example_writes(pkg, verbose = FALSE)$passed)
+
+  safe <- rd_pkg("write_csv(x, tempfile())")
+  expect_true(lab_example_writes(safe, verbose = FALSE)$passed)
+})
+
 # Test lab_example_state() ----
 
 # "Please always make sure to reset to user's options(), working directory or par()
@@ -405,129 +426,6 @@ test_that("lab_example_internal_ns(): accepts a double colon in an example", {
   expect_true(lab_example_internal_ns(rd_pkg("stats::median(1:3)"),
                                       verbose = FALSE)$passed)
 })
-
-# Test checktor() ----
-
-test_that("checktor(): runs the example checks", {
-  pkg <- rd_pkg("install.packages('somepkg')")
-  td <- tidy(checktor(pkg, verbose = FALSE, progress = FALSE))
-  for (nm in c("example_interactive", "example_installs", "example_writes",
-               "example_state", "example_internal_ns")) {
-    expect_true(nm %in% td$check, info = nm)
-  }
-  expect_false(td$passed[td$check == "example_installs"])
-})
-
-# Test lab_example_structure() ----
-
-test_that("lab_example_structure(): an install is not a reason for dontrun", {
-  # checktor used to accept this shape, which is the one CRAN sent back.
-  pkg <- rd_pkg(c("\\dontrun{", "  install_nodejs()", "  run_electron_app()", "}"))
-  expect_false(lab_example_structure(pkg, verbose = FALSE)$passed)
-})
-
-# Test lab_example_writes() ----
-
-test_that("lab_example_writes(): knows the tidyverse and common writers", {
-  # The three write-related checks each carried their own list, so one knew about
-  # a function the others did not. They share WRITE_FUNCTIONS now.
-  for (fn in c("write_csv", "write_rds", "write_tsv", "fwrite", "write_xlsx",
-               "write_json", "write_parquet", "ggsave", "writeBin")) {
-    expect_true(fn %in% WRITE_FUNCTIONS, info = fn)
-    expect_false(is.null(WRITE_DEST_ARG[[fn]]), info = fn)
-    # NA is a legitimate entry -- it means "named argument only", as in
-    # `save(x, file = )` -- but it makes write_destination() return NULL for a
-    # positional call, so an NA here would silently unjudge the function. These
-    # writers all take their destination positionally.
-    expect_false(is.na(WRITE_DEST_ARG[[fn]]), info = fn)
-  }
-
-  pkg <- rd_pkg("write_csv(x, 'out.csv')")
-  expect_false(lab_example_writes(pkg, verbose = FALSE)$passed)
-
-  safe <- rd_pkg("write_csv(x, tempfile())")
-  expect_true(lab_example_writes(safe, verbose = FALSE)$passed)
-})
-
-# Test write_destination() ----
-
-test_that("write_destination(): resolves each writer's destination argument", {
-  # This used to read expect_setequal(WRITE_FUNCTIONS, names(WRITE_DEST_ARG)),
-  # which is x == x: WRITE_FUNCTIONS is DEFINED as names(WRITE_DEST_ARG), so no
-  # edit to either could ever fail it. The expectations below are written out
-  # independently of the map, so a position that moves, or a writer that
-  # disappears, fails here. `dir.create()` is why the map exists at all: assuming
-  # "the second argument" reads its `showWarnings` flag as a path.
-  expected <- c(
-    write.csv = "p2", write.table = "p2", writeLines = "p2", saveRDS = "p2",
-    write_csv = "p2", fwrite = "p2", write_xlsx = "p2", write_parquet = "p2",
-    download.file = "p2",
-    save.image = "p1", file.create = "p1", dir.create = "p1", sink = "p1",
-    png = "p1", ggsave = "p1"
-  )
-  for (fn in names(expected)) {
-    expect_true(fn %in% WRITE_FUNCTIONS, info = fn)
-    xml <- parse_text_xml(sprintf("%s(p1, p2, p3)", fn))
-    dest <- write_destination(xml2::xml_find_first(xml, "//SYMBOL_FUNCTION_CALL"))
-    expect_false(is.null(dest), info = fn)
-    expect_equal(xml2::xml_text(dest), expected[[fn]], info = fn)
-  }
-
-  # `save(x, y, file = )` never takes its destination positionally, which is what
-  # the NA entries mean. They must find the named argument and nothing else.
-  for (fn in c("cat", "save", "capture.output")) {
-    expect_true(is.na(WRITE_DEST_ARG[[fn]]), info = fn)
-    xml <- parse_text_xml(sprintf("%s(p1, p2, p3)", fn))
-    expect_null(
-      write_destination(xml2::xml_find_first(xml, "//SYMBOL_FUNCTION_CALL")),
-      info = fn
-    )
-    named <- parse_text_xml(sprintf("%s(p1, file = 'out.txt')", fn))
-    expect_equal(
-      xml2::xml_text(write_destination(
-        xml2::xml_find_first(named, "//SYMBOL_FUNCTION_CALL")
-      )),
-      "'out.txt'",
-      info = fn
-    )
-  }
-})
-
-# Test lab_unexported_example_ns() ----
-
-test_that("lab_unexported_example_ns(): agrees with the other ::: check", {
-  # unexported_example_ns used to tell a maintainer to add ::: to an example,
-  # which is the change CRAN asks them to undo.
-  #
-  # The fixture needs a NAMESPACE and an unexported topic whose example calls it
-  # bare, or the check returns before it has anything to say and the assertion
-  # below passes on an empty string. And cli hard-wraps the treatment line, so the
-  # phrase has to be matched against the joined output, not element by element.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    rd_files = list(
-      "helper.Rd" = c(
-        "\\name{helper}", "\\alias{helper}", "\\title{Helper}",
-        "\\description{d}", "\\value{x}", "\\examples{", "helper(1)", "}"
-      )
-    )
-  )
-  writeLines("export(test_fn)", file.path(pkg, "NAMESPACE"))
-
-  res <- lab_unexported_example_ns(pkg, verbose = FALSE)
-  expect_false(res$passed)
-  expect_match(res$issues, "helper", all = FALSE, fixed = TRUE)
-
-  out <- paste(
-    cli::cli_fmt(lab_unexported_example_ns(pkg, verbose = TRUE)),
-    collapse = " "
-  )
-  expect_false(grepl("use `pkg:::", out, fixed = TRUE))
-  expect_match(out, "Export the object", fixed = TRUE)
-})
-
-# Test lab_example_internal_ns() ----
 
 test_that("lab_example_internal_ns(): skips an .Rbuildignore'd .Rd", {
   # {devtag}'s @dev tag documents an unexported function and adds the .Rd to

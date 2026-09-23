@@ -1,5 +1,8 @@
 # Regression tests for the DESCRIPTION-file diagnostics, especially that
 # multi-line fields (Description, Title) are read in full via read.dcf.
+#
+# A test that names a CRAN package reproduces a false positive or a missed
+# finding from that package's real sources, so a regression fails here first.
 
 # Test lab_description_length() ----
 
@@ -23,6 +26,46 @@ test_that("lab_description_length(): still flags short descriptions", {
   write_pkg(pkg, description = "Short.")
   res <- diagnose_description_issues(pkg, verbose = FALSE)
   expect_false(res$description_length$passed)
+})
+
+test_that("lab_description_length(): measures words, not sentences", {
+  # renderthis ships a complete 31-word single-sentence Description. Demanding
+  # "2+ sentences" has no authority and flagged it.
+  one_sentence <- paste(
+    "Render slides to different formats, including 'html', 'pdf', 'png', 'gif',",
+    "'pptx', and 'mp4', as well as a 'social' output, a 'png' of the first slide",
+    "re-sized for sharing on social media."
+  )
+  expect_true(
+    lab_description_length(make_temp_dir(),
+      verbose = FALSE,
+      desc = c(Description = one_sentence)
+    )$passed
+  )
+})
+
+test_that("lab_description_length(): flags a Description that says nothing", {
+  res <- lab_description_length(make_temp_dir(),
+    verbose = FALSE,
+    desc = c(Description = "Does stuff.")
+  )
+  expect_false(res$passed)
+})
+
+test_that("lab_description_length(): a 31-word single-sentence Description is not too short", {
+  # renderthis/DESCRIPTION. The old rule demanded 2+ sentences, which has no
+  # authority behind it.
+  desc <- paste(
+    "Render slides to different formats, including 'html', 'pdf', 'png', 'gif',",
+    "'pptx', and 'mp4', as well as a 'social' output, a 'png' of the first slide",
+    "re-sized for sharing on social media."
+  )
+  expect_true(
+    lab_description_length(make_temp_dir(),
+      verbose = FALSE,
+      desc = c(Description = desc)
+    )$passed
+  )
 })
 
 # Test lab_software_names() ----
@@ -69,6 +112,69 @@ test_that("lab_software_names(): flags an unquoted WebAssembly", {
   expect_true(
     lab_software_names(pkg_ok, verbose = FALSE)$passed
   )
+})
+
+test_that("lab_software_names(): a configured name is flagged when unquoted", {
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    description = "Wraps brms models for the user. It does several helpful things here.",
+    extra = "Config/checktor/software_names: brms"
+  )
+  res <- lab_software_names(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_true(any(grepl("brms", res$issues)))
+})
+
+test_that("lab_software_names(): without config, the name is NOT flagged", {
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    description = "Wraps brms models for the user. It does several helpful things here."
+  )
+  expect_true(lab_software_names(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_software_names(): a dotted name does not match plain English", {
+  # data.table is a regular expression unless escaped, where the dot would match
+  # the space in "data table".
+  pkg <- make_temp_dir()
+  write_pkg(pkg, description = "Stores rows in a data table for later use here.")
+  expect_true(lab_software_names(pkg, verbose = FALSE)$passed)
+
+  named <- make_temp_dir()
+  write_pkg(named, description = "Builds on data.table for fast grouped joins.")
+  expect_false(lab_software_names(named, verbose = FALSE)$passed)
+})
+
+test_that("lab_software_names(): flags a package name but not a programming language", {
+  # Empirically split: ggplot2 is quoted in 96% of CRAN Descriptions that mention
+  # it (a convention); JavaScript in 46%, HTML in 20% (a coin flip, not a rule).
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    description = paste(
+      "Bindings for JavaScript and HTML that build on ggplot2 graphics.",
+      "It does a number of useful things for the user here."
+    )
+  )
+  res <- lab_software_names(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_true(any(grepl("ggplot2", res$issues)))
+  expect_false(any(grepl("JavaScript", res$issues)))
+  expect_false(any(grepl("HTML", res$issues)))
+})
+
+test_that("lab_software_names(): accepts a properly quoted package name", {
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    description = paste(
+      "Extends 'ggplot2' and 'shiny' with new layers.",
+      "It does a number of useful things for the user here."
+    )
+  )
+  expect_true(lab_software_names(pkg, verbose = FALSE)$passed)
 })
 
 # Test lab_language_names() ----
@@ -186,6 +292,60 @@ test_that("lab_description_quoted_quotes(): accepts single-quoted names", {
   expect_true(lab_description_quoted_quotes(pkg, verbose = FALSE)$passed)
 })
 
+test_that("lab_description_quoted_quotes(): honours Config software_names", {
+  # The two-list trap: the include list (software_names) and SOFTWARE_NAMES must
+  # both honour the config, or one check obeys it and the other ignores it.
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    description = 'Wraps "brms" models for the user. It does helpful things here.',
+    extra = "Config/checktor/software_names: brms"
+  )
+  expect_false(lab_description_quoted_quotes(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_description_quoted_quotes(): flags a double-quoted SOFTWARE name", {
+  # Writing R Extensions: double quotes are for quotations, single quotes for
+  # "names of other packages and external software".
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    description = paste(
+      'Builds dashboards with "shiny" and plots.',
+      "It does things and more things."
+    )
+  )
+  res <- diagnose_description_issues(pkg, verbose = FALSE)
+  expect_false(res$description_quoted_quotes$passed)
+  expect_true(any(grepl("shiny", res$description_quoted_quotes$issues)))
+})
+
+test_that("lab_description_quoted_quotes(): does not flag scare-quoted jargon", {
+  # cbcTools ships "labeled" and "no choice" on CRAN today. Those ARE the
+  # quotations that double quotes are reserved for, not software names.
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    description = paste(
+      'Supports "labeled" designs and a "no choice"',
+      "alternative for conjoint experiments."
+    )
+  )
+  res <- diagnose_description_issues(pkg, verbose = FALSE)
+  expect_true(res$description_quoted_quotes$passed)
+
+  pkg_ok <- make_temp_dir()
+  write_pkg(
+    pkg_ok,
+    description = paste(
+      "A package that does helpful things.",
+      "No quoted phrases here at all."
+    )
+  )
+  res2 <- diagnose_description_issues(pkg_ok, verbose = FALSE)
+  expect_true(res2$description_quoted_quotes$passed)
+})
+
 # Test lab_title_length() ----
 
 test_that("lab_title_length(): flags a title longer than 65 characters", {
@@ -282,6 +442,121 @@ test_that("lab_authors(): is OK when Authors@R is present, fails otherwise", {
   )
 })
 
+test_that("lab_authors(): flags an unfilled usethis template", {
+  # pcaR2 shipped exactly this and checktor's presence-only check passed it, even
+  # though it is a hard CRAN rejection. R CMD check says nothing: the field IS
+  # present, so it has nothing to complain about.
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    authors_r = paste0(
+      "person(\"First\", \"Last\", , \"january.weiner@gmail.com\", ",
+      "role = c(\"aut\", \"cre\", \"cph\"))"
+    )
+  )
+  res <- diagnose_description_issues(pkg, verbose = FALSE)$authors
+  expect_false(res$passed)
+  expect_true(any(grepl("placeholder", res$issues)))
+})
+
+test_that("lab_authors(): flags a placeholder email and Your Name", {
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    authors_r = paste0(
+      "person(\"Your Name\", , , \"you@example.com\", role = c(\"aut\", \"cre\"))"
+    )
+  )
+  res <- diagnose_description_issues(pkg, verbose = FALSE)$authors
+  expect_false(res$passed)
+  # Both placeholders must be named. The email detector alone satisfies
+  # `passed == FALSE`, so without this the "Your Name" entry could vanish from
+  # the placeholder list unnoticed.
+  expect_match(res$issues, "Your Name", all = FALSE)
+  expect_match(res$issues, "you@example.com", all = FALSE)
+})
+
+test_that("lab_authors(): does not invent placeholders in a real name", {
+  # "Firstname Lastly" contains the placeholder words as substrings; the word
+  # boundaries in the matcher are what keep this a pass.
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    authors_r = paste0(
+      "person(\"Firstname\", \"Lastly\", email = \"f.lastly@university.edu\", ",
+      "role = c(\"aut\", \"cre\"))"
+    )
+  )
+  res <- diagnose_description_issues(pkg, verbose = FALSE)$authors
+  expect_true(res$passed)
+  expect_equal(length(res$issues), 0L)
+})
+
+test_that("lab_authors(): passes a real, filled-in Authors@R", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg) # helper default is a real name/email
+  expect_true(diagnose_description_issues(pkg, verbose = FALSE)$authors$passed)
+})
+
+test_that("lab_authors(): passes a well-formed Authors@R", {
+  aar <- "person('Jane', 'Doe', email = 'jane@example.org', role = c('aut', 'cre'))"
+  expect_true(
+    lab_authors(make_temp_dir(),
+      verbose = FALSE,
+      desc = list(`Authors@R` = aar)
+    )$passed
+  )
+})
+
+test_that("lab_authors(): flags Authors@R with no maintainer (cre)", {
+  aar <- "person('Jane', 'Doe', role = 'aut')"
+  res <- lab_authors(make_temp_dir(), verbose = FALSE, desc = list(`Authors@R` = aar))
+  expect_false(res$passed)
+  expect_true(any(grepl("cre", res$issues)))
+})
+
+test_that("lab_authors(): flags a person with no name", {
+  aar <- "person(role = c('aut', 'cre'))"
+  res <- lab_authors(make_temp_dir(), verbose = FALSE, desc = list(`Authors@R` = aar))
+  expect_false(res$passed)
+  expect_true(any(grepl("no name", res$issues)))
+})
+
+test_that("lab_authors(): flags an Authors@R that does not parse", {
+  res <- lab_authors(make_temp_dir(),
+    verbose = FALSE,
+    desc = list(`Authors@R` = "person('Jane',,")
+  )
+  expect_false(res$passed)
+  expect_true(any(grepl("does not parse", res$issues)))
+})
+
+test_that("lab_authors(): flags a person with no role", {
+  aar <- "c(person('Jane', 'Doe', role = 'cre'), person('No', 'Role'))"
+  res <- lab_authors(make_temp_dir(), verbose = FALSE, desc = list(`Authors@R` = aar))
+  expect_false(res$passed)
+  expect_true(any(grepl("no role", res$issues)))
+})
+
+test_that("lab_authors(): reports a field that evaluates to a non-person", {
+  res <- lab_authors(make_temp_dir(),
+    verbose = FALSE,
+    desc = list(`Authors@R` = "list(1, 2)")
+  )
+  expect_false(res$passed)
+  expect_true(any(grepl("does not (parse|evaluate)", res$issues)))
+})
+
+test_that("lab_authors(): Authors@R is not executed while diagnosing", {
+  # checktor lints other people's packages; a malicious Authors@R must not run.
+  marker <- withr::local_tempfile()
+  # A pure-R side effect, so a leak shows on every OS, Windows included.
+  aar <- sprintf("file.create(%s)", deparse(marker))
+  res <- lab_authors(make_temp_dir(), verbose = FALSE, desc = list(`Authors@R` = aar))
+  expect_false(file.exists(marker)) # the command did not run
+  expect_false(res$passed) # and the field is reported, not silently accepted
+})
+
 # Test lab_acronyms() ----
 
 test_that("lab_acronyms(): knows common abbreviations, reads continuations", {
@@ -361,62 +636,16 @@ test_that("lab_acronyms(): still flags genuinely unexplained acronyms", {
   expect_true("FOOBAR" %in% res$acronyms$issues)
 })
 
-# Test lab_authors() ----
-
-test_that("lab_authors(): flags an unfilled usethis template", {
-  # pcaR2 shipped exactly this and checktor's presence-only check passed it, even
-  # though it is a hard CRAN rejection. R CMD check says nothing: the field IS
-  # present, so it has nothing to complain about.
+test_that("lab_acronyms(): Config/checktor/acronyms suppresses a finding", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
-    authors_r = paste0(
-      "person(\"First\", \"Last\", , \"january.weiner@gmail.com\", ",
-      "role = c(\"aut\", \"cre\", \"cph\"))"
-    )
+    description = "Runs MCMC over models for the analysis of tabular data here.",
+    extra = "Config/checktor/acronyms: MCMC"
   )
-  res <- diagnose_description_issues(pkg, verbose = FALSE)$authors
-  expect_false(res$passed)
-  expect_true(any(grepl("placeholder", res$issues)))
-})
-
-test_that("lab_authors(): flags a placeholder email and Your Name", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    authors_r = paste0(
-      "person(\"Your Name\", , , \"you@example.com\", role = c(\"aut\", \"cre\"))"
-    )
+  expect_false(
+    "MCMC" %in% lab_acronyms(pkg, verbose = FALSE)$issues
   )
-  res <- diagnose_description_issues(pkg, verbose = FALSE)$authors
-  expect_false(res$passed)
-  # Both placeholders must be named. The email detector alone satisfies
-  # `passed == FALSE`, so without this the "Your Name" entry could vanish from
-  # the placeholder list unnoticed.
-  expect_match(res$issues, "Your Name", all = FALSE)
-  expect_match(res$issues, "you@example.com", all = FALSE)
-})
-
-test_that("lab_authors(): does not invent placeholders in a real name", {
-  # "Firstname Lastly" contains the placeholder words as substrings; the word
-  # boundaries in the matcher are what keep this a pass.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    authors_r = paste0(
-      "person(\"Firstname\", \"Lastly\", email = \"f.lastly@university.edu\", ",
-      "role = c(\"aut\", \"cre\"))"
-    )
-  )
-  res <- diagnose_description_issues(pkg, verbose = FALSE)$authors
-  expect_true(res$passed)
-  expect_equal(length(res$issues), 0L)
-})
-
-test_that("lab_authors(): passes a real, filled-in Authors@R", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg) # helper default is a real name/email
-  expect_true(diagnose_description_issues(pkg, verbose = FALSE)$authors$passed)
 })
 
 # Test lab_title_case() ----
@@ -440,6 +669,17 @@ test_that("lab_title_case(): flags a genuinely non-title-case Title", {
 test_that("lab_title_case(): accepts a correct Title", {
   desc <- c(Title = "Extra CRAN Diagnostics for R Packages")
   expect_true(lab_title_case(make_temp_dir(), verbose = FALSE, desc = desc)$passed)
+})
+
+test_that("lab_title_case(): a quoted package name in Title keeps its own capitalisation", {
+  # R's own toTitleCase() restores single-quoted spans, which is why R does not
+  # flag 'shiny' and the homegrown word-loop did.
+  expect_true(
+    lab_title_case(make_temp_dir(),
+      verbose = FALSE,
+      desc = c(Title = "Extra Diagnostics for 'shiny' and 'rmarkdown' Packages")
+    )$passed
+  )
 })
 
 # Test lab_license() ----
@@ -554,32 +794,6 @@ test_that("lab_license_year(): passes when there is no LICENSE file", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   expect_true(lab_license_year(pkg, verbose = FALSE)$passed)
-})
-
-# Test lab_description_length() ----
-
-test_that("lab_description_length(): measures words, not sentences", {
-  # renderthis ships a complete 31-word single-sentence Description. Demanding
-  # "2+ sentences" has no authority and flagged it.
-  one_sentence <- paste(
-    "Render slides to different formats, including 'html', 'pdf', 'png', 'gif',",
-    "'pptx', and 'mp4', as well as a 'social' output, a 'png' of the first slide",
-    "re-sized for sharing on social media."
-  )
-  expect_true(
-    lab_description_length(make_temp_dir(),
-      verbose = FALSE,
-      desc = c(Description = one_sentence)
-    )$passed
-  )
-})
-
-test_that("lab_description_length(): flags a Description that says nothing", {
-  res <- lab_description_length(make_temp_dir(),
-    verbose = FALSE,
-    desc = c(Description = "Does stuff.")
-  )
-  expect_false(res$passed)
 })
 
 # Test lab_date_format() ----
@@ -714,41 +928,6 @@ test_that("lab_version_format(): exempts dated and dev versions", {
   )
 })
 
-# Test lab_authors() ----
-
-test_that("lab_authors(): passes a well-formed Authors@R", {
-  aar <- "person('Jane', 'Doe', email = 'jane@example.org', role = c('aut', 'cre'))"
-  expect_true(
-    lab_authors(make_temp_dir(),
-      verbose = FALSE,
-      desc = list(`Authors@R` = aar)
-    )$passed
-  )
-})
-
-test_that("lab_authors(): flags Authors@R with no maintainer (cre)", {
-  aar <- "person('Jane', 'Doe', role = 'aut')"
-  res <- lab_authors(make_temp_dir(), verbose = FALSE, desc = list(`Authors@R` = aar))
-  expect_false(res$passed)
-  expect_true(any(grepl("cre", res$issues)))
-})
-
-test_that("lab_authors(): flags a person with no name", {
-  aar <- "person(role = c('aut', 'cre'))"
-  res <- lab_authors(make_temp_dir(), verbose = FALSE, desc = list(`Authors@R` = aar))
-  expect_false(res$passed)
-  expect_true(any(grepl("no name", res$issues)))
-})
-
-test_that("lab_authors(): flags an Authors@R that does not parse", {
-  res <- lab_authors(make_temp_dir(),
-    verbose = FALSE,
-    desc = list(`Authors@R` = "person('Jane',,")
-  )
-  expect_false(res$passed)
-  expect_true(any(grepl("does not parse", res$issues)))
-})
-
 # Test lab_identifier_format() ----
 
 test_that("lab_identifier_format(): passes a valid ORCID and no identifier", {
@@ -819,34 +998,6 @@ test_that("lab_identifier_format(): validates ROR ids and ignores free text", {
   )
 })
 
-# Test lab_authors() ----
-
-test_that("lab_authors(): flags a person with no role", {
-  aar <- "c(person('Jane', 'Doe', role = 'cre'), person('No', 'Role'))"
-  res <- lab_authors(make_temp_dir(), verbose = FALSE, desc = list(`Authors@R` = aar))
-  expect_false(res$passed)
-  expect_true(any(grepl("no role", res$issues)))
-})
-
-test_that("lab_authors(): reports a field that evaluates to a non-person", {
-  res <- lab_authors(make_temp_dir(),
-    verbose = FALSE,
-    desc = list(`Authors@R` = "list(1, 2)")
-  )
-  expect_false(res$passed)
-  expect_true(any(grepl("does not (parse|evaluate)", res$issues)))
-})
-
-test_that("lab_authors(): Authors@R is not executed while diagnosing", {
-  # checktor lints other people's packages; a malicious Authors@R must not run.
-  marker <- withr::local_tempfile()
-  # A pure-R side effect, so a leak shows on every OS, Windows included.
-  aar <- sprintf("file.create(%s)", deparse(marker))
-  res <- lab_authors(make_temp_dir(), verbose = FALSE, desc = list(`Authors@R` = aar))
-  expect_false(file.exists(marker)) # the command did not run
-  expect_false(res$passed) # and the field is reported, not silently accepted
-})
-
 # Test lab_spelling() ----
 
 test_that("lab_spelling(): flags DESCRIPTION words and honours a whitelist", {
@@ -884,6 +1035,35 @@ test_that("lab_spelling(): flags DESCRIPTION words and honours a whitelist", {
   expect_true(lab_spelling(pkg3, verbose = FALSE)$passed)
 })
 
+test_that("lab_spelling(): reports a skip, not a pass, when turned off", {
+  # A skipped check that reads as a passing one is exactly the failure mode the
+  # skipped-result contract exists to prevent: the printed summary would drop
+  # spelling from "checks did not run".
+  withr::local_options(checktor.spelling = FALSE)
+  pkg <- make_temp_dir()
+  write_pkg(pkg, description = "Build a WASM REPL for WebAssembly.")
+  res <- lab_spelling(pkg, verbose = FALSE)
+  expect_true(res$skipped)
+  expect_true(res$passed)
+  expect_equal(length(res$issues), 0L)
+})
+
+test_that("lab_spelling(): reports a skip when no backend is installed", {
+  withr::local_options(checktor.spelling = TRUE)
+  # Empty the PATH so Sys.which() finds neither aspell nor hunspell, which is
+  # the state every CI leg actually runs in.
+  withr::local_envvar(PATH = "")
+  skip_if(
+    nzchar(Sys.which("aspell")) || nzchar(Sys.which("hunspell")),
+    "backend still reachable with an empty PATH"
+  )
+  pkg <- make_temp_dir()
+  write_pkg(pkg, description = "Build a WASM REPL for WebAssembly.")
+  res <- lab_spelling(pkg, verbose = FALSE)
+  expect_true(res$skipped)
+  expect_match(res$skip_reason, "backend")
+})
+
 # Test spelling_accepted_words() ----
 
 test_that("spelling_accepted_words(): gathers every whitelist mechanism", {
@@ -915,33 +1095,98 @@ test_that("spelling_accepted_words(): is empty when there is no whitelist", {
   expect_equal(spelling_accepted_words(pkg), character(0))
 })
 
-# Test lab_spelling() ----
+# Test lab_title_starts_with_article() ----
 
-test_that("lab_spelling(): reports a skip, not a pass, when turned off", {
-  # A skipped check that reads as a passing one is exactly the failure mode the
-  # skipped-result contract exists to prevent: the printed summary would drop
-  # spelling from "checks did not run".
-  withr::local_options(checktor.spelling = FALSE)
+test_that("lab_title_starts_with_article(): is NOT part of a default run", {
+  # A mis-transplant of CRAN's real rule, whose source requires the literal noun
+  # "package" after the article AND applies to the Description field, not the
+  # Title. jsonlite ("A Simple and Robust JSON Parser and Generator for R") and
+  # curl ("A Modern and Flexible Web Client for R") are on CRAN with such titles.
   pkg <- make_temp_dir()
-  write_pkg(pkg, description = "Build a WASM REPL for WebAssembly.")
-  res <- lab_spelling(pkg, verbose = FALSE)
-  expect_true(res$skipped)
-  expect_true(res$passed)
-  expect_equal(length(res$issues), 0L)
+  write_pkg(pkg, title = "A Modern and Flexible Web Client")
+  res <- diagnose_description_issues(pkg, verbose = FALSE)
+  expect_null(res$title_starts_with_article)
+
+  # Still callable directly.
+  expect_false(
+    lab_title_starts_with_article(pkg, verbose = FALSE)$passed
+  )
 })
 
-test_that("lab_spelling(): reports a skip when no backend is installed", {
-  withr::local_options(checktor.spelling = TRUE)
-  # Empty the PATH so Sys.which() finds neither aspell nor hunspell, which is
-  # the state every CI leg actually runs in.
-  withr::local_envvar(PATH = "")
-  skip_if(
-    nzchar(Sys.which("aspell")) || nzchar(Sys.which("hunspell")),
-    "backend still reachable with an empty PATH"
+# Test lab_title_redundant_phrases() ----
+
+test_that("lab_title_redundant_phrases(): flags 'for R' and 'Tools for' patterns", {
+  for (bad in c(
+    "Statistical Models for R",
+    "A Toolkit for Imaging",
+    "Tools for Reproducible Reporting"
+  )) {
+    pkg <- make_temp_dir()
+    write_pkg(pkg, title = bad)
+    expect_false(
+      diagnose_description_issues(
+        pkg,
+        verbose = FALSE
+      )$title_redundant_phrases$passed,
+      info = bad
+    )
+  }
+
+  pkg_ok <- make_temp_dir()
+  write_pkg(pkg_ok, title = "Statistical Modeling")
+  expect_true(
+    diagnose_description_issues(
+      pkg_ok,
+      verbose = FALSE
+    )$title_redundant_phrases$passed
   )
+})
+
+# Test lab_cph_role() ----
+
+test_that("lab_cph_role(): accepts cph-bearing Authors@R and flags otherwise", {
   pkg <- make_temp_dir()
-  write_pkg(pkg, description = "Build a WASM REPL for WebAssembly.")
-  res <- lab_spelling(pkg, verbose = FALSE)
-  expect_true(res$skipped)
-  expect_match(res$skip_reason, "backend")
+  write_pkg(pkg, authors_r = "person('A','B', role = c('aut','cre'))")
+  expect_false(lab_cph_role(pkg, verbose = FALSE)$passed)
+
+  pkg_ok <- make_temp_dir()
+  write_pkg(pkg_ok, authors_r = "person('A','B', role = c('aut','cre','cph'))")
+  expect_true(lab_cph_role(pkg_ok, verbose = FALSE)$passed)
+})
+
+test_that("lab_cph_role(): runs only on request (#17)", {
+  # ?person: authors who are natural persons hold copyright by default and need
+  # no cph role, so a package without one is not a finding in a default run.
+  pkg <- make_temp_dir()
+  write_pkg(pkg, authors_r = "person('A','B', role = c('aut','cre'))")
+  r <- checktor(pkg, verbose = FALSE, progress = FALSE)
+  expect_false("cph_role" %in% tidy(r)$check)
+  expect_true("cph_role" %in% r$metadata$on_request_checks)
+})
+
+test_that("lab_cph_role(): does not ask a natural person to add cph", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, authors_r = "person('A','B', role = c('aut','cre'))")
+  out <- paste(cli::cli_fmt(lab_cph_role(pkg)), collapse = " ")
+  expect_false(grepl("'aut','cre','cph'", out, fixed = TRUE))
+  expect_match(out, "Copyright", fixed = TRUE)
+})
+
+# Test diagnose_description_issues() ----
+
+test_that("diagnose_description_issues(): an unfilled usethis Authors@R template is caught", {
+  # pcaR2/DESCRIPTION ships person("First", "Last", ...) -- a hard CRAN
+  # rejection. checktor 0.1.0 passed it, because it only tested that the field
+  # EXISTS. R CMD check says nothing either, for the same reason.
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    authors_r = paste0(
+      "person(\"First\", \"Last\", , \"january.weiner@gmail.com\", ",
+      "role = c(\"aut\", \"cre\", \"cph\"))"
+    )
+  )
+  res <- diagnose_description_issues(pkg, verbose = FALSE)$authors
+  expect_false(res$passed)
+  expect_true(any(grepl("placeholder", res$issues)))
 })

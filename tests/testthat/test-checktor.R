@@ -72,30 +72,170 @@ test_that("checktor(): errors clearly on a non-package directory", {
   expect_error(checktor(empty, verbose = FALSE), "No DESCRIPTION file found")
 })
 
-# Test diagnose_code_issues() ----
-
-test_that("diagnose_code_issues(): tolerates missing R/ and man/", {
-  empty <- make_temp_dir()
-  expect_no_error(diagnose_code_issues(empty, verbose = FALSE))
-  expect_no_error(diagnose_documentation_issues(empty, verbose = FALSE))
-  expect_no_error(diagnose_general_issues(empty, verbose = FALSE))
-  expect_no_error(diagnose_policy_violations(empty, verbose = FALSE))
+test_that("checktor(): category objects are classed checktor_category_result", {
+  pkg <- example_diagnose_scenario(
+    "code_examples/tf_usage_bad.R",
+    show_content = FALSE,
+    cleanup = TRUE
+  )
+  r <- checktor(pkg, verbose = FALSE, progress = FALSE)
+  expect_s3_class(r$code_issues, "checktor_category_result")
+  expect_s3_class(
+    diagnose_code_issues(pkg, verbose = FALSE),
+    "checktor_category_result"
+  )
+  # nested access still works
+  expect_false(r$code_issues$tf_usage$passed)
+  expect_type(r$code_issues$passed, "logical")
 })
 
-test_that("diagnose_code_issues(): a check that errors surfaces as a failure", {
-  # Stub a diagnostic that always throws; check that the orchestrator records
-  # it as a failure with a non-empty message rather than silently dropping it.
-  with_mocked_bindings(
-    lab_tf_usage = function(path, verbose = TRUE, parsed = NULL) {
-      stop("synthetic")
-    },
-    code = {
-      pkg <- make_temp_dir()
-      write_pkg(pkg)
-      res <- diagnose_code_issues(pkg, verbose = FALSE)
-      expect_false(res$tf_usage$passed)
-      expect_true(grepl("synthetic", res$tf_usage$issues))
-    }
+test_that("checktor(): from a subdirectory matches a run from the root", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+
+  from_root <- checktor(pkg, verbose = FALSE, progress = FALSE)
+  from_sub <- checktor(file.path(pkg, "R"), verbose = FALSE, progress = FALSE)
+
+  expect_equal(tidy(from_sub)$check, tidy(from_root)$check)
+  expect_equal(tidy(from_sub)$passed, tidy(from_root)$passed)
+  expect_equal(n_issues(from_sub), n_issues(from_root))
+})
+
+test_that("checktor(): resolves the package from the working directory", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+
+  # withr undoes in reverse order, so the working directory is restored before
+  # make_temp_dir() removes the package. Windows refuses to remove a directory
+  # that is a process's working directory.
+  withr::local_dir(file.path(pkg, "R"))
+  res <- checktor(verbose = FALSE, progress = FALSE) # path defaults to "."
+  expect_s3_class(res, "checktor_results")
+  expect_true(is_healthy(res))
+})
+
+test_that("checktor(): a directory outside any package still errors clearly", {
+  skip_if_tempdir_in_package()
+  bare <- make_temp_dir()
+  expect_error(
+    checktor(bare, verbose = FALSE, progress = FALSE),
+    "any directory above it"
+  )
+})
+
+test_that("checktor(): an on-request check is discoverable, not a skip", {
+  # Two different things that a single "did not run" line would blur. A skipped
+  # check wanted to run and could not. An on-request check was never asked for,
+  # so naming it is only so you can find out it is there.
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  r <- checktor(pkg, verbose = FALSE, progress = FALSE)
+
+  on_request <- r$metadata$on_request_checks
+  expect_setequal(on_request, names(CHECK_WHEN)[CHECK_WHEN == "request"])
+  # It is not reported as a skip, and it never reaches the verdict.
+  expect_false(any(on_request %in% r$metadata$skipped_checks))
+  expect_false(any(on_request %in% tidy(r)$check))
+  # Being opinion tier, none of them could change a default verdict even if run.
+  expect_true(all(vapply(on_request, function(n) CHECK_SEVERITY[[n]], character(1)) ==
+                    "opinion"))
+  expect_false(any(DEFAULT_SEVERITY == "opinion"))
+
+  # The verbose summary names them, distinctly from the skipped line.
+  txt <- paste(
+    cli::cli_fmt(checktor(pkg, verbose = TRUE, progress = FALSE)),
+    collapse = " "
+  )
+  expect_match(txt, "available on request")
+  expect_match(txt, on_request[[1]], fixed = TRUE)
+})
+
+test_that("checktor(): a check that did not run is skipped, not passing", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  # setup.R turns both gated checks off, which is the same state as a CI run.
+  r <- checktor(pkg, verbose = FALSE, progress = FALSE)
+  td <- tidy(r)
+
+  expect_true("skipped" %in% names(td))
+  expect_true(any(td$skipped))
+  expect_true("url_liveness" %in% td$check[td$skipped])
+
+  # It carries a reason a reader can act on, and never counts against the verdict.
+  res <- r$general_issues$url_liveness
+  expect_true(isTRUE(res$skipped))
+  expect_match(res$skip_reason, "console")
+  expect_true(res$passed)
+  expect_equal(n_issues(r), 0L)
+
+  # The names travel with the results so a caller can see what was not examined.
+  expect_true("url_liveness" %in% r$metadata$skipped_checks)
+})
+
+test_that("checktor(): a check that ran is not marked skipped", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  withr::local_options(checktor.url_check = TRUE)
+  testthat::local_mocked_bindings(fetch_url_db = function(path) data.frame())
+
+  r <- checktor(pkg, verbose = FALSE, progress = FALSE)
+  expect_false(isTRUE(r$general_issues$url_liveness$skipped))
+  expect_false("url_liveness" %in% r$metadata$skipped_checks)
+})
+
+test_that("checktor(): counts only the tiers the verdict is about", {
+  # The fixture trips tf_usage (robustness, 7 issues) and, without its NEWS.md,
+  # news_file (opinion, 1). By default the opinion finding is REPORTED but does
+  # not count against a clean bill of health.
+  pkg <- example_diagnose_scenario(
+    "code_examples/tf_usage_bad.R",
+    show_content = FALSE,
+    cleanup = TRUE
+  )
+  unlink(file.path(pkg, "NEWS.md"))
+  r <- checktor(pkg, verbose = FALSE, progress = FALSE)
+
+  expect_equal(n_issues(r), 7L) # verdict
+  expect_equal(nrow(issues(r)), 8L) # everything, still visible
+  expect_equal(r$metadata$advisory_issues, 1L)
+  expect_true("opinion" %in% issues(r)$severity)
+})
+
+test_that("checktor(): asking for all tiers folds opinion into the verdict", {
+  pkg <- example_diagnose_scenario(
+    "code_examples/tf_usage_bad.R",
+    show_content = FALSE,
+    cleanup = TRUE
+  )
+  unlink(file.path(pkg, "NEWS.md")) # an opinion finding: news_file
+  r <- checktor(
+    pkg,
+    verbose = FALSE,
+    progress = FALSE,
+    severity = SEVERITY_LEVELS
+  )
+  expect_equal(n_issues(r), 8L)
+  expect_equal(r$metadata$advisory_issues, 0L)
+})
+
+test_that("checktor(): a policy-only run ignores robustness findings", {
+  pkg <- example_diagnose_scenario(
+    "code_examples/tf_usage_bad.R",
+    show_content = FALSE,
+    cleanup = TRUE
+  )
+  unlink(file.path(pkg, "NEWS.md")) # an opinion finding: news_file
+  r <- checktor(pkg, verbose = FALSE, progress = FALSE, severity = "policy")
+  expect_equal(n_issues(r), 0L) # tf_usage is robustness, not policy
+  expect_true(is_healthy(r))
+  expect_equal(r$metadata$advisory_issues, 8L)
+})
+
+test_that("checktor(): severity is validated", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  expect_error(
+    checktor(pkg, verbose = FALSE, progress = FALSE, severity = "nonsense")
   )
 })
 
@@ -108,188 +248,18 @@ test_that("print.checktor_results(): runs without error", {
   expect_no_error(cli::cli_fmt(print(results)))
 })
 
-# Test print.checktor_check_result() ----
-
-test_that("print.checktor_check_result(): prints issue text literally", {
-  res <- checktor_check_result(
-    FALSE,
-    "Title: Tools for {stop('evaluated')} Users",
-    "Title case check"
+test_that("print.checktor_results(): footer points to accessors", {
+  pkg <- example_diagnose_scenario(
+    "code_examples/tf_usage_bad.R",
+    show_content = FALSE,
+    cleanup = TRUE
   )
-  out <- NULL
-  expect_no_error(out <- cli::cli_fmt(print(res)))
-  expect_match(
-    paste(out, collapse = "\n"),
-    "Tools for {stop('evaluated')} Users",
-    fixed = TRUE
-  )
-})
-
-test_that("print.checktor_check_result(): shows a skipped check as skipped (#15)", {
-  res <- checktor_skipped_result("URL liveness check", "runs at the console")
-  out <- paste(cli::cli_fmt(print(res)), collapse = "\n")
-  expect_match(out, "URL liveness check: SKIPPED (runs at the console)", fixed = TRUE)
-  expect_false(grepl("PASSED", out, fixed = TRUE))
-})
-
-# Test print.checktor_category_result() ----
-
-test_that("print.checktor_category_result(): a skipped check is not a pass (#15)", {
-  cat_res <- checktor_category_result(
-    url_liveness = checktor_skipped_result("URL liveness check", "offline"),
-    tf_usage = checktor_check_result(TRUE, character(0), "T/F usage check")
-  )
-  out <- paste(cli::cli_fmt(print(cat_res)), collapse = "\n")
-  expect_false(grepl("All 2 checks passed", out, fixed = TRUE))
-  expect_match(out, "1 of 2 checks passed", fixed = TRUE)
-  expect_match(out, "1 check did not run: \"url_liveness\"", fixed = TRUE)
-})
-
-test_that("print.checktor_category_result(): names skipped checks beside failures", {
-  cat_res <- checktor_category_result(
-    url_liveness = checktor_skipped_result("URL liveness check", "offline"),
-    tf_usage = checktor_check_result(FALSE, "a.R:1", "T/F usage check")
-  )
-  out <- paste(cli::cli_fmt(print(cat_res)), collapse = "\n")
-  expect_match(out, "1 of 2 checks failed", fixed = TRUE)
-  expect_match(out, "tf_usage: 1 issue", fixed = TRUE)
-  expect_false(grepl("url_liveness: 0 issues", out, fixed = TRUE))
-  expect_match(out, "1 check did not run: \"url_liveness\"", fixed = TRUE)
-})
-
-test_that("print.checktor_category_result(): keeps an early return's verdict", {
-  # A category that stops before running anything, such as one without a
-  # DESCRIPTION, carries only its own verdict.
-  early <- structure(
-    list(passed = FALSE, message = "DESCRIPTION file not found"),
-    class = "checktor_category_result"
-  )
-  out <- paste(cli::cli_fmt(print(early)), collapse = "\n")
-  expect_match(out, "1 of 1 checks failed", fixed = TRUE)
-  expect_false(grepl("NA:", out, fixed = TRUE))
-})
-
-test_that("print.checktor_category_result(): no tick when nothing ran", {
-  cat_res <- checktor_category_result(
-    url_liveness = checktor_skipped_result("URL liveness check", "offline")
-  )
-  line <- grep("0 of 1 checks passed", cli::cli_fmt(print(cat_res)), value = TRUE)
-  expect_length(line, 1L)
-  expect_false(grepl("^(v|\u2714) ", line))
-})
-
-test_that("print.checktor_check_result(): a failure marked skipped is a failure", {
-  # A check registered with register_check() can set skipped by hand. Whatever it
-  # claims, a failed check is a failure, as the verdict already counts it.
-  res <- checktor_check_result(FALSE, "z.R:1", "House rule", skipped = TRUE)
-  out <- paste(cli::cli_fmt(print(res)), collapse = "\n")
-  expect_match(out, "House rule: FAILED", fixed = TRUE)
-  expect_match(out, "z.R:1", fixed = TRUE)
-})
-
-# Test configure_doctor() ----
-
-test_that("configure_doctor(): changes the defaults consumed by checktor", {
-  # configure_doctor() also sets cli.num_colors, so that is restored too.
-  withr::local_options(
-    checktor.verbose = NULL,
-    checktor.progress = NULL,
-    cli.num_colors = getOption("cli.num_colors")
-  )
-
-  expect_message(
-    configure_doctor(verbose_default = FALSE, progress_default = FALSE),
-    "configuration updated"
-  )
-  expect_false(getOption("checktor.verbose"))
-  expect_false(getOption("checktor.progress"))
-
-  # Default args of checktor() should now resolve to FALSE. cli output is a
-  # message, not an error, so expect_no_error() would stay green through a run
-  # that printed all of its diagnostics. Silence is the only proof.
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  expect_length(cli::cli_fmt(checktor(pkg)), 0L)
-})
-
-# Test validate_package_directory() ----
-
-test_that("validate_package_directory(): enforces DESCRIPTION presence", {
-  empty <- make_temp_dir()
-  expect_error(validate_package_directory(empty), "DESCRIPTION")
-
-  writeLines("Package: stub", file.path(empty, "DESCRIPTION"))
-  expect_true(validate_package_directory(empty))
-})
-
-# Test safe_read_lines() ----
-
-test_that("safe_read_lines(): handles missing files", {
-  expect_equal(
-    safe_read_lines(file.path(tempdir(), "definitely-missing.R")),
-    character(0)
-  )
-})
-
-# Test prescribe() ----
-
-test_that("prescribe(): surfaces failed checks with no curated treatment", {
-  # A package whose only defect is a missing NEWS file. The news_file check has
-  # no entry in the curated `treatments` list, so before the fix prescribe()
-  # printed only its header and stayed silent about the actual problem (#4).
-  pkg <- make_temp_dir()
-  write_pkg(pkg, news = FALSE)
-
-  res <- checktor(pkg, verbose = FALSE, progress = FALSE)
-  expect_false(res$general_issues$passed[["news_file"]]) # sanity
-
-  out <- cli::cli_fmt(prescribe(res))
+  r <- checktor(pkg, verbose = FALSE, progress = FALSE)
+  out <- cli::cli_fmt(print(r))
   txt <- paste(out, collapse = "\n")
-  # Match the ISSUE, not the heading: "NEWS" alone is satisfied by the
-  # "NEWS file check" header that #4 was filed about.
-  expect_match(txt, "No NEWS file found", fixed = TRUE)
-})
-
-test_that("prescribe(): prints uncurated issue text literally", {
-  # The fallback lists the check's own issues, which quote the package. news_file
-  # has no curated treatment, so its failure takes that path.
-  pkg <- make_temp_dir()
-  write_pkg(pkg, news = FALSE)
-  res <- checktor(pkg, verbose = FALSE, progress = FALSE)
-  res$general_issues$news_file$issues <- "NEWS.md mentions {stop('evaluated')}"
-
-  out <- NULL
-  expect_no_error(out <- cli::cli_fmt(prescribe(res)))
-  expect_match(
-    paste(out, collapse = "\n"),
-    "NEWS.md mentions {stop('evaluated')}",
-    fixed = TRUE
-  )
-})
-
-test_that("prescribe(): prints an uncurated check's heading literally", {
-  # The heading is the check's message. A check added with register_check() may
-  # build it from the package, e.g. naming the Title a house rule rejected.
-  pkg <- make_temp_dir()
-  write_pkg(pkg, news = FALSE)
-  res <- checktor(pkg, verbose = FALSE, progress = FALSE)
-  res$general_issues$news_file$message <- "House rule for {stop('evaluated')}"
-
-  out <- NULL
-  expect_no_error(out <- cli::cli_fmt(prescribe(res)))
-  expect_match(
-    paste(out, collapse = "\n"),
-    "House rule for {stop('evaluated')}",
-    fixed = TRUE
-  )
-})
-
-test_that("prescribe(): still emits curated treatments for known checks", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg, r_code = "bad <- function() T")
-
-  res <- checktor(pkg, verbose = FALSE, progress = FALSE)
-  out <- cli::cli_fmt(prescribe(res))
-  txt <- paste(out, collapse = "\n")
-  expect_match(txt, "T/F Usage Issues")
+  expect_match(txt, "summary\\(\\)")
+  expect_match(txt, "issues\\(\\)")
+  expect_false(grepl("Run `checktor\\(\\)` for detailed diagnosis", txt))
+  # Patient line shows a short package name, not the wrapped temp path
+  expect_false(grepl("/var/folders|/tmp/|Rtmp", txt))
 })

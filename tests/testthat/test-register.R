@@ -182,14 +182,6 @@ test_that("register_check(): rejects bad input", {
   expect_error(register_check("", ok))
 })
 
-# Test unregister_check() ----
-
-test_that("unregister_check(): rejects a non-character, non-NULL argument", {
-  expect_error(unregister_check(42), "character")
-})
-
-# Test register_check() ----
-
 test_that("register_check(): re-registering a name overwrites with a message", {
   on.exit(unregister_check(), add = TRUE)
   ok <- function(path, verbose = TRUE) {
@@ -205,7 +197,28 @@ test_that("register_check(): re-registering a name overwrites with a message", {
   expect_identical(rc$severity[rc$check == "dup"], "opinion")
 })
 
+test_that("register_check(): Config/checktor accepts a registered name", {
+  # The typo guard used to know only the built-ins, so naming a custom check in
+  # Config/checktor warned that a real, working name was unknown.
+  lab_custom <- function(path, verbose = TRUE, parsed = NULL) {
+    checktor_check_result(FALSE, "a finding", "custom check")
+  }
+  register_check("custom_thing", lab_custom, category = "code", severity = "opinion")
+  on.exit(unregister_check("custom_thing"), add = TRUE)
+
+  pkg <- make_temp_dir()
+  write_pkg(pkg, extra = "Config/checktor/allow: custom_thing")
+
+  expect_no_warning(r <- checktor(pkg, verbose = FALSE, progress = FALSE))
+  expect_equal(r$metadata$suppressed, 1L)
+  expect_true("custom_thing" %in% all_check_names())
+})
+
 # Test unregister_check() ----
+
+test_that("unregister_check(): rejects a non-character, non-NULL argument", {
+  expect_error(unregister_check(42), "character")
+})
 
 test_that("unregister_check(): removes one or all", {
   on.exit(unregister_check(), add = TRUE)

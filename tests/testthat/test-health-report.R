@@ -16,29 +16,6 @@ test_that("health_report(): every format reports the CRAN policy findings", {
   }
 })
 
-# Test report_findings() ----
-
-test_that("report_findings(): walks every category checktor() runs", {
-  # The guard against one format quietly dropping a panel again.
-  r <- checktor(policy_pkg(), verbose = FALSE, progress = FALSE)
-  categories <- grep("_issues$", names(r), value = TRUE)
-  expect_setequal(REPORT_CATEGORIES, categories)
-})
-
-test_that("report_findings(): one entry per failing check, in category order", {
-  r <- checktor(policy_pkg(), verbose = FALSE, progress = FALSE)
-  found <- report_findings(r)
-  checks <- vapply(found, function(f) f$check, character(1))
-  failed <- tidy(r)$check[!tidy(r)$passed]
-
-  expect_setequal(checks, failed)
-  expect_false(anyDuplicated(checks) > 0L)
-  cats <- unique(vapply(found, function(f) f$category, character(1)))
-  expect_equal(cats, intersect(REPORT_CATEGORIES, cats))
-})
-
-# Test health_report() ----
-
 test_that("health_report(): names the checks that did not run", {
   # setup.R turns the gated checks off, the same state as a CI run.
   r <- checktor(policy_pkg(), verbose = FALSE, progress = FALSE)
@@ -80,4 +57,35 @@ test_that("health_report(): writes the file it is given", {
   expect_message(health_report(r, file = out), "written to")
   expect_true(file.exists(out))
   expect_match(paste(readLines(out), collapse = "\n"), "Browser")
+})
+
+# Test report_findings() ----
+
+test_that("report_findings(): walks every category checktor() runs", {
+  # The guard against one format quietly dropping a panel again.
+  r <- checktor(policy_pkg(), verbose = FALSE, progress = FALSE)
+  categories <- grep("_issues$", names(r), value = TRUE)
+  expect_setequal(REPORT_CATEGORIES, categories)
+})
+
+test_that("report_findings(): one entry per failing check, in category order", {
+  r <- checktor(policy_pkg(), verbose = FALSE, progress = FALSE)
+  found <- report_findings(r)
+  checks <- vapply(found, function(f) f$check, character(1))
+  failed <- tidy(r)$check[!tidy(r)$passed]
+
+  expect_setequal(checks, failed)
+  expect_false(anyDuplicated(checks) > 0L)
+  cats <- unique(vapply(found, function(f) f$category, character(1)))
+  expect_equal(cats, intersect(REPORT_CATEGORIES, cats))
+})
+
+# Test validate_package_directory() ----
+
+test_that("validate_package_directory(): enforces DESCRIPTION presence", {
+  empty <- make_temp_dir()
+  expect_error(validate_package_directory(empty), "DESCRIPTION")
+
+  writeLines("Package: stub", file.path(empty, "DESCRIPTION"))
+  expect_true(validate_package_directory(empty))
 })

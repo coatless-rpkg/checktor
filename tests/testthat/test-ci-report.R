@@ -1,19 +1,6 @@
 # ci_report() has to produce something the forge can actually parse, so these
 # check the shapes rather than only that a string came back.
 
-# Test issues() ----
-
-test_that("issues(): a finding keeps its location whatever label it carries", {
-  # The parser used to read only "a.R:2", so a labelled finding lost its location
-  # and could not be pointed at.
-  r <- checktor(ci_pkg(), verbose = FALSE, progress = FALSE)
-  di <- issues(r)
-  located <- di[!is.na(di$file), ]
-  expect_true("tf_usage" %in% located$check)
-  expect_true("internal_ns" %in% located$check) # reported as "a.R:3 (pkg:::fn)"
-  expect_equal(located$line[located$check == "internal_ns"], 3L)
-})
-
 # Test ci_report() ----
 
 test_that("ci_report(): file = NULL returns the lines without emitting them", {
@@ -113,47 +100,6 @@ test_that("ci_report(): the sarif report is valid JSON at version 2.1.0", {
   expect_equal(parsed$runs$tool$driver$name, "checktor")
   expect_gt(nrow(parsed$runs$results[[1]]), 0L)
 })
-
-# Test ci_severity() ----
-
-test_that("ci_severity(): maps to each forge's own words", {
-  expect_equal(ci_severity("policy", "github"), "error")
-  expect_equal(ci_severity("opinion", "github"), "notice")
-  expect_equal(ci_severity("policy", "gitlab"), "blocker")
-  expect_equal(ci_severity("opinion", "checkstyle"), "info")
-  expect_equal(ci_severity("robustness", "sarif"), "warning")
-  # An unknown tier is treated as a real finding rather than dropped.
-  expect_equal(ci_severity("something_new", "github"), "error")
-})
-
-# Test detect_ci() ----
-
-test_that("detect_ci(): detects the forge from the variables each one sets", {
-  # These tests run ON a forge, which sets its own variable in the real
-  # environment. Setting GITLAB_CI while GITHUB_ACTIONS is already set does not
-  # test GitLab detection, it tests precedence -- so clear every forge variable
-  # first and set only the one under test.
-  forge_vars <- c("GITHUB_ACTIONS", "GITLAB_CI", "TF_BUILD", "JENKINS_URL")
-  only_forge <- function(vars, code) {
-    new <- stats::setNames(rep(NA_character_, length(forge_vars)), forge_vars)
-    new[names(vars)] <- vars
-    withr::local_envvar(new) # NA unsets
-    force(code)
-  }
-  only_forge(c(GITHUB_ACTIONS = "true"), expect_equal(detect_ci(), "github"))
-  only_forge(c(GITLAB_CI = "true"), expect_equal(detect_ci(), "gitlab"))
-  only_forge(c(TF_BUILD = "True"), expect_equal(detect_ci(), "azure"))
-  only_forge(c(JENKINS_URL = "http://ci"), expect_equal(detect_ci(), "checkstyle"))
-  # No forge at all falls back to plain text rather than guessing.
-  only_forge(character(0), expect_equal(detect_ci(), "text"))
-  # Gitea and Forgejo set GITHUB_ACTIONS too, so it is checked first and wins.
-  only_forge(
-    c(GITHUB_ACTIONS = "true", GITLAB_CI = "true"),
-    expect_equal(detect_ci(), "github")
-  )
-})
-
-# Test ci_report() ----
 
 test_that("ci_report(): a clean package reports nothing at all", {
   pkg <- make_temp_dir()
@@ -301,19 +247,6 @@ test_that("ci_report(): a multi-line finding stays on one line", {
   expect_match(az, "second part", fixed = TRUE)
 })
 
-# Test escape_azure_property() ----
-
-test_that("escape_azure_property(): escapes Azure's command delimiters", {
-  # `;` separates properties and `]` closes the block, so a property carrying
-  # either would be misparsed. The message body sits after `]` and keeps them.
-  expect_equal(escape_azure_property("a;b]c"), "a%3Bb%5Dc")
-  expect_equal(escape_azure_data("a;b]c"), "a;b]c")
-  expect_equal(escape_azure_property("a\nb"), "a%0Ab")
-  expect_equal(flatten_lines("a\r\n  b"), "a b")
-})
-
-# Test ci_report() ----
-
 test_that("ci_report(): special characters do not break a format", {
   # A finding carrying <YEAR> or a quote would otherwise produce invalid XML.
   pkg <- make_temp_dir()
@@ -324,4 +257,54 @@ test_that("ci_report(): special characters do not break a format", {
   f <- file.path(make_temp_dir(), "cs.xml")
   expect_message(ci_report(r, format = "checkstyle", file = f), "did not run")
   expect_no_error(xml2::read_xml(f))
+})
+
+# Test ci_severity() ----
+
+test_that("ci_severity(): maps to each forge's own words", {
+  expect_equal(ci_severity("policy", "github"), "error")
+  expect_equal(ci_severity("opinion", "github"), "notice")
+  expect_equal(ci_severity("policy", "gitlab"), "blocker")
+  expect_equal(ci_severity("opinion", "checkstyle"), "info")
+  expect_equal(ci_severity("robustness", "sarif"), "warning")
+  # An unknown tier is treated as a real finding rather than dropped.
+  expect_equal(ci_severity("something_new", "github"), "error")
+})
+
+# Test detect_ci() ----
+
+test_that("detect_ci(): detects the forge from the variables each one sets", {
+  # These tests run ON a forge, which sets its own variable in the real
+  # environment. Setting GITLAB_CI while GITHUB_ACTIONS is already set does not
+  # test GitLab detection, it tests precedence -- so clear every forge variable
+  # first and set only the one under test.
+  forge_vars <- c("GITHUB_ACTIONS", "GITLAB_CI", "TF_BUILD", "JENKINS_URL")
+  only_forge <- function(vars, code) {
+    new <- stats::setNames(rep(NA_character_, length(forge_vars)), forge_vars)
+    new[names(vars)] <- vars
+    withr::local_envvar(new) # NA unsets
+    force(code)
+  }
+  only_forge(c(GITHUB_ACTIONS = "true"), expect_equal(detect_ci(), "github"))
+  only_forge(c(GITLAB_CI = "true"), expect_equal(detect_ci(), "gitlab"))
+  only_forge(c(TF_BUILD = "True"), expect_equal(detect_ci(), "azure"))
+  only_forge(c(JENKINS_URL = "http://ci"), expect_equal(detect_ci(), "checkstyle"))
+  # No forge at all falls back to plain text rather than guessing.
+  only_forge(character(0), expect_equal(detect_ci(), "text"))
+  # Gitea and Forgejo set GITHUB_ACTIONS too, so it is checked first and wins.
+  only_forge(
+    c(GITHUB_ACTIONS = "true", GITLAB_CI = "true"),
+    expect_equal(detect_ci(), "github")
+  )
+})
+
+# Test escape_azure_property() ----
+
+test_that("escape_azure_property(): escapes Azure's command delimiters", {
+  # `;` separates properties and `]` closes the block, so a property carrying
+  # either would be misparsed. The message body sits after `]` and keeps them.
+  expect_equal(escape_azure_property("a;b]c"), "a%3Bb%5Dc")
+  expect_equal(escape_azure_data("a;b]c"), "a;b]c")
+  expect_equal(escape_azure_property("a\nb"), "a%0Ab")
+  expect_equal(flatten_lines("a\r\n  b"), "a b")
 })

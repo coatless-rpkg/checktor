@@ -1,3 +1,6 @@
+# A test that names a CRAN package reproduces a false positive or a missed
+# finding from that package's real sources, so a regression fails here first.
+
 # Test lab_value_tags() ----
 
 test_that("lab_value_tags(): flags missing \\value{} in function topics", {
@@ -125,6 +128,34 @@ test_that("lab_value_tags(): leaves roxygen's -package and reexports topics", {
   expect_equal(res$missing, "fn.Rd")
 })
 
+test_that("lab_value_tags(): flags missing \\value, exempts internal topics", {
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    r_code = "f <- function() TRUE",
+    rd_files = list(
+      "f.Rd" = c(
+        "\\name{f}",
+        "\\alias{f}",
+        "\\title{F}",
+        "\\usage{f()}",
+        "\\description{d}"
+      ), # missing \value
+      "g.Rd" = c(
+        "\\name{g}",
+        "\\alias{g}",
+        "\\title{G}",
+        "\\usage{g()}",
+        "\\description{d}",
+        "\\keyword{internal}"
+      ) # internal: exempt
+    )
+  )
+  res <- lab_value_tags(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_equal(res$issues, "f.Rd")
+})
+
 # Test lab_example_structure() ----
 
 test_that("lab_example_structure(): flags unjustified \\dontrun{}", {
@@ -190,639 +221,6 @@ test_that("lab_example_structure(): extracts only the \\examples{} block", {
   )
   expect_true(lab_example_structure(pkg, verbose = FALSE)$passed)
 })
-
-# Test lab_missing_examples() ----
-
-test_that("lab_missing_examples(): flags exported topics without \\examples", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    rd_files = list(
-      "fn.Rd" = c(
-        "\\name{fn}",
-        "\\alias{fn}",
-        "\\title{fn}",
-        "\\usage{fn(x)}",
-        "\\value{A value.}"
-      )
-    )
-  )
-  writeLines("export(fn)", file.path(pkg, "NAMESPACE"))
-  res <- lab_missing_examples(pkg, verbose = FALSE)
-  expect_false(res$passed)
-  expect_equal(res$missing, "fn.Rd")
-})
-
-test_that("lab_missing_examples(): accepts an exported topic with \\examples", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    rd_files = list(
-      "fn.Rd" = c(
-        "\\name{fn}",
-        "\\alias{fn}",
-        "\\title{fn}",
-        "\\value{A value.}",
-        "\\examples{",
-        "fn(1)",
-        "}"
-      )
-    )
-  )
-  writeLines("export(fn)", file.path(pkg, "NAMESPACE"))
-  expect_true(lab_missing_examples(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_missing_examples(): skips unexported topics and no NAMESPACE", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    rd_files = list(
-      "fn.Rd" = c(
-        "\\name{fn}",
-        "\\alias{fn}",
-        "\\title{fn}",
-        "\\value{1}"
-      )
-    )
-  )
-  writeLines("export(other)", file.path(pkg, "NAMESPACE"))
-  expect_true(lab_missing_examples(pkg, verbose = FALSE)$passed)
-
-  pkg2 <- make_temp_dir()
-  write_pkg(
-    pkg2,
-    rd_files = list(
-      "fn.Rd" = c(
-        "\\name{fn}",
-        "\\alias{fn}",
-        "\\title{fn}",
-        "\\value{1}"
-      )
-    )
-  ) # no NAMESPACE at all
-  expect_true(lab_missing_examples(pkg2, verbose = FALSE)$passed)
-})
-
-# Test lab_suggested_in_examples() ----
-
-test_that("lab_suggested_in_examples(): flags an unguarded Suggested package", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    extra = "Suggests: dplyr",
-    rd_files = list(
-      "fn.Rd" = c(
-        "\\name{fn}",
-        "\\title{fn}",
-        "\\value{1}",
-        "\\examples{",
-        "library(dplyr)",
-        "dplyr::filter(x)",
-        "}"
-      )
-    )
-  )
-  res <- lab_suggested_in_examples(pkg, verbose = FALSE)
-  expect_false(res$passed)
-})
-
-test_that("lab_suggested_in_examples(): accepts a requireNamespace guard", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    extra = "Suggests: dplyr",
-    rd_files = list(
-      "fn.Rd" = c(
-        "\\name{fn}",
-        "\\title{fn}",
-        "\\value{1}",
-        "\\examples{",
-        "if (requireNamespace(\"dplyr\", quietly = TRUE)) {",
-        "  library(dplyr)",
-        "}",
-        "}"
-      )
-    )
-  )
-  expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_suggested_in_examples(): ignores usage inside \\dontrun", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    extra = "Suggests: dplyr",
-    rd_files = list(
-      "fn.Rd" = c(
-        "\\name{fn}",
-        "\\title{fn}",
-        "\\value{1}",
-        "\\examples{",
-        "\\dontrun{",
-        "library(dplyr)",
-        "}",
-        "}"
-      )
-    )
-  )
-  expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_suggested_in_examples(): passes when there are no Suggests", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    rd_files = list(
-      "fn.Rd" = c(
-        "\\name{fn}",
-        "\\title{fn}",
-        "\\value{1}",
-        "\\examples{",
-        "library(dplyr)",
-        "}"
-      )
-    )
-  )
-  expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
-})
-
-# Test lab_commented_examples() ----
-
-test_that("lab_commented_examples(): does not flag ordinary prose comments", {
-  # The old rule was "a comment containing an open paren", which flags English.
-  # All 41 comment lines across the 9 Rd files this fired on in the wild were
-  # prose; not one was a disabled call.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    rd_files = list(
-      "foo.Rd" = c(
-        "\\name{foo}",
-        "\\alias{foo}",
-        "\\title{Foo}",
-        "\\usage{foo()}",
-        "\\description{d}",
-        "\\value{x}",
-        "\\examples{",
-        "# Simulate random choices (default)",
-        "# (Columns are attributes, rows are alternatives)",
-        "# Example 2: Named categorical priors (more explicit)",
-        "foo()",
-        "}"
-      )
-    )
-  )
-  expect_true(lab_commented_examples(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_commented_examples(): flags an example that runs nothing", {
-  # The real defect: every line that would demonstrate the function is commented
-  # out, so the example block executes nothing at all.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    rd_files = list(
-      "foo.Rd" = c(
-        "\\name{foo}",
-        "\\alias{foo}",
-        "\\title{Foo}",
-        "\\usage{foo()}",
-        "\\description{d}",
-        "\\value{x}",
-        "\\examples{",
-        "# foo(slow = TRUE)",
-        "# foo()",
-        "}"
-      )
-    )
-  )
-  res <- lab_commented_examples(pkg, verbose = FALSE)
-  expect_false(res$passed)
-  expect_match(res$issues, "runs nothing", all = FALSE)
-})
-
-test_that("lab_commented_examples(): names \\examples{} with its braces", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    rd_files = list(
-      "foo.Rd" = c(
-        "\\name{foo}", "\\alias{foo}", "\\title{Foo}", "\\description{d}",
-        "\\value{x}", "\\examples{", "# foo()", "}"
-      )
-    )
-  )
-  out <- paste(cli::cli_fmt(lab_commented_examples(pkg)), collapse = "\n")
-  expect_match(out, "`\\examples{}` blocks that run nothing", fixed = TRUE)
-
-  writeLines(
-    c("\\name{foo}", "\\alias{foo}", "\\title{Foo}", "\\description{d}",
-      "\\value{x}", "\\examples{", "foo()", "}"),
-    file.path(pkg, "man", "foo.Rd")
-  )
-  out <- paste(cli::cli_fmt(lab_commented_examples(pkg)), collapse = "\n")
-  expect_match(out, "Every `\\examples{}` block runs something", fixed = TRUE)
-})
-
-test_that("lab_commented_examples(): allows a comment alongside live code", {
-  # surveydown's examples comment out the server and .qmd snippets that belong in
-  # the USER's files, then call sd_create_survey() for real. That is illustration,
-  # not a disabled example, and flagging it flagged the docs for doing their job.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    rd_files = list(
-      "foo.Rd" = c(
-        "\\name{foo}",
-        "\\alias{foo}",
-        "\\title{Foo}",
-        "\\usage{foo()}",
-        "\\description{d}",
-        "\\value{x}",
-        "\\examples{",
-        "# Put this in your own app.R:",
-        "# server <- function(input, output) {",
-        "#   foo(reactive = TRUE)",
-        "# }",
-        "foo()",
-        "}"
-      )
-    )
-  )
-  expect_true(lab_commented_examples(pkg, verbose = FALSE)$passed)
-})
-
-# Test lab_missing_examples() ----
-
-test_that("lab_missing_examples(): exempts \\keyword{internal} topics", {
-  # R's own checkRdContents grants keyword-internal pages substantive leniency,
-  # keying off the keyword alone and never reading NAMESPACE.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    r_code = "deprecated_fn <- function() TRUE",
-    rd_files = list(
-      "deprecated_fn.Rd" = c(
-        "\\name{deprecated_fn}",
-        "\\alias{deprecated_fn}",
-        "\\title{Old}",
-        "\\usage{deprecated_fn()}",
-        "\\description{Superseded.}",
-        "\\value{x}",
-        "\\keyword{internal}"
-      )
-    )
-  )
-  writeLines("export(deprecated_fn)", file.path(pkg, "NAMESPACE"))
-  expect_true(lab_missing_examples(pkg, verbose = FALSE)$passed)
-})
-
-# Test lab_value_tags() ----
-
-test_that("lab_value_tags(): flags missing \\value, exempts internal topics", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    r_code = "f <- function() TRUE",
-    rd_files = list(
-      "f.Rd" = c(
-        "\\name{f}",
-        "\\alias{f}",
-        "\\title{F}",
-        "\\usage{f()}",
-        "\\description{d}"
-      ), # missing \value
-      "g.Rd" = c(
-        "\\name{g}",
-        "\\alias{g}",
-        "\\title{G}",
-        "\\usage{g()}",
-        "\\description{d}",
-        "\\keyword{internal}"
-      ) # internal: exempt
-    )
-  )
-  res <- lab_value_tags(pkg, verbose = FALSE)
-  expect_false(res$passed)
-  expect_equal(res$issues, "f.Rd")
-})
-
-# Test lab_roxygen_usage() ----
-
-test_that("lab_roxygen_usage(): flags an @export missing from NAMESPACE", {
-  # The real cost of a forgotten devtools::document(): the function is tagged
-  # for export, is not exported, and R CMD check says nothing.
-  pkg <- make_temp_dir()
-  write_roxy_pkg(
-    pkg,
-    r_code = c("#' Add", "#' @export", "add <- function(a, b) a + b"),
-    namespace = character(0)
-  )
-
-  res <- lab_roxygen_usage(pkg, verbose = FALSE)
-  expect_false(res$passed)
-  expect_match(res$issues, "add is tagged @export", all = FALSE)
-})
-
-test_that("lab_roxygen_usage(): passes when the export is registered", {
-  pkg <- make_temp_dir()
-  write_roxy_pkg(
-    pkg,
-    r_code = c("#' Add", "#' @export", "add <- function(a, b) a + b"),
-    namespace = "export(add)"
-  )
-  expect_true(lab_roxygen_usage(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_roxygen_usage(): counts an S3method registration as an export", {
-  # `#' @export` on print.foo generates S3method(print, foo), not export().
-  pkg <- make_temp_dir()
-  write_roxy_pkg(
-    pkg,
-    r_code = c("#' Print", "#' @export", "print.foo <- function(x, ...) x"),
-    namespace = "S3method(print,foo)"
-  )
-  expect_true(lab_roxygen_usage(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_roxygen_usage(): flags an Rd orphaned by a deleted file", {
-  pkg <- make_temp_dir()
-  write_roxy_pkg(
-    pkg,
-    r_code = c("#' Add", "#' @export", "add <- function(a, b) a + b"),
-    namespace = "export(add)"
-  )
-  dir.create(file.path(pkg, "man"), showWarnings = FALSE)
-  writeLines(
-    c(
-      "% Generated by roxygen2: do not edit by hand",
-      "% Please edit documentation in R/deleted.R",
-      "\\name{gone}",
-      "\\alias{gone}",
-      "\\title{Gone}",
-      "\\value{NULL}",
-      "\\description{Gone}"
-    ),
-    file.path(pkg, "man", "gone.Rd")
-  )
-
-  res <- lab_roxygen_usage(pkg, verbose = FALSE)
-  expect_false(res$passed)
-  expect_match(res$issues, "no longer exists", all = FALSE)
-})
-
-test_that("lab_roxygen_usage(): ignores a hand-written NAMESPACE", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    r_code = c("#' Add", "#' @export", "add <- function(a, b) a + b")
-  )
-  writeLines("# hand maintained", file.path(pkg, "NAMESPACE"))
-  expect_true(lab_roxygen_usage(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_roxygen_usage(): never confuses @exportS3Method with @export", {
-  pkg <- make_temp_dir()
-  write_roxy_pkg(
-    pkg,
-    r_code = c(
-      "#' Tidy",
-      "#' @exportS3Method generics::tidy",
-      "tidy.foo <- function(x, ...) x"
-    ),
-    namespace = "S3method(generics::tidy,foo)"
-  )
-  expect_true(lab_roxygen_usage(pkg, verbose = FALSE)$passed)
-})
-
-# Test lab_unexported_example_ns() ----
-
-test_that("lab_unexported_example_ns(): flags a bare call to an unexported topic", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  writeLines("export(add)", file.path(pkg, "NAMESPACE"))
-  write_unexported_rd(pkg, "helper(1)")
-
-  res <- lab_unexported_example_ns(pkg, verbose = FALSE)
-  expect_false(res$passed)
-  expect_match(res$issues, "helper", all = FALSE)
-})
-
-test_that("lab_unexported_example_ns(): accepts a ::: -qualified call", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  writeLines("export(add)", file.path(pkg, "NAMESPACE"))
-  write_unexported_rd(pkg, "pkg:::helper(1)")
-
-  expect_true(
-    lab_unexported_example_ns(pkg, verbose = FALSE)$passed
-  )
-})
-
-test_that("lab_unexported_example_ns(): ignores \\dontrun{} examples", {
-  # \dontrun{} is never executed, so a bare call there cannot fail. R CMD check
-  # would not run it either.
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  writeLines("export(add)", file.path(pkg, "NAMESPACE"))
-  write_unexported_rd(pkg, "\\dontrun{helper(1)}")
-
-  expect_true(
-    lab_unexported_example_ns(pkg, verbose = FALSE)$passed
-  )
-})
-
-test_that("lab_unexported_example_ns(): reads an exported [ method (#18)", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    r_code = c(
-      "reproclass <- function(x) structure(x, class = \"reproclass\")",
-      "`[.reproclass` <- function(x, i, ...) reproclass(NextMethod())"
-    )
-  )
-  writeLines(
-    c("S3method(\"[\", reproclass)", "export(reproclass)"),
-    file.path(pkg, "NAMESPACE")
-  )
-  write_operator_rd(pkg, "[.reproclass", "r <- reproclass(1:5); r[2:3]")
-
-  res <- NULL
-  expect_no_warning(res <- lab_unexported_example_ns(pkg, verbose = FALSE))
-  expect_true(res$passed)
-})
-
-test_that("lab_unexported_example_ns(): reads unexported operator methods", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  writeLines("export(add)", file.path(pkg, "NAMESPACE"))
-  write_operator_rd(
-    pkg,
-    c("[.cls", "[[.cls", "$.cls", "+.cls", "==.cls"),
-    "x[1]; x[[1]]; x$a; x + x; x == x"
-  )
-
-  res <- NULL
-  expect_no_warning(res <- lab_unexported_example_ns(pkg, verbose = FALSE))
-  expect_true(res$passed)
-})
-
-test_that("lab_unexported_example_ns(): does not flag an exported topic", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  writeLines("export(helper)", file.path(pkg, "NAMESPACE"))
-  write_unexported_rd(pkg, "helper(1)")
-
-  expect_true(
-    lab_unexported_example_ns(pkg, verbose = FALSE)$passed
-  )
-})
-
-# Test lab_roxygen_usage() ----
-
-# Each case below is one the previous regex implementation got wrong.
-
-test_that("lab_roxygen_usage(): sees an assignment split across lines", {
-  # `add <-` and `function(a, b)` on separate lines. A "regex the next line for
-  # `name <-`" approach misses this entirely.
-  pkg <- make_temp_dir()
-  write_roxy_pkg(
-    pkg,
-    r_code = c("#' Add", "#' @export", "add <-", "  function(a, b) a + b"),
-    namespace = character(0)
-  )
-  res <- lab_roxygen_usage(pkg, verbose = FALSE)
-  expect_false(res$passed)
-  expect_match(res$issues, "add is tagged @export", all = FALSE)
-})
-
-test_that("lab_roxygen_usage(): reads a backticked or `=` assigned name", {
-  pkg <- make_temp_dir()
-  write_roxy_pkg(
-    pkg,
-    r_code = c("#' Odd", "#' @export", "`odd name` = function() NULL"),
-    namespace = character(0)
-  )
-  res <- lab_roxygen_usage(pkg, verbose = FALSE)
-  expect_false(res$passed)
-  expect_match(res$issues, "odd name", all = FALSE)
-})
-
-test_that("lab_roxygen_usage(): ignores @export in a string or plain comment", {
-  # Neither is a roxygen tag. Only a `#'` COMMENT token counts.
-  pkg <- make_temp_dir()
-  write_roxy_pkg(
-    pkg,
-    r_code = c(
-      "# @export not_a_tag",
-      "tag <- \"#' @export also_not_a_tag\"",
-      "helper <- function() NULL"
-    ),
-    namespace = character(0)
-  )
-  expect_true(lab_roxygen_usage(pkg, verbose = FALSE)$passed)
-})
-
-# Test lab_unexported_example_ns() ----
-
-test_that("lab_unexported_example_ns(): ignores a call in a comment or a string", {
-  # The exact false positive the AST rewrite exists to prevent.
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  writeLines("export(add)", file.path(pkg, "NAMESPACE"))
-  write_unexported_rd(
-    pkg,
-    paste(
-      "# you could call helper(1) yourself",
-      "msg <- \"helper(2)\"",
-      sep = "\n"
-    )
-  )
-  expect_true(
-    lab_unexported_example_ns(pkg, verbose = FALSE)$passed
-  )
-})
-
-test_that("lab_unexported_example_ns(): is not fooled by a same-named object", {
-  # `helper` as a value, never invoked, is not a namespace problem.
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  writeLines("export(add)", file.path(pkg, "NAMESPACE"))
-  write_unexported_rd(pkg, "x <- list(helper = 1)")
-  expect_true(
-    lab_unexported_example_ns(pkg, verbose = FALSE)$passed
-  )
-})
-
-# Test package_exports() ----
-
-test_that("package_exports(): reads a MULTI-LINE export( block", {
-  # The bug that broke everything. The old reader regexed NAMESPACE line by line,
-  # so an export( block spanning lines lost every name after the first. On the
-  # real `digest` package it returned exactly one entry, the string "AES,"
-  # (trailing comma included), when the truth is nine exports -- so digest::digest()
-  # itself was reported as unexported.
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  writeLines(
-    c(
-      "export(AES,",
-      "       digest,",
-      "       digest2int,",
-      "       hmac)",
-      "S3method(\"[\",foo)",
-      "S3method(\"names<-\",foo)",
-      "S3method(print,foo)"
-    ),
-    file.path(pkg, "NAMESPACE")
-  )
-
-  ex <- package_exports(pkg)
-  expect_true(all(c("AES", "digest", "digest2int", "hmac") %in% ex$names))
-  expect_true(all(c("[.foo", "names<-.foo", "print.foo") %in% ex$names))
-})
-
-test_that("package_exports(): honours exportPattern()", {
-  # A name can be exported without ever being listed.
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  writeLines('exportPattern("^[^.]")', file.path(pkg, "NAMESPACE"))
-  ex <- package_exports(pkg)
-  expect_true(name_is_exported("visible_fn", ex))
-  expect_false(name_is_exported(".hidden_fn", ex))
-})
-
-test_that("package_exports(): returns NULL when it cannot read NAMESPACE", {
-  # "Cannot tell" must never become "is unexported". Guessing here is how a check
-  # starts accusing a package's flagship function of not existing.
-  pkg <- make_temp_dir()
-  write_pkg(pkg) # write_pkg writes no NAMESPACE
-  expect_false(file.exists(file.path(pkg, "NAMESPACE")))
-  expect_null(package_exports(pkg))
-  expect_true(name_is_exported("anything", NULL))
-})
-
-# Test lab_roxygen_usage() ----
-
-test_that("lab_roxygen_usage(): accepts @export on a non-syntactic S3 method", {
-  pkg <- make_temp_dir()
-  write_roxy_pkg(
-    pkg,
-    r_code = c(
-      "#' Subset",
-      "#' @export",
-      "`[.foo` <- function(x, i) x",
-      "#' Rename",
-      "#' @export",
-      "`names<-.foo` <- function(x, value) x"
-    ),
-    namespace = c("S3method(\"[\",foo)", "S3method(\"names<-\",foo)")
-  )
-  expect_true(lab_roxygen_usage(pkg, verbose = FALSE)$passed)
-})
-
-# Test lab_example_structure() ----
 
 test_that("lab_example_structure(): accepts \\dontrun{} around a shiny server", {
   # surveydown's examples define server <- function(input, output, session),
@@ -944,6 +342,909 @@ local({
   }
 })
 
+test_that("lab_example_structure(): an install is not a reason for dontrun", {
+  # checktor used to accept this shape, which is the one CRAN sent back.
+  pkg <- rd_pkg(c("\\dontrun{", "  install_nodejs()", "  run_electron_app()", "}"))
+  expect_false(lab_example_structure(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_example_structure(): \\dontrun{} around a shiny reactive context is justified", {
+  # surveydown/man/sd_value.Rd. Cannot run outside a live app, but never says
+  # the word "shiny".
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    rd_files = list(
+      "sd_value.Rd" = c(
+        "\\name{sd_value}",
+        "\\alias{sd_value}",
+        "\\title{v}",
+        "\\description{d}",
+        "\\value{x}",
+        "\\examples{",
+        "\\dontrun{",
+        "  server <- function(input, output, session) {",
+        "    age <- sd_value(age)",
+        "  }",
+        "}",
+        "}"
+      )
+    )
+  )
+  expect_true(lab_example_structure(pkg, verbose = FALSE)$passed)
+})
+
+# Test lab_missing_examples() ----
+
+test_that("lab_missing_examples(): flags exported topics without \\examples", {
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    rd_files = list(
+      "fn.Rd" = c(
+        "\\name{fn}",
+        "\\alias{fn}",
+        "\\title{fn}",
+        "\\usage{fn(x)}",
+        "\\value{A value.}"
+      )
+    )
+  )
+  writeLines("export(fn)", file.path(pkg, "NAMESPACE"))
+  res <- lab_missing_examples(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_equal(res$missing, "fn.Rd")
+})
+
+test_that("lab_missing_examples(): accepts an exported topic with \\examples", {
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    rd_files = list(
+      "fn.Rd" = c(
+        "\\name{fn}",
+        "\\alias{fn}",
+        "\\title{fn}",
+        "\\value{A value.}",
+        "\\examples{",
+        "fn(1)",
+        "}"
+      )
+    )
+  )
+  writeLines("export(fn)", file.path(pkg, "NAMESPACE"))
+  expect_true(lab_missing_examples(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_missing_examples(): skips unexported topics and no NAMESPACE", {
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    rd_files = list(
+      "fn.Rd" = c(
+        "\\name{fn}",
+        "\\alias{fn}",
+        "\\title{fn}",
+        "\\value{1}"
+      )
+    )
+  )
+  writeLines("export(other)", file.path(pkg, "NAMESPACE"))
+  expect_true(lab_missing_examples(pkg, verbose = FALSE)$passed)
+
+  pkg2 <- make_temp_dir()
+  write_pkg(
+    pkg2,
+    rd_files = list(
+      "fn.Rd" = c(
+        "\\name{fn}",
+        "\\alias{fn}",
+        "\\title{fn}",
+        "\\value{1}"
+      )
+    )
+  ) # no NAMESPACE at all
+  expect_true(lab_missing_examples(pkg2, verbose = FALSE)$passed)
+})
+
+test_that("lab_missing_examples(): exempts \\keyword{internal} topics", {
+  # R's own checkRdContents grants keyword-internal pages substantive leniency,
+  # keying off the keyword alone and never reading NAMESPACE.
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    r_code = "deprecated_fn <- function() TRUE",
+    rd_files = list(
+      "deprecated_fn.Rd" = c(
+        "\\name{deprecated_fn}",
+        "\\alias{deprecated_fn}",
+        "\\title{Old}",
+        "\\usage{deprecated_fn()}",
+        "\\description{Superseded.}",
+        "\\value{x}",
+        "\\keyword{internal}"
+      )
+    )
+  )
+  writeLines("export(deprecated_fn)", file.path(pkg, "NAMESPACE"))
+  expect_true(lab_missing_examples(pkg, verbose = FALSE)$passed)
+})
+
+# Test lab_suggested_in_examples() ----
+
+test_that("lab_suggested_in_examples(): flags an unguarded Suggested package", {
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    extra = "Suggests: dplyr",
+    rd_files = list(
+      "fn.Rd" = c(
+        "\\name{fn}",
+        "\\title{fn}",
+        "\\value{1}",
+        "\\examples{",
+        "library(dplyr)",
+        "dplyr::filter(x)",
+        "}"
+      )
+    )
+  )
+  res <- lab_suggested_in_examples(pkg, verbose = FALSE)
+  expect_false(res$passed)
+})
+
+test_that("lab_suggested_in_examples(): accepts a requireNamespace guard", {
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    extra = "Suggests: dplyr",
+    rd_files = list(
+      "fn.Rd" = c(
+        "\\name{fn}",
+        "\\title{fn}",
+        "\\value{1}",
+        "\\examples{",
+        "if (requireNamespace(\"dplyr\", quietly = TRUE)) {",
+        "  library(dplyr)",
+        "}",
+        "}"
+      )
+    )
+  )
+  expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_suggested_in_examples(): ignores usage inside \\dontrun", {
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    extra = "Suggests: dplyr",
+    rd_files = list(
+      "fn.Rd" = c(
+        "\\name{fn}",
+        "\\title{fn}",
+        "\\value{1}",
+        "\\examples{",
+        "\\dontrun{",
+        "library(dplyr)",
+        "}",
+        "}"
+      )
+    )
+  )
+  expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_suggested_in_examples(): passes when there are no Suggests", {
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    rd_files = list(
+      "fn.Rd" = c(
+        "\\name{fn}",
+        "\\title{fn}",
+        "\\value{1}",
+        "\\examples{",
+        "library(dplyr)",
+        "}"
+      )
+    )
+  )
+  expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_suggested_in_examples(): a Suggests used in \\examples without a guard is caught", {
+  # surveydown/man/sd_question_custom.Rd guards on interactive() rather than
+  # requireNamespace(), which does not make the package available. This one was
+  # a TRUE positive that an earlier audit pass wrongly dismissed.
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    extra = "Suggests: leaflet",
+    rd_files = list(
+      "q.Rd" = c(
+        "\\name{q}",
+        "\\alias{q}",
+        "\\title{q}",
+        "\\description{d}",
+        "\\value{x}",
+        "\\examples{",
+        "if (interactive()) {",
+        "  library(leaflet)",
+        "  leaflet::leaflet()",
+        "}",
+        "}"
+      )
+    )
+  )
+  expect_false(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_suggested_in_examples(): `if (require('pkg'))` IS the sanctioned guard", {
+  # Writing R Extensions sanctions exactly this for conditional Suggests use in
+  # examples. The old guard recognised only requireNamespace(), and only quoted,
+  # while the USE pattern matched require() -- so the guard was the violation.
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    extra = "Suggests: chron",
+    rd_files = list(
+      "na.approx.Rd" = c(
+        "\\name{na.approx}",
+        "\\title{n}",
+        "\\value{1}",
+        "\\examples{",
+        'if (require("chron")) {',
+        "  tt <- as.chron('2000-01-01')",
+        "}",
+        "}"
+      )
+    )
+  )
+  expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_suggested_in_examples(): interactive() is NOT a Suggests guard", {
+  # It does not make the package available, so the example still fails without it.
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    extra = "Suggests: leaflet",
+    rd_files = list(
+      "q.Rd" = c(
+        "\\name{q}",
+        "\\title{q}",
+        "\\value{1}",
+        "\\examples{",
+        "if (interactive()) {",
+        "  library(leaflet)",
+        "}",
+        "}"
+      )
+    )
+  )
+  expect_false(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_suggested_in_examples(): roxygen's @examplesIf is a guard whatever its predicate", {
+  # It compiles to \dontshow{if (COND) ...}, and COND can be anything: cli writes
+  # `cli:::has_packages(c("htmltools"))`. The GUARD IS THE STRUCTURE.
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    extra = "Suggests: htmltools",
+    rd_files = list(
+      "ansi_html.Rd" = c(
+        "\\name{ansi_html}",
+        "\\title{a}",
+        "\\value{1}",
+        "\\examples{",
+        "\\dontshow{if (cli:::has_packages(c(\"htmltools\"))) \\{ # examplesIf}",
+        "htmltools::html_print(page)",
+        "\\dontshow{\\} # examplesIf}",
+        "}"
+      )
+    )
+  )
+  expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
+})
+
+# Test lab_commented_examples() ----
+
+test_that("lab_commented_examples(): does not flag ordinary prose comments", {
+  # The old rule was "a comment containing an open paren", which flags English.
+  # All 41 comment lines across the 9 Rd files this fired on in the wild were
+  # prose; not one was a disabled call.
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    rd_files = list(
+      "foo.Rd" = c(
+        "\\name{foo}",
+        "\\alias{foo}",
+        "\\title{Foo}",
+        "\\usage{foo()}",
+        "\\description{d}",
+        "\\value{x}",
+        "\\examples{",
+        "# Simulate random choices (default)",
+        "# (Columns are attributes, rows are alternatives)",
+        "# Example 2: Named categorical priors (more explicit)",
+        "foo()",
+        "}"
+      )
+    )
+  )
+  expect_true(lab_commented_examples(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_commented_examples(): flags an example that runs nothing", {
+  # The real defect: every line that would demonstrate the function is commented
+  # out, so the example block executes nothing at all.
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    rd_files = list(
+      "foo.Rd" = c(
+        "\\name{foo}",
+        "\\alias{foo}",
+        "\\title{Foo}",
+        "\\usage{foo()}",
+        "\\description{d}",
+        "\\value{x}",
+        "\\examples{",
+        "# foo(slow = TRUE)",
+        "# foo()",
+        "}"
+      )
+    )
+  )
+  res <- lab_commented_examples(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_match(res$issues, "runs nothing", all = FALSE)
+})
+
+test_that("lab_commented_examples(): names \\examples{} with its braces", {
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    rd_files = list(
+      "foo.Rd" = c(
+        "\\name{foo}", "\\alias{foo}", "\\title{Foo}", "\\description{d}",
+        "\\value{x}", "\\examples{", "# foo()", "}"
+      )
+    )
+  )
+  out <- paste(cli::cli_fmt(lab_commented_examples(pkg)), collapse = "\n")
+  expect_match(out, "`\\examples{}` blocks that run nothing", fixed = TRUE)
+
+  writeLines(
+    c("\\name{foo}", "\\alias{foo}", "\\title{Foo}", "\\description{d}",
+      "\\value{x}", "\\examples{", "foo()", "}"),
+    file.path(pkg, "man", "foo.Rd")
+  )
+  out <- paste(cli::cli_fmt(lab_commented_examples(pkg)), collapse = "\n")
+  expect_match(out, "Every `\\examples{}` block runs something", fixed = TRUE)
+})
+
+test_that("lab_commented_examples(): allows a comment alongside live code", {
+  # surveydown's examples comment out the server and .qmd snippets that belong in
+  # the USER's files, then call sd_create_survey() for real. That is illustration,
+  # not a disabled example, and flagging it flagged the docs for doing their job.
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    rd_files = list(
+      "foo.Rd" = c(
+        "\\name{foo}",
+        "\\alias{foo}",
+        "\\title{Foo}",
+        "\\usage{foo()}",
+        "\\description{d}",
+        "\\value{x}",
+        "\\examples{",
+        "# Put this in your own app.R:",
+        "# server <- function(input, output) {",
+        "#   foo(reactive = TRUE)",
+        "# }",
+        "foo()",
+        "}"
+      )
+    )
+  )
+  expect_true(lab_commented_examples(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_commented_examples(): flags an \\examples block that runs nothing", {
+  # A commented-out call is only a defect when it is ALL the example has. Beside
+  # live code it is illustration, which is why the live `actual_call()` this
+  # fixture used to carry made it a false positive.
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    rd_files = list(
+      "fn.Rd" = c(
+        "\\name{fn}",
+        "\\title{fn}",
+        "\\value{1}",
+        "\\examples{",
+        "# my_function(x)   # the only 'example' here",
+        "}"
+      )
+    )
+  )
+  res <- lab_commented_examples(pkg, verbose = FALSE)
+  expect_false(res$passed)
+})
+
+test_that("lab_commented_examples(): accepts explanatory comments", {
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    rd_files = list(
+      "fn.Rd" = c(
+        "\\name{fn}",
+        "\\title{fn}",
+        "\\value{1}",
+        "\\examples{",
+        "# Prepare data",
+        "x <- 1",
+        "}"
+      )
+    )
+  )
+  res <- lab_commented_examples(pkg, verbose = FALSE)
+  expect_true(res$passed)
+})
+
+test_that("lab_commented_examples(): prose comments in \\examples are not commented-out code", {
+  # cbcTools. All 41 comment lines across the 9 flagged Rd files were English.
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    rd_files = list(
+      "cbc_choices.Rd" = c(
+        "\\name{cbc_choices}",
+        "\\alias{cbc_choices}",
+        "\\title{c}",
+        "\\description{d}",
+        "\\value{x}",
+        "\\examples{",
+        "# Simulate random choices (default)",
+        "# (Columns are attributes, rows are alternatives)",
+        "cbc_choices(design)",
+        "}"
+      )
+    )
+  )
+  expect_true(lab_commented_examples(pkg, verbose = FALSE)$passed)
+})
+
+# Test lab_roxygen_usage() ----
+
+test_that("lab_roxygen_usage(): flags an @export missing from NAMESPACE", {
+  # The real cost of a forgotten devtools::document(): the function is tagged
+  # for export, is not exported, and R CMD check says nothing.
+  pkg <- make_temp_dir()
+  write_roxy_pkg(
+    pkg,
+    r_code = c("#' Add", "#' @export", "add <- function(a, b) a + b"),
+    namespace = character(0)
+  )
+
+  res <- lab_roxygen_usage(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_match(res$issues, "add is tagged @export", all = FALSE)
+})
+
+test_that("lab_roxygen_usage(): passes when the export is registered", {
+  pkg <- make_temp_dir()
+  write_roxy_pkg(
+    pkg,
+    r_code = c("#' Add", "#' @export", "add <- function(a, b) a + b"),
+    namespace = "export(add)"
+  )
+  expect_true(lab_roxygen_usage(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_roxygen_usage(): counts an S3method registration as an export", {
+  # `#' @export` on print.foo generates S3method(print, foo), not export().
+  pkg <- make_temp_dir()
+  write_roxy_pkg(
+    pkg,
+    r_code = c("#' Print", "#' @export", "print.foo <- function(x, ...) x"),
+    namespace = "S3method(print,foo)"
+  )
+  expect_true(lab_roxygen_usage(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_roxygen_usage(): flags an Rd orphaned by a deleted file", {
+  pkg <- make_temp_dir()
+  write_roxy_pkg(
+    pkg,
+    r_code = c("#' Add", "#' @export", "add <- function(a, b) a + b"),
+    namespace = "export(add)"
+  )
+  dir.create(file.path(pkg, "man"), showWarnings = FALSE)
+  writeLines(
+    c(
+      "% Generated by roxygen2: do not edit by hand",
+      "% Please edit documentation in R/deleted.R",
+      "\\name{gone}",
+      "\\alias{gone}",
+      "\\title{Gone}",
+      "\\value{NULL}",
+      "\\description{Gone}"
+    ),
+    file.path(pkg, "man", "gone.Rd")
+  )
+
+  res <- lab_roxygen_usage(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_match(res$issues, "no longer exists", all = FALSE)
+})
+
+test_that("lab_roxygen_usage(): ignores a hand-written NAMESPACE", {
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    r_code = c("#' Add", "#' @export", "add <- function(a, b) a + b")
+  )
+  writeLines("# hand maintained", file.path(pkg, "NAMESPACE"))
+  expect_true(lab_roxygen_usage(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_roxygen_usage(): never confuses @exportS3Method with @export", {
+  pkg <- make_temp_dir()
+  write_roxy_pkg(
+    pkg,
+    r_code = c(
+      "#' Tidy",
+      "#' @exportS3Method generics::tidy",
+      "tidy.foo <- function(x, ...) x"
+    ),
+    namespace = "S3method(generics::tidy,foo)"
+  )
+  expect_true(lab_roxygen_usage(pkg, verbose = FALSE)$passed)
+})
+
+# Each case below is one the previous regex implementation got wrong.
+
+test_that("lab_roxygen_usage(): sees an assignment split across lines", {
+  # `add <-` and `function(a, b)` on separate lines. A "regex the next line for
+  # `name <-`" approach misses this entirely.
+  pkg <- make_temp_dir()
+  write_roxy_pkg(
+    pkg,
+    r_code = c("#' Add", "#' @export", "add <-", "  function(a, b) a + b"),
+    namespace = character(0)
+  )
+  res <- lab_roxygen_usage(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_match(res$issues, "add is tagged @export", all = FALSE)
+})
+
+test_that("lab_roxygen_usage(): reads a backticked or `=` assigned name", {
+  pkg <- make_temp_dir()
+  write_roxy_pkg(
+    pkg,
+    r_code = c("#' Odd", "#' @export", "`odd name` = function() NULL"),
+    namespace = character(0)
+  )
+  res <- lab_roxygen_usage(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_match(res$issues, "odd name", all = FALSE)
+})
+
+test_that("lab_roxygen_usage(): ignores @export in a string or plain comment", {
+  # Neither is a roxygen tag. Only a `#'` COMMENT token counts.
+  pkg <- make_temp_dir()
+  write_roxy_pkg(
+    pkg,
+    r_code = c(
+      "# @export not_a_tag",
+      "tag <- \"#' @export also_not_a_tag\"",
+      "helper <- function() NULL"
+    ),
+    namespace = character(0)
+  )
+  expect_true(lab_roxygen_usage(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_roxygen_usage(): accepts @export on a non-syntactic S3 method", {
+  pkg <- make_temp_dir()
+  write_roxy_pkg(
+    pkg,
+    r_code = c(
+      "#' Subset",
+      "#' @export",
+      "`[.foo` <- function(x, i) x",
+      "#' Rename",
+      "#' @export",
+      "`names<-.foo` <- function(x, value) x"
+    ),
+    namespace = c("S3method(\"[\",foo)", "S3method(\"names<-\",foo)")
+  )
+  expect_true(lab_roxygen_usage(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_roxygen_usage(): a non-syntactic S3 method is registered, not unexported", {
+  # cbcTools/NAMESPACE. S3method("[",cbc_profiles) quotes the generic; keeping
+  # the quotes made every [.foo / names<-.foo method look unregistered.
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    r_code = c(
+      "#' Subset",
+      "#' @export",
+      "`[.cbc_profiles` <- function(x, i) x",
+      "#' Rename",
+      "#' @export",
+      "`names<-.cbc_profiles` <- function(x, value) x"
+    )
+  )
+  writeLines(
+    c(
+      "# Generated by roxygen2: do not edit by hand",
+      "S3method(\"[\",cbc_profiles)",
+      "S3method(\"names<-\",cbc_profiles)"
+    ),
+    file.path(pkg, "NAMESPACE")
+  )
+  expect_true(lab_roxygen_usage(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_roxygen_usage(): roxygen @export may name several objects at once", {
+  # jsonlite/R/fromJSON.R line 21 is `#' @export fromJSON toJSON`. Storing that
+  # whole string as one name invented a function called "fromJSON toJSON".
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    r_code = c(
+      "#' Convert",
+      "#' @export fromJSON toJSON",
+      "fromJSON <- function(txt) txt",
+      "toJSON <- function(x) x"
+    )
+  )
+  writeLines(
+    c(
+      "# Generated by roxygen2: do not edit by hand",
+      "export(fromJSON)",
+      "export(toJSON)"
+    ),
+    file.path(pkg, "NAMESPACE")
+  )
+  expect_true(lab_roxygen_usage(pkg, verbose = FALSE)$passed)
+})
+
+# Test lab_unexported_example_ns() ----
+
+test_that("lab_unexported_example_ns(): flags a bare call to an unexported topic", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  writeLines("export(add)", file.path(pkg, "NAMESPACE"))
+  write_unexported_rd(pkg, "helper(1)")
+
+  res <- lab_unexported_example_ns(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_match(res$issues, "helper", all = FALSE)
+})
+
+test_that("lab_unexported_example_ns(): accepts a ::: -qualified call", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  writeLines("export(add)", file.path(pkg, "NAMESPACE"))
+  write_unexported_rd(pkg, "pkg:::helper(1)")
+
+  expect_true(
+    lab_unexported_example_ns(pkg, verbose = FALSE)$passed
+  )
+})
+
+test_that("lab_unexported_example_ns(): ignores \\dontrun{} examples", {
+  # \dontrun{} is never executed, so a bare call there cannot fail. R CMD check
+  # would not run it either.
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  writeLines("export(add)", file.path(pkg, "NAMESPACE"))
+  write_unexported_rd(pkg, "\\dontrun{helper(1)}")
+
+  expect_true(
+    lab_unexported_example_ns(pkg, verbose = FALSE)$passed
+  )
+})
+
+test_that("lab_unexported_example_ns(): reads an exported [ method (#18)", {
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    r_code = c(
+      "reproclass <- function(x) structure(x, class = \"reproclass\")",
+      "`[.reproclass` <- function(x, i, ...) reproclass(NextMethod())"
+    )
+  )
+  writeLines(
+    c("S3method(\"[\", reproclass)", "export(reproclass)"),
+    file.path(pkg, "NAMESPACE")
+  )
+  write_operator_rd(pkg, "[.reproclass", "r <- reproclass(1:5); r[2:3]")
+
+  res <- NULL
+  expect_no_warning(res <- lab_unexported_example_ns(pkg, verbose = FALSE))
+  expect_true(res$passed)
+})
+
+test_that("lab_unexported_example_ns(): reads unexported operator methods", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  writeLines("export(add)", file.path(pkg, "NAMESPACE"))
+  write_operator_rd(
+    pkg,
+    c("[.cls", "[[.cls", "$.cls", "+.cls", "==.cls"),
+    "x[1]; x[[1]]; x$a; x + x; x == x"
+  )
+
+  res <- NULL
+  expect_no_warning(res <- lab_unexported_example_ns(pkg, verbose = FALSE))
+  expect_true(res$passed)
+})
+
+test_that("lab_unexported_example_ns(): does not flag an exported topic", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  writeLines("export(helper)", file.path(pkg, "NAMESPACE"))
+  write_unexported_rd(pkg, "helper(1)")
+
+  expect_true(
+    lab_unexported_example_ns(pkg, verbose = FALSE)$passed
+  )
+})
+
+test_that("lab_unexported_example_ns(): ignores a call in a comment or a string", {
+  # The exact false positive the AST rewrite exists to prevent.
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  writeLines("export(add)", file.path(pkg, "NAMESPACE"))
+  write_unexported_rd(
+    pkg,
+    paste(
+      "# you could call helper(1) yourself",
+      "msg <- \"helper(2)\"",
+      sep = "\n"
+    )
+  )
+  expect_true(
+    lab_unexported_example_ns(pkg, verbose = FALSE)$passed
+  )
+})
+
+test_that("lab_unexported_example_ns(): is not fooled by a same-named object", {
+  # `helper` as a value, never invoked, is not a namespace problem.
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  writeLines("export(add)", file.path(pkg, "NAMESPACE"))
+  write_unexported_rd(pkg, "x <- list(helper = 1)")
+  expect_true(
+    lab_unexported_example_ns(pkg, verbose = FALSE)$passed
+  )
+})
+
+test_that("lab_unexported_example_ns(): agrees with the other ::: check", {
+  # unexported_example_ns used to tell a maintainer to add ::: to an example,
+  # which is the change CRAN asks them to undo.
+  #
+  # The fixture needs a NAMESPACE and an unexported topic whose example calls it
+  # bare, or the check returns before it has anything to say and the assertion
+  # below passes on an empty string. And cli hard-wraps the treatment line, so the
+  # phrase has to be matched against the joined output, not element by element.
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    rd_files = list(
+      "helper.Rd" = c(
+        "\\name{helper}", "\\alias{helper}", "\\title{Helper}",
+        "\\description{d}", "\\value{x}", "\\examples{", "helper(1)", "}"
+      )
+    )
+  )
+  writeLines("export(test_fn)", file.path(pkg, "NAMESPACE"))
+
+  res <- lab_unexported_example_ns(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_match(res$issues, "helper", all = FALSE, fixed = TRUE)
+
+  out <- paste(
+    cli::cli_fmt(lab_unexported_example_ns(pkg, verbose = TRUE)),
+    collapse = " "
+  )
+  expect_false(grepl("use `pkg:::", out, fixed = TRUE))
+  expect_match(out, "Export the object", fixed = TRUE)
+})
+
+test_that("lab_unexported_example_ns(): a multi-line export( block is read in full", {
+  # digest/NAMESPACE. The line-wise regex returned exactly one entry -- the string
+  # "AES," -- when the truth is nine exports, so digest::digest(), the package's
+  # flagship function, was reported as unexported. It explains 121 of the 831.
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  writeLines(
+    c(
+      "export(AES,",
+      "       digest,",
+      "       digest2int,",
+      "       getVDigest,",
+      "       hmac)"
+    ),
+    file.path(pkg, "NAMESPACE")
+  )
+  dir.create(file.path(pkg, "man"), showWarnings = FALSE)
+  for (nm in c("digest", "hmac", "AES")) {
+    writeLines(
+      c(
+        paste0("\\name{", nm, "}"),
+        paste0("\\alias{", nm, "}"),
+        "\\title{t}",
+        "\\description{d}",
+        "\\value{x}",
+        paste0("\\examples{", nm, "(1)}")
+      ),
+      file.path(pkg, "man", paste0(nm, ".Rd"))
+    )
+  }
+  expect_true(
+    lab_unexported_example_ns(pkg, verbose = FALSE)$passed
+  )
+})
+
+# Test package_exports() ----
+
+test_that("package_exports(): reads a MULTI-LINE export( block", {
+  # The bug that broke everything. The old reader regexed NAMESPACE line by line,
+  # so an export( block spanning lines lost every name after the first. On the
+  # real `digest` package it returned exactly one entry, the string "AES,"
+  # (trailing comma included), when the truth is nine exports -- so digest::digest()
+  # itself was reported as unexported.
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  writeLines(
+    c(
+      "export(AES,",
+      "       digest,",
+      "       digest2int,",
+      "       hmac)",
+      "S3method(\"[\",foo)",
+      "S3method(\"names<-\",foo)",
+      "S3method(print,foo)"
+    ),
+    file.path(pkg, "NAMESPACE")
+  )
+
+  ex <- package_exports(pkg)
+  expect_true(all(c("AES", "digest", "digest2int", "hmac") %in% ex$names))
+  expect_true(all(c("[.foo", "names<-.foo", "print.foo") %in% ex$names))
+})
+
+test_that("package_exports(): honours exportPattern()", {
+  # A name can be exported without ever being listed.
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  writeLines('exportPattern("^[^.]")', file.path(pkg, "NAMESPACE"))
+  ex <- package_exports(pkg)
+  expect_true(name_is_exported("visible_fn", ex))
+  expect_false(name_is_exported(".hidden_fn", ex))
+})
+
+test_that("package_exports(): returns NULL when it cannot read NAMESPACE", {
+  # "Cannot tell" must never become "is unexported". Guessing here is how a check
+  # starts accusing a package's flagship function of not existing.
+  pkg <- make_temp_dir()
+  write_pkg(pkg) # write_pkg writes no NAMESPACE
+  expect_false(file.exists(file.path(pkg, "NAMESPACE")))
+  expect_null(package_exports(pkg))
+  expect_true(name_is_exported("anything", NULL))
+})
+
 # Test lab_donttest_vs_dontrun() ----
 
 test_that("lab_donttest_vs_dontrun(): leaves slow code that ALSO cannot run", {
@@ -987,4 +1288,86 @@ test_that("lab_donttest_vs_dontrun(): leaves slow code that ALSO cannot run", {
   expect_false(res$passed)
   expect_equal(length(res$issues), 1L)
   expect_match(res$issues, "^slow_only\\.Rd: uses \\\\dontrun\\{\\} for slow code")
+})
+
+test_that("lab_donttest_vs_dontrun(): suggests \\donttest{} for slow-only code", {
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    rd_files = list(
+      "slow.Rd" = c(
+        "\\name{slow}",
+        "\\title{slow}",
+        "\\value{1}",
+        "\\examples{",
+        "\\dontrun{",
+        "Sys.sleep(60)",
+        "}",
+        "}"
+      )
+    )
+  )
+  res <- lab_donttest_vs_dontrun(pkg, verbose = FALSE)
+  expect_false(res$passed)
+})
+
+test_that("lab_donttest_vs_dontrun(): names both wrappers with their braces", {
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    rd_files = list(
+      "slow.Rd" = c(
+        "\\name{slow}", "\\title{slow}", "\\value{1}",
+        "\\examples{", "\\dontrun{", "Sys.sleep(60)", "}", "}"
+      )
+    )
+  )
+  out <- paste(cli::cli_fmt(lab_donttest_vs_dontrun(pkg)), collapse = "\n")
+  expect_match(
+    out,
+    "Some `\\dontrun{}` blocks should be `\\donttest{}`",
+    fixed = TRUE
+  )
+  expect_match(out, "Slow-only code belongs in `\\donttest{}`", fixed = TRUE)
+
+  writeLines(
+    c("\\name{slow}", "\\title{slow}", "\\value{1}", "\\examples{", "slow()", "}"),
+    file.path(pkg, "man", "slow.Rd")
+  )
+  out <- paste(cli::cli_fmt(lab_donttest_vs_dontrun(pkg)), collapse = "\n")
+  expect_match(out, "`\\dontrun{}` use is appropriate", fixed = TRUE)
+})
+
+test_that("lab_donttest_vs_dontrun(): accepts \\dontrun for justified cases", {
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    rd_files = list(
+      "net.Rd" = c(
+        "\\name{net}",
+        "\\title{net}",
+        "\\value{1}",
+        "\\examples{",
+        "\\dontrun{",
+        "# Requires API token",
+        "download.file('https://example.com/', '/tmp/x')",
+        "}",
+        "}"
+      )
+    )
+  )
+  res <- lab_donttest_vs_dontrun(pkg, verbose = FALSE)
+  expect_true(res$passed)
+})
+
+# Test checktor() ----
+
+test_that("checktor(): runs the example checks", {
+  pkg <- rd_pkg("install.packages('somepkg')")
+  td <- tidy(checktor(pkg, verbose = FALSE, progress = FALSE))
+  for (nm in c("example_interactive", "example_installs", "example_writes",
+               "example_state", "example_internal_ns")) {
+    expect_true(nm %in% td$check, info = nm)
+  }
+  expect_false(td$passed[td$check == "example_installs"])
 })

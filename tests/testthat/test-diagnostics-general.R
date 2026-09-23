@@ -1,3 +1,6 @@
+# A test that names a CRAN package reproduces a false positive or a missed
+# finding from that package's real sources, so a regression fails here first.
+
 # Test lab_package_size() ----
 
 test_that("lab_package_size(): excludes .Rbuildignore'd directories", {
@@ -53,6 +56,22 @@ test_that("lab_package_size(): still flags genuinely large packages", {
   res <- lab_package_size(pkg, verbose = FALSE)
   expect_false(res$passed)
   expect_gt(res$size_mb, 5)
+})
+
+test_that("lab_package_size(): measures the COMPRESSED size CRAN limits", {
+  # CRAN's 5 MB limit is on the gzipped tarball. billboarder is 6.3 MB on disk and
+  # 2.93 MB as a tarball; every package_size finding in the audit was this mistake.
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  dir.create(file.path(pkg, "inst"), showWarnings = FALSE)
+  # 8 MB of highly compressible text: over the limit raw, far under it compressed.
+  writeLines(
+    rep(paste(rep("a", 100), collapse = ""), 80000),
+    file.path(pkg, "inst", "big.csv")
+  )
+  res <- lab_package_size(pkg, verbose = FALSE)
+  expect_true(res$passed)
+  expect_lt(res$size_mb, 5)
 })
 
 # Test lab_news_file() ----
@@ -135,204 +154,6 @@ test_that("lab_readme_links(): passes when there is no README", {
   write_pkg(pkg)
   expect_true(lab_readme_links(pkg, verbose = FALSE)$passed)
 })
-
-# Test lab_urls() ----
-
-test_that("lab_urls(): flags an insecure http:// and names the URL", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  writeLines(
-    c("# Pkg", "See <http://example.com/docs> for details."),
-    file.path(pkg, "README.md")
-  )
-
-  res <- lab_urls(pkg, verbose = FALSE)
-  expect_false(res$passed)
-  # The finding must name the URL, not just the file, or it is not actionable.
-  expect_match(res$issues, "http://example.com/docs", fixed = TRUE, all = FALSE)
-})
-
-test_that("lab_urls(): ignores an http:// inside a fenced code block", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  writeLines(
-    c(
-      "# Pkg",
-      "```r",
-      "# a literal string, not a link",
-      "download.file(\"http://example.com/data.csv\", tmp)",
-      "```"
-    ),
-    file.path(pkg, "README.md")
-  )
-
-  expect_true(lab_urls(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_urls(): ignores an http:// inside an Rd \\verb or \\code span", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  dir.create(file.path(pkg, "man"), showWarnings = FALSE)
-  writeLines(
-    c(
-      "\\name{f}",
-      "\\alias{f}",
-      "\\title{F}",
-      "\\description{Matches \\verb{http://example.com} literally.}",
-      "\\value{NULL}"
-    ),
-    file.path(pkg, "man", "f.Rd")
-  )
-
-  expect_true(lab_urls(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_urls(): still flags a real Rd link outside a literal span", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  dir.create(file.path(pkg, "man"), showWarnings = FALSE)
-  writeLines(
-    c(
-      "\\name{f}",
-      "\\alias{f}",
-      "\\title{F}",
-      "\\description{See \\url{http://example.com} for more.}",
-      "\\value{NULL}"
-    ),
-    file.path(pkg, "man", "f.Rd")
-  )
-
-  res <- lab_urls(pkg, verbose = FALSE)
-  expect_false(res$passed)
-})
-
-# Test lab_url_liveness() ----
-
-test_that("lab_url_liveness(): never reaches the network outside the console", {
-  # The default is interactive(), so a script, a CI run and R CMD check all leave
-  # it off. That is what keeps examples and tests from needing a network.
-  skip_if(interactive(), "tests the non-interactive default")
-  pkg <- make_temp_dir()
-  write_pkg(pkg, extra = "URL: https://nonexistent-host.checktor.invalid/")
-
-  fetched <- FALSE
-  testthat::local_mocked_bindings(
-    fetch_url_db = function(path) {
-      fetched <<- TRUE
-      data.frame()
-    }
-  )
-  withr::local_options(checktor.url_check = NULL) # unset: fall back to the default
-
-  res <- lab_url_liveness(pkg, verbose = FALSE)
-  expect_false(fetched)
-  expect_true(res$passed)
-  expect_length(res$issues, 0L)
-})
-
-test_that("lab_url_liveness(): reaches the network when asked to", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  fetched <- FALSE
-  testthat::local_mocked_bindings(
-    fetch_url_db = function(path) {
-      fetched <<- TRUE
-      data.frame()
-    }
-  )
-  withr::local_options(checktor.url_check = TRUE)
-
-  expect_true(lab_url_liveness(pkg, verbose = FALSE)$passed)
-  expect_true(fetched)
-})
-
-test_that("lab_url_liveness(): surfaces the broken URLs the fetch reports", {
-  # Stub the network fetch so the test is deterministic and never leaves the
-  # machine. The real fetch is base R's tools::check_package_urls(), whose
-  # behaviour is environment-dependent (and absent without a network).
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  withr::local_options(checktor.url_check = TRUE)
-
-  fake_db <- data.frame(
-    URL = "https://example.com/missing",
-    From = "DESCRIPTION",
-    Status = "404",
-    Message = "Not Found",
-    New = "",
-    stringsAsFactors = FALSE
-  )
-  testthat::local_mocked_bindings(fetch_url_db = function(path) fake_db)
-  res <- lab_url_liveness(pkg, verbose = FALSE)
-  expect_false(res$passed)
-  expect_match(res$issues, "example.com/missing", all = FALSE)
-  expect_match(res$issues, "404", all = FALSE)
-})
-
-test_that("lab_url_liveness(): passes when the fetch reports nothing", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  withr::local_options(checktor.url_check = TRUE)
-  testthat::local_mocked_bindings(fetch_url_db = function(path) data.frame())
-  res <- lab_url_liveness(pkg, verbose = FALSE)
-  expect_true(res$passed)
-  expect_length(res$issues, 0L)
-  # Nothing to check is a genuine pass, not a skip: there is nothing to be wrong.
-  expect_false(isTRUE(res$skipped))
-})
-
-test_that("lab_url_liveness(): a failed fetch is not checked, not a pass", {
-  # Being offline -- or a change under the fetch -- used to read exactly like a
-  # package whose every URL resolved, which is the one thing a skip exists to
-  # prevent.
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  withr::local_options(checktor.url_check = TRUE)
-  testthat::local_mocked_bindings(
-    fetch_url_db = function(path) stop("fetch did not complete")
-  )
-  res <- lab_url_liveness(pkg, verbose = FALSE)
-  expect_true(res$skipped)
-})
-
-# Test fetch_url_db() ----
-
-test_that("fetch_url_db(): really calls base R and returns the columns read", {
-  # Every other liveness test mocks fetch_url_db, so a broken tools:: call would
-  # leave every URL unchecked with the suite still green. This pins the seam.
-  #
-  # check_package_urls() always calls check_url_db(parallel = TRUE), and that
-  # branch opens a curl::new_pool() before it looks at whether there is anything
-  # to fetch. So it needs curl even for a package with no URLs at all.
-  skip_if_not_installed("curl")
-  pkg <- make_temp_dir()
-  write_pkg(pkg) # no URL: field, so there is nothing to fetch
-
-  db <- suppressWarnings(suppressMessages(fetch_url_db(pkg)))
-  expect_s3_class(db, "data.frame")
-  expect_equal(nrow(db), 0L)
-  # lab_url_liveness reads these five columns by name when building issues.
-  expect_true(all(c("URL", "From", "Status", "Message", "New") %in% names(db)))
-})
-
-# Test lab_url_liveness() ----
-
-test_that("lab_url_liveness(): passes a reachable URL end to end", {
-  skip_on_cran() # CRAN policy: tests must not require network access
-  # A real run against tools::check_package_urls(), no mock. A reachable URL must
-  # not be flagged. This direction is robust to a network-less runner: with no
-  # network the fetch reports nothing and the check still passes, so the only way
-  # it fails is if the URL genuinely breaks. CRAN's own site is the most stable
-  # choice and never rate-limits R's URL checker.
-  pkg <- make_temp_dir()
-  write_pkg(pkg, extra = "URL: https://cran.r-project.org/")
-  withr::local_options(checktor.url_check = TRUE)
-  res <- lab_url_liveness(pkg, verbose = FALSE)
-  expect_true(res$passed)
-  expect_length(res$issues, 0L)
-})
-
-# Test lab_readme_links() ----
 
 test_that("lab_readme_links(): does not read R code in a chunk as a link", {
   # `knitr::opts_chunk[["set"]](...)` contains `](` and a closing paren, so a
@@ -477,6 +298,74 @@ test_that("lab_readme_links(): skips a comment that runs over several lines", {
 
 # Test lab_urls() ----
 
+test_that("lab_urls(): flags an insecure http:// and names the URL", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  writeLines(
+    c("# Pkg", "See <http://example.com/docs> for details."),
+    file.path(pkg, "README.md")
+  )
+
+  res <- lab_urls(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  # The finding must name the URL, not just the file, or it is not actionable.
+  expect_match(res$issues, "http://example.com/docs", fixed = TRUE, all = FALSE)
+})
+
+test_that("lab_urls(): ignores an http:// inside a fenced code block", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  writeLines(
+    c(
+      "# Pkg",
+      "```r",
+      "# a literal string, not a link",
+      "download.file(\"http://example.com/data.csv\", tmp)",
+      "```"
+    ),
+    file.path(pkg, "README.md")
+  )
+
+  expect_true(lab_urls(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_urls(): ignores an http:// inside an Rd \\verb or \\code span", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  dir.create(file.path(pkg, "man"), showWarnings = FALSE)
+  writeLines(
+    c(
+      "\\name{f}",
+      "\\alias{f}",
+      "\\title{F}",
+      "\\description{Matches \\verb{http://example.com} literally.}",
+      "\\value{NULL}"
+    ),
+    file.path(pkg, "man", "f.Rd")
+  )
+
+  expect_true(lab_urls(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_urls(): still flags a real Rd link outside a literal span", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  dir.create(file.path(pkg, "man"), showWarnings = FALSE)
+  writeLines(
+    c(
+      "\\name{f}",
+      "\\alias{f}",
+      "\\title{F}",
+      "\\description{See \\url{http://example.com} for more.}",
+      "\\value{NULL}"
+    ),
+    file.path(pkg, "man", "f.Rd")
+  )
+
+  res <- lab_urls(pkg, verbose = FALSE)
+  expect_false(res$passed)
+})
+
 test_that("lab_urls(): skips tilde-fenced and nested code blocks too", {
   # The URL check counted ``` fences off in pairs, which a README quoting
   # markdown inside a ````-fence puts out of step, and it never knew ~~~ at all.
@@ -511,4 +400,206 @@ test_that("lab_urls(): names the URL without the backtick that quoted it", {
     res$issues,
     "README.md: http://example.com/docs (use https://)"
   )
+})
+
+# Test lab_url_liveness() ----
+
+test_that("lab_url_liveness(): never reaches the network outside the console", {
+  # The default is interactive(), so a script, a CI run and R CMD check all leave
+  # it off. That is what keeps examples and tests from needing a network.
+  skip_if(interactive(), "tests the non-interactive default")
+  pkg <- make_temp_dir()
+  write_pkg(pkg, extra = "URL: https://nonexistent-host.checktor.invalid/")
+
+  fetched <- FALSE
+  testthat::local_mocked_bindings(
+    fetch_url_db = function(path) {
+      fetched <<- TRUE
+      data.frame()
+    }
+  )
+  withr::local_options(checktor.url_check = NULL) # unset: fall back to the default
+
+  res <- lab_url_liveness(pkg, verbose = FALSE)
+  expect_false(fetched)
+  expect_true(res$passed)
+  expect_length(res$issues, 0L)
+})
+
+test_that("lab_url_liveness(): reaches the network when asked to", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  fetched <- FALSE
+  testthat::local_mocked_bindings(
+    fetch_url_db = function(path) {
+      fetched <<- TRUE
+      data.frame()
+    }
+  )
+  withr::local_options(checktor.url_check = TRUE)
+
+  expect_true(lab_url_liveness(pkg, verbose = FALSE)$passed)
+  expect_true(fetched)
+})
+
+test_that("lab_url_liveness(): surfaces the broken URLs the fetch reports", {
+  # Stub the network fetch so the test is deterministic and never leaves the
+  # machine. The real fetch is base R's tools::check_package_urls(), whose
+  # behaviour is environment-dependent (and absent without a network).
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  withr::local_options(checktor.url_check = TRUE)
+
+  fake_db <- data.frame(
+    URL = "https://example.com/missing",
+    From = "DESCRIPTION",
+    Status = "404",
+    Message = "Not Found",
+    New = "",
+    stringsAsFactors = FALSE
+  )
+  testthat::local_mocked_bindings(fetch_url_db = function(path) fake_db)
+  res <- lab_url_liveness(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_match(res$issues, "example.com/missing", all = FALSE)
+  expect_match(res$issues, "404", all = FALSE)
+})
+
+test_that("lab_url_liveness(): passes when the fetch reports nothing", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  withr::local_options(checktor.url_check = TRUE)
+  testthat::local_mocked_bindings(fetch_url_db = function(path) data.frame())
+  res <- lab_url_liveness(pkg, verbose = FALSE)
+  expect_true(res$passed)
+  expect_length(res$issues, 0L)
+  # Nothing to check is a genuine pass, not a skip: there is nothing to be wrong.
+  expect_false(isTRUE(res$skipped))
+})
+
+test_that("lab_url_liveness(): a failed fetch is not checked, not a pass", {
+  # Being offline -- or a change under the fetch -- used to read exactly like a
+  # package whose every URL resolved, which is the one thing a skip exists to
+  # prevent.
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  withr::local_options(checktor.url_check = TRUE)
+  testthat::local_mocked_bindings(
+    fetch_url_db = function(path) stop("fetch did not complete")
+  )
+  res <- lab_url_liveness(pkg, verbose = FALSE)
+  expect_true(res$skipped)
+})
+
+test_that("lab_url_liveness(): passes a reachable URL end to end", {
+  skip_on_cran() # CRAN policy: tests must not require network access
+  # A real run against tools::check_package_urls(), no mock. A reachable URL must
+  # not be flagged. This direction is robust to a network-less runner: with no
+  # network the fetch reports nothing and the check still passes, so the only way
+  # it fails is if the URL genuinely breaks. CRAN's own site is the most stable
+  # choice and never rate-limits R's URL checker.
+  pkg <- make_temp_dir()
+  write_pkg(pkg, extra = "URL: https://cran.r-project.org/")
+  withr::local_options(checktor.url_check = TRUE)
+  res <- lab_url_liveness(pkg, verbose = FALSE)
+  expect_true(res$passed)
+  expect_length(res$issues, 0L)
+})
+
+test_that("lab_url_liveness(): stays quiet when no host could be reached", {
+  # Every row failing to resolve says the machine has no connection, not that the
+  # package's links are broken, so the check reports that it did not run.
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  withr::local_options(checktor.url_check = TRUE)
+  testthat::local_mocked_bindings(
+    fetch_url_db = function(path) {
+      data.frame(
+        URL = c("https://a.example", "https://b.example"),
+        From = "DESCRIPTION",
+        Status = c("Error", "Error"),
+        Message = "Could not resolve host",
+        New = "",
+        stringsAsFactors = FALSE
+      )
+    }
+  )
+  res <- lab_url_liveness(pkg, verbose = FALSE)
+  expect_true(res$passed)
+  expect_length(res$issues, 0L)
+  expect_true(isTRUE(res$skipped))
+})
+
+test_that("lab_url_liveness(): reports one dead host among reachable ones", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  withr::local_options(checktor.url_check = TRUE)
+  testthat::local_mocked_bindings(
+    fetch_url_db = function(path) {
+      data.frame(
+        URL = c("https://a.example", "https://b.example"),
+        From = "DESCRIPTION",
+        Status = c("404", "Error"),
+        Message = c("Not Found", "Could not resolve host"),
+        New = "",
+        stringsAsFactors = FALSE
+      )
+    }
+  )
+  res <- lab_url_liveness(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_length(res$issues, 2L)
+})
+
+# Test fetch_url_db() ----
+
+test_that("fetch_url_db(): really calls base R and returns the columns read", {
+  # Every other liveness test mocks fetch_url_db, so a broken tools:: call would
+  # leave every URL unchecked with the suite still green. This pins the seam.
+  #
+  # check_package_urls() always calls check_url_db(parallel = TRUE), and that
+  # branch opens a curl::new_pool() before it looks at whether there is anything
+  # to fetch. So it needs curl even for a package with no URLs at all.
+  skip_if_not_installed("curl")
+  pkg <- make_temp_dir()
+  write_pkg(pkg) # no URL: field, so there is nothing to fetch
+
+  db <- suppressWarnings(suppressMessages(fetch_url_db(pkg)))
+  expect_s3_class(db, "data.frame")
+  expect_equal(nrow(db), 0L)
+  # lab_url_liveness reads these five columns by name when building issues.
+  expect_true(all(c("URL", "From", "Status", "Message", "New") %in% names(db)))
+})
+
+# Test extract_link_targets() ----
+
+test_that("extract_link_targets(): finds markdown and HTML targets", {
+  expect_setequal(
+    extract_link_targets('[a](docs/a.md) <img src="man/figures/l.png">'),
+    c("docs/a.md", "man/figures/l.png")
+  )
+})
+
+test_that("extract_link_targets(): strips an optional link title", {
+  expect_identical(
+    extract_link_targets('[a](docs/a.md "The Guide")'),
+    "docs/a.md"
+  )
+})
+
+test_that("extract_link_targets(): unwraps a pointy-bracketed destination", {
+  expect_identical(extract_link_targets("[a](<a file.md>)"), "a file.md")
+})
+
+test_that("extract_link_targets(): rejects a bare target containing a space", {
+  # `knitr::opts_chunk[["set"]](` ends in `](`, so its arguments read as a
+  # destination unless one that could not be a destination is thrown out.
+  expect_identical(
+    extract_link_targets('x[["set"]](\n  collapse = TRUE\n)'),
+    character(0)
+  )
+})
+
+test_that("extract_link_targets(): finds nothing in text with no links", {
+  expect_identical(extract_link_targets("plain prose"), character(0))
 })

@@ -31,57 +31,6 @@ test_that("checktor_config(): returns empty vectors when nothing is set", {
   expect_equal(cfg2$disable, character(0))
 })
 
-# Test lab_software_names() ----
-
-test_that("lab_software_names(): a configured name is flagged when unquoted", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    description = "Wraps brms models for the user. It does several helpful things here.",
-    extra = "Config/checktor/software_names: brms"
-  )
-  res <- lab_software_names(pkg, verbose = FALSE)
-  expect_false(res$passed)
-  expect_true(any(grepl("brms", res$issues)))
-})
-
-test_that("lab_software_names(): without config, the name is NOT flagged", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    description = "Wraps brms models for the user. It does several helpful things here."
-  )
-  expect_true(lab_software_names(pkg, verbose = FALSE)$passed)
-})
-
-# Test lab_description_quoted_quotes() ----
-
-test_that("lab_description_quoted_quotes(): honours Config software_names", {
-  # The two-list trap: the include list (software_names) and SOFTWARE_NAMES must
-  # both honour the config, or one check obeys it and the other ignores it.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    description = 'Wraps "brms" models for the user. It does helpful things here.',
-    extra = "Config/checktor/software_names: brms"
-  )
-  expect_false(lab_description_quoted_quotes(pkg, verbose = FALSE)$passed)
-})
-
-# Test lab_acronyms() ----
-
-test_that("lab_acronyms(): Config/checktor/acronyms suppresses a finding", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    description = "Runs MCMC over models for the analysis of tabular data here.",
-    extra = "Config/checktor/acronyms: MCMC"
-  )
-  expect_false(
-    "MCMC" %in% lab_acronyms(pkg, verbose = FALSE)$issues
-  )
-})
-
 # Test apply_suppressions() ----
 
 test_that("apply_suppressions(): disable drops a check and its passed entry", {
@@ -135,6 +84,17 @@ test_that("apply_suppressions(): allow on a whole check flips it to passed", {
   expect_true(tc$passed)
   expect_true(out$results$g$passed[["temp_cleanup"]])
   expect_equal(out$suppressed, 2L)
+})
+
+test_that("apply_suppressions(): warns on an unknown name in allow/disable", {
+  results <- list(g = .mk_cat(list(tf_usage = .mk_check(TRUE, character(0)))))
+  expect_warning(
+    apply_suppressions(
+      results,
+      list(disable = "no_such_check", allow = character(0))
+    ),
+    "no_such_check"
+  )
 })
 
 # Test checktor() ----
@@ -201,18 +161,5 @@ test_that("checktor(): an unknown name in options(checktor.disable) warns", {
   expect_warning(
     checktor(pkg, verbose = FALSE, progress = FALSE),
     "news_fiel"
-  )
-})
-
-# Test apply_suppressions() ----
-
-test_that("apply_suppressions(): warns on an unknown name in allow/disable", {
-  results <- list(g = .mk_cat(list(tf_usage = .mk_check(TRUE, character(0)))))
-  expect_warning(
-    apply_suppressions(
-      results,
-      list(disable = "no_such_check", allow = character(0))
-    ),
-    "no_such_check"
   )
 })

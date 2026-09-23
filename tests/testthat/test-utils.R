@@ -32,113 +32,6 @@ test_that("build_ignore_matcher(): honours a bare directory pattern ^docs$", {
   expect_false(matcher("documentation.R")) # not the docs/ directory
 })
 
-# Test read_r_xml() ----
-
-test_that("read_r_xml(): parses every R/*.R file and reports per-file errors", {
-  # A DESCRIPTION, so read_r_xml()'s root search stops here rather than walking
-  # up from tempdir().
-  pkg <- make_temp_dir()
-  write_pkg(pkg, r_code = NULL)
-  writeLines("f <- function() 1", file.path(pkg, "R", "good.R"))
-  writeLines("this is not valid", file.path(pkg, "R", "broken.R"))
-
-  parsed <- read_r_xml(pkg)
-  expect_equal(length(parsed), 2L)
-  ok <- parsed[[file.path(pkg, "R", "good.R")]]
-  bad <- parsed[[file.path(pkg, "R", "broken.R")]]
-  expect_null(ok$error)
-  expect_false(is.null(ok$xml))
-  expect_false(is.null(bad$error))
-  expect_true(is.null(bad$xml))
-})
-
-# Test undesirable_function_check() ----
-
-test_that("undesirable_function_check(): ignores function names in strings", {
-  # A DESCRIPTION, so read_r_xml()'s root search stops here rather than walking
-  # up from tempdir().
-  pkg <- make_temp_dir()
-  write_pkg(pkg, r_code = NULL)
-  writeLines(
-    c(
-      "msg <- 'browser() reminder'",
-      "f <- function() browser()"
-    ),
-    file.path(pkg, "R", "f.R")
-  )
-  parsed <- read_r_xml(pkg)
-  hits <- undesirable_function_check(parsed, "browser", label = FALSE)
-  expect_equal(length(hits), 1L)
-  expect_match(hits, "f\\.R:2")
-})
-
-# Test extract_rd_section() ----
-
-test_that("extract_rd_section(): finds a top-level Rd section by tag", {
-  rd_file <- withr::local_tempfile(fileext = ".Rd")
-  writeLines(
-    c(
-      "\\name{x}",
-      "\\title{Title}",
-      "\\value{a number}"
-    ),
-    rd_file
-  )
-  rd <- tools::parse_Rd(rd_file)
-  val <- extract_rd_section(rd, "\\value")
-  expect_false(is.null(val))
-  expect_match(collect_rd_text(val), "a number")
-  expect_null(extract_rd_section(rd, "\\seealso"))
-})
-
-# Test collect_rd_text() ----
-
-test_that("collect_rd_text(): honours the skip argument", {
-  rd_file <- withr::local_tempfile(fileext = ".Rd")
-  writeLines(
-    c(
-      "\\name{x}",
-      "\\title{Title}",
-      "\\value{1}",
-      "\\examples{",
-      "  visible_part()",
-      "  \\dontrun{ hidden_part() }",
-      "}"
-    ),
-    rd_file
-  )
-  rd <- tools::parse_Rd(rd_file)
-  ex <- extract_rd_section(rd, "\\examples")
-  full <- collect_rd_text(ex)
-  expect_match(full, "visible_part")
-  expect_match(full, "hidden_part")
-  skipped <- collect_rd_text(ex, skip = "\\dontrun")
-  expect_match(skipped, "visible_part")
-  expect_false(grepl("hidden_part", skipped))
-})
-
-# Test is_commented_out_code() ----
-
-test_that("is_commented_out_code(): separates prose from commented-out calls", {
-  prose <- c(
-    "# --- end", # separator: parses as unary minus
-    "# --- welcome",
-    "# Simulate random choices (default)",
-    "# (Columns are attributes, rows are alternatives)",
-    "# Example 2: Named categorical priors (more explicit)",
-    "# TODO",
-    "#' roxygen line"
-  )
-  code <- c(
-    '# sd_copy_value(id = "name")',
-    "# all_params <- sd_get_url_pars()",
-    '# message("Age question answered!")',
-    "# foo(slow = TRUE)"
-  )
-  expect_false(any(vapply(prose, is_commented_out_code, logical(1))))
-  expect_true(all(vapply(code, is_commented_out_code, logical(1))))
-})
-
 # Test list_included_files() ----
 
 test_that("list_included_files(): returns the matching files under subdir", {
@@ -234,4 +127,190 @@ test_that("cli_literal(): text reaches the console verbatim, never evaluated", {
   for (item in x) {
     expect_match(paste(out, collapse = "\n"), item, fixed = TRUE)
   }
+})
+
+# Test configure_doctor() ----
+
+test_that("configure_doctor(): changes the defaults consumed by checktor", {
+  # configure_doctor() also sets cli.num_colors, so that is restored too.
+  withr::local_options(
+    checktor.verbose = NULL,
+    checktor.progress = NULL,
+    cli.num_colors = getOption("cli.num_colors")
+  )
+
+  expect_message(
+    configure_doctor(verbose_default = FALSE, progress_default = FALSE),
+    "configuration updated"
+  )
+  expect_false(getOption("checktor.verbose"))
+  expect_false(getOption("checktor.progress"))
+
+  # Default args of checktor() should now resolve to FALSE. cli output is a
+  # message, not an error, so expect_no_error() would stay green through a run
+  # that printed all of its diagnostics. Silence is the only proof.
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  expect_length(cli::cli_fmt(checktor(pkg)), 0L)
+})
+
+# Test safe_read_lines() ----
+
+test_that("safe_read_lines(): handles missing files", {
+  expect_equal(
+    safe_read_lines(file.path(tempdir(), "definitely-missing.R")),
+    character(0)
+  )
+})
+
+# Test find_package_root() ----
+
+# checktor is meant to run from anywhere inside a package tree, rather than only
+# from the directory holding DESCRIPTION. These tests pin that behaviour down.
+
+test_that("find_package_root(): returns a root path untouched", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  # Returned verbatim, so an existing caller sees exactly what it passed in.
+  expect_identical(find_package_root(pkg), pkg)
+})
+
+test_that("find_package_root(): walks up from a subdirectory", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  dir.create(file.path(pkg, "tests", "testthat"), recursive = TRUE)
+  real <- normalizePath(pkg, winslash = "/")
+
+  for (sub in c("R", "man", file.path("tests", "testthat"))) {
+    found <- find_package_root(file.path(pkg, sub))
+    expect_equal(normalizePath(found, winslash = "/"), real)
+  }
+})
+
+test_that("find_package_root(): accepts a file inside the package", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  found <- find_package_root(file.path(pkg, "R", "test.R"))
+  expect_equal(
+    normalizePath(found, winslash = "/"),
+    normalizePath(pkg, winslash = "/")
+  )
+})
+
+test_that("find_package_root(): leaves a non-package path alone", {
+  # No DESCRIPTION anywhere above a temp directory, so the caller still gets the
+  # path it asked about and can report against that.
+  skip_if_tempdir_in_package()
+  bare <- make_temp_dir()
+  expect_identical(find_package_root(bare), bare)
+  expect_identical(find_package_root("/no/such/directory"), "/no/such/directory")
+})
+
+test_that("find_package_root(): stops at the nearest root", {
+  outer <- make_temp_dir()
+  write_pkg(outer, package = "outerpkg")
+  inner <- file.path(outer, "inst", "innerpkg")
+  dir.create(inner, recursive = TRUE)
+  write_pkg(inner, package = "innerpkg")
+
+  found <- find_package_root(file.path(inner, "R"))
+  expect_equal(
+    normalizePath(found, winslash = "/"),
+    normalizePath(inner, winslash = "/")
+  )
+})
+
+test_that("find_package_root(): every path-taking entry point resolves first", {
+  # The regression this guards against is a new check forgetting the resolution
+  # line. Comparing results alone cannot see that, because a check pointed at the
+  # wrong directory finds no R/ and passes, exactly as it does on a clean package.
+  # So assert the invariant directly against the parsed body. covr rewrites
+  # function bodies to count lines, so this cannot hold under coverage; R CMD
+  # check still runs it.
+  skip_on_covr()
+  resolves <- quote(path <- find_package_root(path))
+  ns <- asNamespace("checktor")
+
+  path_first <- Filter(
+    function(nm) {
+      f <- get(nm, envir = ns)
+      is.function(f) && identical(names(formals(f))[[1L]], "path")
+    },
+    sort(getNamespaceExports("checktor"))
+  )
+  # checkup() delegates straight to checktor(), which resolves, and
+  # find_package_root() is the resolver itself.
+  path_first <- setdiff(path_first, c("checkup", "find_package_root"))
+  expect_gt(length(path_first), 55L)
+
+  for (nm in path_first) {
+    body_expr <- body(get(nm, envir = ns))
+    first <- if (identical(body_expr[[1L]], as.name("{"))) {
+      body_expr[[2L]]
+    } else {
+      body_expr
+    }
+    expect_identical(first, resolves, info = nm)
+  }
+})
+
+test_that("find_package_root(): subdirectory checks find the same issues", {
+  # A fixture that actually trips checks, so the comparison below has teeth: a
+  # check that failed to resolve would report nothing and the equality would break.
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    title = "a title that is not in title case",
+    r_code = c(
+      "bad.R" = paste(
+        "f <- function(x) {",
+        "  set.seed(42)",
+        "  y <- T",
+        "  print(y)",
+        "  invisible(x)",
+        "}",
+        sep = "\n"
+      )
+    )
+  )
+  sub <- file.path(pkg, "R")
+
+  named <- c(
+    "lab_tf_usage", "lab_seed_setting", "lab_print_cat_usage",
+    "lab_title_case", "diagnose_code_issues"
+  )
+  found <- 0L
+  for (nm in named) {
+    fn <- get(nm, envir = asNamespace("checktor"))
+    from_root <- fn(pkg, verbose = FALSE)
+    from_sub <- fn(sub, verbose = FALSE)
+    expect_equal(from_sub$passed, from_root$passed, info = nm)
+    expect_equal(from_sub$issues, from_root$issues, info = nm)
+    found <- found + length(from_sub$issues)
+  }
+  # Proves the comparisons above were not all trivially empty.
+  expect_gt(found, 0L)
+
+  # The helpers that take a path but no verbose flag resolve it too.
+  expect_equal(length(read_r_xml(sub)), length(read_r_xml(pkg)))
+  expect_equal(checkup(sub), checkup(pkg))
+})
+
+# Test checkup() ----
+
+test_that("checkup(): follows the verdict, so opinion does not fail CI", {
+  # checkup() is the CI wrapper. A convention nobody enforces must not break a
+  # build, or the tiers bought us nothing.
+  pkg <- example_diagnose_scenario(
+    "code_examples/tf_usage_bad.R",
+    show_content = FALSE,
+    cleanup = TRUE
+  )
+  expect_false(checkup(pkg)) # tf_usage is robustness: fails the build
+
+  # A package whose ONLY finding is a convention (no NEWS file) still passes CI.
+  clean <- make_temp_dir()
+  write_pkg(clean, news = FALSE)
+  expect_true(checkup(clean))
+  expect_false(checkup(clean, severity = SEVERITY_LEVELS)) # unless you ask for it
 })

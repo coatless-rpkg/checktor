@@ -164,36 +164,3 @@ test_that("strip_markdown_code(): a trailing CR does not break a fence", {
 test_that("strip_markdown_code(): handles an empty file", {
   expect_identical(strip_markdown_code(character(0)), "")
 })
-
-# Test extract_link_targets() ----
-
-test_that("extract_link_targets(): finds markdown and HTML targets", {
-  expect_setequal(
-    extract_link_targets('[a](docs/a.md) <img src="man/figures/l.png">'),
-    c("docs/a.md", "man/figures/l.png")
-  )
-})
-
-test_that("extract_link_targets(): strips an optional link title", {
-  expect_identical(
-    extract_link_targets('[a](docs/a.md "The Guide")'),
-    "docs/a.md"
-  )
-})
-
-test_that("extract_link_targets(): unwraps a pointy-bracketed destination", {
-  expect_identical(extract_link_targets("[a](<a file.md>)"), "a file.md")
-})
-
-test_that("extract_link_targets(): rejects a bare target containing a space", {
-  # `knitr::opts_chunk[["set"]](` ends in `](`, so its arguments read as a
-  # destination unless one that could not be a destination is thrown out.
-  expect_identical(
-    extract_link_targets('x[["set"]](\n  collapse = TRUE\n)'),
-    character(0)
-  )
-})
-
-test_that("extract_link_targets(): finds nothing in text with no links", {
-  expect_identical(extract_link_targets("plain prose"), character(0))
-})

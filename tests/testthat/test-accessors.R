@@ -1,22 +1,3 @@
-# Test checktor() ----
-
-test_that("checktor(): category objects are classed checktor_category_result", {
-  pkg <- example_diagnose_scenario(
-    "code_examples/tf_usage_bad.R",
-    show_content = FALSE,
-    cleanup = TRUE
-  )
-  r <- checktor(pkg, verbose = FALSE, progress = FALSE)
-  expect_s3_class(r$code_issues, "checktor_category_result")
-  expect_s3_class(
-    diagnose_code_issues(pkg, verbose = FALSE),
-    "checktor_category_result"
-  )
-  # nested access still works
-  expect_false(r$code_issues$tf_usage$passed)
-  expect_type(r$code_issues$passed, "logical")
-})
-
 # Test issues() ----
 
 test_that("issues(): returns a tidy per-issue frame at each level", {
@@ -63,6 +44,29 @@ test_that("issues(): on a healthy package is a 0-row typed frame", {
     c("category", "check", "severity", "file", "line", "location", "message")
   )
   expect_type(di$line, "integer")
+})
+
+test_that("issues(): a finding keeps its location whatever label it carries", {
+  # The parser used to read only "a.R:2", so a labelled finding lost its location
+  # and could not be pointed at.
+  r <- checktor(ci_pkg(), verbose = FALSE, progress = FALSE)
+  di <- issues(r)
+  located <- di[!is.na(di$file), ]
+  expect_true("tf_usage" %in% located$check)
+  expect_true("internal_ns" %in% located$check) # reported as "a.R:3 (pkg:::fn)"
+  expect_equal(located$line[located$check == "internal_ns"], 3L)
+})
+
+test_that("issues(): carries the tier, as does tidy()", {
+  pkg <- example_diagnose_scenario(
+    "code_examples/tf_usage_bad.R",
+    show_content = FALSE,
+    cleanup = TRUE
+  )
+  r <- checktor(pkg, verbose = FALSE, progress = FALSE)
+  expect_true("severity" %in% names(issues(r)))
+  expect_true("severity" %in% names(tidy(r)))
+  expect_true(all(issues(r)$severity %in% SEVERITY_LEVELS))
 })
 
 # Test is_healthy() ----
@@ -209,22 +213,4 @@ test_that("summary(): check counts agree with tidy for early returns", {
   tcounts <- as.integer(table(factor(td$category, levels = s$category)))
   expect_equal(s$checks, tcounts)
   expect_equal(n_failed_checks(r$code_issues), 0L)
-})
-
-# Test print.checktor_results() ----
-
-test_that("print.checktor_results(): footer points to accessors", {
-  pkg <- example_diagnose_scenario(
-    "code_examples/tf_usage_bad.R",
-    show_content = FALSE,
-    cleanup = TRUE
-  )
-  r <- checktor(pkg, verbose = FALSE, progress = FALSE)
-  out <- cli::cli_fmt(print(r))
-  txt <- paste(out, collapse = "\n")
-  expect_match(txt, "summary\\(\\)")
-  expect_match(txt, "issues\\(\\)")
-  expect_false(grepl("Run `checktor\\(\\)` for detailed diagnosis", txt))
-  # Patient line shows a short package name, not the wrapped temp path
-  expect_false(grepl("/var/folders|/tmp/|Rtmp", txt))
 })
