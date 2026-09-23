@@ -1,9 +1,7 @@
 # Test build_ignore_matcher() ----
 
 test_that("build_ignore_matcher(): recognises .Rbuildignore entries", {
-  pkg <- tempfile()
-  dir.create(pkg)
-  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+  pkg <- make_temp_dir()
   writeLines(c("^foo/", "^bar\\.txt$"), file.path(pkg, ".Rbuildignore"))
   matcher <- build_ignore_matcher(pkg)
   expect_true(matcher("foo/anything.R"))
@@ -12,9 +10,7 @@ test_that("build_ignore_matcher(): recognises .Rbuildignore entries", {
 })
 
 test_that("build_ignore_matcher(): always skips .git and friends", {
-  pkg <- tempfile()
-  dir.create(pkg)
-  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+  pkg <- make_temp_dir()
   matcher <- build_ignore_matcher(pkg) # no .Rbuildignore present
   expect_true(matcher(".git/HEAD"))
   expect_true(matcher(".Rproj.user/foo"))
@@ -25,9 +21,7 @@ test_that("build_ignore_matcher(): honours a bare directory pattern ^docs$", {
   # R CMD build excludes a matched directory's whole subtree, so a top-level
   # `^docs$` drops every file under docs/. Matching a leaf path alone missed this
   # and counted a pkgdown docs/ or a .quarto cache against the size limit.
-  pkg <- tempfile()
-  dir.create(pkg)
-  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+  pkg <- make_temp_dir()
   writeLines(c("^docs$", "^\\.quarto$"), file.path(pkg, ".Rbuildignore"))
   matcher <- build_ignore_matcher(pkg)
   expect_true(matcher("docs/index.html"))
@@ -41,9 +35,10 @@ test_that("build_ignore_matcher(): honours a bare directory pattern ^docs$", {
 # Test read_r_xml() ----
 
 test_that("read_r_xml(): parses every R/*.R file and reports per-file errors", {
-  pkg <- tempfile()
-  dir.create(file.path(pkg, "R"), recursive = TRUE)
-  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+  # A DESCRIPTION, so read_r_xml()'s root search stops here rather than walking
+  # up from tempdir().
+  pkg <- make_temp_dir()
+  write_pkg(pkg, r_code = NULL)
   writeLines("f <- function() 1", file.path(pkg, "R", "good.R"))
   writeLines("this is not valid", file.path(pkg, "R", "broken.R"))
 
@@ -60,9 +55,10 @@ test_that("read_r_xml(): parses every R/*.R file and reports per-file errors", {
 # Test undesirable_function_check() ----
 
 test_that("undesirable_function_check(): ignores function names in strings", {
-  pkg <- tempfile()
-  dir.create(file.path(pkg, "R"), recursive = TRUE)
-  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+  # A DESCRIPTION, so read_r_xml()'s root search stops here rather than walking
+  # up from tempdir().
+  pkg <- make_temp_dir()
+  write_pkg(pkg, r_code = NULL)
   writeLines(
     c(
       "msg <- 'browser() reminder'",
@@ -79,8 +75,7 @@ test_that("undesirable_function_check(): ignores function names in strings", {
 # Test extract_rd_section() ----
 
 test_that("extract_rd_section(): finds a top-level Rd section by tag", {
-  rd_file <- tempfile(fileext = ".Rd")
-  on.exit(unlink(rd_file), add = TRUE)
+  rd_file <- withr::local_tempfile(fileext = ".Rd")
   writeLines(
     c(
       "\\name{x}",
@@ -99,8 +94,7 @@ test_that("extract_rd_section(): finds a top-level Rd section by tag", {
 # Test collect_rd_text() ----
 
 test_that("collect_rd_text(): honours the skip argument", {
-  rd_file <- tempfile(fileext = ".Rd")
-  on.exit(unlink(rd_file), add = TRUE)
+  rd_file <- withr::local_tempfile(fileext = ".Rd")
   writeLines(
     c(
       "\\name{x}",

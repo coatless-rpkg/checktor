@@ -1,28 +1,6 @@
 # Each test here reproduces a rejection a maintainer actually received, so the
 # check that answers it cannot quietly stop working.
 
-rd_pkg <- function(example, envir = parent.frame()) {
-  pkg <- make_temp_dir(envir = envir)
-  write_pkg(
-    pkg,
-    rd_files = list(
-      "f.Rd" = c(
-        "\\name{f}", "\\alias{f}", "\\title{F}", "\\description{d}",
-        "\\value{x}", "\\examples{", example, "}"
-      )
-    )
-  )
-  pkg
-}
-
-script_pkg <- function(lines, dir, file, envir = parent.frame()) {
-  pkg <- make_temp_dir(envir = envir)
-  write_pkg(pkg)
-  dir.create(file.path(pkg, dir), recursive = TRUE, showWarnings = FALSE)
-  writeLines(lines, file.path(pkg, dir, file))
-  pkg
-}
-
 # Test lab_example_interactive() ----
 
 # "Functions which are supposed to only run interactively (e.g. shiny) should be

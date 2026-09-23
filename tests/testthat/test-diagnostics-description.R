@@ -209,12 +209,12 @@ test_that("lab_title_length(): puts the boundary between 65 and 66 chars", {
   # limit, so a title of exactly 65 characters shows in full and is not a
   # finding. 375 packages on CRAN sit at exactly 65.
   for (n in c(64L, 65L)) {
-    ok <- lab_title_length(verbose = FALSE, desc = c(Title = strrep("W", n)))
+    ok <- lab_title_length(make_temp_dir(), verbose = FALSE, desc = c(Title = strrep("W", n)))
     expect_true(ok$passed, info = paste(n, "characters"))
     expect_equal(ok$nchar, n)
   }
 
-  bad <- lab_title_length(verbose = FALSE, desc = c(Title = strrep("W", 66)))
+  bad <- lab_title_length(make_temp_dir(), verbose = FALSE, desc = c(Title = strrep("W", 66)))
   expect_false(bad$passed)
   expect_equal(length(bad$issues), 1L)
   expect_match(bad$issues, "66 characters", all = FALSE)
@@ -320,14 +320,14 @@ test_that("lab_acronyms(): reads a gloss whose expansion is a quoted name", {
   # the closing quote in the way, and checktor reported an acronym as unexplained
   # for obeying its own policy check.
   for (q in c("'WebAssembly'", "‘WebAssembly’", "\"WebAssembly\"")) {
-    res <- lab_acronyms(
+    res <- lab_acronyms(make_temp_dir(),
       verbose = FALSE,
       desc = c(Description = paste0("Creates links for ", q, " (WASM) documents."))
     )
     expect_true(res$passed, info = q)
   }
   # A bare acronym with no expansion in front of it is still reported.
-  bare <- lab_acronyms(
+  bare <- lab_acronyms(make_temp_dir(),
     verbose = FALSE,
     desc = c(Description = "Creates links for WASM documents.")
   )
@@ -426,12 +426,12 @@ test_that("lab_title_case(): does not flag a quoted software name", {
   # R's own engine restores single-quoted spans before comparing, so 'shiny'
   # keeps its lowercase s.
   desc <- c(Title = "Extra Diagnostics for 'shiny' and 'rmarkdown' Packages")
-  expect_true(lab_title_case(verbose = FALSE, desc = desc)$passed)
+  expect_true(lab_title_case(make_temp_dir(), verbose = FALSE, desc = desc)$passed)
 })
 
 test_that("lab_title_case(): flags a genuinely non-title-case Title", {
   desc <- c(Title = "A package for running extra checks")
-  res <- lab_title_case(verbose = FALSE, desc = desc)
+  res <- lab_title_case(make_temp_dir(), verbose = FALSE, desc = desc)
   expect_false(res$passed)
   # The suggestion must carry the corrected string so it can be pasted in.
   expect_match(res$issues, "Running Extra Checks", fixed = TRUE, all = FALSE)
@@ -439,7 +439,7 @@ test_that("lab_title_case(): flags a genuinely non-title-case Title", {
 
 test_that("lab_title_case(): accepts a correct Title", {
   desc <- c(Title = "Extra CRAN Diagnostics for R Packages")
-  expect_true(lab_title_case(verbose = FALSE, desc = desc)$passed)
+  expect_true(lab_title_case(make_temp_dir(), verbose = FALSE, desc = desc)$passed)
 })
 
 # Test lab_license() ----
@@ -499,7 +499,7 @@ test_that("lab_description_starts_with(): flags CRAN's forbidden openers", {
     "A package that does X.",
     "In this package we do X."
   )) {
-    res <- lab_description_starts_with(
+    res <- lab_description_starts_with(make_temp_dir(),
       verbose = FALSE,
       desc = c(Description = bad)
     )
@@ -509,7 +509,7 @@ test_that("lab_description_starts_with(): flags CRAN's forbidden openers", {
 
 test_that("lab_description_starts_with(): flags a lowercase initial", {
   # R's own descr_bad_initial rule, which checktor previously lacked.
-  res <- lab_description_starts_with(
+  res <- lab_description_starts_with(make_temp_dir(),
     verbose = FALSE,
     desc = c(Description = "runs extra diagnostics on R packages.")
   )
@@ -518,7 +518,7 @@ test_that("lab_description_starts_with(): flags a lowercase initial", {
 
 test_that("lab_description_starts_with(): accepts a well-formed Description", {
   expect_true(
-    lab_description_starts_with(
+    lab_description_starts_with(make_temp_dir(),
       verbose = FALSE,
       desc = c(Description = "Runs extra diagnostics on R packages.")
     )$passed
@@ -567,7 +567,7 @@ test_that("lab_description_length(): measures words, not sentences", {
     "re-sized for sharing on social media."
   )
   expect_true(
-    lab_description_length(
+    lab_description_length(make_temp_dir(),
       verbose = FALSE,
       desc = c(Description = one_sentence)
     )$passed
@@ -575,7 +575,7 @@ test_that("lab_description_length(): measures words, not sentences", {
 })
 
 test_that("lab_description_length(): flags a Description that says nothing", {
-  res <- lab_description_length(
+  res <- lab_description_length(make_temp_dir(),
     verbose = FALSE,
     desc = c(Description = "Does stuff.")
   )
@@ -586,19 +586,19 @@ test_that("lab_description_length(): flags a Description that says nothing", {
 
 test_that("lab_date_format(): passes when Date is absent, the preferred case", {
   expect_true(
-    lab_date_format(verbose = FALSE, desc = list(Package = "x"))$passed
+    lab_date_format(make_temp_dir(), verbose = FALSE, desc = list(Package = "x"))$passed
   )
 })
 
 test_that("lab_date_format(): passes on a current ISO-8601 date", {
   today <- format(Sys.Date())
   expect_true(
-    lab_date_format(verbose = FALSE, desc = list(Date = today))$passed
+    lab_date_format(make_temp_dir(), verbose = FALSE, desc = list(Date = today))$passed
   )
 })
 
 test_that("lab_date_format(): flags a non-ISO-8601 Date", {
-  res <- lab_date_format(verbose = FALSE, desc = list(Date = "Jan 2020"))
+  res <- lab_date_format(make_temp_dir(), verbose = FALSE, desc = list(Date = "Jan 2020"))
   expect_false(res$passed)
   expect_true(any(grepl("ISO 8601", res$issues)))
 })
@@ -613,7 +613,7 @@ test_that("lab_date_format(): flags a stale Date read from the package file", {
 
 test_that("lab_date_format(): flags a future Date", {
   expect_false(
-    lab_date_format(
+    lab_date_format(make_temp_dir(),
       verbose = FALSE,
       desc = list(Date = "2999-01-01")
     )$passed
@@ -625,7 +625,7 @@ test_that("lab_date_format(): flags a future Date", {
 test_that("lab_encoding_utf8(): accepts UTF-8, latin1, latin2 or none", {
   for (enc in c("UTF-8", "utf-8", "latin1", "latin2")) {
     expect_true(
-      lab_encoding_utf8(
+      lab_encoding_utf8(make_temp_dir(),
         verbose = FALSE,
         desc = list(Encoding = enc)
       )$passed,
@@ -633,12 +633,12 @@ test_that("lab_encoding_utf8(): accepts UTF-8, latin1, latin2 or none", {
     )
   }
   expect_true(
-    lab_encoding_utf8(verbose = FALSE, desc = list(Package = "x"))$passed
+    lab_encoding_utf8(make_temp_dir(), verbose = FALSE, desc = list(Package = "x"))$passed
   )
 })
 
 test_that("lab_encoding_utf8(): flags a non-portable Encoding", {
-  res <- lab_encoding_utf8(
+  res <- lab_encoding_utf8(make_temp_dir(),
     verbose = FALSE,
     desc = list(Encoding = "KOI8-R")
   )
@@ -650,14 +650,14 @@ test_that("lab_encoding_utf8(): flags a non-portable Encoding", {
 
 test_that("lab_version_format(): passes on ordinary versions and dated ones", {
   expect_true(
-    lab_version_format(
+    lab_version_format(make_temp_dir(),
       verbose = FALSE,
       desc = list(Version = "0.2.0")
     )$passed
   )
   dated <- paste0(format(Sys.Date(), "%Y"), ".1")
   expect_true(
-    lab_version_format(
+    lab_version_format(make_temp_dir(),
       verbose = FALSE,
       desc = list(Version = dated)
     )$passed
@@ -665,7 +665,7 @@ test_that("lab_version_format(): passes on ordinary versions and dated ones", {
 })
 
 test_that("lab_version_format(): flags a leading-zero component", {
-  res <- lab_version_format(
+  res <- lab_version_format(make_temp_dir(),
     verbose = FALSE,
     desc = list(Version = "0.02.0")
   )
@@ -675,7 +675,7 @@ test_that("lab_version_format(): flags a leading-zero component", {
 
 test_that("lab_version_format(): flags a suspiciously large component", {
   expect_false(
-    lab_version_format(
+    lab_version_format(make_temp_dir(),
       verbose = FALSE,
       desc = list(Version = "9999.1")
     )$passed
@@ -683,7 +683,7 @@ test_that("lab_version_format(): flags a suspiciously large component", {
 })
 
 test_that("lab_version_format(): flags an unparseable version", {
-  res <- lab_version_format(
+  res <- lab_version_format(make_temp_dir(),
     verbose = FALSE,
     desc = list(Version = "not.a.version")
   )
@@ -695,19 +695,19 @@ test_that("lab_version_format(): exempts dated and dev versions", {
   # a calendar-versioned package from a prior year, a zero-padded month, and the
   # ubiquitous .9000 development suffix are all legitimate, not oversized.
   expect_true(
-    lab_version_format(
+    lab_version_format(make_temp_dir(),
       verbose = FALSE,
       desc = list(Version = "2025.4")
     )$passed
   )
   expect_true(
-    lab_version_format(
+    lab_version_format(make_temp_dir(),
       verbose = FALSE,
       desc = list(Version = "2026.01")
     )$passed
   )
   expect_true(
-    lab_version_format(
+    lab_version_format(make_temp_dir(),
       verbose = FALSE,
       desc = list(Version = "0.2.0.9000")
     )$passed
@@ -719,7 +719,7 @@ test_that("lab_version_format(): exempts dated and dev versions", {
 test_that("lab_authors(): passes a well-formed Authors@R", {
   aar <- "person('Jane', 'Doe', email = 'jane@example.org', role = c('aut', 'cre'))"
   expect_true(
-    lab_authors(
+    lab_authors(make_temp_dir(),
       verbose = FALSE,
       desc = list(`Authors@R` = aar)
     )$passed
@@ -728,20 +728,20 @@ test_that("lab_authors(): passes a well-formed Authors@R", {
 
 test_that("lab_authors(): flags Authors@R with no maintainer (cre)", {
   aar <- "person('Jane', 'Doe', role = 'aut')"
-  res <- lab_authors(verbose = FALSE, desc = list(`Authors@R` = aar))
+  res <- lab_authors(make_temp_dir(), verbose = FALSE, desc = list(`Authors@R` = aar))
   expect_false(res$passed)
   expect_true(any(grepl("cre", res$issues)))
 })
 
 test_that("lab_authors(): flags a person with no name", {
   aar <- "person(role = c('aut', 'cre'))"
-  res <- lab_authors(verbose = FALSE, desc = list(`Authors@R` = aar))
+  res <- lab_authors(make_temp_dir(), verbose = FALSE, desc = list(`Authors@R` = aar))
   expect_false(res$passed)
   expect_true(any(grepl("no name", res$issues)))
 })
 
 test_that("lab_authors(): flags an Authors@R that does not parse", {
-  res <- lab_authors(
+  res <- lab_authors(make_temp_dir(),
     verbose = FALSE,
     desc = list(`Authors@R` = "person('Jane',,")
   )
@@ -754,14 +754,14 @@ test_that("lab_authors(): flags an Authors@R that does not parse", {
 test_that("lab_identifier_format(): passes a valid ORCID and no identifier", {
   ok <- "person('J', 'D', role = 'cre', comment = c(ORCID = '0000-0002-1825-0097'))"
   expect_true(
-    lab_identifier_format(
+    lab_identifier_format(make_temp_dir(),
       verbose = FALSE,
       desc = list(`Authors@R` = ok)
     )$passed
   )
   none <- "person('J', 'D', role = 'cre')"
   expect_true(
-    lab_identifier_format(
+    lab_identifier_format(make_temp_dir(),
       verbose = FALSE,
       desc = list(`Authors@R` = none)
     )$passed
@@ -770,7 +770,7 @@ test_that("lab_identifier_format(): passes a valid ORCID and no identifier", {
 
 test_that("lab_identifier_format(): flags an ORCID that fails its checksum", {
   bad <- "person('J', 'D', role = 'cre', comment = c(ORCID = '0000-0002-1825-0090'))"
-  res <- lab_identifier_format(
+  res <- lab_identifier_format(make_temp_dir(),
     verbose = FALSE,
     desc = list(`Authors@R` = bad)
   )
@@ -781,14 +781,14 @@ test_that("lab_identifier_format(): flags an ORCID that fails its checksum", {
 test_that("lab_identifier_format(): accepts an X check-digit and a URL form", {
   xd <- "person('J', 'D', role = 'cre', comment = c(ORCID = '0000-0002-1694-233X'))"
   expect_true(
-    lab_identifier_format(
+    lab_identifier_format(make_temp_dir(),
       verbose = FALSE,
       desc = list(`Authors@R` = xd)
     )$passed
   )
   url <- "person('J', 'D', role = 'cre', comment = c(ORCID = 'https://orcid.org/0000-0002-1694-233X'))"
   expect_true(
-    lab_identifier_format(
+    lab_identifier_format(make_temp_dir(),
       verbose = FALSE,
       desc = list(`Authors@R` = url)
     )$passed
@@ -798,13 +798,13 @@ test_that("lab_identifier_format(): accepts an X check-digit and a URL form", {
 test_that("lab_identifier_format(): validates ROR ids and ignores free text", {
   good <- "person('J', 'D', role = 'cre', comment = c(ROR = '05dxps055'))"
   expect_true(
-    lab_identifier_format(
+    lab_identifier_format(make_temp_dir(),
       verbose = FALSE,
       desc = list(`Authors@R` = good)
     )$passed
   )
   bad <- "person('J', 'D', role = 'cre', comment = c(ROR = 'nope'))"
-  res <- lab_identifier_format(
+  res <- lab_identifier_format(make_temp_dir(),
     verbose = FALSE,
     desc = list(`Authors@R` = bad)
   )
@@ -812,7 +812,7 @@ test_that("lab_identifier_format(): validates ROR ids and ignores free text", {
   expect_true(any(grepl("ROR", res$issues)))
   free <- "person('J', 'D', role = 'cre', comment = 'maintainer since 2020')"
   expect_true(
-    lab_identifier_format(
+    lab_identifier_format(make_temp_dir(),
       verbose = FALSE,
       desc = list(`Authors@R` = free)
     )$passed
@@ -823,13 +823,13 @@ test_that("lab_identifier_format(): validates ROR ids and ignores free text", {
 
 test_that("lab_authors(): flags a person with no role", {
   aar <- "c(person('Jane', 'Doe', role = 'cre'), person('No', 'Role'))"
-  res <- lab_authors(verbose = FALSE, desc = list(`Authors@R` = aar))
+  res <- lab_authors(make_temp_dir(), verbose = FALSE, desc = list(`Authors@R` = aar))
   expect_false(res$passed)
   expect_true(any(grepl("no role", res$issues)))
 })
 
 test_that("lab_authors(): reports a field that evaluates to a non-person", {
-  res <- lab_authors(
+  res <- lab_authors(make_temp_dir(),
     verbose = FALSE,
     desc = list(`Authors@R` = "list(1, 2)")
   )
@@ -839,10 +839,10 @@ test_that("lab_authors(): reports a field that evaluates to a non-person", {
 
 test_that("lab_authors(): Authors@R is not executed while diagnosing", {
   # checktor lints other people's packages; a malicious Authors@R must not run.
-  marker <- tempfile()
-  on.exit(unlink(marker), add = TRUE)
-  aar <- sprintf('system(paste0("touch ", shQuote("%s")))', marker)
-  res <- lab_authors(verbose = FALSE, desc = list(`Authors@R` = aar))
+  marker <- withr::local_tempfile()
+  # A pure-R side effect, so a leak shows on every OS, Windows included.
+  aar <- sprintf("file.create(%s)", deparse(marker))
+  res <- lab_authors(make_temp_dir(), verbose = FALSE, desc = list(`Authors@R` = aar))
   expect_false(file.exists(marker)) # the command did not run
   expect_false(res$passed) # and the field is reported, not silently accepted
 })
@@ -850,12 +850,12 @@ test_that("lab_authors(): Authors@R is not executed while diagnosing", {
 # Test lab_spelling() ----
 
 test_that("lab_spelling(): flags DESCRIPTION words and honours a whitelist", {
+  skip_on_cran() # the words flagged depend on the installed dictionary
   skip_if_not(
     nzchar(Sys.which("aspell")) || nzchar(Sys.which("hunspell")),
     "no spell-check backend"
   )
-  old <- options(checktor.spelling = TRUE)
-  on.exit(options(old), add = TRUE)
+  withr::local_options(checktor.spelling = TRUE)
   desc <- "Build a WASM REPL for WebAssembly workflows and more."
 
   pkg <- make_temp_dir()
@@ -921,8 +921,7 @@ test_that("lab_spelling(): reports a skip, not a pass, when turned off", {
   # A skipped check that reads as a passing one is exactly the failure mode the
   # skipped-result contract exists to prevent: the printed summary would drop
   # spelling from "checks did not run".
-  old <- options(checktor.spelling = FALSE)
-  on.exit(options(old), add = TRUE)
+  withr::local_options(checktor.spelling = FALSE)
   pkg <- make_temp_dir()
   write_pkg(pkg, description = "Build a WASM REPL for WebAssembly.")
   res <- lab_spelling(pkg, verbose = FALSE)
@@ -932,13 +931,10 @@ test_that("lab_spelling(): reports a skip, not a pass, when turned off", {
 })
 
 test_that("lab_spelling(): reports a skip when no backend is installed", {
-  old <- options(checktor.spelling = TRUE)
-  on.exit(options(old), add = TRUE)
+  withr::local_options(checktor.spelling = TRUE)
   # Empty the PATH so Sys.which() finds neither aspell nor hunspell, which is
   # the state every CI leg actually runs in.
-  old_path <- Sys.getenv("PATH")
-  Sys.setenv(PATH = "")
-  on.exit(Sys.setenv(PATH = old_path), add = TRUE)
+  withr::local_envvar(PATH = "")
   skip_if(
     nzchar(Sys.which("aspell")) || nzchar(Sys.which("hunspell")),
     "backend still reachable with an empty PATH"

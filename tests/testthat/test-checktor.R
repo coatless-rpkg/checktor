@@ -105,7 +105,7 @@ test_that("print.checktor_results(): runs without error", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   results <- checktor(pkg, verbose = FALSE, progress = FALSE)
-  expect_no_error(print(results))
+  expect_no_error(cli::cli_fmt(print(results)))
 })
 
 # Test print.checktor_check_result() ----
@@ -190,10 +190,17 @@ test_that("print.checktor_check_result(): a failure marked skipped is a failure"
 # Test configure_doctor() ----
 
 test_that("configure_doctor(): changes the defaults consumed by checktor", {
-  orig <- options(checktor.verbose = NULL, checktor.progress = NULL)
-  on.exit(options(orig), add = TRUE)
+  # configure_doctor() also sets cli.num_colors, so that is restored too.
+  withr::local_options(
+    checktor.verbose = NULL,
+    checktor.progress = NULL,
+    cli.num_colors = getOption("cli.num_colors")
+  )
 
-  configure_doctor(verbose_default = FALSE, progress_default = FALSE)
+  expect_message(
+    configure_doctor(verbose_default = FALSE, progress_default = FALSE),
+    "configuration updated"
+  )
   expect_false(getOption("checktor.verbose"))
   expect_false(getOption("checktor.progress"))
 

@@ -29,7 +29,8 @@ Imports:
     xml2,
     xmlparsedata
 Suggests:
-    testthat (>= 3.0.0),
+    testthat (>= 3.2.0),
+    withr,
     quarto,
     jsonlite,
     curl

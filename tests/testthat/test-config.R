@@ -82,17 +82,6 @@ test_that("lab_acronyms(): Config/checktor/acronyms suppresses a finding", {
   )
 })
 
-# small synthetic category result for precise unit tests
-.mk_check <- function(passed, issues) {
-  checktor_check_result(passed, issues, "m")
-}
-.mk_cat <- function(checks) {
-  cat <- checks
-  cat$passed <- vapply(checks, function(c) isTRUE(c$passed), logical(1))
-  class(cat) <- "checktor_category_result"
-  cat
-}
-
 # Test apply_suppressions() ----
 
 test_that("apply_suppressions(): disable drops a check and its passed entry", {
@@ -195,8 +184,7 @@ test_that("checktor(): options(checktor.disable) turns a check off (#17)", {
   # DESCRIPTION: set it once, e.g. in ~/.Rprofile.
   pkg <- make_temp_dir()
   write_pkg(pkg, news = FALSE)
-  old <- options(checktor.disable = "news_file")
-  on.exit(options(old), add = TRUE)
+  withr::local_options(checktor.disable = "news_file")
 
   out <- paste(
     cli::cli_fmt(r <- checktor(pkg, verbose = TRUE, progress = FALSE)),
@@ -209,8 +197,7 @@ test_that("checktor(): options(checktor.disable) turns a check off (#17)", {
 test_that("checktor(): an unknown name in options(checktor.disable) warns", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
-  old <- options(checktor.disable = "news_fiel")
-  on.exit(options(old), add = TRUE)
+  withr::local_options(checktor.disable = "news_fiel")
   expect_warning(
     checktor(pkg, verbose = FALSE, progress = FALSE),
     "news_fiel"

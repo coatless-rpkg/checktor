@@ -3,7 +3,8 @@
 test_that("checktor(): category objects are classed checktor_category_result", {
   pkg <- example_diagnose_scenario(
     "code_examples/tf_usage_bad.R",
-    show_content = FALSE
+    show_content = FALSE,
+    cleanup = TRUE
   )
   r <- checktor(pkg, verbose = FALSE, progress = FALSE)
   expect_s3_class(r$code_issues, "checktor_category_result")
@@ -21,7 +22,8 @@ test_that("checktor(): category objects are classed checktor_category_result", {
 test_that("issues(): returns a tidy per-issue frame at each level", {
   pkg <- example_diagnose_scenario(
     "code_examples/tf_usage_bad.R",
-    show_content = FALSE
+    show_content = FALSE,
+    cleanup = TRUE
   )
   unlink(file.path(pkg, "NEWS.md")) # an opinion finding: news_file
   r <- checktor(pkg, verbose = FALSE, progress = FALSE)
@@ -68,7 +70,8 @@ test_that("issues(): on a healthy package is a 0-row typed frame", {
 test_that("is_healthy(): predicates report status without sublist navigation", {
   pkg <- example_diagnose_scenario(
     "code_examples/tf_usage_bad.R",
-    show_content = FALSE
+    show_content = FALSE,
+    cleanup = TRUE
   )
   r <- checktor(pkg, verbose = FALSE, progress = FALSE)
 
@@ -98,7 +101,8 @@ test_that("is_healthy(): predicates report status without sublist navigation", {
 test_that("tidy(): is per-check and summary() is per-category", {
   pkg <- example_diagnose_scenario(
     "code_examples/tf_usage_bad.R",
-    show_content = FALSE
+    show_content = FALSE,
+    cleanup = TRUE
   )
   unlink(file.path(pkg, "NEWS.md")) # an opinion finding: news_file
   r <- checktor(pkg, verbose = FALSE, progress = FALSE)
@@ -212,7 +216,8 @@ test_that("summary(): check counts agree with tidy for early returns", {
 test_that("print.checktor_results(): footer points to accessors", {
   pkg <- example_diagnose_scenario(
     "code_examples/tf_usage_bad.R",
-    show_content = FALSE
+    show_content = FALSE,
+    cleanup = TRUE
   )
   r <- checktor(pkg, verbose = FALSE, progress = FALSE)
   out <- cli::cli_fmt(print(r))

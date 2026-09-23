@@ -35,6 +35,7 @@ test_that("find_package_root(): accepts a file inside the package", {
 test_that("find_package_root(): leaves a non-package path alone", {
   # No DESCRIPTION anywhere above a temp directory, so the caller still gets the
   # path it asked about and can report against that.
+  skip_if_tempdir_in_package()
   bare <- make_temp_dir()
   expect_identical(find_package_root(bare), bare)
   expect_identical(find_package_root("/no/such/directory"), "/no/such/directory")
@@ -72,11 +73,10 @@ test_that("checktor(): resolves the package from the working directory", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
 
-  owd <- setwd(file.path(pkg, "R"))
-  # `after = FALSE` so the working directory is restored BEFORE make_temp_dir()'s
-  # deferred unlink runs. Windows refuses to remove a directory that is a
-  # process's working directory.
-  on.exit(setwd(owd), add = TRUE, after = FALSE)
+  # withr undoes in reverse order, so the working directory is restored before
+  # make_temp_dir() removes the package. Windows refuses to remove a directory
+  # that is a process's working directory.
+  withr::local_dir(file.path(pkg, "R"))
   res <- checktor(verbose = FALSE, progress = FALSE) # path defaults to "."
   expect_s3_class(res, "checktor_results")
   expect_true(is_healthy(res))
@@ -88,7 +88,10 @@ test_that("find_package_root(): every path-taking entry point resolves first", {
   # The regression this guards against is a new check forgetting the resolution
   # line. Comparing results alone cannot see that, because a check pointed at the
   # wrong directory finds no R/ and passes, exactly as it does on a clean package.
-  # So assert the invariant directly against the parsed body.
+  # So assert the invariant directly against the parsed body. covr rewrites
+  # function bodies to count lines, so this cannot hold under coverage; R CMD
+  # check still runs it.
+  skip_on_covr()
   resolves <- quote(path <- find_package_root(path))
   ns <- asNamespace("checktor")
 
@@ -160,6 +163,7 @@ test_that("find_package_root(): subdirectory checks find the same issues", {
 # Test checktor() ----
 
 test_that("checktor(): a directory outside any package still errors clearly", {
+  skip_if_tempdir_in_package()
   bare <- make_temp_dir()
   expect_error(
     checktor(bare, verbose = FALSE, progress = FALSE),

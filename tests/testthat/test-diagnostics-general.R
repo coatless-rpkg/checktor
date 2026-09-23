@@ -27,7 +27,7 @@ test_that("lab_package_size(): excludes a large .Rbuildignore'd docs/ tree", {
   write_pkg(pkg)
   writeLines(c("^docs$"), file.path(pkg, ".Rbuildignore"))
   dir.create(file.path(pkg, "docs", "reference"), recursive = TRUE)
-  set.seed(1)
+  withr::local_seed(1)
   writeBin(
     as.raw(sample(0:255, 6 * 1024 * 1024, replace = TRUE)),
     file.path(pkg, "docs", "reference", "big.bin")
@@ -45,7 +45,7 @@ test_that("lab_package_size(): still flags genuinely large packages", {
   # of 6 MB of zeroes gzips down to a few kilobytes and is under the limit, which
   # is the correct answer.
   dir.create(file.path(pkg, "inst"), recursive = TRUE)
-  set.seed(1)
+  withr::local_seed(1)
   writeBin(
     as.raw(sample(0:255, 6 * 1024 * 1024, replace = TRUE)),
     file.path(pkg, "inst", "bigdata.bin")
@@ -211,6 +211,7 @@ test_that("lab_urls(): still flags a real Rd link outside a literal span", {
 test_that("lab_url_liveness(): never reaches the network outside the console", {
   # The default is interactive(), so a script, a CI run and R CMD check all leave
   # it off. That is what keeps examples and tests from needing a network.
+  skip_if(interactive(), "tests the non-interactive default")
   pkg <- make_temp_dir()
   write_pkg(pkg, extra = "URL: https://nonexistent-host.checktor.invalid/")
 
@@ -221,8 +222,7 @@ test_that("lab_url_liveness(): never reaches the network outside the console", {
       data.frame()
     }
   )
-  old <- options(checktor.url_check = NULL) # unset: fall back to the default
-  on.exit(options(old), add = TRUE)
+  withr::local_options(checktor.url_check = NULL) # unset: fall back to the default
 
   res <- lab_url_liveness(pkg, verbose = FALSE)
   expect_false(fetched)
@@ -240,8 +240,7 @@ test_that("lab_url_liveness(): reaches the network when asked to", {
       data.frame()
     }
   )
-  old <- options(checktor.url_check = TRUE)
-  on.exit(options(old), add = TRUE)
+  withr::local_options(checktor.url_check = TRUE)
 
   expect_true(lab_url_liveness(pkg, verbose = FALSE)$passed)
   expect_true(fetched)
@@ -253,8 +252,7 @@ test_that("lab_url_liveness(): surfaces the broken URLs the fetch reports", {
   # behaviour is environment-dependent (and absent without a network).
   pkg <- make_temp_dir()
   write_pkg(pkg)
-  old <- options(checktor.url_check = TRUE)
-  on.exit(options(old), add = TRUE)
+  withr::local_options(checktor.url_check = TRUE)
 
   fake_db <- data.frame(
     URL = "https://example.com/missing",
@@ -274,8 +272,7 @@ test_that("lab_url_liveness(): surfaces the broken URLs the fetch reports", {
 test_that("lab_url_liveness(): passes when the fetch reports nothing", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
-  old <- options(checktor.url_check = TRUE)
-  on.exit(options(old), add = TRUE)
+  withr::local_options(checktor.url_check = TRUE)
   testthat::local_mocked_bindings(fetch_url_db = function(path) data.frame())
   res <- lab_url_liveness(pkg, verbose = FALSE)
   expect_true(res$passed)
@@ -290,8 +287,7 @@ test_that("lab_url_liveness(): a failed fetch is not checked, not a pass", {
   # prevent.
   pkg <- make_temp_dir()
   write_pkg(pkg)
-  old <- options(checktor.url_check = TRUE)
-  on.exit(options(old), add = TRUE)
+  withr::local_options(checktor.url_check = TRUE)
   testthat::local_mocked_bindings(
     fetch_url_db = function(path) stop("fetch did not complete")
   )
@@ -330,8 +326,7 @@ test_that("lab_url_liveness(): passes a reachable URL end to end", {
   # choice and never rate-limits R's URL checker.
   pkg <- make_temp_dir()
   write_pkg(pkg, extra = "URL: https://cran.r-project.org/")
-  old <- options(checktor.url_check = TRUE)
-  on.exit(options(old), add = TRUE)
+  withr::local_options(checktor.url_check = TRUE)
   res <- lab_url_liveness(pkg, verbose = FALSE)
   expect_true(res$passed)
   expect_length(res$issues, 0L)

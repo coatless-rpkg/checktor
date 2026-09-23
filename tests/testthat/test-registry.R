@@ -94,8 +94,7 @@ test_that("checktor(): a check that did not run is skipped, not passing", {
 test_that("checktor(): a check that ran is not marked skipped", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
-  old <- options(checktor.url_check = TRUE)
-  on.exit(options(old), add = TRUE)
+  withr::local_options(checktor.url_check = TRUE)
   testthat::local_mocked_bindings(fetch_url_db = function(path) data.frame())
 
   r <- checktor(pkg, verbose = FALSE, progress = FALSE)
@@ -140,8 +139,7 @@ test_that("lab_url_liveness(): stays quiet when no host could be reached", {
   # package's links are broken, so the check reports that it did not run.
   pkg <- make_temp_dir()
   write_pkg(pkg)
-  old <- options(checktor.url_check = TRUE)
-  on.exit(options(old), add = TRUE)
+  withr::local_options(checktor.url_check = TRUE)
   testthat::local_mocked_bindings(
     fetch_url_db = function(path) {
       data.frame(
@@ -163,8 +161,7 @@ test_that("lab_url_liveness(): stays quiet when no host could be reached", {
 test_that("lab_url_liveness(): reports one dead host among reachable ones", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
-  old <- options(checktor.url_check = TRUE)
-  on.exit(options(old), add = TRUE)
+  withr::local_options(checktor.url_check = TRUE)
   testthat::local_mocked_bindings(
     fetch_url_db = function(path) {
       data.frame(

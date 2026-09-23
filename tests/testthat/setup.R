@@ -1,10 +1,19 @@
 # lab_spelling() calls utils::aspell(), whose result depends on whether a
-# spell-check backend is installed. That would make the count- and severity-based
-# tests differ from machine to machine, so the suite runs with spelling off. The
-# dedicated spelling test opts back in and skips when no backend is present.
-options(checktor.spelling = FALSE)
-
-# lab_url_liveness() fetches every package URL over the network, which is
-# non-deterministic (and slow). It is opt-in and off by default; pin it off so a
-# stray global option never turns the suite flaky.
-options(checktor.url_check = FALSE)
+# spell-check backend is installed, and lab_url_liveness() fetches every URL over
+# the network. Either would make the count- and severity-based tests differ from
+# machine to machine, so the suite runs with both off. The dedicated tests opt
+# back in.
+#
+# The other checktor.* options a developer might set in .Rprofile are cleared, so
+# a personal checktor.disable or checktor.severity cannot change what the suite
+# sees. Everything here is undone when the run ends, so a devtools::test() leaves
+# the session's own settings as they were.
+withr::local_options(
+  checktor.spelling = FALSE,
+  checktor.url_check = FALSE,
+  checktor.disable = NULL,
+  checktor.severity = NULL,
+  checktor.verbose = NULL,
+  checktor.progress = NULL,
+  .local_envir = testthat::teardown_env()
+)

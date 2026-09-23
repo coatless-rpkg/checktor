@@ -1,23 +1,6 @@
 # health_report() had no tests at all, which is how it came to omit an entire
 # category. These hold every format to reporting what checktor() found.
 
-policy_pkg <- function(envir = parent.frame()) {
-  pkg <- make_temp_dir(envir = envir)
-  write_pkg(
-    pkg,
-    r_code = c(
-      "bad.R" = paste(
-        "f <- function() {",
-        "  browser()",
-        "  writeLines('x', 'out.csv')",
-        "}",
-        sep = "\n"
-      )
-    )
-  )
-  pkg
-}
-
 # Test health_report() ----
 
 test_that("health_report(): every format reports the CRAN policy findings", {
@@ -94,7 +77,7 @@ test_that("health_report(): the HTML format escapes markup in a finding", {
 test_that("health_report(): writes the file it is given", {
   r <- checktor(policy_pkg(), verbose = FALSE, progress = FALSE)
   out <- file.path(make_temp_dir(), "report.md")
-  health_report(r, file = out)
+  expect_message(health_report(r, file = out), "written to")
   expect_true(file.exists(out))
   expect_match(paste(readLines(out), collapse = "\n"), "Browser")
 })

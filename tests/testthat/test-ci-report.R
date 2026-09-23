@@ -1,33 +1,6 @@
 # ci_report() has to produce something the forge can actually parse, so these
 # check the shapes rather than only that a string came back.
 
-ci_pkg <- function(envir = parent.frame()) {
-  pkg <- make_temp_dir(envir = envir)
-  write_pkg(
-    pkg,
-    r_code = c("a.R" = "f <- function() {\n  x <- T\n  otherpkg:::helper()\n}")
-  )
-  pkg
-}
-
-# A package carrying one finding in each tier, so a severity filter has something
-# to actually filter: set.seed() is policy, T is robustness, a two-word
-# Description is opinion.
-tiered_pkg <- function(envir = parent.frame()) {
-  pkg <- make_temp_dir(envir = envir)
-  write_pkg(
-    pkg,
-    description = "Too short.",
-    r_code = "f <- function() {\n  set.seed(42)\n  x <- T\n  x\n}"
-  )
-  pkg
-}
-
-# setup.R pins the spelling backend and the URL fetcher off, so exactly these two
-# checks do not run in the suite. The skipped tests assert the note verbatim, so
-# adding another `console`/`backend` check means updating this vector too.
-CI_SKIPPED <- c("spelling", "url_liveness")
-
 # Test issues() ----
 
 test_that("issues(): a finding keeps its location whatever label it carries", {
@@ -79,13 +52,7 @@ test_that("ci_report(): azure annotations carry the path, line and check", {
 # The forge parses these formats literally, so the exact text is the contract and
 # the assertions above cover only part of a line. The snapshots record all of it.
 # testthat skips a snapshot on CRAN, so they run in development and in CI while
-# the assertions above keep covering CRAN.
-#
-# The leading marker is masked: testthat prints a snapshot diff on failure, that
-# diff reaches the runner's log, and an unmasked line would be read there as a
-# real annotation against this repository.
-mask_ci_markers <- function(lines) sub("^(::|##vso)", "~\\1", lines)
-
+# the assertions above keep covering CRAN. mask_ci_markers() is in helper-results.R.
 test_that("ci_report(): github annotation is exactly what a forge parses", {
   r <- checktor(ci_pkg(), verbose = FALSE, progress = FALSE)
   expect_snapshot(
@@ -106,7 +73,7 @@ test_that("ci_report(): the gitlab report is valid JSON in GitLab's shape", {
   skip_if_not_installed("jsonlite")
   r <- checktor(ci_pkg(), verbose = FALSE, progress = FALSE)
   f <- file.path(make_temp_dir(), "cq.json")
-  ci_report(r, format = "gitlab", file = f)
+  expect_message(ci_report(r, format = "gitlab", file = f), "did not run")
 
   parsed <- jsonlite::fromJSON(f)
   expect_true(all(c("description", "check_name", "fingerprint", "severity",
@@ -118,14 +85,14 @@ test_that("ci_report(): the gitlab report is valid JSON in GitLab's shape", {
   expect_equal(length(unique(parsed$fingerprint)), nrow(parsed))
   # A fingerprint has to be stable, or every run looks like a new finding.
   f2 <- file.path(make_temp_dir(), "cq2.json")
-  ci_report(r, format = "gitlab", file = f2)
+  expect_message(ci_report(r, format = "gitlab", file = f2), "did not run")
   expect_identical(readLines(f), readLines(f2))
 })
 
 test_that("ci_report(): the checkstyle report is valid XML", {
   r <- checktor(ci_pkg(), verbose = FALSE, progress = FALSE)
   f <- file.path(make_temp_dir(), "cs.xml")
-  ci_report(r, format = "checkstyle", file = f)
+  expect_message(ci_report(r, format = "checkstyle", file = f), "did not run")
 
   doc <- xml2::read_xml(f)
   expect_gt(length(xml2::xml_find_all(doc, "//file")), 0L)
@@ -139,7 +106,7 @@ test_that("ci_report(): the sarif report is valid JSON at version 2.1.0", {
   skip_if_not_installed("jsonlite")
   r <- checktor(ci_pkg(), verbose = FALSE, progress = FALSE)
   f <- file.path(make_temp_dir(), "out.sarif")
-  ci_report(r, format = "sarif", file = f)
+  expect_message(ci_report(r, format = "sarif", file = f), "did not run")
 
   parsed <- jsonlite::fromJSON(f)
   expect_equal(parsed$version, "2.1.0")
@@ -168,14 +135,9 @@ test_that("detect_ci(): detects the forge from the variables each one sets", {
   # first and set only the one under test.
   forge_vars <- c("GITHUB_ACTIONS", "GITLAB_CI", "TF_BUILD", "JENKINS_URL")
   only_forge <- function(vars, code) {
-    old <- Sys.getenv(forge_vars, unset = NA)
-    Sys.unsetenv(forge_vars)
-    if (length(vars)) do.call(Sys.setenv, as.list(vars))
-    on.exit({
-      Sys.unsetenv(forge_vars)
-      keep <- !is.na(old)
-      if (any(keep)) do.call(Sys.setenv, as.list(old[keep]))
-    })
+    new <- stats::setNames(rep(NA_character_, length(forge_vars)), forge_vars)
+    new[names(vars)] <- vars
+    withr::local_envvar(new) # NA unsets
     force(code)
   }
   only_forge(c(GITHUB_ACTIONS = "true"), expect_equal(detect_ci(), "github"))
@@ -269,7 +231,7 @@ test_that("ci_report(): the skipped note stays out of the artifact formats", {
   dir <- make_temp_dir()
   for (fmt in c("gitlab", "checkstyle", "sarif")) {
     f <- file.path(dir, paste0(fmt, ".out"))
-    ci_report(r, format = fmt, file = f)
+    expect_message(ci_report(r, format = fmt, file = f), "did not run")
     expect_false(any(grepl("did not run", readLines(f))))
   }
 })
@@ -284,16 +246,16 @@ test_that("ci_report(): nothing to report still writes a valid empty file", {
   dir <- make_temp_dir()
 
   gl <- file.path(dir, "cq.json")
-  ci_report(r, format = "gitlab", file = gl, severity = "policy")
+  expect_message(ci_report(r, format = "gitlab", file = gl, severity = "policy"), "did not run")
   expect_length(jsonlite::fromJSON(gl), 0L)
 
   cs <- file.path(dir, "cs.xml")
-  ci_report(r, format = "checkstyle", file = cs, severity = "policy")
+  expect_message(ci_report(r, format = "checkstyle", file = cs, severity = "policy"), "did not run")
   doc <- xml2::read_xml(cs)
   expect_length(xml2::xml_find_all(doc, "//error"), 0L)
 
   sf <- file.path(dir, "out.sarif")
-  ci_report(r, format = "sarif", file = sf, severity = "policy")
+  expect_message(ci_report(r, format = "sarif", file = sf, severity = "policy"), "did not run")
   parsed <- jsonlite::fromJSON(sf)
   expect_equal(parsed$version, "2.1.0")
   expect_length(parsed$runs$results[[1]], 0L)
@@ -360,6 +322,6 @@ test_that("ci_report(): special characters do not break a format", {
              file.path(pkg, "LICENSE"))
   r <- checktor(pkg, verbose = FALSE, progress = FALSE)
   f <- file.path(make_temp_dir(), "cs.xml")
-  ci_report(r, format = "checkstyle", file = f)
+  expect_message(ci_report(r, format = "checkstyle", file = f), "did not run")
   expect_no_error(xml2::read_xml(f))
 })

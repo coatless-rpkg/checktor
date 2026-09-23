@@ -248,7 +248,7 @@ test_that("lab_description_length(): a 31-word single-sentence Description is no
     "re-sized for sharing on social media."
   )
   expect_true(
-    lab_description_length(
+    lab_description_length(make_temp_dir(),
       verbose = FALSE,
       desc = c(Description = desc)
     )$passed
@@ -261,7 +261,7 @@ test_that("lab_title_case(): a quoted package name in Title keeps its own capita
   # R's own toTitleCase() restores single-quoted spans, which is why R does not
   # flag 'shiny' and the homegrown word-loop did.
   expect_true(
-    lab_title_case(
+    lab_title_case(make_temp_dir(),
       verbose = FALSE,
       desc = c(Title = "Extra Diagnostics for 'shiny' and 'rmarkdown' Packages")
     )$passed

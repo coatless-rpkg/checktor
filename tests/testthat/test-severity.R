@@ -26,7 +26,8 @@ test_that("check_severity(): falls back to robustness, not to silence", {
 test_that("issues(): carries the tier, as does tidy()", {
   pkg <- example_diagnose_scenario(
     "code_examples/tf_usage_bad.R",
-    show_content = FALSE
+    show_content = FALSE,
+    cleanup = TRUE
   )
   r <- checktor(pkg, verbose = FALSE, progress = FALSE)
   expect_true("severity" %in% names(issues(r)))
@@ -42,7 +43,8 @@ test_that("checktor(): counts only the tiers the verdict is about", {
   # not count against a clean bill of health.
   pkg <- example_diagnose_scenario(
     "code_examples/tf_usage_bad.R",
-    show_content = FALSE
+    show_content = FALSE,
+    cleanup = TRUE
   )
   unlink(file.path(pkg, "NEWS.md"))
   r <- checktor(pkg, verbose = FALSE, progress = FALSE)
@@ -56,7 +58,8 @@ test_that("checktor(): counts only the tiers the verdict is about", {
 test_that("checktor(): asking for all tiers folds opinion into the verdict", {
   pkg <- example_diagnose_scenario(
     "code_examples/tf_usage_bad.R",
-    show_content = FALSE
+    show_content = FALSE,
+    cleanup = TRUE
   )
   unlink(file.path(pkg, "NEWS.md")) # an opinion finding: news_file
   r <- checktor(
@@ -72,7 +75,8 @@ test_that("checktor(): asking for all tiers folds opinion into the verdict", {
 test_that("checktor(): a policy-only run ignores robustness findings", {
   pkg <- example_diagnose_scenario(
     "code_examples/tf_usage_bad.R",
-    show_content = FALSE
+    show_content = FALSE,
+    cleanup = TRUE
   )
   unlink(file.path(pkg, "NEWS.md")) # an opinion finding: news_file
   r <- checktor(pkg, verbose = FALSE, progress = FALSE, severity = "policy")
@@ -96,7 +100,8 @@ test_that("checkup(): follows the verdict, so opinion does not fail CI", {
   # build, or the tiers bought us nothing.
   pkg <- example_diagnose_scenario(
     "code_examples/tf_usage_bad.R",
-    show_content = FALSE
+    show_content = FALSE,
+    cleanup = TRUE
   )
   expect_false(checkup(pkg)) # tf_usage is robustness: fails the build
 
