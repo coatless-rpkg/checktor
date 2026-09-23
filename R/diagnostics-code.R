@@ -866,28 +866,56 @@ lab_temp_cleanup <- function(path, verbose = TRUE, parsed = NULL) {
     "deferred_run"
   )
   predicate <- paste(sprintf("text() = '%s'", cleanup_funs), collapse = " or ")
-  # A tempfile()/tempdir() call is "clean" if cleanup exists in any of:
-  #   (a) the innermost enclosing function body (most precise),
-  #   (b) the same top-level statement (handles testthat blocks like
-  #       `test_that("...", { tempfile(); on.exit(...) })` where the lambda is
-  #       constructed at runtime, not statically a FUNCTION node), or
-  #   (c) a later top-level statement (handles top-level test scripts).
+  # A tempfile() call is "clean" if cleanup exists in:
+  #   (a) the innermost enclosing function, formals included, for a call inside a
+  #       function, so `p = tempfile()` is cleaned by an on.exit() in the body;
+  #   (b) the same top-level statement, or
+  #   (c) a later top-level statement, for a call outside any function.
+  # (b) and (c) are for top-level code only. Every top-level statement in R/ is
+  # usually a function definition, so letting them excuse a call inside a
+  # function let any later function's unlink() excuse an earlier leak.
   # Only tempfile() needs explicit cleanup; tempdir() returns the session
   # temp directory which R auto-cleans at session end.
+  #
+  # A path the function returns is the caller's to clean up, as in a small
+  # factory like `callr_tempfile <- function(...) tempfile(...)`: the call is the
+  # whole body, the body's last statement, inside return(), or assigned to a name
+  # that the last statement returns.
+  call <- "parent::expr/parent::expr"
+  body_end <- "ancestor::expr[OP-LEFT-BRACE][parent::expr/FUNCTION][1]/expr[last()]"
+  returned <- paste0(
+    "(", call, "[parent::expr/FUNCTION][not(following-sibling::*)]",
+    " or ", call, "[not(following-sibling::expr)]",
+    "[parent::expr[OP-LEFT-BRACE][parent::expr/FUNCTION]]",
+    " or ", call, "/parent::expr[expr[1]/SYMBOL_FUNCTION_CALL[text() = 'return']]",
+    " or ", body_end, "/SYMBOL = ", call,
+    "/parent::*[LEFT_ASSIGN or EQ_ASSIGN]/expr[1]/SYMBOL",
+    " or ", body_end,
+    "[expr[1]/SYMBOL_FUNCTION_CALL[text() = 'return' or text() = 'invisible']]",
+    "/expr[2]/SYMBOL = ", call, "/parent::*[LEFT_ASSIGN or EQ_ASSIGN]/expr[1]/SYMBOL",
+    ")"
+  )
   xpath <- sprintf(
     "//SYMBOL_FUNCTION_CALL[text() = 'tempfile'][
-       not(ancestor::expr[parent::expr/FUNCTION][1]//SYMBOL_FUNCTION_CALL[%s])
-       and not(
-         ancestor::expr[parent::exprlist][1]
-         //SYMBOL_FUNCTION_CALL[%s]
-       )
-       and not(
-         ancestor::expr[parent::exprlist][1]
-         /following-sibling::expr
-         //SYMBOL_FUNCTION_CALL[%s]
+       not(%s)
+       and %s
+       and (
+         ancestor::expr[FUNCTION or OP-LAMBDA]
+         or (
+           not(
+             ancestor::expr[parent::exprlist][1]
+             //SYMBOL_FUNCTION_CALL[%s]
+           )
+           and not(
+             ancestor::expr[parent::exprlist][1]
+             /following-sibling::expr
+             //SYMBOL_FUNCTION_CALL[%s]
+           )
+         )
        )
      ]",
-    predicate,
+    returned,
+    not_under_fn_with_call_xpath(cleanup_funs),
     predicate,
     predicate
   )

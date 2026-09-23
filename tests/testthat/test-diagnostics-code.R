@@ -902,7 +902,57 @@ test_that("lab_temp_cleanup(): is per-tempfile and requires nearby cleanup", {
 
   res <- lab_temp_cleanup(pkg, verbose = FALSE)
   expect_false(res$passed)
-  expect_equal(length(res$issues), 1L) # only the leaky one
+  expect_equal(res$issues, "test.R:8") # the leaky one, not the clean one
+})
+
+test_that("lab_temp_cleanup(): a later function's cleanup does not excuse a leak", {
+  # Every top-level statement in R/ is a function definition, so "a later
+  # statement cleans up" let clean() excuse leaky() whenever it came second.
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    r_code = c(
+      "leaky <- function() {",
+      "  t2 <- tempfile()",
+      "  writeLines('b', t2)",
+      "}",
+      "",
+      "clean <- function() {",
+      "  t1 <- tempfile()",
+      "  writeLines('a', t1)",
+      "  unlink(t1)",
+      "}"
+    )
+  )
+  expect_equal(lab_temp_cleanup(pkg, verbose = FALSE)$issues, "test.R:2")
+})
+
+test_that("lab_temp_cleanup(): a path the function returns is the caller's to clean", {
+  # callr, rmarkdown and bigANNOY each wrap tempfile() in a small factory that
+  # hands the path back. Whoever receives it decides when the file goes.
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    r_code = c(
+      "a <- function(pattern) tempfile(pattern)",
+      "b <- function(dir) {",
+      "  dir.create(dir, showWarnings = FALSE)",
+      "  base::tempfile(tmpdir = dir)",
+      "}",
+      "c1 <- function(str) {",
+      "  f <- tempfile(fileext = '.html')",
+      "  writeLines(str, f)",
+      "  f",
+      "}",
+      "d <- function() return(tempfile())",
+      "e <- function(x) {",
+      "  p <- tempfile()",
+      "  saveRDS(x, p)",
+      "  invisible(p)",
+      "}"
+    )
+  )
+  expect_equal(lab_temp_cleanup(pkg, verbose = FALSE)$issues, character(0))
 })
 
 test_that("lab_temp_cleanup(): ignores .Rd files (they are not R)", {
