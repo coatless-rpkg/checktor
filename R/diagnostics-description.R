@@ -1807,11 +1807,11 @@ lab_license_year <- function(path, verbose) {
 #'
 #' @details
 #' The check needs a spell-check backend (`aspell` or `hunspell`) on the system.
-#' Without one it passes quietly, the same way CRAN's incoming check skips
-#' spelling when no backend is present, so a run on one machine may find words a
-#' run on another does not. It is therefore an `opinion`-tier check. When it does
-#' fire, [prescribe()] hands back a ready-to-paste `.aspell/` snippet with the
-#' flagged words filled in.
+#' Without one it is reported as skipped, the same way CRAN's incoming check
+#' skips spelling when no backend is present, so a run on one machine may find
+#' words a run on another does not. It is therefore an `opinion`-tier check.
+#' When it does fire, [prescribe()] hands back a ready-to-paste `.aspell/`
+#' snippet with the flagged words filled in.
 #'
 #' @section Source:
 #' The [CRAN incoming check](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages)

@@ -165,6 +165,21 @@ checktor_skipped_result <- function(message, reason) {
   )
 }
 
+# A check's outcome: "failed", "skipped" when it did not run, or "passed". A
+# skipped check keeps `passed = TRUE` so it never fails a verdict, which is why
+# anything that counts or shows passes asks this instead of reading `$passed`. A
+# failure wins over a skip, as it does in the verdict, so a registered check that
+# sets both still reads as failing.
+check_status <- function(x) {
+  if (!isTRUE(x$passed)) {
+    "failed"
+  } else if (isTRUE(x$skipped)) {
+    "skipped"
+  } else {
+    "passed"
+  }
+}
+
 # The tier a check sits in. A registered check (see register_check()) carries its
 # own tier, consulted when the name is not a built-in. Anything still unknown is
 # treated as `robustness`: a new check with no entry is a real finding until

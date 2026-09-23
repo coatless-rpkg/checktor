@@ -408,8 +408,9 @@ as.data.frame.checktor_category_result <- function(x, ...) tidy(x)
 #' @param ... Unused.
 #' @return For results: a 5-row `data.frame` (`category, checks, passed,
 #'   failed, skipped, issues`). For a category: a 1-row `data.frame`
-#'   (`checks, passed, failed, skipped, issues`). `skipped` counts the checks
-#'   that did not run, which are not counted as passing.
+#'   (`checks, passed, failed, skipped, issues`). Each check is counted once, so
+#'   `passed`, `failed` and `skipped` add up to `checks`, and a check that did
+#'   not run is `skipped`, never `passed`.
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)
@@ -419,29 +420,17 @@ as.data.frame.checktor_category_result <- function(x, ...) tidy(x)
 #' @export
 summary.checktor_category_result <- function(object, ...) {
   nms <- .check_names(object)
-  checks <- length(nms)
-  passed <- sum(vapply(
-    nms,
-    function(nm) isTRUE(object[[nm]]$passed),
-    logical(1)
-  ))
+  status <- vapply(nms, function(nm) check_status(object[[nm]]), character(1))
   issues <- sum(vapply(
     nms,
     function(nm) length(object[[nm]]$issues),
     integer(1)
   ))
-  # Counted separately from passed, so a category that skipped a check does not
-  # read as one that examined everything.
-  skipped <- sum(vapply(
-    nms,
-    function(nm) isTRUE(object[[nm]]$skipped),
-    logical(1)
-  ))
   data.frame(
-    checks = checks,
-    passed = passed,
-    failed = checks - passed,
-    skipped = skipped,
+    checks = length(nms),
+    passed = sum(status == "passed"),
+    failed = sum(status == "failed"),
+    skipped = sum(status == "skipped"),
     issues = issues,
     stringsAsFactors = FALSE
   )

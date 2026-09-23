@@ -48,7 +48,9 @@ fields in its own DESCRIPTION.
   clean bill of health never includes a check that never happened. `tidy()` gained a
   `skipped` column and `summary()` a `skipped` count, the names are in
   `metadata$skipped_checks`, and the printed result and every `health_report()`
-  format name the checks that sat out.
+  format name the checks that sat out. Printing a check or a category shows a
+  skipped check as skipped, and `summary()` counts it only there, so `passed`,
+  `failed` and `skipped` add up to `checks` (#15, thanks @TroyHernandez).
 
 * Every check is exported, so any check `checktor()` runs is one you can call
   yourself. The DESCRIPTION checks take `(path, verbose, desc = NULL)` like every
@@ -94,8 +96,8 @@ fields in its own DESCRIPTION.
 
 * `spelling` runs `utils::aspell()` over the `Title` and `Description` to mirror
   CRAN's incoming spelling pass. It reads any `.aspell/` dictionary, `inst/WORDLIST`,
-  or `Config/checktor` vocabulary you already keep, and passes quietly without a
-  spell-check backend installed. Turn it off with
+  or `Config/checktor` vocabulary you already keep, and is reported as skipped
+  without a spell-check backend installed. Turn it off with
   `options(checktor.spelling = FALSE)`. When it reports a word, `prescribe()` prints
   a ready-to-paste `.aspell/` snippet, since `inst/WORDLIST` alone does not clear
   CRAN's aspell NOTE but a `.aspell/` dictionary does.

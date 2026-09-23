@@ -501,8 +501,8 @@ fetch_url_db <- function(path) {
 #' options(checktor.url_check = FALSE)  # never check
 #' ```
 #'
-#' Without a network the fetch reports nothing and the check passes quietly, just
-#' as CRAN's own URL check does. For the offline half, which flags `http://` links
+#' Without a network nothing can be fetched, so the check is reported as skipped
+#' rather than as passing. For the offline half, which flags `http://` links
 #' and URL shorteners without leaving the room, see [lab_urls()].
 #'
 #' @section Source:

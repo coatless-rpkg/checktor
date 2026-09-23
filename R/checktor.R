@@ -244,7 +244,7 @@ count_skipped <- function(results) {
     }
     for (nm in setdiff(names(cat), "passed")) {
       check <- cat[[nm]]
-      if (is.list(check) && isTRUE(check$skipped)) {
+      if (is.list(check) && check_status(check) == "skipped") {
         out <- c(out, nm)
       }
     }

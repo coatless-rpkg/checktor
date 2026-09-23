@@ -16,8 +16,9 @@
 }
 \value{
 For results: a 5-row \code{data.frame} (\verb{category, checks, passed, failed, skipped, issues}). For a category: a 1-row \code{data.frame}
-(\verb{checks, passed, failed, skipped, issues}). \code{skipped} counts the checks
-that did not run, which are not counted as passing.
+(\verb{checks, passed, failed, skipped, issues}). Each check is counted once, so
+\code{passed}, \code{failed} and \code{skipped} add up to \code{checks}, and a check that did
+not run is \code{skipped}, never \code{passed}.
 }
 \description{
 Per-category summary of checktor results

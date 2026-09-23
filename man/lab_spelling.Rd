@@ -26,11 +26,11 @@ are not already accepted somewhere: a package \verb{.aspell/} dictionary,
 }
 \details{
 The check needs a spell-check backend (\code{aspell} or \code{hunspell}) on the system.
-Without one it passes quietly, the same way CRAN's incoming check skips
-spelling when no backend is present, so a run on one machine may find words a
-run on another does not. It is therefore an \code{opinion}-tier check. When it does
-fire, \code{\link[=prescribe]{prescribe()}} hands back a ready-to-paste \verb{.aspell/} snippet with the
-flagged words filled in.
+Without one it is reported as skipped, the same way CRAN's incoming check
+skips spelling when no backend is present, so a run on one machine may find
+words a run on another does not. It is therefore an \code{opinion}-tier check.
+When it does fire, \code{\link[=prescribe]{prescribe()}} hands back a ready-to-paste \verb{.aspell/}
+snippet with the flagged words filled in.
 }
 \section{Source}{
 

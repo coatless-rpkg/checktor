@@ -74,7 +74,9 @@ checktor_check_result <- function(passed, issues, message, ...) {
 #' An object of class `checktor_category_result` containing:
 #'
 #' - Individual [checktor_check_result] objects for each check
-#' - `passed`: Named logical vector showing which individual checks passed
+#' - `passed`: Named logical vector showing which individual checks did not
+#'   fail. A check that did not run is `TRUE` here, since it cannot fail a
+#'   verdict; its own `skipped` element records that it did not run.
 #'
 #' @seealso
 #' Multi-category functions like [diagnose_code_issues()], [diagnose_documentation_issues()]
@@ -126,6 +128,15 @@ checktor_category_result <- function(...) {
 #' res <- checktor_check_result(FALSE, c("foo.R:3", "bar.R:9"), "T/F usage")
 #' print(res)
 print.checktor_check_result <- function(x, ...) {
+  if (check_status(x) == "skipped") {
+    reason <- x$skip_reason
+    if (length(reason) == 1L && nzchar(reason)) {
+      cli::cli_alert_info("{x$message}: SKIPPED ({reason})")
+    } else {
+      cli::cli_alert_info("{x$message}: SKIPPED")
+    }
+    return(invisible(x))
+  }
   if (x$passed) {
     cli::cli_alert_success("{x$message}: PASSED")
   } else {
@@ -155,31 +166,44 @@ print.checktor_check_result <- function(x, ...) {
 #'                                  show_content = FALSE)
 #' print(diagnose_code_issues(pkg, verbose = FALSE))
 print.checktor_category_result <- function(x, ...) {
-  if ("passed" %in% names(x)) {
-    total_checks <- length(x$passed)
-    passed_checks <- sum(x$passed, na.rm = TRUE)
-    failed_checks <- total_checks - passed_checks
+  if (!"passed" %in% names(x)) {
+    return(invisible(x))
+  }
+  # Each check's own status, so a check that did not run is neither a pass nor a
+  # failure. A category that returned early has no checks, only its verdict.
+  checks <- .check_names(x)
+  status <- if (length(checks) > 0L) {
+    vapply(checks, function(nm) check_status(x[[nm]]), character(1))
+  } else {
+    ifelse(x$passed, "passed", "failed")
+  }
+  total_checks <- length(status)
+  passed_checks <- sum(status == "passed")
+  failed_checks <- sum(status == "failed")
+  failed <- names(status)[status == "failed"]
+  skipped <- names(status)[status == "skipped"]
 
-    cli::cli_rule("Diagnostic Category Results")
-    if (failed_checks == 0) {
-      cli::cli_alert_success("All {total_checks} checks passed")
-    } else {
-      cli::cli_alert_warning("{failed_checks} of {total_checks} checks failed")
-
-      # Show failed checks
-      failed_names <- names(x$passed)[!x$passed]
+  cli::cli_rule("Diagnostic Category Results")
+  if (failed_checks == 0 && length(skipped) == 0L) {
+    cli::cli_alert_success("All {total_checks} checks passed")
+  } else if (failed_checks == 0 && passed_checks > 0) {
+    cli::cli_alert_success("{passed_checks} of {total_checks} checks passed")
+  } else if (failed_checks == 0) {
+    cli::cli_alert_info("{passed_checks} of {total_checks} checks passed")
+  } else {
+    cli::cli_alert_warning("{failed_checks} of {total_checks} checks failed")
+    if (length(failed) > 0L) {
       cli::cli_text("Failed checks:")
-      for (check_name in failed_names) {
-        if (
-          check_name %in%
-            names(x) &&
-            inherits(x[[check_name]], "checktor_check_result")
-        ) {
-          issue_count <- length(x[[check_name]]$issues)
-          cli::cli_text("  {check_name}: {issue_count} issue{?s}")
-        }
-      }
     }
+    for (check_name in failed) {
+      issue_count <- length(x[[check_name]]$issues)
+      cli::cli_text("  {check_name}: {issue_count} issue{?s}")
+    }
+  }
+  if (length(skipped) > 0L) {
+    cli::cli_alert_info(
+      "{length(skipped)} check{?s} did not run: {.val {skipped}}"
+    )
   }
   invisible(x)
 }

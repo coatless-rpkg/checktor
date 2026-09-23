@@ -14,7 +14,9 @@ representing individual checks within the category.}
 An object of class \code{checktor_category_result} containing:
 \itemize{
 \item Individual \link{checktor_check_result} objects for each check
-\item \code{passed}: Named logical vector showing which individual checks passed
+\item \code{passed}: Named logical vector showing which individual checks did not
+fail. A check that did not run is \code{TRUE} here, since it cannot fail a
+verdict; its own \code{skipped} element records that it did not run.
 }
 }
 \description{

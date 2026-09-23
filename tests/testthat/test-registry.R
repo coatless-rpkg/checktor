@@ -137,7 +137,7 @@ test_that("check_severity(): each check has a lab_ function named after it", {
 
 test_that("lab_url_liveness(): stays quiet when no host could be reached", {
   # Every row failing to resolve says the machine has no connection, not that the
-  # package's links are broken, and the help page promises a quiet pass.
+  # package's links are broken, so the check reports that it did not run.
   pkg <- make_temp_dir()
   write_pkg(pkg)
   old <- options(checktor.url_check = TRUE)

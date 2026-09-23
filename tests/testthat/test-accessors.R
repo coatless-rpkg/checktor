@@ -130,6 +130,36 @@ test_that("tidy(): is per-check and summary() is per-category", {
 
 # Test summary() ----
 
+test_that("summary(): counts a skipped check once, as skipped (#15)", {
+  cat_res <- checktor_category_result(
+    url_liveness = checktor_skipped_result("URL liveness check", "offline"),
+    tf_usage = checktor_check_result(TRUE, character(0), "T/F usage check"),
+    seed_setting = checktor_check_result(FALSE, "a.R:1", "Seed setting check")
+  )
+  s <- summary(cat_res)
+  expect_equal(s$checks, 3L)
+  expect_equal(s$passed, 1L)
+  expect_equal(s$failed, 1L)
+  expect_equal(s$skipped, 1L)
+})
+
+test_that("summary(): a failure marked skipped counts as failed", {
+  cat_res <- checktor_category_result(
+    house_rule = checktor_check_result(FALSE, "z.R:1", "House rule", skipped = TRUE)
+  )
+  s <- summary(cat_res)
+  expect_equal(s$failed, 1L)
+  expect_equal(s$skipped, 0L)
+})
+
+test_that("summary(): passed, failed and skipped add up to checks", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  s <- summary(checktor(pkg, verbose = FALSE, progress = FALSE))
+  expect_gt(sum(s$skipped), 0L) # url_liveness and spelling are off in tests
+  expect_equal(s$passed + s$failed + s$skipped, s$checks)
+})
+
 test_that("summary(): robust to early-return categories (no R/ dir)", {
   d <- make_temp_dir()
   writeLines(
