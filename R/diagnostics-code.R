@@ -128,7 +128,7 @@ emit_issue_summary <- function(
   } else {
     cli::cli_alert_warning(failure_msg)
   }
-  cli::cli_ul(utils::head(issues, max_show))
+  cli::cli_ul(cli_literal(utils::head(issues, max_show)))
   if (length(issues) > max_show) {
     cli::cli_text("{.emph ... and {length(issues) - max_show} more}")
   }

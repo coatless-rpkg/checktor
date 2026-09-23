@@ -389,8 +389,8 @@ lab_commented_examples <- function(path, verbose = TRUE) {
   emit_issue_summary(
     issues,
     verbose,
-    "Every {.code \\examples{}} block runs something",
-    "{.code \\examples{}} blocks that run nothing",
+    "Every {.code \\examples{{}}} block runs something",
+    "{.code \\examples{{}}} blocks that run nothing",
     "Treatment: Uncomment the demonstration, or remove the empty example",
     level = "warning"
   )
@@ -575,9 +575,9 @@ lab_donttest_vs_dontrun <- function(path, verbose = TRUE) {
   emit_issue_summary(
     issues,
     verbose,
-    "{.code \\dontrun{}} use is appropriate",
-    "Some {.code \\dontrun{}} blocks should be {.code \\donttest{}}",
-    "Treatment: Slow-only code belongs in {.code \\donttest{}}",
+    "{.code \\dontrun{{}}} use is appropriate",
+    "Some {.code \\dontrun{{}}} blocks should be {.code \\donttest{{}}}",
+    "Treatment: Slow-only code belongs in {.code \\donttest{{}}}",
     level = "warning"
   )
   checktor_check_result(passed, issues, "donttest vs dontrun check")

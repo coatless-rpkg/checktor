@@ -229,3 +229,15 @@ test_that("list_rd_files(): is empty when there is no man/", {
   unlink(file.path(pkg, "man"), recursive = TRUE)
   expect_identical(list_rd_files(pkg), character(0))
 })
+
+# Test cli_literal() ----
+
+test_that("cli_literal(): text reaches the console verbatim, never evaluated", {
+  # cli glue-interpolates what it prints, so a `{...}` quoted from the package
+  # under check would otherwise run as R code or vanish.
+  x <- c("items/{stop('evaluated')}", "\\dontrun{}", "a { b", "}} and {?s}")
+  out <- cli::cli_fmt(cli::cli_ul(cli_literal(x)))
+  for (item in x) {
+    expect_match(paste(out, collapse = "\n"), item, fixed = TRUE)
+  }
+})

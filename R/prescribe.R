@@ -100,11 +100,11 @@ prescribe_generic <- function(check, chk_name) {
   } else {
     chk_name
   }
-  cli::cli_h3(title)
+  cli::cli_h3("{title}")
   issues <- if (is.list(check)) check$issues else NULL
   if (length(issues) > 0L) {
     cli::cli_text("{.strong Issues found:}")
-    cli::cli_ul(utils::head(issues, 5L))
+    cli::cli_ul(cli_literal(utils::head(issues, 5L)))
     if (length(issues) > 5L) {
       cli::cli_text("{.emph ... and {length(issues) - 5L} more}")
     }

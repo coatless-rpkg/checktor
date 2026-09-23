@@ -402,6 +402,29 @@ test_that("lab_commented_examples(): flags an example that runs nothing", {
   expect_match(res$issues, "runs nothing", all = FALSE)
 })
 
+test_that("lab_commented_examples(): names \\examples{} with its braces", {
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    rd_files = list(
+      "foo.Rd" = c(
+        "\\name{foo}", "\\alias{foo}", "\\title{Foo}", "\\description{d}",
+        "\\value{x}", "\\examples{", "# foo()", "}"
+      )
+    )
+  )
+  out <- paste(cli::cli_fmt(lab_commented_examples(pkg)), collapse = "\n")
+  expect_match(out, "`\\examples{}` blocks that run nothing", fixed = TRUE)
+
+  writeLines(
+    c("\\name{foo}", "\\alias{foo}", "\\title{Foo}", "\\description{d}",
+      "\\value{x}", "\\examples{", "foo()", "}"),
+    file.path(pkg, "man", "foo.Rd")
+  )
+  out <- paste(cli::cli_fmt(lab_commented_examples(pkg)), collapse = "\n")
+  expect_match(out, "Every `\\examples{}` block runs something", fixed = TRUE)
+})
+
 test_that("lab_commented_examples(): allows a comment alongside live code", {
   # surveydown's examples comment out the server and .qmd snippets that belong in
   # the USER's files, then call sd_create_survey() for real. That is illustration,

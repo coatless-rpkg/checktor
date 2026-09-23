@@ -60,6 +60,22 @@ test_that("lab_example_interactive(): a guard outside dontrun is no excuse", {
   expect_match(res$issues, "dontrun", all = FALSE)
 })
 
+test_that("lab_example_interactive(): prints its finding and treatment", {
+  # The treatment's `{ ... }` reached cli as an expression, so every package this
+  # check caught was reported as an errored check instead.
+  pkg <- rd_pkg(c("\\dontrun{", "  runApp(app)", "}"))
+  out <- NULL
+  expect_no_error(out <- cli::cli_fmt(lab_example_interactive(pkg)))
+  out <- gsub("\\s+", " ", paste(out, collapse = " ")) # undo cli's wrapping
+  expect_match(out, "Interactive examples hidden in `\\dontrun{}`", fixed = TRUE)
+  expect_match(out, "f.Rd: interactive example hidden in \\dontrun{}", fixed = TRUE)
+  expect_match(
+    out,
+    "Replace `\\dontrun{}` with `if (interactive()) { ... }`",
+    fixed = TRUE
+  )
+})
+
 test_that("lab_example_interactive(): leaves a non-interactive dontrun alone", {
   pkg <- rd_pkg(c("\\dontrun{", "  long_running_fit(data)", "}"))
   expect_true(lab_example_interactive(pkg, verbose = FALSE)$passed)

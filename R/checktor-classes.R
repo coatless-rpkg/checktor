@@ -132,7 +132,7 @@ print.checktor_check_result <- function(x, ...) {
     cli::cli_alert_danger("{x$message}: FAILED")
     if (length(x$issues) > 0) {
       cli::cli_text("Issues found:")
-      cli::cli_ul(utils::head(x$issues, 5))
+      cli::cli_ul(cli_literal(utils::head(x$issues, 5)))
       if (length(x$issues) > 5) {
         cli::cli_text("... and {length(x$issues) - 5} more")
       }

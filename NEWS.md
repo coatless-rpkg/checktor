@@ -360,6 +360,12 @@ the code you wrote.
 * `urls` skips tilde-fenced and nested code blocks, and drops the backtick from a
   quoted URL.
 
+* A finding prints the text it quotes from your package as written. A `Title`, file
+  name or README link reached `cli` as part of a template, so a brace in it, such as
+  a tidyverse-style `{pkg}` or the `{id}` of a URL template, was evaluated as R
+  code, which either ran it or turned the finding into an error. Messages naming
+  `\dontrun{}` and `\donttest{}` keep their braces.
+
 * `example_diagnose_scenario()` no longer prints the temporary package path, keeping
   machine-specific paths out of help pages.
 

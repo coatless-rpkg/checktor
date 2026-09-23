@@ -395,7 +395,7 @@ lab_network_operations <- function(path, verbose = TRUE) {
     verbose,
     "Network operations appear properly wrapped",
     "Potential unwrapped network operations",
-    "Treatment: Wrap in \\dontrun{}, \\donttest{}, or capability checks",
+    "Treatment: Wrap in \\dontrun{{}}, \\donttest{{}}, or capability checks",
     level = "warning"
   )
   checktor_check_result(passed, issues, "Network operations check")

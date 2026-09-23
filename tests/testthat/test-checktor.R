@@ -108,6 +108,23 @@ test_that("print.checktor_results(): runs without error", {
   expect_no_error(print(results))
 })
 
+# Test print.checktor_check_result() ----
+
+test_that("print.checktor_check_result(): prints issue text literally", {
+  res <- checktor_check_result(
+    FALSE,
+    "Title: Tools for {stop('evaluated')} Users",
+    "Title case check"
+  )
+  out <- NULL
+  expect_no_error(out <- cli::cli_fmt(print(res)))
+  expect_match(
+    paste(out, collapse = "\n"),
+    "Tools for {stop('evaluated')} Users",
+    fixed = TRUE
+  )
+})
+
 # Test configure_doctor() ----
 
 test_that("configure_doctor(): changes the defaults consumed by checktor", {
@@ -162,6 +179,40 @@ test_that("prescribe(): surfaces failed checks with no curated treatment", {
   # Match the ISSUE, not the heading: "NEWS" alone is satisfied by the
   # "NEWS file check" header that #4 was filed about.
   expect_match(txt, "No NEWS file found", fixed = TRUE)
+})
+
+test_that("prescribe(): prints uncurated issue text literally", {
+  # The fallback lists the check's own issues, which quote the package. news_file
+  # has no curated treatment, so its failure takes that path.
+  pkg <- make_temp_dir()
+  write_pkg(pkg, news = FALSE)
+  res <- checktor(pkg, verbose = FALSE, progress = FALSE)
+  res$general_issues$news_file$issues <- "NEWS.md mentions {stop('evaluated')}"
+
+  out <- NULL
+  expect_no_error(out <- cli::cli_fmt(prescribe(res)))
+  expect_match(
+    paste(out, collapse = "\n"),
+    "NEWS.md mentions {stop('evaluated')}",
+    fixed = TRUE
+  )
+})
+
+test_that("prescribe(): prints an uncurated check's heading literally", {
+  # The heading is the check's message. A check added with register_check() may
+  # build it from the package, e.g. naming the Title a house rule rejected.
+  pkg <- make_temp_dir()
+  write_pkg(pkg, news = FALSE)
+  res <- checktor(pkg, verbose = FALSE, progress = FALSE)
+  res$general_issues$news_file$message <- "House rule for {stop('evaluated')}"
+
+  out <- NULL
+  expect_no_error(out <- cli::cli_fmt(prescribe(res)))
+  expect_match(
+    paste(out, collapse = "\n"),
+    "House rule for {stop('evaluated')}",
+    fixed = TRUE
+  )
 })
 
 test_that("prescribe(): still emits curated treatments for known checks", {

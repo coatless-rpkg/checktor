@@ -92,6 +92,21 @@ test_that("lab_network_operations(): flags an unwrapped download.file in Rd", {
   expect_false(res$passed)
 })
 
+test_that("lab_network_operations(): names the wrappers with their braces", {
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    rd_files = list(
+      "fn.Rd" = c(
+        "\\name{fn}", "\\title{fn}", "\\value{1}", "\\examples{",
+        "  download.file('https://example.com/x', 'x')", "}"
+      )
+    )
+  )
+  out <- paste(cli::cli_fmt(lab_network_operations(pkg)), collapse = "\n")
+  expect_match(out, "Wrap in \\dontrun{}, \\donttest{}", fixed = TRUE)
+})
+
 test_that("lab_network_operations(): accepts \\dontrun-wrapped network code", {
   pkg <- make_temp_dir()
   write_pkg(

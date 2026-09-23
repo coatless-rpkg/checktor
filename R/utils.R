@@ -144,6 +144,15 @@ escape_regex <- function(x) {
   gsub("([.^$*+?(){}|\\[\\]\\\\])", "\\\\\\1", x, perl = TRUE)
 }
 
+# Escape text so cli prints it verbatim. cli glue-interpolates what it prints, and
+# a finding quotes the package under check -- a Title, a file name, a README link
+# -- so a `{...}` there would run as R code, or vanish. Doubled braces are cli's
+# own escape. Apply it where text is printed, never to the stored `$issues`,
+# which tidy(), ci_report() and health_report() hand on unprinted.
+cli_literal <- function(x) {
+  gsub("([{}])", "\\1\\1", x)
+}
+
 safe_read_lines <- function(file) {
   if (!file.exists(file)) {
     return(character(0))

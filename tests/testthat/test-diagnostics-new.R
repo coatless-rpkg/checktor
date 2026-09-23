@@ -214,6 +214,33 @@ test_that("lab_donttest_vs_dontrun(): suggests \\donttest{} for slow-only code",
   expect_false(res$passed)
 })
 
+test_that("lab_donttest_vs_dontrun(): names both wrappers with their braces", {
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    rd_files = list(
+      "slow.Rd" = c(
+        "\\name{slow}", "\\title{slow}", "\\value{1}",
+        "\\examples{", "\\dontrun{", "Sys.sleep(60)", "}", "}"
+      )
+    )
+  )
+  out <- paste(cli::cli_fmt(lab_donttest_vs_dontrun(pkg)), collapse = "\n")
+  expect_match(
+    out,
+    "Some `\\dontrun{}` blocks should be `\\donttest{}`",
+    fixed = TRUE
+  )
+  expect_match(out, "Slow-only code belongs in `\\donttest{}`", fixed = TRUE)
+
+  writeLines(
+    c("\\name{slow}", "\\title{slow}", "\\value{1}", "\\examples{", "slow()", "}"),
+    file.path(pkg, "man", "slow.Rd")
+  )
+  out <- paste(cli::cli_fmt(lab_donttest_vs_dontrun(pkg)), collapse = "\n")
+  expect_match(out, "`\\dontrun{}` use is appropriate", fixed = TRUE)
+})
+
 test_that("lab_donttest_vs_dontrun(): accepts \\dontrun for justified cases", {
   pkg <- make_temp_dir()
   write_pkg(

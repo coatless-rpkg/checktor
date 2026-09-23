@@ -316,8 +316,8 @@ lab_example_interactive <- function(path = ".", verbose = TRUE) {
     issues,
     verbose,
     "Interactive examples use {.code if (interactive())}",
-    "Interactive examples hidden in {.code \\dontrun{}}",
-    "Treatment: Replace {.code \\dontrun{}} with {.code if (interactive()) { ... }} so a reader sees the function needs a session"
+    "Interactive examples hidden in {.code \\dontrun{{}}}",
+    "Treatment: Replace {.code \\dontrun{{}}} with {.code if (interactive()) {{ ... }}} so a reader sees the function needs a session"
   )
   checktor_check_result(passed, issues, "Interactive example check")
 }

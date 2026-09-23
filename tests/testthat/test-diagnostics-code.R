@@ -1016,3 +1016,24 @@ test_that("lab_hardcoded_credentials(): does not flag a slug or a bare SHA", {
   )
   expect_true(lab_hardcoded_credentials(pkg, verbose = FALSE)$passed)
 })
+
+# Test emit_issue_summary() ----
+
+test_that("emit_issue_summary(): prints issue text literally, never evaluating it", {
+  # A finding quotes the package under check: a Title, a file name, a README
+  # link. A URL template such as `/items/{id}` there used to reach cli as R code.
+  out <- NULL
+  expect_no_error(
+    out <- cli::cli_fmt(emit_issue_summary(
+      "README.md: http://api.example.org/items/{stop('evaluated')}",
+      verbose = TRUE,
+      "No issues",
+      "Issues found"
+    ))
+  )
+  expect_match(
+    paste(out, collapse = "\n"),
+    "items/{stop('evaluated')}",
+    fixed = TRUE
+  )
+})
