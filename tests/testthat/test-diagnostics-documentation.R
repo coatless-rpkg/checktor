@@ -658,6 +658,58 @@ test_that("lab_unexported_example_ns(): ignores \\dontrun{} examples", {
   )
 })
 
+# An alias beginning with a regex metacharacter used to become part of a pattern,
+# so `[.reproclass` stopped the check with "invalid regular expression" (#18).
+write_operator_rd <- function(pkg, aliases, examples) {
+  dir.create(file.path(pkg, "man"), showWarnings = FALSE)
+  writeLines(
+    c(
+      paste0("\\name{", aliases[[1]], "}"),
+      paste0("\\alias{", aliases, "}"),
+      "\\title{Methods}",
+      "\\description{Operator methods.}",
+      "\\value{An object.}",
+      paste0("\\examples{", examples, "}")
+    ),
+    file.path(pkg, "man", "ops.Rd")
+  )
+}
+
+test_that("lab_unexported_example_ns(): reads an exported [ method (#18)", {
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    r_code = c(
+      "reproclass <- function(x) structure(x, class = \"reproclass\")",
+      "`[.reproclass` <- function(x, i, ...) reproclass(NextMethod())"
+    )
+  )
+  writeLines(
+    c("S3method(\"[\", reproclass)", "export(reproclass)"),
+    file.path(pkg, "NAMESPACE")
+  )
+  write_operator_rd(pkg, "[.reproclass", "r <- reproclass(1:5); r[2:3]")
+
+  res <- NULL
+  expect_no_warning(res <- lab_unexported_example_ns(pkg, verbose = FALSE))
+  expect_true(res$passed)
+})
+
+test_that("lab_unexported_example_ns(): reads unexported operator methods", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  writeLines("export(add)", file.path(pkg, "NAMESPACE"))
+  write_operator_rd(
+    pkg,
+    c("[.cls", "[[.cls", "$.cls", "+.cls", "==.cls"),
+    "x[1]; x[[1]]; x$a; x + x; x == x"
+  )
+
+  res <- NULL
+  expect_no_warning(res <- lab_unexported_example_ns(pkg, verbose = FALSE))
+  expect_true(res$passed)
+})
+
 test_that("lab_unexported_example_ns(): does not flag an exported topic", {
   pkg <- make_temp_dir()
   write_pkg(pkg)

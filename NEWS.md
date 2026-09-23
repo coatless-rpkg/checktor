@@ -368,6 +368,10 @@ the code you wrote.
 * `urls` skips tilde-fenced and nested code blocks, and drops the backtick from a
   quoted URL.
 
+* `unexported_example_ns` reads a topic whose alias begins with an operator, such as
+  `[.myclass`, instead of stopping with "invalid regular expression" (#18, thanks
+  @RodrigoZepeda).
+
 * A finding prints the text it quotes from your package as written. A `Title`, file
   name or README link reached `cli` as part of a template, so a brace in it, such as
   a tidyverse-style `{pkg}` or the `{id}` of a URL template, was evaluated as R
