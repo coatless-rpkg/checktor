@@ -62,12 +62,14 @@ fields in its own DESCRIPTION.
   either way, and both forms clear CRAN, so `language_names` leaves a bare `R` and a
   quoted `'R'` alone alike and takes no position on which you prefer.
 
-* Two checks left the default run because no authority supports them, and each stays
-  exported for anyone who wants it. The CRAN rule behind `title_starts_with_article`
-  applies to the `Description` and requires the word "package" after the article, not
-  to the `Title`. And Writing R Extensions treats single quotes as an inclusive list
-  for non-English usage that a quoted function name fits, which is what
-  `description_function_quotes` ruled out.
+* Three checks left the default run because no authority supports them, and each
+  stays exported for anyone who wants it. The CRAN rule behind
+  `title_starts_with_article` applies to the `Description` and requires the word
+  "package" after the article, not to the `Title`. Writing R Extensions treats single
+  quotes as an inclusive list for non-English usage that a quoted function name fits,
+  which is what `description_function_quotes` ruled out. And `?person` says authors
+  who are natural persons hold copyright by default and need no `cph` role, which is
+  what `cph_role` asked for (#17, thanks @eddelbuettel).
 
 ## New checks
 
@@ -371,6 +373,11 @@ the code you wrote.
 * `unexported_example_ns` reads a topic whose alias begins with an operator, such as
   `[.myclass`, instead of stopping with "invalid regular expression" (#18, thanks
   @RodrigoZepeda).
+
+* A check named in `Config/checktor/disable` no longer runs. It used to run and
+  print its finding before being dropped from the results. To turn a check off in
+  every package without touching each `DESCRIPTION`, set
+  `options(checktor.disable = ...)` (#17, thanks @eddelbuettel).
 
 * A finding prints the text it quotes from your package as written. A `Title`, file
   name or README link reached `cli` as part of a template, so a brace in it, such as

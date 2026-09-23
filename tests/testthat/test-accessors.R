@@ -23,6 +23,7 @@ test_that("issues(): returns a tidy per-issue frame at each level", {
     "code_examples/tf_usage_bad.R",
     show_content = FALSE
   )
+  unlink(file.path(pkg, "NEWS.md")) # an opinion finding: news_file
   r <- checktor(pkg, verbose = FALSE, progress = FALSE)
 
   di <- issues(r)
@@ -99,6 +100,7 @@ test_that("tidy(): is per-check and summary() is per-category", {
     "code_examples/tf_usage_bad.R",
     show_content = FALSE
   )
+  unlink(file.path(pkg, "NEWS.md")) # an opinion finding: news_file
   r <- checktor(pkg, verbose = FALSE, progress = FALSE)
 
   td <- tidy(r)
@@ -114,7 +116,7 @@ test_that("tidy(): is per-check and summary() is per-category", {
       "message"
     )
   )
-  expect_equal(nrow(td), 57L) # all checks
+  expect_equal(nrow(td), 56L) # all checks that run by default
   expect_equal(td$n_issues[td$check == "tf_usage"], 7L)
   expect_identical(as.data.frame(r), td) # as.data.frame == tidy
 
@@ -125,7 +127,7 @@ test_that("tidy(): is per-check and summary() is per-category", {
   )
   expect_equal(nrow(s), 5L)
   expect_equal(s$issues[s$category == "code"], 7L)
-  expect_equal(s$failed[s$category == "description"], 1L)
+  expect_equal(s$failed[s$category == "general"], 1L)
 })
 
 # Test summary() ----

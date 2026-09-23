@@ -127,7 +127,8 @@ CHECK_WHEN <- c(
   spelling = "backend", # needs aspell or hunspell
   cran_comments_file = "request", # a submission workflow, not a package property
   title_starts_with_article = "request", # no authority supports it
-  description_function_quotes = "request" # no authority supports it
+  description_function_quotes = "request", # no authority supports it
+  cph_role = "request" # ?person: natural-person authors hold copyright already
 )
 
 # Every check name checktor knows about, built in or registered at run time. Used

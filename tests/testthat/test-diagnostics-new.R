@@ -96,15 +96,29 @@ test_that("lab_title_redundant_phrases(): flags 'for R' and 'Tools for' patterns
 test_that("lab_cph_role(): accepts cph-bearing Authors@R and flags otherwise", {
   pkg <- make_temp_dir()
   write_pkg(pkg, authors_r = "person('A','B', role = c('aut','cre'))")
-  expect_false(
-    diagnose_description_issues(pkg, verbose = FALSE)$cph_role$passed
-  )
+  expect_false(lab_cph_role(pkg, verbose = FALSE)$passed)
 
   pkg_ok <- make_temp_dir()
   write_pkg(pkg_ok, authors_r = "person('A','B', role = c('aut','cre','cph'))")
-  expect_true(
-    diagnose_description_issues(pkg_ok, verbose = FALSE)$cph_role$passed
-  )
+  expect_true(lab_cph_role(pkg_ok, verbose = FALSE)$passed)
+})
+
+test_that("lab_cph_role(): runs only on request (#17)", {
+  # ?person: authors who are natural persons hold copyright by default and need
+  # no cph role, so a package without one is not a finding in a default run.
+  pkg <- make_temp_dir()
+  write_pkg(pkg, authors_r = "person('A','B', role = c('aut','cre'))")
+  r <- checktor(pkg, verbose = FALSE, progress = FALSE)
+  expect_false("cph_role" %in% tidy(r)$check)
+  expect_true("cph_role" %in% r$metadata$on_request_checks)
+})
+
+test_that("lab_cph_role(): does not ask a natural person to add cph", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, authors_r = "person('A','B', role = c('aut','cre'))")
+  out <- paste(cli::cli_fmt(lab_cph_role(pkg)), collapse = " ")
+  expect_false(grepl("'aut','cre','cph'", out, fixed = TRUE))
+  expect_match(out, "Copyright", fixed = TRUE)
 })
 
 # Test lab_library_in_pkg() ----

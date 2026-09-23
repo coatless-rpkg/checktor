@@ -76,7 +76,9 @@ A package can configure checktor from \verb{Config/checktor/*} fields in its own
 \code{DESCRIPTION} (comma-separated lists):
 \itemize{
 \item \code{Config/checktor/disable}: check names to skip entirely. A disabled check
-does not run and is not counted anywhere in the results.
+does not run and is not counted anywhere in the results. To turn a check
+off in every package, set \code{options(checktor.disable = "cph_role")} once,
+for example in \code{.Rprofile}; the two lists are combined.
 \item \code{Config/checktor/allow}: \code{check} to mute a whole check, or \code{check:substring}
 to mute only findings whose text contains \code{substring}. The check still
 runs; muted findings are dropped from the results and tallied in

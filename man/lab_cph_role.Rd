@@ -18,16 +18,19 @@ Defaults to reading it from \code{path}.}
 \code{\link[=checktor_check_result]{checktor_check_result()}} with \code{passed}, \code{issues}, \code{message}.
 }
 \description{
-Flags an \code{Authors@R} with no \verb{[cph]} role.
+Flags an \code{Authors@R} with no \verb{[cph]} role. It runs only when you call it:
+authors who are natural persons hold copyright by default, so most packages
+need no \code{cph} role at all. It is worth running when an organisation owns the
+copyright, since that is the case the role exists for.
 }
 \section{Source}{
 
-The CRAN Cookbook covers the roles under
-\href{https://contributor.r-project.org/cran-cookbook/description_issues.html#using-authorsr}{Using Authors@R}.
-A copyright-holder (\code{cph}) is commonly expected but not required, which is why
-this sits at \code{opinion} tier. See
-\code{vignette("check-sources", package = "checktor")} for how every check maps to its
-source.
+\code{\link[utils:person]{utils::person()}} documents \code{"cph"} as the role for "all copyright holders",
+adding that "authors which are 'natural persons' are by default copyright
+holders and so do not need to be given this role". CRAN Repository Policy asks
+only that copyright ownership be clear, which a \code{Copyright} field also
+satisfies. See \code{vignette("check-sources", package = "checktor")} for how every
+check maps to its source.
 }
 
 \examples{

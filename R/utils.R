@@ -288,6 +288,9 @@ run_checks <- function(checks, path, verbose, severity = SEVERITY_LEVELS) {
   # A check whose tier the caller did not ask for is not run at all. Running it
   # and hiding the result would still pay for the parse and still let it error.
   wanted <- names(checks)[check_severity(names(checks)) %in% severity]
+  # A disabled check does not run either, so it cannot print a finding in the live
+  # output that the results then leave out.
+  wanted <- setdiff(wanted, checktor_config(path)$disable)
   checks <- checks[wanted]
 
   results <- list()

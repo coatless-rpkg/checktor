@@ -178,6 +178,45 @@ test_that("checktor(): suppression reaches a DESCRIPTION-category check", {
   expect_false("title_case" %in% tidy(r)$check)
 })
 
+test_that("checktor(): a disabled check does not run or print", {
+  # The docs promise a disabled check does not run. It used to run, print its
+  # finding in the live output, and only then be removed from the results.
+  pkg <- make_temp_dir()
+  write_pkg(pkg, news = FALSE, extra = "Config/checktor/disable: news_file")
+  out <- paste(
+    cli::cli_fmt(checktor(pkg, verbose = TRUE, progress = FALSE)),
+    collapse = "\n"
+  )
+  expect_false(grepl("No NEWS file found", out, fixed = TRUE))
+})
+
+test_that("checktor(): options(checktor.disable) turns a check off (#17)", {
+  # For a check you never want, in every package, without adding a field to each
+  # DESCRIPTION: set it once, e.g. in ~/.Rprofile.
+  pkg <- make_temp_dir()
+  write_pkg(pkg, news = FALSE)
+  old <- options(checktor.disable = "news_file")
+  on.exit(options(old), add = TRUE)
+
+  out <- paste(
+    cli::cli_fmt(r <- checktor(pkg, verbose = TRUE, progress = FALSE)),
+    collapse = "\n"
+  )
+  expect_false("news_file" %in% tidy(r)$check)
+  expect_false(grepl("No NEWS file found", out, fixed = TRUE))
+})
+
+test_that("checktor(): an unknown name in options(checktor.disable) warns", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  old <- options(checktor.disable = "news_fiel")
+  on.exit(options(old), add = TRUE)
+  expect_warning(
+    checktor(pkg, verbose = FALSE, progress = FALSE),
+    "news_fiel"
+  )
+})
+
 # Test apply_suppressions() ----
 
 test_that("apply_suppressions(): warns on an unknown name in allow/disable", {

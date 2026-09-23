@@ -86,7 +86,9 @@ diagnose_description_issues <- function(path = ".", verbose = TRUE) {
     # `'digest()'`, and digest itself ships exactly that.
     authors = function(p, v) lab_authors(p, v, desc),
     identifier_format = function(p, v) lab_identifier_format(p, v, desc),
-    cph_role = function(p, v) lab_cph_role(p, v, desc),
+    # `cph_role` is deliberately NOT here. ?person says authors who are natural
+    # persons are copyright holders by default and need no cph role, so a package
+    # written by people is not missing anything. It stays available on request.
     references = function(p, v) lab_references(p, v, desc),
     date_format = function(p, v) lab_date_format(p, v, desc),
     encoding_utf8 = function(p, v) lab_encoding_utf8(p, v, desc),
@@ -1297,15 +1299,18 @@ lab_title_redundant_phrases <- function(
 # Require at least one [cph] role in Authors@R.
 #' Diagnose a Missing Copyright-Holder Role
 #'
-#' Flags an `Authors@R` with no `[cph]` role.
+#' Flags an `Authors@R` with no `[cph]` role. It runs only when you call it:
+#' authors who are natural persons hold copyright by default, so most packages
+#' need no `cph` role at all. It is worth running when an organisation owns the
+#' copyright, since that is the case the role exists for.
 #'
 #' @section Source:
-#' The CRAN Cookbook covers the roles under
-#' [Using Authors@R](https://contributor.r-project.org/cran-cookbook/description_issues.html#using-authorsr).
-#' A copyright-holder (`cph`) is commonly expected but not required, which is why
-#' this sits at `opinion` tier. See
-#' `vignette("check-sources", package = "checktor")` for how every check maps to its
-#' source.
+#' [utils::person()] documents `"cph"` as the role for "all copyright holders",
+#' adding that "authors which are 'natural persons' are by default copyright
+#' holders and so do not need to be given this role". CRAN Repository Policy asks
+#' only that copyright ownership be clear, which a `Copyright` field also
+#' satisfies. See `vignette("check-sources", package = "checktor")` for how every
+#' check maps to its source.
 #' @param path Character. Path to the package directory. Default: `"."`.
 #' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
 #' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
@@ -1337,7 +1342,7 @@ lab_cph_role <- function(path = ".", verbose = TRUE, desc = NULL) {
     verbose,
     "{.code Authors@R} includes a {.code [cph]} role",
     "{.code Authors@R} has no {.code [cph]} (copyright holder)",
-    "Treatment: Add role 'cph' to a person, e.g. role = c('aut','cre','cph')",
+    "Treatment: If an organisation owns the copyright, give it role 'cph' or name it in a Copyright field. Authors who are natural persons hold copyright already",
     level = "warning"
   )
   checktor_check_result(passed, issues, "cph role check")

@@ -11,6 +11,8 @@ checktor_config <- function(path) {
   fields <- c("disable", "allow", "software_names", "language_names", "acronyms")
   empty <- stats::setNames(rep(list(character(0)), length(fields)), fields)
 
+  empty$disable <- as.character(getOption("checktor.disable"))
+
   desc_file <- file.path(path, "DESCRIPTION")
   if (!file.exists(desc_file)) {
     return(empty)
@@ -33,7 +35,11 @@ checktor_config <- function(path) {
     parts <- trimws(strsplit(raw, ",", fixed = TRUE)[[1L]])
     parts[nzchar(parts)]
   }
-  lapply(stats::setNames(fields, fields), read_field)
+  config <- lapply(stats::setNames(fields, fields), read_field)
+  # A check you never want, in any package, is turned off once with
+  # options(checktor.disable = ...) rather than in every DESCRIPTION.
+  config$disable <- union(config$disable, as.character(getOption("checktor.disable")))
+  config
 }
 
 # Merge a check's built-in vocabulary with the user's Config/checktor/<field>.
@@ -78,7 +84,7 @@ apply_suppressions <- function(results, config) {
   unknown <- setdiff(named, known)
   if (length(unknown) > 0L) {
     cli::cli_warn(c(
-      "Unknown check name{?s} in {.field Config/checktor}: {.val {unknown}}.",
+      "Unknown check name{?s} in {.field Config/checktor} or {.code options(checktor.disable)}: {.val {unknown}}.",
       "i" = "Names must match a check in {.code tidy()$check}."
     ))
   }

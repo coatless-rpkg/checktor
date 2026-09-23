@@ -37,13 +37,14 @@ test_that("issues(): carries the tier, as does tidy()", {
 # Test checktor() ----
 
 test_that("checktor(): counts only the tiers the verdict is about", {
-  # The fixture trips tf_usage (robustness, 7 issues) and cph_role (opinion, 1).
-  # By default the opinion finding is REPORTED but does not count against a clean
-  # bill of health.
+  # The fixture trips tf_usage (robustness, 7 issues) and, without its NEWS.md,
+  # news_file (opinion, 1). By default the opinion finding is REPORTED but does
+  # not count against a clean bill of health.
   pkg <- example_diagnose_scenario(
     "code_examples/tf_usage_bad.R",
     show_content = FALSE
   )
+  unlink(file.path(pkg, "NEWS.md"))
   r <- checktor(pkg, verbose = FALSE, progress = FALSE)
 
   expect_equal(n_issues(r), 7L) # verdict
@@ -57,6 +58,7 @@ test_that("checktor(): asking for all tiers folds opinion into the verdict", {
     "code_examples/tf_usage_bad.R",
     show_content = FALSE
   )
+  unlink(file.path(pkg, "NEWS.md")) # an opinion finding: news_file
   r <- checktor(
     pkg,
     verbose = FALSE,
@@ -72,6 +74,7 @@ test_that("checktor(): a policy-only run ignores robustness findings", {
     "code_examples/tf_usage_bad.R",
     show_content = FALSE
   )
+  unlink(file.path(pkg, "NEWS.md")) # an opinion finding: news_file
   r <- checktor(pkg, verbose = FALSE, progress = FALSE, severity = "policy")
   expect_equal(n_issues(r), 0L) # tf_usage is robustness, not policy
   expect_true(is_healthy(r))
