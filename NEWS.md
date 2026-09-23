@@ -120,6 +120,12 @@ fields in its own DESCRIPTION.
 
   - `example_interactive` asks for `if (interactive())` where an interactive
     function is hidden in `\dontrun{}`, so a reader sees it is not for a script.
+    It reports one in `\donttest{}` too, since `R CMD check --as-cran` runs that
+    code, where a prompt errors and an app waits for input. It reads the parsed
+    example, so a function named in a comment or a string is not a call, an app
+    `shinyApp()` builds without printing is not a launch, and only a guard that
+    encloses the call excuses it, `@examplesIf interactive()` included (#19, thanks
+    @TanguyBarthelemy).
   - `example_installs` catches installing a package from an example, a vignette or
     a demo.
   - `example_writes` catches a write to anywhere but `tempdir()`, judged with the

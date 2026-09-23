@@ -127,7 +127,7 @@ rejections land. Each rule below is one a maintainer has received verbatim.
 
 | Check | Tier | Source |
 |---|---|---|
-| `example_interactive` | `policy` | [Cookbook: Structuring of Examples][cb-examples]: a function that only runs interactively belongs in `if (interactive())`, so a reader sees it is not for a script, rather than in `\dontrun{}`. |
+| `example_interactive` | `policy` | [Cookbook: Structuring of Examples][cb-examples]: a function that only runs interactively belongs in `if (interactive())`, so a reader sees it is not for a script, rather than in `\dontrun{}`. In `\donttest{}` it is worse: `R CMD check --as-cran` runs that code, where a prompt errors and an app waits for input. |
 | `example_installs` | `policy` | [Cookbook: Installing Software][cb-software]: do not install packages from a function, an example or a vignette. |
 | `example_writes` | `policy` | [Cookbook: Writing Files and Directories to the Home Filespace][cb-home]: an example, vignette or test may write only to `tempdir()`. |
 | `example_state` | `policy` | [Cookbook: Change of Options, Graphical Parameters and Working Directory][cb-options]: restore `options()`, `par()` and the working directory changed in an example, vignette or demo. |

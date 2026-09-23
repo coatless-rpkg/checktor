@@ -349,29 +349,6 @@ collect_rd_text <- function(node, skip = character(0)) {
   ""
 }
 
-# The complement of `skip=`: gather only what sits inside the named tags. Taking
-# the whole section and subtracting the runnable text does not work, because the
-# two are not contiguous once anything follows the hidden block -- a trailing
-# newline is enough -- so a fixed-string removal matches nothing and hands back
-# the entire section as though it were hidden.
-collect_rd_text_within <- function(node, tags) {
-  tag <- attr(node, "Rd_tag")
-  if (!is.null(tag) && tag %in% tags) {
-    return(collect_rd_text(node))
-  }
-  if (is.list(node)) {
-    parts <- vapply(
-      node,
-      collect_rd_text_within,
-      character(1),
-      tags = tags,
-      USE.NAMES = FALSE
-    )
-    return(paste(parts, collapse = ""))
-  }
-  ""
-}
-
 # The name of the innermost top-level function a node sits inside, or "" when the
 # node is not inside a named function. Used to attribute a hit to its function so
 # call-graph reasoning can act on it.

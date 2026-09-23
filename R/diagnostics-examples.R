@@ -227,18 +227,268 @@ lab_example_state <- function(path = ".", verbose = TRUE) {
   checktor_check_result(passed, issues, "Example state check")
 }
 
-#' Diagnose Interactive Examples Wrapped in `\\dontrun{}`
+# Functions that need a person at the keyboard: an app or gadget that blocks until
+# it is closed, a viewer, a browser, or a prompt waiting for input.
+INTERACTIVE_CALLS <- c(
+  "runApp", "shinyApp", "shinyAppDir", "shinyAppFile", "runGadget", "runExample",
+  "runUrl", "runGitHub", "runGist", "browseURL", "browseVignettes", "View",
+  "readline", "menu", "select.list", "askYesNo", "file.choose", "choose.files",
+  "choose.dir", "file.edit"
+)
+
+# These build an app object, which runs only when it is printed. Kept in a
+# variable or handed to another function, nothing starts.
+INTERACTIVE_WHEN_PRINTED <- c("shinyApp", "shinyAppDir", "shinyAppFile")
+
+# Launchers named for what they open, such as run_app(), launch_dashboard(),
+# runShinyApp(), launch_shinystan() and launchGUI(). Every app package names its
+# own, so this matches the shape of the name rather than a list of them.
+INTERACTIVE_LAUNCHER_RE <- paste0(
+  "^(run|launch)[A-Za-z0-9_.]*",
+  "([Aa]pp|[Gg]adget|[Dd]ashboard|GUI|[Gg]ui|[Ss]hiny[A-Za-z0-9]*)$"
+)
+
+# The marker call each hidden block is wrapped in, so the parse tree records which
+# block a call sits in.
+HIDDEN_EXAMPLE_MARKERS <- c(
+  "\\dontrun" = ".checktor_dontrun",
+  "\\donttest" = ".checktor_donttest"
+)
+
+# An example as the R code Rd2ex would write for it, with each \dontrun{} and
+# \donttest{} body wrapped in its marker call. Rd `%` comments are dropped, as R
+# drops them. The newline before `})` keeps a comment on the body's last line
+# from swallowing the close.
+#
+# A hidden block may hold something that is not R -- output, JavaScript, a
+# `<your key>` placeholder -- which stops the whole example parsing. With
+# `repair = TRUE` each block keeps only the code in it that parses, so the rest of
+# the example, and any guard around the block, can still be read.
+rd_example_marked <- function(node, repair = FALSE) {
+  tag <- attr(node, "Rd_tag")
+  if (identical(tag, "COMMENT")) {
+    return("")
+  }
+  if (is.character(node)) {
+    return(paste(node, collapse = ""))
+  }
+  if (!is.list(node)) {
+    return("")
+  }
+  body <- paste(
+    vapply(
+      node,
+      rd_example_marked,
+      character(1),
+      repair = repair,
+      USE.NAMES = FALSE
+    ),
+    collapse = ""
+  )
+  if (!is.null(tag) && tag %in% names(HIDDEN_EXAMPLE_MARKERS)) {
+    if (repair) {
+      body <- paste(parseable_pieces(body), collapse = "\n")
+    }
+    return(paste0(HIDDEN_EXAMPLE_MARKERS[[tag]], "({", body, "\n})"))
+  }
+  body
+}
+
+# The parts of `text` that parse, for code that will not parse whole. A chunk grows
+# a line at a time while the parser says more input could complete it, and a line
+# nothing can complete is dropped. The parser's message is translated, so this
+# reads only the `<text>:line:col:` position in front of it, and the
+# INCOMPLETE_STRING token name, which are not.
+parseable_pieces <- function(text) {
+  lines <- strsplit(text, "\n", fixed = TRUE)[[1L]]
+  pieces <- character(0)
+  start <- 1L
+  while (start <= length(lines)) {
+    end <- start
+    kept <- FALSE
+    repeat {
+      chunk <- paste(lines[start:end], collapse = "\n")
+      err <- tryCatch(
+        {
+          parse(text = chunk, keep.source = FALSE)
+          NULL
+        },
+        error = conditionMessage
+      )
+      if (is.null(err)) {
+        pieces <- c(pieces, chunk)
+        start <- end + 1L
+        kept <- TRUE
+        break
+      }
+      at_line <- suppressWarnings(
+        as.integer(sub("^<text>:([0-9]+):.*", "\\1", err))
+      )
+      incomplete <- isTRUE(at_line > end - start + 1L) ||
+        grepl("INCOMPLETE_STRING", err, fixed = TRUE)
+      if (!incomplete || end >= length(lines)) {
+        break
+      }
+      end <- end + 1L
+    }
+    if (!kept) {
+      start <- start + 1L
+    }
+  }
+  pieces
+}
+
+# The outermost \dontrun{} and \donttest{} blocks.
+rd_hidden_blocks <- function(node) {
+  tag <- attr(node, "Rd_tag")
+  if (!is.null(tag) && tag %in% names(HIDDEN_EXAMPLE_MARKERS)) {
+    return(list(node))
+  }
+  if (is.list(node)) {
+    return(unlist(lapply(node, rd_hidden_blocks), recursive = FALSE))
+  }
+  list()
+}
+
+# What an `if` condition says about interactive(): TRUE when it can hold only in
+# an interactive session, FALSE when only outside one, NA when it says neither.
+# `interactive()`, `rlang::is_interactive()`, `isTRUE(interactive())`, `!` and
+# `&&` are read; anything else, such as `CI == "" || interactive()`, which holds
+# under R CMD check, is no guard.
+interactive_polarity <- function(node) {
+  kids <- xml2::xml_children(node)
+  tags <- xml2::xml_name(kids)
+  if (identical(tags, c("OP-LEFT-PAREN", "expr", "OP-RIGHT-PAREN"))) {
+    return(interactive_polarity(kids[[2L]]))
+  }
+  if (identical(tags, c("OP-EXCLAMATION", "expr"))) {
+    return(!interactive_polarity(kids[[2L]]))
+  }
+  if (length(tags) == 3L && tags[[2L]] %in% c("AND2", "AND")) {
+    sides <- c(interactive_polarity(kids[[1L]]), interactive_polarity(kids[[3L]]))
+    if (any(sides %in% TRUE)) {
+      return(TRUE)
+    }
+    if (any(sides %in% FALSE)) {
+      return(FALSE)
+    }
+    return(NA)
+  }
+  if (length(tags) >= 3L && tags[[1L]] == "expr" && tags[[2L]] == "OP-LEFT-PAREN") {
+    fn <- xml2::xml_find_first(
+      kids[[1L]],
+      paste0("SYMBOL_FUNCTION_CALL[", NOT_MEMBER_ACCESS, "]")
+    )
+    if (inherits(fn, "xml_missing")) {
+      return(NA)
+    }
+    fn <- xml2::xml_text(fn)
+    args <- kids[tags == "expr"][-1L]
+    if (fn %in% c("interactive", "is_interactive") && length(args) == 0L) {
+      return(TRUE)
+    }
+    if (fn %in% c("isTRUE", "isFALSE") && length(args) == 1L) {
+      polarity <- interactive_polarity(args[[1L]])
+      return(if (fn == "isTRUE") polarity else !polarity)
+    }
+  }
+  NA
+}
+
+# Whether a call runs only in an interactive session: it sits in the branch of an
+# `if` that its condition confines to one -- the then branch of
+# `if (interactive())`, or the else branch of `if (!interactive())`. Reading every
+# enclosing `if` is what lets `@examplesIf interactive()` guard a whole example,
+# and what stops a guard around one call excusing another.
+interactive_guarded <- function(call) {
+  branches <- xml2::xml_find_all(call, "ancestor::*[parent::expr[IF]]")
+  for (branch in branches) {
+    position <- xml2::xml_find_num(
+      branch,
+      paste0("count(preceding-sibling::", ASSIGN_NODE, ")")
+    )
+    if (position == 0) {
+      next # the call is in the condition itself
+    }
+    condition <- xml2::xml_find_first(branch, paste0("parent::expr/", ASSIGN_NODE, "[1]"))
+    polarity <- interactive_polarity(condition)
+    if ((position == 1 && isTRUE(polarity)) || (position == 2 && isFALSE(polarity))) {
+      return(TRUE)
+    }
+  }
+  FALSE
+}
+
+# Every unguarded interactive call inside a hidden block, as list(fn, tag). A
+# call outside every hidden block is left to R CMD check, which runs it.
+hidden_interactive_calls <- function(xml) {
+  calls <- xml2::xml_find_all(
+    xml,
+    paste0("//SYMBOL_FUNCTION_CALL[", NOT_MEMBER_ACCESS, "]")
+  )
+  names <- xml2::xml_text(calls)
+  calls <- calls[
+    names %in% INTERACTIVE_CALLS | grepl(INTERACTIVE_LAUNCHER_RE, names)
+  ]
+  # A statement at top level, or inside a `{` block that is not a function body,
+  # has its value printed.
+  printed <- paste0(
+    "parent::expr/parent::expr[parent::exprlist or ",
+    "parent::expr[OP-LEFT-BRACE][not(parent::expr[FUNCTION or OP-LAMBDA])]]"
+  )
+  marker <- paste0(
+    "ancestor::expr[expr[1]/SYMBOL_FUNCTION_CALL[",
+    paste0("text() = '", HIDDEN_EXAMPLE_MARKERS, "'", collapse = " or "),
+    "]][1]/expr[1]/SYMBOL_FUNCTION_CALL"
+  )
+  out <- list()
+  for (call in calls) {
+    fn <- xml2::xml_text(call)
+    if (
+      fn %in% INTERACTIVE_WHEN_PRINTED &&
+        length(xml2::xml_find_all(call, printed)) == 0L
+    ) {
+      next
+    }
+    if (interactive_guarded(call)) {
+      next
+    }
+    block <- xml2::xml_find_first(call, marker)
+    if (inherits(block, "xml_missing")) {
+      next
+    }
+    tag <- names(HIDDEN_EXAMPLE_MARKERS)[
+      match(xml2::xml_text(block), HIDDEN_EXAMPLE_MARKERS)
+    ]
+    out[[length(out) + 1L]] <- list(fn = fn, tag = tag)
+  }
+  out
+}
+
+#' Diagnose Interactive Examples Hidden in `\\dontrun{}` or `\\donttest{}`
 #'
-#' Flags an `\\examples{}` block that hides an interactive function behind
-#' `\\dontrun{}`. CRAN asks for `if (interactive())` instead, so a reader can see
-#' the function is not meant for a script rather than only that it does not run.
+#' Flags an interactive call, such as a shiny app, a viewer or a prompt, that an
+#' example hides in `\\dontrun{}` or `\\donttest{}` instead of guarding with
+#' `if (interactive())`.
+#'
+#' In `\\dontrun{}`, CRAN asks for the guard instead, so a reader can see that the
+#' function needs a session, not only that it does not run. In `\\donttest{}` the
+#' call is a failure waiting to happen: `R CMD check --as-cran` runs that code,
+#' where a prompt errors and an app waits for input until the check times out.
+#'
+#' The example is read as parsed R, so a function named in a comment or a string
+#' is not a call, and only a guard that actually encloses the call excuses it,
+#' including roxygen's `@examplesIf interactive()`. An app that `shinyApp()`
+#' builds is reported only where it is printed, which is what runs it; kept in a
+#' variable or handed to another function, it starts nothing.
 #'
 #' @section Source:
 #' The CRAN Cookbook covers this under
 #' [Structuring of Examples](https://contributor.r-project.org/cran-cookbook/general_issues.html#structuring-of-examples),
 #' and the rejection reads "Functions which are supposed to only run interactively
 #' (e.g. shiny) should be wrapped in if(interactive()). Please replace \\dontrun{}
-#' with if(interactive()){} if possible". See
+#' with if(interactive()){} if possible". `R CMD check --as-cran` has run
+#' `\\donttest{}` examples since R 4.0.0. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
 #' @param path Character. Path to the package directory. Default: `"."`.
@@ -262,26 +512,6 @@ lab_example_interactive <- function(path = ".", verbose = TRUE) {
     ))
   }
 
-  # Names that mean a person has to be at the keyboard. A shiny app, a launcher,
-  # a viewer or a prompt all belong behind if (interactive()).
-  interactive_re <- paste(
-    "runApp",
-    "shinyApp",
-    "run_app",
-    "runGadget",
-    "runExample",
-    "launch",
-    "browseURL",
-    "browseVignettes",
-    "View\\(",
-    "readline",
-    "menu\\(",
-    "askYesNo",
-    "file\\.choose",
-    "electron",
-    sep = "|"
-  )
-
   issues <- character(0)
   for (file in rd_files) {
     rd <- tryCatch(tools::parse_Rd(file), error = function(e) NULL)
@@ -292,32 +522,46 @@ lab_example_interactive <- function(path = ".", verbose = TRUE) {
     if (is.null(examples)) {
       next
     }
-    hidden <- collect_rd_text_within(examples, c("\\dontrun", "\\donttest"))
-    if (!nzchar(trimws(hidden))) {
-      next
+    xml <- parse_text_xml(rd_example_marked(examples))
+    if (is.null(xml)) {
+      xml <- parse_text_xml(rd_example_marked(examples, repair = TRUE))
     }
-    if (!grepl(interactive_re, hidden, perl = TRUE)) {
-      next
+    found <- if (!is.null(xml)) {
+      hidden_interactive_calls(xml)
+    } else {
+      # The code outside the hidden blocks will not parse either, so no guard
+      # around a block can be read. Read each block on its own.
+      unlist(
+        lapply(rd_hidden_blocks(examples), function(block) {
+          block_xml <- parse_text_xml(rd_example_marked(block, repair = TRUE))
+          if (is.null(block_xml)) list() else hidden_interactive_calls(block_xml)
+        }),
+        recursive = FALSE
+      )
     }
-    # The guard has to be inside the hidden block to excuse it. Read against the
-    # whole examples section, an unrelated `if (interactive())` sitting outside
-    # \dontrun{} would excuse the very call the check exists to report.
-    if (grepl("interactive\\s*\\(", hidden, perl = TRUE)) {
-      next
+    for (hit in found) {
+      issues <- c(
+        issues,
+        if (identical(hit$tag, "\\dontrun")) {
+          paste0(basename(file), ": ", hit$fn, "() is hidden in \\dontrun{}")
+        } else {
+          paste0(
+            basename(file), ": ", hit$fn,
+            "() in \\donttest{} runs under R CMD check --as-cran"
+          )
+        }
+      )
     }
-    issues <- c(
-      issues,
-      paste0(basename(file), ": interactive example hidden in \\dontrun{}")
-    )
   }
+  issues <- unique(issues)
 
   passed <- length(issues) == 0L
   emit_issue_summary(
     issues,
     verbose,
     "Interactive examples use {.code if (interactive())}",
-    "Interactive examples hidden in {.code \\dontrun{{}}}",
-    "Treatment: Replace {.code \\dontrun{{}}} with {.code if (interactive()) {{ ... }}} so a reader sees the function needs a session"
+    "Interactive examples not guarded by {.code if (interactive())}",
+    "Treatment: Guard the call with {.code if (interactive()) {{ ... }}}. CRAN asks for that in place of {.code \\dontrun{{}}}, and {.code R CMD check --as-cran} runs {.code \\donttest{{}}} code, where an interactive call errors or waits for input"
   )
   checktor_check_result(passed, issues, "Interactive example check")
 }
