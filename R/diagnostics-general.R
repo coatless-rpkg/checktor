@@ -105,9 +105,11 @@ lab_package_size <- function(path, verbose = TRUE) {
     if (is.na(n) || n == 0) {
       return(0)
     }
-    raw_bytes <- tryCatch(readBin(f, what = "raw", n = n), error = function(e) {
-      NULL
-    })
+    # A file R cannot open counts at its size on disk, without a warning.
+    raw_bytes <- tryCatch(
+      suppressWarnings(readBin(f, what = "raw", n = n)),
+      error = function(e) NULL
+    )
     if (is.null(raw_bytes)) {
       return(n)
     }

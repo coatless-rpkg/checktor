@@ -20,6 +20,15 @@ Defaults to reading it from \code{path}.}
 \description{
 Flags a package or external-software name in \code{Title}/\code{Description} that is not in single quotes, as Writing R Extensions requires.
 }
+\details{
+Each occurrence is judged on its own, so one quoted mention does not excuse a
+bare one elsewhere. A name is not bare inside a single-quoted span such as
+\code{'shiny.semantic'}, a \verb{<https://...>} or \verb{<doi:...>}, or a function call such
+as \code{purrr::map()}, which are the spans CRAN's own incoming spell check skips.
+Nor is it bare in a plain web address, or in a double-quoted quotation such as
+the title of a book. A name alone in double quotes, in either field, is
+reported by \code{\link[=lab_description_quoted_quotes]{lab_description_quoted_quotes()}} instead.
+}
 \section{Source}{
 
 \href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file}{Writing R Extensions},

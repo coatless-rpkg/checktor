@@ -63,10 +63,17 @@ test_that("issues(): carries the tier, as does tidy()", {
     show_content = FALSE,
     cleanup = TRUE
   )
+  unlink(file.path(pkg, "NEWS.md")) # an opinion finding: news_file
   r <- checktor(pkg, verbose = FALSE, progress = FALSE)
-  expect_true("severity" %in% names(issues(r)))
-  expect_true("severity" %in% names(tidy(r)))
-  expect_true(all(issues(r)$severity %in% SEVERITY_LEVELS))
+  # The RIGHT tier for each check, not merely a valid one: a tier column that said
+  # "policy" for everything would pass a test that only checks the levels.
+  di <- issues(r)
+  expect_identical(unique(di$severity[di$check == "tf_usage"]), "robustness")
+  expect_identical(di$severity[di$check == "news_file"], "opinion")
+  td <- tidy(r)
+  expect_identical(td$severity[td$check == "tf_usage"], "robustness")
+  expect_identical(td$severity[td$check == "news_file"], "opinion")
+  expect_identical(td$severity[td$check == "seed_setting"], "policy")
 })
 
 # Test is_healthy() ----
@@ -100,6 +107,38 @@ test_that("is_healthy(): predicates report status without sublist navigation", {
   expect_equal(n_issues(clean), 0L)
 })
 
+# Test passed() ----
+
+test_that("passed(): a skipped check did not fail, though tidy() does not pass it", {
+  cat_res <- checktor_category_result(
+    url_liveness = checktor_skipped_result("URL liveness check", "offline"),
+    tf_usage = checktor_check_result(TRUE, character(0), "T/F usage check")
+  )
+
+  # passed() and the verdict ask whether a check failed, and a skip did not.
+  expect_true(passed(cat_res$url_liveness))
+  expect_identical(passed(cat_res), c(url_liveness = TRUE, tf_usage = TRUE))
+  expect_true(is_healthy(cat_res$url_liveness))
+  expect_true(is_healthy(cat_res))
+  expect_identical(failed_checks(cat_res), character(0))
+  expect_equal(n_failed_checks(cat_res), 0L)
+
+  # tidy() gives each check one state, so the same check is skipped, not passed.
+  td <- tidy(cat_res)
+  expect_identical(td$passed, c(FALSE, TRUE))
+  expect_identical(td$skipped, c(TRUE, FALSE))
+
+  # The same split holds for a whole run, where url_liveness sits out in tests.
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  r <- checktor(pkg, verbose = FALSE, progress = FALSE)
+  expect_true(passed(r)[["general"]])
+  expect_true(passed(r$general_issues)[["url_liveness"]])
+  rt <- tidy(r)
+  expect_false(rt$passed[rt$check == "url_liveness"])
+  expect_true(rt$skipped[rt$check == "url_liveness"])
+})
+
 # Test tidy() ----
 
 test_that("tidy(): is per-check and summary() is per-category", {
@@ -124,7 +163,10 @@ test_that("tidy(): is per-check and summary() is per-category", {
       "message"
     )
   )
-  expect_equal(nrow(td), 56L) # all checks that run by default
+  # Every check that runs by default, which is every check not on request, once.
+  by_default <- setdiff(names(CHECK_SEVERITY), on_request_checks())
+  expect_setequal(td$check, by_default)
+  expect_equal(nrow(td), length(by_default))
   expect_equal(td$n_issues[td$check == "tf_usage"], 7L)
   expect_identical(as.data.frame(r), td) # as.data.frame == tidy
 
@@ -136,6 +178,37 @@ test_that("tidy(): is per-check and summary() is per-category", {
   expect_equal(nrow(s), 5L)
   expect_equal(s$issues[s$category == "code"], 7L)
   expect_equal(s$failed[s$category == "general"], 1L)
+})
+
+test_that("tidy(): a check that did not run is skipped, never passed (#15)", {
+  cat_res <- checktor_category_result(
+    url_liveness = checktor_skipped_result("URL liveness check", "offline"),
+    tf_usage = checktor_check_result(TRUE, character(0), "T/F usage check"),
+    seed_setting = checktor_check_result(FALSE, "a.R:1", "Seed setting check"),
+    # A registered check can set both. A failure wins, as it does in summary().
+    house_rule = checktor_check_result(FALSE, "z.R:1", "House rule", skipped = TRUE)
+  )
+  td <- tidy(cat_res)
+  expect_identical(td$check, c("url_liveness", "tf_usage", "seed_setting", "house_rule"))
+  expect_identical(td$passed, c(FALSE, TRUE, FALSE, FALSE))
+  expect_identical(td$skipped, c(TRUE, FALSE, FALSE, FALSE))
+})
+
+test_that("tidy(): passed, failed and skipped agree with summary()", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, news = FALSE) # news_file fails, so every state occurs
+  r <- checktor(pkg, verbose = FALSE, progress = FALSE)
+  td <- tidy(r)
+  s <- summary(r)
+  failed <- !td$passed & !td$skipped
+
+  expect_gt(sum(td$skipped), 0L) # url_liveness and spelling are off in tests
+  expect_identical(td$check[failed], "news_file")
+  # One state per check, so the three columns count what summary() counts.
+  expect_false(any(td$passed & td$skipped))
+  expect_equal(sum(td$passed), sum(s$passed))
+  expect_equal(sum(failed), sum(s$failed))
+  expect_equal(sum(td$skipped), sum(s$skipped))
 })
 
 # Test summary() ----

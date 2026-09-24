@@ -45,6 +45,18 @@ test_that("check_severity(): each check has a lab_ function named after it", {
   }
 })
 
+test_that("check_severity(): quoting a package or a language name is policy", {
+  # Writing R Extensions asks for other packages and external software in single
+  # quotes, so a bare name in either vocabulary counts against a clean result.
+  expect_identical(check_severity("software_names"), "policy")
+  expect_identical(check_severity("language_names"), "policy")
+})
+
+test_that("check_severity(): a bare format or markup name is opinion", {
+  # CRAN accepts JSON, HTML, YAML and the rest written either way (#16).
+  expect_identical(check_severity("format_names"), "opinion")
+})
+
 test_that("check_severity(): `urls` is advice, not policy", {
   # It flags any http:// link. CRAN's NOTE is for URLs that are INVALID or that
   # REDIRECT, which R determines by FETCHING them; checktor is offline and cannot
@@ -75,4 +87,5 @@ test_that("check_when(): defaults to always for anything unlisted", {
   expect_equal(check_when("url_liveness"), "console")
   expect_equal(check_when("spelling"), "backend")
   expect_equal(check_when("cran_comments_file"), "request")
+  expect_equal(check_when("format_names"), "request")
 })

@@ -17,14 +17,18 @@
 #'
 #' @return
 #' Character. Path to the temporary package directory containing the example
-#' file. Returns `NULL` if the example file cannot be found.
+#' file. Returns `NULL`, with a warning, if the example file cannot be found. An
+#' `example_path` that is not an `.R`, `.Rd`, `.Rmd`, `.qmd`, `.Rnw` or `.txt`
+#' file is an error, since a package has no place for it.
 #'
 #' @details
 #' This function:
 #'
 #' 1. Locates the specified example file in the package's `inst/diagnose/` directory
 #' 2. Creates a temporary package directory structure
-#' 3. Copies the example file to the appropriate location
+#' 3. Copies the example file to where a package keeps its kind: an `.R` file in
+#'    `R/`, an `.Rd` file in `man/`, a vignette (`.Rmd`, `.qmd`, `.Rnw`) in
+#'    `vignettes/`, and a DESCRIPTION scenario (`.txt`) as the `DESCRIPTION`
 #' 4. Optionally displays the example file content
 #' 5. Returns the path to the temporary package for diagnostic testing
 #'
@@ -33,15 +37,18 @@
 #'
 #' @section Example File Structure:
 #'
-#' The temporary package created has this structure:
+#' The temporary package created has this structure. The example file goes in
+#' the one place its extension names, and the other directories stay empty:
 #'
 #' ```
-#' /tmp/checktor_example_XXXX/
-#' |-- DESCRIPTION          # Basic or custom DESCRIPTION file
-#' |-- R/                   # Contains copied example R files
-#' |   `-- example.R        # The example file with issues
-#' |-- man/                 # Empty directory for .Rd files
-#' `-- tests/               # Empty directory for test files
+#' <tempdir>/checktor_example_XXXX/
+#' |-- DESCRIPTION          # The template, or a .txt scenario itself
+#' |-- NEWS.md              # So the NEWS check has nothing to report
+#' |-- cran-comments.md     # So the cran-comments check has nothing to report
+#' |-- R/                   # An .R scenario, such as tf_usage_bad.R
+#' |-- man/                 # An .Rd scenario, such as missing_value_tag.Rd
+#' |-- tests/               # Always empty
+#' `-- vignettes/           # An .Rmd, .qmd or .Rnw scenario; made only for one
 #' ```
 #'
 #' @seealso
@@ -86,6 +93,19 @@ example_diagnose_scenario <- function(
     stop("example_path must be a single character string")
   }
 
+  # A file no package keeps has nowhere to go, whether or not it ships.
+  target <- scenario_target(example_path)
+  if (is.na(target)) {
+    cli::cli_abort(c(
+      paste(
+        "{.arg example_path} must be an {.file .R}, {.file .Rd}, vignette",
+        "({.file .Rmd}, {.file .qmd}, {.file .Rnw}) or DESCRIPTION ({.file .txt})",
+        "scenario."
+      ),
+      "x" = "{.file {example_path}} is none of these."
+    ))
+  }
+
   # Find the example file
   example_file <- system.file("diagnose", example_path, package = "checktor")
 
@@ -94,15 +114,12 @@ example_diagnose_scenario <- function(
     return(NULL)
   }
 
-  # Create temporary package directory
-  temp_pkg <- file.path(
-    tempdir(),
-    paste0(
-      "checktor_example_",
-      format(Sys.time(), "%Y%m%d_%H%M%S_"),
-      sample(1000:9999, 1)
-    )
-  )
+  # Create temporary package directory. tempfile() names it without touching R's
+  # random number generator. The name used to end in sample(1000:9999, 1), which
+  # created or advanced the caller's .Random.seed (what lab_seed_setting() reports
+  # in package code), and two calls in one second from the same seed drew the same
+  # name and built into one tree.
+  temp_pkg <- tempfile("checktor_example_")
 
   # Create package structure
   dir.create(temp_pkg, recursive = TRUE)
@@ -110,22 +127,9 @@ example_diagnose_scenario <- function(
   dir.create(file.path(temp_pkg, "man"), recursive = TRUE)
   dir.create(file.path(temp_pkg, "tests"), recursive = TRUE)
 
-  # Determine target location based on file type
-  if (grepl("description_examples", example_path, ignore.case = TRUE)) {
-    # DESCRIPTION files go to package root
-    target_file <- file.path(temp_pkg, "DESCRIPTION")
-    file.copy(example_file, target_file)
-  } else if (
-    grepl("documentation_examples", example_path, ignore.case = TRUE)
-  ) {
-    # .Rd files go to man/
-    target_file <- file.path(temp_pkg, "man", basename(example_file))
-    file.copy(example_file, target_file)
-  } else {
-    # R code files go to R/
-    target_file <- file.path(temp_pkg, "R", basename(example_file))
-    file.copy(example_file, target_file)
-  }
+  target_file <- file.path(temp_pkg, target)
+  dir.create(dirname(target_file), recursive = TRUE, showWarnings = FALSE)
+  file.copy(example_file, target_file)
 
   # Create DESCRIPTION file if not already created from example
   desc_path <- file.path(temp_pkg, "DESCRIPTION")
@@ -159,6 +163,23 @@ example_diagnose_scenario <- function(
   }
 
   return(temp_pkg)
+}
+
+# Where a scenario file goes in the package built around it, relative to the
+# package root, or NA for a file no package keeps. The extension says what the
+# file is. Routing by folder name sent network_examples/bad_network_example.Rd to
+# R/, where no Rd check reads, so the examples that use it showed nothing.
+scenario_target <- function(example_path) {
+  switch(
+    tolower(tools::file_ext(example_path)),
+    txt = "DESCRIPTION",
+    r = file.path("R", basename(example_path)),
+    rd = file.path("man", basename(example_path)),
+    rmd = ,
+    qmd = ,
+    rnw = file.path("vignettes", basename(example_path)),
+    NA_character_
+  )
 }
 
 # Helper function to create different types of DESCRIPTION files

@@ -40,13 +40,24 @@ read_r_xml <- function(path) {
   setNames(lapply(r_files, parse_one_r_file), r_files)
 }
 
+# parse() with the token table that getParseData() reads. parse() records that
+# table only while `options(keep.parse.data)` is TRUE, and sys.source() and some
+# IDE tooling turn it off. With it off every file parsed to an empty tree, so each
+# parse-tree check saw nothing and passed. Force it on for this one parse and hand
+# the caller's setting back.
+parse_with_data <- function(...) {
+  old <- options(keep.parse.data = TRUE)
+  on.exit(options(old), add = TRUE)
+  parse(..., keep.source = TRUE)
+}
+
 # Parse a single file. parse() raises on syntax errors; we catch and report
 # the file:line:col so downstream checks can surface a clear lint instead of
 # crashing the whole run.
 parse_one_r_file <- function(file) {
   tryCatch(
     {
-      exprs <- parse(file, keep.source = TRUE)
+      exprs <- parse_with_data(file)
       pd <- utils::getParseData(exprs)
       if (is.null(pd) || nrow(pd) == 0L) {
         return(list(file = file, xml = NULL, error = NULL))
@@ -692,7 +703,7 @@ rd_is_internal <- function(rd) {
 # something else, e.g. the \examples{} block of an .Rd file.
 parse_text_xml <- function(text) {
   exprs <- tryCatch(
-    parse(text = text, keep.source = TRUE),
+    parse_with_data(text = text),
     error = function(e) NULL
   )
   if (is.null(exprs)) {
@@ -977,6 +988,41 @@ WRITE_DEST_ARG <- list(
 # can never disagree about what counts as a write.
 WRITE_FUNCTIONS <- names(WRITE_DEST_ARG)
 
+# The formal a destination in second place follows: the data being written, or
+# the source being copied. R binds named arguments first and fills the remaining
+# formals in order, so `saveRDS(object = x, "out.rds")` sends "out.rds" to
+# `file`. Naming this formal moves the destination up to the first unnamed
+# argument; naming anything else, such as `sep =` or `row.names =`, leaves it
+# where it was. write.csv() takes `...` and hands them to write.table().
+WRITE_DATA_FORMAL <- c(
+  write.csv = "x",
+  write.csv2 = "x",
+  write.table = "x",
+  writeLines = "text",
+  writeBin = "object",
+  saveRDS = "object",
+  write = "x",
+  file.copy = "from",
+  file.rename = "from",
+  download.file = "url",
+  write_csv = "x",
+  write_csv2 = "x",
+  write_tsv = "x",
+  write_delim = "x",
+  write_excel_csv = "x",
+  write_rds = "x",
+  write_lines = "x",
+  write_file = "x",
+  fwrite = "x",
+  write_xlsx = "x",
+  write.xlsx = "x",
+  saveWorkbook = "wb",
+  write_json = "x",
+  write_yaml = "x",
+  write_parquet = "x",
+  write_feather = "x"
+)
+
 # Names a destination can travel under.
 DEST_ARG_NAMES <- c(
   "file",
@@ -985,18 +1031,67 @@ DEST_ARG_NAMES <- c(
   "filename",
   "target",
   "destfile",
+  "to", # file.copy(from, to) and file.rename(from, to)
   "sink" # arrow's write_parquet(x, sink = ...)
 )
 
+# magrittr's pipes that hand their left-hand side to the call on their right as
+# its first argument. `%$%` exposes the names inside its left-hand side instead.
+MAGRITTR_PIPES <- c("%>%", "%T>%", "%<>%", "%!>%")
+
+# The expression piped into `call`, or NULL when `call` is not the right-hand
+# side of `|>` or a magrittr pipe.
+piped_value <- function(call) {
+  op <- xml2::xml_find_first(
+    call,
+    sprintf(
+      "preceding-sibling::*[1][self::PIPE or self::SPECIAL[%s]]",
+      paste(sprintf("text() = '%s'", MAGRITTR_PIPES), collapse = " or ")
+    )
+  )
+  if (inherits(op, "xml_missing")) {
+    return(NULL)
+  }
+  lhs <- xml2::xml_find_first(op, "preceding-sibling::expr[1]")
+  if (inherits(lhs, "xml_missing")) NULL else lhs
+}
+
+# Is `arg` the pipe's placeholder? The native pipe's is `_`, which R accepts only
+# as a named argument; magrittr's is a bare `.` argument. Either one tells the
+# pipe where its left-hand side goes, and that it does not go first. A `.` inside
+# an argument, as in `file.path(., "x")`, is not one.
+is_pipe_placeholder <- function(arg) {
+  xml2::xml_find_lgl(
+    arg,
+    "boolean(self::expr[count(*) = 1][PLACEHOLDER or SYMBOL[text() = '.']])"
+  )
+}
+
 # The expression node a write call sends its output TO, or NULL.
+#
+# Arguments are matched the way R matches them. A named destination wins
+# wherever it sits. Otherwise the destination is found among the UNNAMED
+# arguments, since a named `sep =` takes no position, and a call on the right of
+# a pipe takes the piped value as its first argument unless a placeholder puts it
+# somewhere else.
 write_destination <- function(node) {
   fn <- xml2::xml_text(node)
   call <- xml2::xml_find_first(node, "parent::expr/parent::expr")
   if (inherits(call, "xml_missing")) {
     return(NULL)
   }
+  # A method shares a writer's name, not its arguments: htmltools' `tags$svg()`
+  # builds a tag, and `adata$write()` is anndata's.
+  member <- sprintf("not(self::*[%s])", NOT_MEMBER_ACCESS)
+  if (xml2::xml_find_lgl(node, member)) {
+    return(NULL)
+  }
+  piped <- piped_value(call)
+  # A placeholder argument stands for the piped value.
+  resolve <- function(arg) {
+    if (!is.null(piped) && is_pipe_placeholder(arg)) piped else arg
+  }
 
-  # A named destination wins wherever it appears in the argument list.
   named <- xml2::xml_find_first(
     call,
     sprintf(
@@ -1005,22 +1100,35 @@ write_destination <- function(node) {
     )
   )
   if (!inherits(named, "xml_missing")) {
-    return(named)
+    return(resolve(named))
   }
 
   pos <- WRITE_DEST_ARG[[fn]]
   if (is.null(pos) || is.na(pos)) {
     return(NULL)
   }
-  # Positional args are the call's expr children after the function-name expr.
-  arg <- xml2::xml_find_first(
-    node,
-    sprintf(
-      "parent::expr/following-sibling::expr[%d]",
-      pos
-    )
+  arg_names <- xml2::xml_text(xml2::xml_find_all(call, "./SYMBOL_SUB"))
+  if (pos > 1L && WRITE_DATA_FORMAL[fn] %in% arg_names) {
+    pos <- pos - 1L
+  }
+
+  if (!is.null(piped)) {
+    args <- xml2::xml_find_all(call, "./expr[position() > 1]")
+    placed <- any(vapply(args, is_pipe_placeholder, logical(1)))
+    if (!placed) {
+      if (pos == 1L) {
+        return(piped)
+      }
+      pos <- pos - 1L
+    }
+  }
+
+  # The call's expr children after the function name, less the named values.
+  unnamed <- xml2::xml_find_all(
+    call,
+    "./expr[position() > 1][not(preceding-sibling::*[1][self::EQ_SUB])]"
   )
-  if (inherits(arg, "xml_missing")) NULL else arg
+  if (pos > length(unnamed)) NULL else resolve(unnamed[[pos]])
 }
 
 # Is `dest` a path we can PROVE lands in the user's filespace?
@@ -1088,25 +1196,38 @@ dest_root <- function(node, depth = 0L) {
   dest_root(first_arg, depth + 1L)
 }
 
-# Formals of the innermost enclosing function whose DEFAULT is a literal home or
-# absolute path: `function(path = "~/data.csv")` writes to $HOME when called with
-# no arguments.
-formals_with_unsafe_default <- function(node) {
+# Formals of the innermost enclosing function whose DEFAULT expression matches
+# `pred`, an XPath predicate evaluated on the default's expr node.
+formals_with_default <- function(node, pred) {
   fn <- xml2::xml_find_first(node, "ancestor::expr[FUNCTION][1]")
   if (inherits(fn, "xml_missing")) {
     return(character(0))
   }
-  bad <- xml2::xml_find_all(
+  hits <- xml2::xml_find_all(
     fn,
-    paste0(
-      "./SYMBOL_FORMALS[following-sibling::*[1][self::EQ_FORMALS]]",
-      "[following-sibling::*[2][self::expr]/STR_CONST[",
-      "  starts-with(text(), '\"~') or starts-with(text(), \"'~\")",
-      "  or starts-with(text(), '\"/') or starts-with(text(), \"'/\")",
-      "]]"
+    sprintf(
+      paste0(
+        "./SYMBOL_FORMALS[following-sibling::*[1][self::EQ_FORMALS]]",
+        "[following-sibling::*[2][self::expr][%s]]"
+      ),
+      pred
     )
   )
-  xml2::xml_text(bad)
+  xml2::xml_text(hits)
+}
+
+# Formals whose DEFAULT is a literal home or absolute path:
+# `function(path = "~/data.csv")` writes to $HOME when called with no arguments.
+formals_with_unsafe_default <- function(node) {
+  formals_with_default(
+    node,
+    paste0(
+      "STR_CONST[",
+      "  starts-with(text(), '\"~') or starts-with(text(), \"'~\")",
+      "  or starts-with(text(), '\"/') or starts-with(text(), \"'/\")",
+      "]"
+    )
+  )
 }
 
 # Is `op` inside a function whose ENCLOSING ENVIRONMENT we cannot see?

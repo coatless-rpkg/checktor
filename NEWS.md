@@ -49,12 +49,18 @@ fields in its own DESCRIPTION.
   `skipped` column and `summary()` a `skipped` count, the names are in
   `metadata$skipped_checks`, and the printed result and every `health_report()`
   format name the checks that sat out. Printing a check or a category shows a
-  skipped check as skipped, and `summary()` counts it only there, so `passed`,
-  `failed` and `skipped` add up to `checks` (#15, thanks @TroyHernandez).
+  skipped check as skipped, `summary()` counts it only as skipped, and a skipped row
+  in `tidy()` is never `passed`, so `!passed & !skipped` picks out the failures and
+  the `passed`, `failed` and `skipped` counts of `summary()` add up to `checks`.
+  `passed()` asks only whether a check failed, so it is `TRUE` for a skipped one
+  (#15, thanks @TroyHernandez).
 
 * Every check is exported, so any check `checktor()` runs is one you can call
-  yourself. The DESCRIPTION checks take `(path, verbose, desc = NULL)` like every
-  other check, and `issues()` and `tidy()` gained a `severity` column.
+  yourself. The checks of the `DESCRIPTION` fields take
+  `(path, verbose, desc = NULL)`, as the code checks take
+  `(path, verbose, parsed = NULL)`, so either can reuse a parse you already have.
+  `desc` may be what `read.dcf()` returns, and `issues()` and `tidy()` gained a
+  `severity` column.
 
 * `description_bare_r` was removed. It asked you to quote every bare `R` in the
   `Description`, which is not a rule anyone enforces. Writing R Extensions asks for
@@ -87,7 +93,18 @@ fields in its own DESCRIPTION.
     suspiciously large one, while leaving a calendar-year version alone.
   - `encoding_utf8` catches an `Encoding` outside the portable `UTF-8`, `latin1` and
     `latin2`.
-  - `identifier_format` validates the ORCID and ROR identifiers in `Authors@R`.
+  - `identifier_format` validates the ORCID and ROR identifiers in `Authors@R`, and
+    is reported as skipped when `Authors@R` cannot be read.
+
+* `description_file` catches a `DESCRIPTION` that R cannot read: a line that is
+  neither a field nor an indented continuation, a blank line that splits the file in
+  two, or a file R cannot open at all, such as a directory in its place or one
+  without read permission. `R CMD build` and `R CMD INSTALL` both stop on such a
+  file. For a malformed line checktor used to skip the `DESCRIPTION` checks with
+  nothing counted, so the file could not count against a clean bill of health, and
+  for a blank line it judged the package on the fields above it alone. It is now a
+  policy finding, the checks that read the fields, registered ones included, are
+  reported as skipped, and `prescribe()` shows how to fix it.
 
 * `hardcoded_credentials` scans string literals in `R/` for a leaked secret, knowing
   the tokens and keys used by providers such as GitHub, AWS, Google, OpenAI,
@@ -129,7 +146,10 @@ fields in its own DESCRIPTION.
     example, so a function named in a comment or a string is not a call, an app
     `shinyApp()` builds without printing is not a launch, and only a guard that
     encloses the call excuses it, `@examplesIf interactive()` included (#19, thanks
-    @TanguyBarthelemy).
+    @TanguyBarthelemy). A guard still counts when it is combined with `&&`, or with
+    `||` against another guard, wrapped in `suppressWarnings()`, split by a comment
+    or kept in a variable assigned before it, and `interactive() && f()` guards
+    `f()` as an `if` would.
   - `example_installs` catches installing a package from an example, a vignette or
     a demo.
   - `example_writes` catches a write to anywhere but `tempdir()`, judged with the
@@ -140,7 +160,11 @@ fields in its own DESCRIPTION.
     `write_xlsx()`, `write_parquet()` and `ggsave()` are all seen now, in `R/` and
     in examples alike.
   - `example_state` catches `options()`, `par()` or the working directory changed
-    and never restored.
+    and never put back. A change is put back when its old value is captured and
+    later handed to the setter of the same kind in the same file, as in
+    `old <- setwd(tempdir())` then `setwd(old)`. `par(no.readonly = TRUE)` is a
+    read, not a change, and an `on.exit()` outside a function or `local()` is no
+    restore: `R CMD check` never runs it, and knitr runs it straight away.
   - `example_internal_ns` catches `:::` in an example or vignette.
 
   `internal_ns` covers the same rule in `R/`, where a `:::` call reaches an object
@@ -148,13 +172,34 @@ fields in its own DESCRIPTION.
   used to suggest adding `:::` to an example, which is the change CRAN asks you to
   undo, so it now says to export the object or keep the topic internal instead.
 
-* `language_names` catches a bare programming-language, markup or
-  statistical-computing name in the `Title` or `Description` that CRAN asks to see
-  single-quoted, covering names like `Python`, `Java`, `C++`, `SQL`, `HTML`, `MATLAB`
-  and `SAS`. It is the language counterpart to `software_names`, kept separate
-  because a language name and a package name are different kinds of thing.
-  Single-letter and common-word names are left out so ordinary prose stays quiet, and
-  you can extend the list with `Config/checktor/language_names`.
+  Every check in this family reads an example as R runs it. An Rd `%` comment is
+  dropped, code that shares a line with a `\dontrun{}` or `\donttest{}` block is
+  still read, a line of a hidden block that is not R, such as a `<your key>`
+  placeholder, is passed over without hiding the rest of the example, and code under
+  `#ifdef` is read for every platform. Sweave (`.Rnw`) vignettes are read alongside
+  R Markdown and Quarto, and the line a finding gives is its line in the `.Rd` file
+  or vignette.
+
+* `language_names` catches a bare programming-language or statistical-computing name
+  in the `Title` or `Description` that CRAN asks to see single-quoted, covering
+  names like `Python`, `Java`, `JavaScript`, `Rust`, `MATLAB`, `SAS` and `Stata`. It
+  is the language counterpart to `software_names`, kept separate because a language
+  name and a package name are different kinds of thing. Single-letter and
+  common-word names are left out so ordinary prose stays quiet, and you can extend
+  the list with `Config/checktor/language_names`. Like `software_names`, it judges
+  each mention on its own and skips a quoted longer name such as `'MATLAB Runtime'`,
+  a link, a DOI, a function call and a double-quoted title.
+
+* `format_names` reports a format or markup name written without single quotes in
+  the `Title` or `Description`: `JSON`, `HTML`, `XML`, `CSS`, `YAML`, `TOML`,
+  `Markdown`, `LaTeX`, `TeX` and `SQL`, plus `C++`, `Fortran` and `Tcl`, which CRAN
+  packages write either way. It runs only when you call it, at opinion tier. A
+  census of CRAN in September 2026 found that packages accepted at new-package
+  review in the previous 18 months wrote these names bare 62% of the time, against
+  28% for the languages `language_names` covers, so a bare one does not count
+  against a clean bill of health, and one in double quotes is not a
+  `description_quoted_quotes` finding either (#16, thanks @TroyHernandez).
+  `Config/checktor/format_names` extends its list.
 
 ## Configuration and extension
 
@@ -167,8 +212,9 @@ fields in its own DESCRIPTION.
 
 * A package can configure checktor through `Config/checktor/*` fields in its own
   DESCRIPTION. `disable` skips a check, `allow` mutes reviewed findings for a whole
-  check or a `check:substring`, and `software_names`, `language_names` and `acronyms`
-  extend those checks' vocabularies. A package with no such fields is unaffected.
+  check or a `check:substring`, and `software_names`, `language_names`,
+  `format_names` and `acronyms` extend those checks' vocabularies. A package with no
+  such fields is unaffected.
 
 * `ci_report()` writes findings in the shape your build system reads, so each one
   lands on the line that caused it rather than in a log somebody has to scroll.
@@ -212,7 +258,10 @@ reimplementing them.
   restoring a temporary change with `on.exit()`.
 
 * `home_writing` catches a write whose destination resolves to the user's home, such
-  as `writeLines(x, "~/leaked.txt")`, rather than reads like `Sys.getenv("HOME")`.
+  as `writeLines(x, "~/leaked.txt")`, or is an argument that defaults there, as in
+  `function(x, path = "~/x.txt") writeLines(x, path)`. A read like
+  `Sys.getenv("HOME")`, or a home path that is only the text being written or the
+  file being copied, is not a write to the user's home.
 
 * `globalenv_mod` reports a `<<-` only when its target genuinely reaches
   `.GlobalEnv`, so a closure updating its parent frame and a package-level cache
@@ -236,7 +285,11 @@ reimplementing them.
   `person("First", "Last", , "you@example.com", ...)`, which `R CMD check` passes
   because the field is present but a reviewer sends back. It also validates the
   field's structure, including a person with no name or no role, an `Authors@R` that
-  does not parse, and a missing maintainer.
+  does not parse, and a missing maintainer. It accepts the calls R's own reader
+  accepts from R 4.6.0 on, a value wrapped in parentheses included, and reports any
+  other call, a namespaced `utils::person()` among them, since `R CMD build` refuses
+  it as a malformed `Authors@R` field. A person combined with a list in `c()`, from
+  which R cannot read the authors, is reported as well.
 
 * `title_case` and `license` hand off to R's own `tools::toTitleCase()` and
   `tools::analyze_license()`, so they match R's behaviour. `license` also catches a
@@ -248,6 +301,33 @@ reimplementing them.
 * `print_cat_usage` reports unsuppressable console output only from a function that
   also returns a value, and treats a verbosity gate as the guard rather than any
   enclosing `if`, `for` or `while` (#10, thanks @january3).
+
+* `network_operations` reads an example as parsed R rather than searching its text,
+  so a function named in a comment, a string or an Rd `%` comment is not a call. A
+  request counts as guarded only when a guard encloses it, such as
+  `if (curl::has_internet())`, `if (interactive())` or an `@examplesIf` asking one
+  of them, combined with `&&` or with `||` against another guard. Only a call that
+  makes a request is reported, and a request function handed to something that calls
+  it, as in `lapply(urls, download.file)`, still counts. Code in `\dontshow{}` is
+  now checked, since `R CMD check` runs it. See `?lab_network_operations` for every
+  guard it accepts.
+
+* `suggested_in_examples` reads an example as parsed R and judges each use of a
+  Suggested package by the guards that enclose it, so a package named in a comment
+  or a string is not a use, and a guard for another package, or one elsewhere in the
+  example, no longer excuses the use. A condition that is false under `R CMD check`,
+  such as `interactive()`, excuses it too. A use inside `\donttest{}` is now
+  reported, because `R CMD check --as-cran` runs that code, while R's base and
+  recommended packages, such as parallel, MASS and survival, are never reported,
+  since they ship with R. The advice now suggests `requireNamespace()` rather than
+  `rlang::is_installed()`. See `?lab_suggested_in_examples` for every guard it
+  accepts.
+
+* `donttest_vs_dontrun` no longer suggests moving a slow `\dontrun{}` block to
+  `\donttest{}` when the block uses a Suggested package without a guard, since
+  `R CMD check --as-cran` runs `\donttest{}` code and the move would trade its
+  advice for a `suggested_in_examples` finding. Each block is judged on its own, so
+  such a block does not hold back the advice for another that is only slow.
 
 ## Understands more of R
 
@@ -267,7 +347,10 @@ the code you wrote.
 * A `<<-` inside `local()`, `setRefClass()` or `R6Class()` binds in that scope rather
   than `.GlobalEnv`, a call in a default argument is scoped to that argument rather
   than the function body, and only the R chunks of a vignette are parsed, so its
-  prose stays prose.
+  prose stays prose. A chunk set not to run is skipped, whether its header says
+  `eval = FALSE` or a Quarto `#| eval: false` line does, and the header is read to
+  its last brace, so a figure caption with braces of its own does not hide the
+  option after it.
 
 * `options()` and `par()` both read and write, and only a named argument makes the
   call a write, so `par("usr")[3]` and a package's own `reset_options()` stay clean.
@@ -280,15 +363,18 @@ the code you wrote.
 
 * `file_operations` proves where a write lands, so `writeLines(x, "out.csv")` is
   reported, `writeLines(x, out_file)` is trusted to the caller who passed the path,
-  and a formal that defaults into `~` is still caught.
+  and a formal that defaults into `~` is still caught. The write checks,
+  `file_operations`, `home_writing` and `example_writes`, find the destination as R
+  matches arguments: a named argument such as `sep =` does not move it, `to =` is
+  where `file.copy()` and `file.rename()` write, and a call on the right of `|>` or
+  `%>%` takes the piped value as its first argument, so
+  `mtcars |> write.csv("out.csv")` is seen. A method that shares a writer's name,
+  such as htmltools' `tags$svg()`, is not a write.
 
-* `if (require("pkgB"))` and roxygen's `@examplesIf` both count as the
-  conditional-Suggests guard in an example, while `interactive()` does not, because
-  it does not make the package available. A `system()` call inside an OS branch is
-  the platform check the fix asks for, and an `install.packages()` behind a consent
-  prompt is consent. `set.seed(123)` inside `if (FALSE)` cannot reach the RNG, and
-  `T` or `F` inside `quote()`, `expression()` or `substitute()` are language tokens
-  rather than logicals.
+* A `system()` call inside an OS branch is the platform check the fix asks for, and
+  an `install.packages()` behind a consent prompt is consent. `set.seed(123)` inside
+  `if (FALSE)` cannot reach the RNG, and `T` or `F` inside `quote()`, `expression()`
+  or `substitute()` are language tokens rather than logicals.
 
 * `commented_examples` reports only an `\examples{}` block commented out entirely, so
   a prose comment beside working code is left alone (#9, thanks @TanguyBarthelemy).
@@ -300,14 +386,23 @@ the code you wrote.
 
 * `software_names` catches the R-package and software-product names CRAN asks to see
   quoted, along with `WebAssembly`, and recognises `WASM`, `webR` and `Shinylive`
-  when quoted. Programming-language and markup names moved to `language_names`, and a
-  package can add its own with `Config/checktor/software_names`.
+  when quoted. Programming-language names moved to `language_names` and format and
+  markup names to `format_names`, and a package can add its own with
+  `Config/checktor/software_names`. It judges each place a name appears, so one
+  quoted mention no longer excuses a bare one elsewhere. A name is not bare inside a
+  quoted longer name such as `'shiny.semantic'`, or in a span CRAN's own incoming
+  spell check skips, a `<https://...>` or `<doi:...>` link or a function call such
+  as `purrr::map()`. checktor also skips a plain web address and a double-quoted
+  title, and does not read a dotted name such as `shiny.semantic` as `shiny`.
 
 * Smaller sharpenings round this out. `description_quoted_quotes` looks only for a
-  recognised software name rather than scare-quoted jargon, `description_length`
-  counts words, `description_starts_with` gained its initial-capital rule, `acronyms`
-  no longer reports `CMD`, and `urls` names the offending URL while skipping fenced
-  code and `\verb{}` spans.
+  recognised software name rather than scare-quoted jargon, in the `Title` as well
+  as the `Description`. It knows every name `software_names` and `language_names`
+  ask to see quoted, including those a package adds, and reads a lower-case `"rust"`
+  or `"r"` as a word rather than `Rust` or `R`. `description_length` counts words,
+  `description_starts_with` gained its initial-capital rule, `acronyms` no longer
+  reports `CMD`, `YAML` or `TOML`, and `urls` names the offending URL while skipping
+  fenced code and `\verb{}` spans.
 
 ## Bug fixes
 
@@ -343,9 +438,19 @@ the code you wrote.
   It shows in full, and only a longer one loses its tail. The message now says how
   much would be cut instead of only that the title is long.
 
+* `cph_role` accepts a `Copyright` field as well as a `cph` role. It reads the roles
+  from the parsed `Authors@R` rather than searching the field's text, so an address
+  such as `cph@example.com` no longer passes for the role. A package with no
+  `Authors@R` is read from its `Author` field, where a role in square brackets such
+  as `ACME Corporation [cph]` counts, rather than failing for the missing field.
+
 * `mean(x, na.rm = T)`, the most common bare `T` in R, is now reported. An argument
   name parses as `SYMBOL_SUB` rather than `SYMBOL`, so a guard meant to skip
   `f(T = 1)` was skipping the argument value too.
+
+* The code checks read your code when the `keep.parse.data` option is off, as it is
+  while `sys.source()` runs a file. R then keeps no parse tree, so every check that
+  reads one saw an empty file and passed, whatever the code contained.
 
 * `prescribe()` surfaces every failed check. It previously walked only the curated
   treatment list, so a check could fail and `prescribe()` would say nothing
@@ -360,6 +465,12 @@ the code you wrote.
   gloss (#5, thanks @january3). A gloss whose expansion is a quoted software name
   counts too, so writing `'WebAssembly' (WASM)` as `software_names` asks satisfies
   both checks at once.
+
+* `acronyms` skips anything in quotes, single or double, straight or typographic, so
+  a `'MATLAB'` or `'SPSS'` written the way `language_names` asks is no longer
+  reported as an unexplained acronym, and neither is one inside a quoted article
+  title. It also ignores the letters inside a link, a `<doi:...>` or a function
+  call.
 
 * `readme_links` no longer reads `[[` subsetting in an R code block as a link
   (#13, thanks @TanguyBarthelemy).
@@ -385,8 +496,22 @@ the code you wrote.
   code, which either ran it or turned the finding into an error. Messages naming
   `\dontrun{}` and `\donttest{}` keep their braces.
 
+* A README, NEWS file, vignette or `DESCRIPTION` that R cannot open, such as a
+  directory where the file is expected or a file without read permission, no longer
+  prints R's own warnings in the middle of checktor's output.
+
 * `example_diagnose_scenario()` no longer prints the temporary package path, keeping
-  machine-specific paths out of help pages.
+  machine-specific paths out of help pages. It names that package with `tempfile()`,
+  so it no longer creates or advances `.Random.seed`, and two scenarios built in the
+  same second can no longer share a directory. It places a scenario by its extension
+  rather than its folder, an `.R` file in `R/`, an `.Rd` file in `man/`, a vignette
+  in `vignettes/` and a `.txt` file as the `DESCRIPTION`, so
+  `network_examples/bad_network_example.Rd` is read by the Rd checks rather than
+  landing in `R/`. Any other extension is an error.
+
+* The `configure_doctor()` example puts back the options it sets. It relied on an
+  `on.exit()` outside any function, which an example never runs at the right time,
+  so running the example left them changed.
 
 ## Documentation and website
 

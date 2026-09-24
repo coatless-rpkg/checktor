@@ -473,178 +473,535 @@ test_that("lab_missing_examples(): exempts \\keyword{internal} topics", {
 # Test lab_suggested_in_examples() ----
 
 test_that("lab_suggested_in_examples(): flags an unguarded Suggested package", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    extra = "Suggests: dplyr",
-    rd_files = list(
-      "fn.Rd" = c(
-        "\\name{fn}",
-        "\\title{fn}",
-        "\\value{1}",
-        "\\examples{",
-        "library(dplyr)",
-        "dplyr::filter(x)",
-        "}"
-      )
-    )
+  pkg <- rd_pkg(c("library(dplyr)", "dplyr::filter(x)"), extra = "Suggests: dplyr")
+  expect_equal(
+    lab_suggested_in_examples(pkg, verbose = FALSE)$issues,
+    "f.Rd: uses Suggested package 'dplyr' in \\examples without a guard"
   )
-  res <- lab_suggested_in_examples(pkg, verbose = FALSE)
-  expect_false(res$passed)
+})
+
+test_that("lab_suggested_in_examples(): recognises each way an example needs a package", {
+  for (use in c(
+    "library(dplyr)",
+    "library('dplyr')",
+    "require(dplyr)",
+    "base::library(dplyr, quietly = TRUE)",
+    "x <- dplyr::filter(df, y > 1)",
+    "dplyr:::helper(x)",
+    "data <- dplyr::starwars"
+  )) {
+    pkg <- rd_pkg(use, extra = "Suggests: dplyr")
+    expect_false(lab_suggested_in_examples(pkg, verbose = FALSE)$passed, label = use)
+  }
 })
 
 test_that("lab_suggested_in_examples(): accepts a requireNamespace guard", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    extra = "Suggests: dplyr",
-    rd_files = list(
-      "fn.Rd" = c(
-        "\\name{fn}",
-        "\\title{fn}",
-        "\\value{1}",
-        "\\examples{",
-        "if (requireNamespace(\"dplyr\", quietly = TRUE)) {",
-        "  library(dplyr)",
-        "}",
-        "}"
-      )
-    )
+  pkg <- rd_pkg(
+    c(
+      "if (requireNamespace(\"dplyr\", quietly = TRUE)) {",
+      "  library(dplyr)",
+      "}"
+    ),
+    extra = "Suggests: dplyr"
   )
   expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_suggested_in_examples(): accepts each guard that names the package", {
+  for (guard in c(
+    "rlang::is_installed('dplyr')",
+    "rlang::is_installed(c('tidyr', 'dplyr'))",
+    "require(dplyr)",
+    "isTRUE(requireNamespace('dplyr', quietly = TRUE))",
+    "requireNamespace('dplyr', quietly = TRUE) && interactive()",
+    "{ set.seed(1); requireNamespace('dplyr', quietly = TRUE) }",
+    "FALSE"
+  )) {
+    pkg <- rd_pkg(
+      c(paste0("if (", guard, ") {"), "  dplyr::filter(x)", "}"),
+      extra = "Suggests: dplyr, tidyr"
+    )
+    expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed, label = guard)
+  }
+})
+
+test_that("lab_suggested_in_examples(): the else of a negated guard is guarded", {
+  pkg <- rd_pkg(
+    c(
+      "if (!requireNamespace('dplyr', quietly = TRUE)) {",
+      "  message('install dplyr')",
+      "} else {",
+      "  dplyr::filter(x)",
+      "}"
+    ),
+    extra = "Suggests: dplyr"
+  )
+  expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_suggested_in_examples(): a guard that short-circuits is a guard", {
+  # FuelDeep3D asks whether reticulate is installed before asking reticulate
+  # anything, which `&&` guarantees.
+  pkg <- rd_pkg(
+    c(
+      "if (requireNamespace('reticulate', quietly = TRUE) &&",
+      "    reticulate::py_module_available('torch')) {",
+      "  library(reticulate)",
+      "}"
+    ),
+    extra = "Suggests: reticulate"
+  )
+  expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_suggested_in_examples(): a guard kept in a variable is a guard", {
+  # lax asks once and tests the answer: `got_evd <- requireNamespace("evd")`.
+  pkg <- rd_pkg(
+    c(
+      "got_evd <- requireNamespace('evd', quietly = TRUE)",
+      "got_ismev = requireNamespace('ismev', quietly = TRUE)",
+      "if (got_evd & got_ismev) {",
+      "  library(evd)",
+      "  fit <- ismev::gev.fit(x)",
+      "}"
+    ),
+    extra = "Suggests: evd, ismev"
+  )
+  expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_suggested_in_examples(): a comment inside a guard leaves it a guard", {
+  pkg <- rd_pkg(
+    c(
+      "if (requireNamespace('dplyr', quietly = TRUE) && # need it",
+      "    requireNamespace('tidyr', quietly = TRUE)) {",
+      "  dplyr::filter(x)",
+      "}"
+    ),
+    extra = "Suggests: dplyr, tidyr"
+  )
+  expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_suggested_in_examples(): a guard read through a wrapper is a guard", {
+  for (guard in c(
+    "suppressWarnings(requireNamespace('dplyr', quietly = TRUE))",
+    "suppressWarnings(requireNamespace('dplyr'), classes = 'warning')",
+    "suppressMessages(requireNamespace('dplyr'))",
+    "suppressPackageStartupMessages(require(dplyr))",
+    "invisible(requireNamespace('dplyr', quietly = TRUE))",
+    "suppressWarnings(expr = requireNamespace('dplyr'))",
+    "suppressWarnings(classes = 'warning', requireNamespace('dplyr'))",
+    "suppressMessages(classes = 'message', expr = requireNamespace('dplyr'))",
+    "invisible(x = requireNamespace('dplyr', quietly = TRUE))"
+  )) {
+    pkg <- rd_pkg(
+      c(paste0("if (", guard, ") {"), "  dplyr::filter(x)", "}"),
+      extra = "Suggests: dplyr"
+    )
+    expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed, label = guard)
+  }
+})
+
+test_that("lab_suggested_in_examples(): a guard assigned inside another function is no guard", {
+  # `ok` is local to g(), so the `if` at top level reads nothing g() set.
+  pkg <- rd_pkg(
+    c(
+      "g <- function() ok <- requireNamespace('dplyr', quietly = TRUE)",
+      "if (ok) dplyr::filter(x)"
+    ),
+    extra = "Suggests: dplyr"
+  )
+  expect_equal(
+    lab_suggested_in_examples(pkg, verbose = FALSE)$issues,
+    "f.Rd: uses Suggested package 'dplyr' in \\examples without a guard"
+  )
+})
+
+test_that("lab_suggested_in_examples(): a guard assigned in a condition feeds a later test", {
+  # An `if` or `while` condition and a `for` sequence run whenever the statement
+  # does; only the branches and the loop body may not.
+  for (example in list(
+    c(
+      "if (!(ok <- requireNamespace('dplyr', quietly = TRUE))) message('no dplyr')",
+      "if (ok) dplyr::filter(x)"
+    ),
+    c(
+      "f <- function(x) {",
+      "  if (!(ok <- requireNamespace('dplyr', quietly = TRUE))) return()",
+      "  if (ok) dplyr::filter(x)",
+      "}"
+    ),
+    c(
+      "while ((ok <- requireNamespace('dplyr', quietly = TRUE))) {",
+      "  if (ok) dplyr::filter(x)",
+      "  break",
+      "}"
+    ),
+    c(
+      "for (p in (ok <- requireNamespace('dplyr', quietly = TRUE))) message(p)",
+      "if (ok) dplyr::filter(x)"
+    )
+  )) {
+    pkg <- rd_pkg(example, extra = "Suggests: dplyr")
+    expect_true(
+      lab_suggested_in_examples(pkg, verbose = FALSE)$passed,
+      label = paste(example, collapse = " ")
+    )
+  }
+})
+
+test_that("lab_suggested_in_examples(): a guard assigned in a loop body is no guard", {
+  # The body may never run, and then `ok` holds what it held before.
+  for (loop in c(
+    "for (i in seq_len(n)) ok <- requireNamespace('dplyr', quietly = TRUE)",
+    "while (retry()) ok <- requireNamespace('dplyr', quietly = TRUE)"
+  )) {
+    pkg <- rd_pkg(
+      c("ok <- TRUE", loop, "if (ok) dplyr::filter(x)"),
+      extra = "Suggests: dplyr"
+    )
+    expect_equal(
+      lab_suggested_in_examples(pkg, verbose = FALSE)$issues,
+      "f.Rd: uses Suggested package 'dplyr' in \\examples without a guard",
+      label = loop
+    )
+  }
+})
+
+test_that("lab_suggested_in_examples(): a guard assigned in local() or a lambda is no guard", {
+  # local() and `\(x)` open a scope of their own, like `function(x)`.
+  for (example in list(
+    c("local({", "  ok <- requireNamespace('dplyr', quietly = TRUE)", "})"),
+    "g <- \\\\(x) ok <- requireNamespace('dplyr', quietly = TRUE)"
+  )) {
+    pkg <- rd_pkg(c(example, "if (ok) dplyr::filter(x)"), extra = "Suggests: dplyr")
+    expect_equal(
+      lab_suggested_in_examples(pkg, verbose = FALSE)$issues,
+      "f.Rd: uses Suggested package 'dplyr' in \\examples without a guard",
+      label = paste(example, collapse = " ")
+    )
+  }
+
+  pkg <- rd_pkg(
+    c(
+      "local({",
+      "  ok <- requireNamespace('dplyr', quietly = TRUE)",
+      "  if (ok) dplyr::filter(x)",
+      "})",
+      "h <- \\\\(x) { ok <- requireNamespace('dplyr'); if (ok) dplyr::filter(x) }"
+    ),
+    extra = "Suggests: dplyr"
+  )
+  expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_suggested_in_examples(): a comment inside an assignment or a call leaves a guard", {
+  # A comment is a node of its own, between the arrow and the value, or between a
+  # function's name and its arguments.
+  for (example in list(
+    c(
+      "ok <- # ask once",
+      "  requireNamespace('dplyr', quietly = TRUE)",
+      "if (ok) dplyr::filter(x)"
+    ),
+    c(
+      "if (requireNamespace # ask first",
+      "    ('dplyr', quietly = TRUE)) dplyr::filter(x)"
+    )
+  )) {
+    pkg <- rd_pkg(example, extra = "Suggests: dplyr")
+    expect_true(
+      lab_suggested_in_examples(pkg, verbose = FALSE)$passed,
+      label = paste(example, collapse = " ")
+    )
+  }
+})
+
+test_that("lab_suggested_in_examples(): a variable holding another answer is no guard", {
+  pkg <- rd_pkg(
+    c(
+      "got_evd <- requireNamespace('evd', quietly = TRUE)",
+      "got_evd <- TRUE",
+      "if (got_evd) library(evd)"
+    ),
+    extra = "Suggests: evd"
+  )
+  expect_false(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
 })
 
 test_that("lab_suggested_in_examples(): ignores usage inside \\dontrun", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    extra = "Suggests: dplyr",
-    rd_files = list(
-      "fn.Rd" = c(
-        "\\name{fn}",
-        "\\title{fn}",
-        "\\value{1}",
-        "\\examples{",
-        "\\dontrun{",
-        "library(dplyr)",
-        "}",
-        "}"
-      )
-    )
-  )
+  pkg <- rd_pkg(c("\\dontrun{", "library(dplyr)", "}"), extra = "Suggests: dplyr")
   expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_suggested_in_examples(): \\donttest{} is no guard", {
+  # R CMD check --as-cran runs \donttest{} code, so on a machine without the
+  # package the example fails there.
+  pkg <- rd_pkg(c("\\donttest{", "library(dplyr)", "}"), extra = "Suggests: dplyr")
+  expect_equal(
+    lab_suggested_in_examples(pkg, verbose = FALSE)$issues,
+    "f.Rd: uses Suggested package 'dplyr' in \\examples without a guard"
+  )
 })
 
 test_that("lab_suggested_in_examples(): passes when there are no Suggests", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    rd_files = list(
-      "fn.Rd" = c(
-        "\\name{fn}",
-        "\\title{fn}",
-        "\\value{1}",
-        "\\examples{",
-        "library(dplyr)",
-        "}"
-      )
+  pkg <- rd_pkg("library(dplyr)")
+  expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_suggested_in_examples(): a guard that is false under R CMD check excuses the use", {
+  # CRAN's noSuggests run is R CMD check, which never enters these branches, so
+  # the missing package is never reached there. surveydown's sd_question_custom.Rd
+  # guards with interactive().
+  for (guard in c(
+    "interactive()",
+    "rlang::is_interactive()",
+    "identical(Sys.getenv('IN_PKGDOWN'), 'true')",
+    "Sys.getenv('NOT_CRAN') == 'true'",
+    "'true' == Sys.getenv(\"NOT_CRAN\")",
+    "identical(Sys.getenv('NOT_CRAN', 'false'), 'true')",
+    "isTRUE(as.logical(Sys.getenv('NOT_CRAN')))",
+    "identical(x = Sys.getenv('NOT_CRAN'), y = 'true')",
+    "identical(y = 'true', x = Sys.getenv('NOT_CRAN'))",
+    "Sys.getenv(unset = 'false', 'NOT_CRAN') == 'true'",
+    "nzchar(Sys.getenv('IN_PKGDOWN'))",
+    "Sys.getenv('IN_PKGDOWN') != ''",
+    "as.logical(Sys.getenv('NOT_CRAN', 'false'))"
+  )) {
+    pkg <- rd_pkg(
+      c(paste0("if (", guard, ") {"), "  library(leaflet)", "  leaflet::leaflet()", "}"),
+      extra = "Suggests: leaflet"
     )
+    expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed, label = guard)
+  }
+})
+
+test_that("lab_suggested_in_examples(): an @examplesIf interactive() excuses the use", {
+  pkg <- rd_pkg(
+    c(
+      "\\dontshow{if (interactive()) (if (getRversion() >= \"3.4\") withAutoprint else force)(\\{ # examplesIf}",
+      "leaflet::leaflet()",
+      "\\dontshow{\\}) # examplesIf}"
+    ),
+    extra = "Suggests: leaflet"
   )
   expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
 })
 
-test_that("lab_suggested_in_examples(): a Suggests used in \\examples without a guard is caught", {
-  # surveydown/man/sd_question_custom.Rd guards on interactive() rather than
-  # requireNamespace(), which does not make the package available. This one was
-  # a TRUE positive that an earlier audit pass wrongly dismissed.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    extra = "Suggests: leaflet",
-    rd_files = list(
-      "q.Rd" = c(
-        "\\name{q}",
-        "\\alias{q}",
-        "\\title{q}",
-        "\\description{d}",
-        "\\value{x}",
-        "\\examples{",
-        "if (interactive()) {",
-        "  library(leaflet)",
-        "  leaflet::leaflet()",
-        "}",
-        "}"
-      )
+test_that("lab_suggested_in_examples(): a condition that holds under R CMD check is no guard", {
+  for (guard in c(
+    "!interactive()",
+    "Sys.getenv('NOT_CRAN') != 'true'",
+    "!identical(Sys.getenv('IN_PKGDOWN'), 'true')",
+    "identical(Sys.getenv('NOT_CRAN', unset = 'true'), 'true')",
+    "isTRUE(as.logical(Sys.getenv('NOT_CRAN', 'TRUE')))",
+    "identical(y = 'true', x = Sys.getenv('NOT_CRAN', unset = 'true'))",
+    "Sys.getenv(unset = 'true', 'NOT_CRAN') == 'true'",
+    "!nzchar(Sys.getenv('IN_PKGDOWN'))",
+    "nzchar(Sys.getenv('IN_PKGDOWN', 'no'))",
+    "Sys.getenv('IN_PKGDOWN') == ''",
+    "Sys.getenv('IN_PKGDOWN', 'no') != ''",
+    "as.logical(Sys.getenv('NOT_CRAN', 'true'))"
+  )) {
+    pkg <- rd_pkg(
+      c(paste0("if (", guard, ") {"), "  leaflet::leaflet()", "}"),
+      extra = "Suggests: leaflet"
     )
+    expect_equal(
+      lab_suggested_in_examples(pkg, verbose = FALSE)$issues,
+      "f.Rd: uses Suggested package 'leaflet' in \\examples without a guard",
+      label = guard
+    )
+  }
+})
+
+test_that("lab_suggested_in_examples(): a recommended package ships with R", {
+  # R ships its recommended packages, and CRAN's checks keep one available once the
+  # DESCRIPTION declares it, in Suggests too. ggplot2's examples reach rpart and
+  # nlme in \donttest{}.
+  pkg <- rd_pkg(
+    c(
+      "MASS::fractions(0.5)",
+      "\\donttest{",
+      "library(nlme)",
+      "fit <- rpart::rpart(Kyphosis ~ Age, data = rpart::kyphosis)",
+      "}"
+    ),
+    extra = "Suggests: MASS, nlme, rpart"
   )
-  expect_false(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
+  expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_suggested_in_examples(): a condition that errors under R CMD check is no guard", {
+  # as.logical("") is NA, and `if (NA)` stops the example there instead of
+  # skipping the branch; isTRUE() is what turns it into a guard.
+  for (guard in c(
+    "as.logical(Sys.getenv('NOT_CRAN'))",
+    "as.logical(Sys.getenv('NOT_CRAN', unset = 'no'))"
+  )) {
+    pkg <- rd_pkg(
+      c(paste0("if (", guard, ") {"), "  leaflet::leaflet()", "}"),
+      extra = "Suggests: leaflet"
+    )
+    expect_equal(
+      lab_suggested_in_examples(pkg, verbose = FALSE)$issues,
+      "f.Rd: uses Suggested package 'leaflet' in \\examples without a guard",
+      label = guard
+    )
+  }
+})
+
+test_that("lab_suggested_in_examples(): a base package ships with R", {
+  # Every R installation has its base packages, so one in Suggests is always there.
+  base <- c(
+    "parallel", "tcltk", "tools", "utils", "stats", "methods", "grDevices",
+    "graphics", "grid", "splines", "stats4", "compiler", "datasets"
+  )
+  pkg <- rd_pkg(
+    c(
+      "n <- parallel::detectCores()",
+      "library(tcltk)",
+      "\\donttest{",
+      paste0(setdiff(base, c("parallel", "tcltk")), "::f()"),
+      "}"
+    ),
+    extra = paste("Suggests:", paste(base, collapse = ", "))
+  )
+  expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
+
+  pkg <- rd_pkg(
+    c("parallel::detectCores()", "dplyr::filter(x)"),
+    extra = "Suggests: parallel, dplyr"
+  )
+  expect_equal(
+    lab_suggested_in_examples(pkg, verbose = FALSE)$issues,
+    "f.Rd: uses Suggested package 'dplyr' in \\examples without a guard"
+  )
+})
+
+test_that("lab_suggested_in_examples(): a recommended package excuses no other", {
+  pkg <- rd_pkg(
+    c("MASS::fractions(0.5)", "dplyr::filter(x)"),
+    extra = "Suggests: MASS, dplyr"
+  )
+  expect_equal(
+    lab_suggested_in_examples(pkg, verbose = FALSE)$issues,
+    "f.Rd: uses Suggested package 'dplyr' in \\examples without a guard"
+  )
+})
+
+test_that("lab_suggested_in_examples(): a guard from a Suggested package is itself a use", {
+  # rlang::is_installed() needs rlang, so when rlang is only suggested the guard
+  # fails where rlang is missing. The treatment recommends base R instead.
+  pkg <- rd_pkg(
+    c("if (rlang::is_installed('dplyr')) {", "  dplyr::filter(x)", "}"),
+    extra = "Suggests: dplyr, rlang"
+  )
+  expect_equal(
+    lab_suggested_in_examples(pkg, verbose = FALSE)$issues,
+    "f.Rd: uses Suggested package 'rlang' in \\examples without a guard"
+  )
+})
+
+test_that("lab_suggested_in_examples(): recommends a guard from base R", {
+  pkg <- rd_pkg("dplyr::filter(x)", extra = "Suggests: dplyr")
+  out <- paste(cli::cli_fmt(lab_suggested_in_examples(pkg)), collapse = "\n")
+  expect_match(
+    out,
+    "Treatment: Guard the use with `if (requireNamespace(\"pkg\", quietly = TRUE))`",
+    fixed = TRUE
+  )
+  expect_no_match(out, "rlang", fixed = TRUE)
 })
 
 test_that("lab_suggested_in_examples(): `if (require('pkg'))` IS the sanctioned guard", {
   # Writing R Extensions sanctions exactly this for conditional Suggests use in
   # examples. The old guard recognised only requireNamespace(), and only quoted,
   # while the USE pattern matched require() -- so the guard was the violation.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    extra = "Suggests: chron",
-    rd_files = list(
-      "na.approx.Rd" = c(
-        "\\name{na.approx}",
-        "\\title{n}",
-        "\\value{1}",
-        "\\examples{",
-        'if (require("chron")) {',
-        "  tt <- as.chron('2000-01-01')",
-        "}",
-        "}"
-      )
-    )
+  pkg <- rd_pkg(
+    c('if (require("chron")) {', "  tt <- as.chron('2000-01-01')", "}"),
+    extra = "Suggests: chron"
   )
   expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
 })
 
-test_that("lab_suggested_in_examples(): interactive() is NOT a Suggests guard", {
-  # It does not make the package available, so the example still fails without it.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    extra = "Suggests: leaflet",
-    rd_files = list(
-      "q.Rd" = c(
-        "\\name{q}",
-        "\\title{q}",
-        "\\value{1}",
-        "\\examples{",
-        "if (interactive()) {",
-        "  library(leaflet)",
-        "}",
-        "}"
-      )
-    )
+test_that("lab_suggested_in_examples(): an @examplesIf naming the package is a guard", {
+  # roxygen compiles it to \dontshow{if (COND) ...}. cli asks through its own
+  # `cli:::has_packages(c("htmltools"))`.
+  pkg <- rd_pkg(
+    c(
+      "\\dontshow{if (cli:::has_packages(c(\"htmltools\"))) \\{ # examplesIf}",
+      "htmltools::html_print(page)",
+      "\\dontshow{\\} # examplesIf}"
+    ),
+    extra = "Suggests: htmltools"
+  )
+  expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_suggested_in_examples(): an @examplesIf for another package is no guard", {
+  # The structure used to be the guard whatever it asked, and so did the word
+  # examplesIf anywhere in the example.
+  pkg <- rd_pkg(
+    c(
+      "\\dontshow{if (requireNamespace(\"tidyr\", quietly = TRUE)) (if (getRversion() >= \"3.4\") withAutoprint else force)(\\{ # examplesIf}",
+      "dplyr::filter(x)",
+      "\\dontshow{\\}) # examplesIf}"
+    ),
+    extra = "Suggests: dplyr, tidyr"
+  )
+  expect_equal(
+    lab_suggested_in_examples(pkg, verbose = FALSE)$issues,
+    "f.Rd: uses Suggested package 'dplyr' in \\examples without a guard"
+  )
+})
+
+test_that("lab_suggested_in_examples(): a guard for another package is no guard", {
+  pkg <- rd_pkg(
+    c("if (requireNamespace('dplyrExtra', quietly = TRUE)) {", "  dplyr::filter(x)", "}"),
+    extra = "Suggests: dplyr, dplyrExtra"
   )
   expect_false(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
 })
 
-test_that("lab_suggested_in_examples(): roxygen's @examplesIf is a guard whatever its predicate", {
-  # It compiles to \dontshow{if (COND) ...}, and COND can be anything: cli writes
-  # `cli:::has_packages(c("htmltools"))`. The GUARD IS THE STRUCTURE.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    extra = "Suggests: htmltools",
-    rd_files = list(
-      "ansi_html.Rd" = c(
-        "\\name{ansi_html}",
-        "\\title{a}",
-        "\\value{1}",
-        "\\examples{",
-        "\\dontshow{if (cli:::has_packages(c(\"htmltools\"))) \\{ # examplesIf}",
-        "htmltools::html_print(page)",
-        "\\dontshow{\\} # examplesIf}",
-        "}"
-      )
-    )
+test_that("lab_suggested_in_examples(): a guard that does not enclose the use is no guard", {
+  pkg <- rd_pkg(
+    c("if (requireNamespace('dplyr', quietly = TRUE)) x <- 1", "dplyr::filter(x)"),
+    extra = "Suggests: dplyr"
+  )
+  expect_false(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_suggested_in_examples(): a guard in a comment or a string is no guard", {
+  pkg <- rd_pkg(
+    c(
+      "# if (requireNamespace('dplyr')) -- @examplesIf",
+      "message('requireNamespace(\"dplyr\")')",
+      "dplyr::filter(x)"
+    ),
+    extra = "Suggests: dplyr"
+  )
+  expect_false(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_suggested_in_examples(): a package named in a comment or a string is not used", {
+  pkg <- rd_pkg(
+    c(
+      "# library(dplyr) gives a faster filter()",
+      "message('see dplyr::filter() for more')",
+      "% dplyr::filter(x) in an Rd comment",
+      "x <- subset(df, y > 1)"
+    ),
+    extra = "Suggests: dplyr"
+  )
+  expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_suggested_in_examples(): a package whose name starts with a Suggests is another package", {
+  pkg <- rd_pkg(
+    c("library(dplyrExtra)", "dplyrExtra::go()"),
+    extra = "Suggests: dplyr"
   )
   expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
 })
@@ -1336,6 +1693,65 @@ test_that("lab_donttest_vs_dontrun(): names both wrappers with their braces", {
   )
   out <- paste(cli::cli_fmt(lab_donttest_vs_dontrun(pkg)), collapse = "\n")
   expect_match(out, "`\\dontrun{}` use is appropriate", fixed = TRUE)
+})
+
+test_that("lab_donttest_vs_dontrun(): leaves slow code that needs a Suggested package", {
+  # R CMD check --as-cran runs \\donttest{}, so moving this block there would
+  # report it under suggested_in_examples.
+  pkg <- rd_pkg(
+    c("\\dontrun{", "Sys.sleep(60)", "library(dplyr)", "}"),
+    extra = "Suggests: dplyr"
+  )
+  expect_true(lab_donttest_vs_dontrun(pkg, verbose = FALSE)$passed)
+  expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_donttest_vs_dontrun(): still advises when the Suggested use is safe to move", {
+  # Guarded inside the block, a recommended package, or outside the block
+  # altogether: moving the block creates no new finding.
+  for (example in list(
+    c(
+      "\\dontrun{",
+      "Sys.sleep(60)",
+      "if (requireNamespace('dplyr', quietly = TRUE)) dplyr::filter(x)",
+      "}"
+    ),
+    c("\\dontrun{", "Sys.sleep(60)", "MASS::fractions(0.5)", "}"),
+    c("dplyr::filter(x)", "\\dontrun{", "Sys.sleep(60)", "}")
+  )) {
+    pkg <- rd_pkg(example, extra = "Suggests: dplyr, MASS")
+    expect_equal(
+      lab_donttest_vs_dontrun(pkg, verbose = FALSE)$issues,
+      "f.Rd: uses \\dontrun{} for slow code; prefer \\donttest{}",
+      label = paste(example, collapse = " ")
+    )
+  }
+})
+
+test_that("lab_donttest_vs_dontrun(): judges each \\dontrun{} block on its own", {
+  # A block that needs dplyr stays in \dontrun{}, but a slow block beside it can
+  # still move.
+  for (example in list(
+    c("\\dontrun{", "library(dplyr)", "}", "\\dontrun{", "Sys.sleep(60)", "}"),
+    c(
+      "\\dontrun{", "Sys.sleep(1)", "library(dplyr)", "}",
+      "\\dontrun{", "Sys.sleep(60)", "}"
+    )
+  )) {
+    pkg <- rd_pkg(example, extra = "Suggests: dplyr")
+    expect_equal(
+      lab_donttest_vs_dontrun(pkg, verbose = FALSE)$issues,
+      "f.Rd: uses \\dontrun{} for slow code; prefer \\donttest{}",
+      label = paste(example, collapse = " ")
+    )
+  }
+
+  # The slow block is the one that needs dplyr, so there is nothing to move.
+  pkg <- rd_pkg(
+    c("\\dontrun{", "Sys.sleep(60)", "library(dplyr)", "}", "\\dontrun{", "plot(1)", "}"),
+    extra = "Suggests: dplyr"
+  )
+  expect_true(lab_donttest_vs_dontrun(pkg, verbose = FALSE)$passed)
 })
 
 test_that("lab_donttest_vs_dontrun(): accepts \\dontrun for justified cases", {

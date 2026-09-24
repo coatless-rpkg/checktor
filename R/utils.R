@@ -48,12 +48,12 @@ checkup <- function(
 #'
 #' @export
 #' @examples
-#' # Save defaults so we can restore them after the example runs
-#' old <- options(checktor.verbose = NULL, checktor.progress = NULL)
-#' on.exit(options(old), add = TRUE)
-#'
-#' configure_doctor(verbose_default = FALSE)
+#' # configure_doctor() returns the options it replaced
+#' old <- configure_doctor(verbose_default = FALSE)
 #' getOption("checktor.verbose")
+#'
+#' # Put them back
+#' options(old)
 configure_doctor <- function(
   verbose_default = TRUE,
   progress_default = TRUE,
@@ -153,11 +153,50 @@ cli_literal <- function(x) {
   gsub("([{}])", "\\1\\1", x)
 }
 
+# A file R cannot open (a directory, or one without read permission) makes
+# readLines() warn before it errors, and the warning reached the console while
+# the error was caught. Both are handled here, so a bad file reads as empty.
 safe_read_lines <- function(file) {
   if (!file.exists(file)) {
     return(character(0))
   }
-  tryCatch(readLines(file, warn = FALSE), error = function(e) character(0))
+  tryCatch(
+    suppressWarnings(readLines(file, warn = FALSE)),
+    error = function(e) character(0)
+  )
+}
+
+# read.dcf() without the console noise. On a file R cannot open, read.dcf() stops
+# with only "cannot open the connection" and leaves the reason ("it is a
+# directory", "Permission denied") in a warning that reaches the console. This
+# asks the file system first, so the reason does not depend on how R's messages
+# are worded in the session's language, and stops with it, classed
+# `checktor_unopenable` so a caller can tell it from a file that opened but does
+# not parse. The message follows the file's name: "is a directory, not a file".
+# Only a file that passes those checks is read, with read.dcf()'s warnings
+# muffled and its error, the reason it does not parse, passed on.
+read_dcf_quietly <- function(file, fields = NULL) {
+  reason <- if (dir.exists(file)) {
+    "is a directory, not a file"
+  } else if (!file.exists(file)) {
+    "file not found"
+  } else if (file.access(file, 4L) != 0L) {
+    "cannot be read (permission denied)"
+  }
+  if (!is.null(reason)) {
+    stop(structure(
+      class = c("checktor_unopenable", "error", "condition"),
+      list(message = reason, call = NULL)
+    ))
+  }
+  out <- tryCatch(
+    suppressWarnings(read.dcf(file, fields = fields)),
+    error = function(e) e
+  )
+  if (inherits(out, "error")) {
+    stop(conditionMessage(out), call. = FALSE)
+  }
+  out
 }
 
 # Lists R source files under <path>/R/. Returns character(0) if R/ is absent.
@@ -317,45 +356,132 @@ run_checks <- function(checks, path, verbose, severity = SEVERITY_LEVELS) {
   results
 }
 
-# The R code inside a vignette, with the prose thrown away.
+# The R code inside a vignette, with the prose blanked out.
 #
 # Vignettes are mostly English. Scanning them line by line means every narrative
 # mention of a function reads as a call, which is exactly the mistake the AST
-# rewrite exists to prevent. Pull out the fenced R chunks and hand back just the
-# code, so it can be parsed like any other R.
+# rewrite exists to prevent. Keep only the lines of the R chunks, so the result
+# can be parsed like any other R.
 #
-# A chunk marked `eval = FALSE` is skipped: it never runs, so it cannot do anything
-# a policy check should care about.
+# Every other line is blanked rather than dropped. A finding names a line, and
+# with the prose gone the code was numbered from the top of the first chunk, so a
+# call on line 9 of a .qmd was reported on line 2.
+#
+# A chunk whose options set `eval` false is skipped: it never runs, so it cannot do
+# anything a policy check should care about.
 vignette_r_code <- function(file) {
   lines <- safe_read_lines(file)
   if (length(lines) == 0L) {
     return("")
   }
+  code <- if (grepl("\\.[Rr]nw$", file)) {
+    rnw_code_lines(lines)
+  } else {
+    markdown_code_lines(lines)
+  }
+  # `<<setup>>` alone on a line splices in another chunk's code, in Sweave and in
+  # knitr alike. It is not R itself.
+  code <- code & !grepl("^\\s*<<.+>>\\s*$", lines, perl = TRUE)
+  lines[!code] <- ""
+  paste(lines, collapse = "\n")
+}
 
+# Which lines of an R Markdown or Quarto file are code in an R chunk that runs.
+markdown_code_lines <- function(lines) {
   open_re <- "^\\s*```+\\s*\\{\\s*r\\b" # ```{r ...}
   close_re <- "^\\s*```+\\s*$"
-
-  out <- character(0)
+  code <- logical(length(lines))
   i <- 1L
   while (i <= length(lines)) {
-    if (grepl(open_re, lines[[i]], perl = TRUE)) {
-      header <- lines[[i]]
-      j <- i + 1L
-      chunk <- character(0)
-      while (j <= length(lines) && !grepl(close_re, lines[[j]], perl = TRUE)) {
-        chunk <- c(chunk, lines[[j]])
-        j <- j + 1L
-      }
-      # `eval=FALSE` chunks never execute.
-      if (!grepl("eval\\s*=\\s*F", header, perl = TRUE)) {
-        out <- c(out, chunk)
-      }
-      i <- j + 1L
-    } else {
+    if (!grepl(open_re, lines[[i]], perl = TRUE)) {
       i <- i + 1L
+      next
     }
+    j <- i + 1L
+    while (j <= length(lines) && !grepl(close_re, lines[[j]], perl = TRUE)) {
+      j <- j + 1L
+    }
+    body <- seq.int(i + 1L, length.out = j - i - 1L)
+    # The options run to the last brace on the line, as knitr reads them: one
+    # may hold braces of its own, as a LaTeX figure caption does.
+    header <- sub("^\\s*```+\\s*\\{\\s*r\\b", "", lines[[i]], perl = TRUE)
+    header <- sub("\\}[^}]*$", "", header, perl = TRUE)
+    if (chunk_evaluates(header, lines[body])) {
+      code[body] <- TRUE
+    }
+    i <- j + 1L
   }
-  paste(out, collapse = "\n")
+  code
+}
+
+# Which lines of an Sweave (.Rnw) file are code in a chunk that runs. A chunk opens
+# with `<<options>>=` and runs until a line starting with `@` or the next chunk.
+# Reading only fenced chunks, as for R Markdown, found no code at all.
+rnw_code_lines <- function(lines) {
+  open_re <- "^\\s*<<(.*)>>=.*$"
+  close_re <- "^\\s*@"
+  code <- logical(length(lines))
+  i <- 1L
+  while (i <= length(lines)) {
+    if (!grepl(open_re, lines[[i]], perl = TRUE)) {
+      i <- i + 1L
+      next
+    }
+    j <- i + 1L
+    while (
+      j <= length(lines) &&
+        !grepl(close_re, lines[[j]], perl = TRUE) &&
+        !grepl(open_re, lines[[j]], perl = TRUE)
+    ) {
+      j <- j + 1L
+    }
+    body <- seq.int(i + 1L, length.out = j - i - 1L)
+    header <- sub(open_re, "\\1", lines[[i]], perl = TRUE)
+    if (chunk_evaluates(header, lines[body])) {
+      code[body] <- TRUE
+    }
+    # A chunk that ends where the next one opens leaves that line to open it.
+    i <- j
+  }
+  code
+}
+
+# Whether a knitr or Sweave chunk runs, from the options in its header and the
+# `#|` lines at its top. Quarto writes options only as `#|` lines, in YAML
+# (`#| eval: false`); knitr also reads them in R form (`#| eval = FALSE`). knitr
+# merges the two sets with the `#|` lines last, so an `eval` there wins over the
+# header's. Only a literal false is read as false: an `eval` computed at knit time
+# may well be true.
+#
+# knitr reads the YAML with the yaml package, which takes YAML 1.1's n, no and
+# off as false too, and it evaluates an `!expr` value: `!expr FALSE` is false.
+#
+# An option line starts `#| `, space included, as knitr requires: `#|eval: no`
+# is a comment to knitr, and the chunk runs.
+chunk_evaluates <- function(header, body) {
+  is_option <- grepl("^\\s*#\\| ", body, perl = TRUE)
+  n <- if (all(is_option)) length(body) else which.min(is_option) - 1L
+  options <- sub("^\\s*#\\|\\s*", "", body[seq_len(n)], perl = TRUE)
+
+  set_in_chunk <- grepl("(^|,)\\s*eval\\s*[:=]", options, perl = TRUE)
+  if (any(set_in_chunk)) {
+    false_yaml <- paste0(
+      "^eval\\s*:\\s*",
+      "(?:n|N|no|No|NO|off|Off|OFF|false|False|FALSE|!expr\\s+(?:FALSE|F))",
+      "\\s*(#.*)?$"
+    )
+    false_r <- "(^|,)\\s*eval\\s*=\\s*(FALSE|F)\\s*(,|$)"
+    return(!any(
+      grepl(false_yaml, options, perl = TRUE) |
+        grepl(false_r, options, perl = TRUE)
+    ))
+  }
+  # Sweave reads a logical option case-blind, so `eval=false` counts there.
+  !grepl(
+    "(^|[\\s,])eval\\s*=\\s*(?i:false|f)\\s*(,|$)",
+    trimws(header),
+    perl = TRUE
+  )
 }
 
 # The package's own name, for recognising options it owns (`datatable.verbose`,
@@ -365,6 +491,9 @@ own_option_prefix <- function(path) {
   if (!file.exists(f)) {
     return("")
   }
-  nm <- tryCatch(read.dcf(f, fields = "Package")[1, 1], error = function(e) NA)
+  nm <- tryCatch(
+    read_dcf_quietly(f, fields = "Package")[1, 1],
+    error = function(e) NA
+  )
   if (is.na(nm)) "" else as.character(nm)
 }

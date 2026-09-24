@@ -117,6 +117,145 @@ test_that("list_rd_files(): is empty when there is no man/", {
   expect_identical(list_rd_files(pkg), character(0))
 })
 
+# Test vignette_r_code() ----
+
+test_that("vignette_r_code(): keeps every code line on its line in the file", {
+  # A finding names the line to open, so prose and fences become blank lines
+  # rather than disappearing and pulling the code up the file.
+  f <- withr::local_tempfile(fileext = ".Rmd")
+  writeLines(
+    c(
+      "---", "title: v", "---",
+      "Prose that names `download.file()`.",
+      "```{r}", "x <- 1", "```",
+      "More prose.",
+      "```{r}", "y <- 2", "```"
+    ),
+    f
+  )
+  expect_identical(
+    vignette_r_code(f),
+    paste(c(rep("", 5), "x <- 1", rep("", 3), "y <- 2", ""), collapse = "\n")
+  )
+})
+
+test_that("vignette_r_code(): skips a chunk whose options say eval false", {
+  f <- withr::local_tempfile(fileext = ".Rmd")
+  writeLines(
+    c(
+      "```{r eval=FALSE}", "a()", "```", # knitr, in the header
+      "```{r}", "#| eval: false", "b()", "```", # Quarto
+      "```{r}", "#| echo = FALSE, eval = F", "c()", "```", # knitr, in the chunk
+      "```{r eval=FALSE}", "#| eval: true", "d()", "```", # the chunk option wins
+      "```{r}", "#| echo: false", "e()", "```", # not about eval
+      "```{r}", "f() #| eval: false", "```" # not an option line
+    ),
+    f
+  )
+  lines <- strsplit(vignette_r_code(f), "\n", fixed = TRUE)[[1L]]
+  expect_equal(
+    grep("^[a-z]\\(\\)", lines, value = TRUE),
+    c("d()", "e()", "f() #| eval: false")
+  )
+})
+
+test_that("vignette_r_code(): reads the code chunks of an Sweave vignette", {
+  f <- withr::local_tempfile(fileext = ".Rnw")
+  writeLines(
+    c(
+      "\\documentclass{article}",
+      "\\begin{document}",
+      "<<setup, echo=FALSE>>=",
+      "x <- 1",
+      "@",
+      "Prose with \\Sexpr{x}.",
+      "<<eval=false>>=",
+      "not_run()",
+      "@",
+      "<<>>=",
+      "<<setup>>",
+      "y <- 2",
+      "@ % end",
+      "\\end{document}"
+    ),
+    f
+  )
+  lines <- strsplit(vignette_r_code(f), "\n", fixed = TRUE)[[1L]]
+  # A `<<setup>>` line reuses another chunk's code and is not R itself.
+  expect_equal(which(nzchar(lines)), c(4L, 12L))
+  expect_equal(lines[c(4L, 12L)], c("x <- 1", "y <- 2"))
+})
+
+test_that("vignette_r_code(): ends an Sweave chunk at the next chunk header", {
+  # Sweave needs no `@` between two chunks. The next header opens a chunk with
+  # options of its own, and is not code of the chunk before it.
+  f <- withr::local_tempfile(fileext = ".Rnw")
+  writeLines(
+    c("<<a>>=", "x()", "<<b, eval=FALSE>>=", "y()", "<<c>>=", "z()", "@"),
+    f
+  )
+  code <- vignette_r_code(f)
+  lines <- strsplit(code, "\n", fixed = TRUE)[[1L]]
+  expect_equal(which(nzchar(lines)), c(2L, 6L))
+  expect_true(parses(code))
+})
+
+test_that("vignette_r_code(): reads a chunk header to its last brace", {
+  # A figure caption can hold braces of its own, as LaTeX does. knitr reads the
+  # header to the brace that ends the line, so an eval after the caption counts.
+  f <- withr::local_tempfile(fileext = ".Rmd")
+  writeLines(
+    c(
+      "```{r, fig.cap = 'Estimates of $\\hat{\\beta}$', eval = FALSE}", "a()", "```",
+      "```{r, fig.cap = 'A {b} c'}", "b()", "```"
+    ),
+    f
+  )
+  lines <- strsplit(vignette_r_code(f), "\n", fixed = TRUE)[[1L]]
+  expect_equal(which(nzchar(lines)), 5L)
+})
+
+test_that("vignette_r_code(): reads every YAML spelling of a false eval", {
+  # knitr reads `#|` options with the yaml package, where n, no and off are false
+  # as well, and it evaluates an `!expr` value. Only a literal false is false.
+  f <- withr::local_tempfile(fileext = ".qmd")
+  writeLines(
+    c(
+      "```{r}", "#| eval: n", "a()", "```",
+      "```{r}", "#| eval: No", "b()", "```",
+      "```{r}", "#| eval: OFF # later", "c()", "```",
+      "```{r}", "#| eval: !expr FALSE", "d()", "```",
+      "```{r}", "#| eval: !expr F", "e()", "```",
+      "```{r}", "#| eval: y", "f()", "```",
+      "```{r}", "#| eval: !expr has_key()", "g()", "```",
+      "```{r}", "#| eval: nope", "h()", "```"
+    ),
+    f
+  )
+  lines <- strsplit(vignette_r_code(f), "\n", fixed = TRUE)[[1L]]
+  expect_equal(
+    grep("^[a-z]\\(\\)", lines, value = TRUE),
+    c("f()", "g()", "h()")
+  )
+})
+
+test_that("vignette_r_code(): reads an option line only after '#| '", {
+  # knitr takes a line as a chunk option only when it starts `#| `. Without the
+  # space the line is a comment, so the first chunk runs, and the third keeps
+  # the eval = FALSE in its header.
+  f <- withr::local_tempfile(fileext = ".Rmd")
+  writeLines(
+    c(
+      "```{r}", "#|eval: no", "a()", "```",
+      "```{r}", "#| eval: no", "b()", "```",
+      "```{r eval=FALSE}", "#|eval: true", "c()", "```"
+    ),
+    f
+  )
+  lines <- strsplit(vignette_r_code(f), "\n", fixed = TRUE)[[1L]]
+  expect_equal(grep("^[a-z]\\(\\)", lines, value = TRUE), "a()")
+})
+
 # Test cli_literal() ----
 
 test_that("cli_literal(): text reaches the console verbatim, never evaluated", {
@@ -313,4 +452,9 @@ test_that("checkup(): follows the verdict, so opinion does not fail CI", {
   write_pkg(clean, news = FALSE)
   expect_true(checkup(clean))
   expect_false(checkup(clean, severity = SEVERITY_LEVELS)) # unless you ask for it
+})
+
+test_that("checkup(): fails a package whose DESCRIPTION R cannot read", {
+  # R CMD build and INSTALL both stop on it, so no build should go green.
+  expect_false(checkup(unparseable_pkg()))
 })

@@ -85,7 +85,8 @@ runs; muted findings are dropped from the results and tallied in
 \code{metadata$suppressed}, while a \code{disable}d check is removed entirely and
 never counted there.
 \item \code{Config/checktor/software_names}, \code{Config/checktor/language_names},
-\code{Config/checktor/acronyms}: names appended to those checks' vocabularies.
+\code{Config/checktor/format_names}, \code{Config/checktor/acronyms}: names appended
+to those checks' vocabularies.
 }
 }
 \examples{

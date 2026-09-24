@@ -58,6 +58,53 @@ test_that("checktor(): total_issues counts every issue, not failed checks", {
   expect_lt(results$metadata$failed_checks, results$metadata$total_issues)
 })
 
+test_that("checktor(): a DESCRIPTION R cannot read counts against the verdict", {
+  r <- checktor(unparseable_pkg(), verbose = FALSE, progress = FALSE)
+  expect_equal(r$metadata$total_issues, 1L)
+  expect_equal(r$metadata$failed_checks, 1L)
+  expect_false(is_healthy(r))
+
+  di <- issues(r)
+  expect_identical(di$category, "description")
+  expect_identical(di$check, "description_file")
+  expect_identical(di$severity, "policy")
+  expect_match(di$location, "^DESCRIPTION does not parse: ")
+
+  td <- tidy(r)
+  expect_identical(td$check[!td$passed & !td$skipped], "description_file")
+  expect_identical(failed_checks(r), "description.description_file")
+})
+
+test_that("checktor(): names the DESCRIPTION checks that could not run", {
+  r <- checktor(unparseable_pkg(), verbose = FALSE, progress = FALSE)
+  td <- tidy(r)
+  desc_rows <- td[td$category == "description", ]
+  sat_out <- desc_rows$check[desc_rows$skipped]
+  expect_true(all(c("software_names", "authors", "license") %in% sat_out))
+  expect_false(any(c("description_file", "license_year") %in% sat_out))
+  expect_true(all(sat_out %in% r$metadata$skipped_checks))
+})
+
+test_that("checktor(): a DESCRIPTION R cannot open prints no warning", {
+  expect_no_warning(
+    r <- checktor(unopenable_pkg("directory"), verbose = FALSE, progress = FALSE)
+  )
+  expect_identical(failed_checks(r), "description.description_file")
+  expect_identical(
+    r$description_issues$description_file$issues,
+    "DESCRIPTION is a directory, not a file"
+  )
+
+  skip_on_os("windows") # a mode-000 file is not portable
+  pkg <- unopenable_pkg("no_permission")
+  skip_if(
+    file.access(file.path(pkg, "DESCRIPTION"), 4L) == 0L,
+    "this user can read a file with no read permission"
+  )
+  expect_no_warning(r <- checktor(pkg, verbose = FALSE, progress = FALSE))
+  expect_identical(failed_checks(r), "description.description_file")
+})
+
 test_that("checktor(): policy violations are part of the main run", {
   pkg <- make_temp_dir()
   write_pkg(pkg, r_code = c("f <- function() { browser(); 1 }"))
@@ -65,6 +112,21 @@ test_that("checktor(): policy violations are part of the main run", {
   results <- checktor(pkg, verbose = FALSE, progress = FALSE)
   expect_true("policy_issues" %in% names(results))
   expect_false(results$policy_issues$browser_calls$passed)
+})
+
+test_that("checktor(): reads the code when keep.parse.data is off", {
+  # sys.source() and some IDE tooling turn the option off, and getParseData() is
+  # then empty for every parse. Each parse-tree check saw a blank file, so a
+  # package full of bare T came back healthy.
+  withr::local_options(keep.parse.data = FALSE)
+  pkg <- make_temp_dir()
+  write_pkg(pkg, r_code = "f <- function() T")
+
+  results <- checktor(pkg, verbose = FALSE, progress = FALSE)
+  expect_equal(results$code_issues$tf_usage$issues, "test.R:1")
+  expect_false(is_healthy(results))
+  # The caller's setting is theirs, and is back once the run ends.
+  expect_false(getOption("keep.parse.data"))
 })
 
 test_that("checktor(): errors clearly on a non-package directory", {
@@ -160,6 +222,7 @@ test_that("checktor(): a check that did not run is skipped, not passing", {
   expect_true("skipped" %in% names(td))
   expect_true(any(td$skipped))
   expect_true("url_liveness" %in% td$check[td$skipped])
+  expect_false(td$passed[td$check == "url_liveness"])
 
   # It carries a reason a reader can act on, and never counts against the verdict.
   res <- r$general_issues$url_liveness
@@ -246,6 +309,19 @@ test_that("print.checktor_results(): runs without error", {
   write_pkg(pkg)
   results <- checktor(pkg, verbose = FALSE, progress = FALSE)
   expect_no_error(cli::cli_fmt(print(results)))
+})
+
+test_that("print.checktor_results(): a DESCRIPTION R cannot read needs attention", {
+  r <- checktor(unparseable_pkg(), verbose = FALSE, progress = FALSE)
+  out <- cli::cli_fmt(print(r))
+  expect_match(out, "DESCRIPTION ISSUES: 1 failing check", fixed = TRUE, all = FALSE)
+  expect_match(
+    out,
+    "Overall health: NEEDS ATTENTION (1 issue)",
+    fixed = TRUE,
+    all = FALSE
+  )
+  expect_no_match(out, "EXCELLENT", fixed = TRUE)
 })
 
 test_that("print.checktor_results(): footer points to accessors", {

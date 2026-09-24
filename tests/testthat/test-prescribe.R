@@ -63,6 +63,54 @@ test_that("prescribe(): still emits curated treatments for known checks", {
   expect_match(txt, "T/F Usage Issues")
 })
 
+test_that("prescribe(): gives a DESCRIPTION R cannot read its own treatment", {
+  r <- checktor(unparseable_pkg(), verbose = FALSE, progress = FALSE)
+  txt <- paste(cli::cli_fmt(prescribe(r)), collapse = "\n")
+  expect_match(txt, "DESCRIPTION R Cannot Read", fixed = TRUE)
+  expect_match(txt, "indented by a space or tab", fixed = TRUE)
+  # The finding itself, which quotes the line R stopped at.
+  expect_match(txt, "this line is not a f", fixed = TRUE)
+  expect_no_match(txt, "Review the detailed diagnosis above", fixed = TRUE)
+
+  # That line is the package's text, so it prints as written.
+  r$description_issues$description_file$issues <-
+    "DESCRIPTION does not parse: Line starting '{stop('evaluated')} ...' is malformed!"
+  out <- NULL
+  expect_no_error(out <- cli::cli_fmt(prescribe(r)))
+  expect_match(paste(out, collapse = "\n"), "{stop('evaluated')}", fixed = TRUE)
+})
+
+test_that("prescribe(): fits the DESCRIPTION example to why R cannot read it", {
+  # The reflowed Description line is the fix for a malformed line only. A file
+  # that is missing or cannot be opened needs a fix of its own.
+  r <- checktor(unopenable_pkg("directory"), verbose = FALSE, progress = FALSE)
+  shown <- function(issue) {
+    r$description_issues$description_file$issues <- issue
+    paste(cli::cli_fmt(prescribe(r)), collapse = "\n")
+  }
+
+  txt <- shown(r$description_issues$description_file$issues)
+  expect_match(txt, "# DESCRIPTION is a directory, not a file", fixed = TRUE)
+  expect_match(txt, "has to be a file", fixed = TRUE)
+  expect_no_match(txt, "reflowed", fixed = TRUE)
+
+  txt <- shown("DESCRIPTION file not found")
+  expect_match(txt, "usethis::use_description()", fixed = TRUE)
+  expect_no_match(txt, "reflowed", fixed = TRUE)
+
+  txt <- shown("DESCRIPTION cannot be read (permission denied)")
+  expect_match(txt, "Sys.chmod(\"DESCRIPTION\", \"644\")", fixed = TRUE)
+  expect_no_match(txt, "reflowed", fixed = TRUE)
+
+  # Every one of them ends by reading the file the way R CMD build does.
+  expect_match(txt, "read.dcf(\"DESCRIPTION\")", fixed = TRUE)
+  txt <- shown(paste(
+    "DESCRIPTION contains a blank line, which splits it into more than one",
+    "record"
+  ))
+  expect_match(txt, "reflowed", fixed = TRUE)
+})
+
 test_that("prescribe(): still offers remedies for advisory-only findings", {
   # The verdict can be clean while advisory findings remain. Prescribing for the
   # verdict alone would withhold the remedy for every one of them.

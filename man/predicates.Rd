@@ -65,14 +65,25 @@ failed_checks(x, ...)
 \item{...}{Unused.}
 }
 \value{
-\code{passed()}: logical — a single value for a check, a named logical by
-check for a category, and a named logical by category for results.
+\code{passed()}: logical, \code{TRUE} for a check that did not fail, a skipped
+one included. It is a single value for a check, a named logical by check
+for a category, and a named logical by category for results.
 \code{is_healthy()}: a single logical. \code{n_issues()} / \code{n_failed_checks()}:
 integer counts. \code{failed_checks()}: character vector of failing check names
 (qualified \code{"category.check"} at the results level).
 }
 \description{
-Status predicates for checktor results
+These ask the question a verdict asks: did a check fail? \code{passed()} means
+"did not fail", so a check that did not run, such as \code{url_liveness} away
+from the console, is \code{TRUE} there. A skipped check cannot fail a verdict,
+and \code{is_healthy()}, \code{failed_checks()} and \code{n_failed_checks()} treat it the
+same way.
+}
+\details{
+\link[=tidy.checktor_results]{tidy()} answers a different question. It gives each
+check one state, so the same skipped check has \code{passed = FALSE} and
+\code{skipped = TRUE} there. To tell a pass from a skip, use \code{tidy()} or
+\link[=summary.checktor_results]{summary()}.
 }
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",

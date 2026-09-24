@@ -5,7 +5,8 @@
 
 test_that("health_report(): every format reports the CRAN policy findings", {
   r <- checktor(policy_pkg(), verbose = FALSE, progress = FALSE)
-  failed <- tidy(r)$check[!tidy(r)$passed]
+  td <- tidy(r)
+  failed <- td$check[!td$passed & !td$skipped]
   expect_true("browser_calls" %in% failed)
   expect_true("file_operations" %in% failed)
 
@@ -13,6 +14,16 @@ test_that("health_report(): every format reports the CRAN policy findings", {
     txt <- paste(health_report(r, format = fmt), collapse = "\n")
     expect_match(txt, "Browser", info = fmt)
     expect_match(txt, "File Operations|File operations", info = fmt)
+  }
+})
+
+test_that("health_report(): lists a DESCRIPTION R cannot read", {
+  r <- checktor(unparseable_pkg(), verbose = FALSE, progress = FALSE)
+  for (fmt in c("markdown", "text", "html")) {
+    txt <- paste(health_report(r, format = fmt), collapse = "\n")
+    expect_no_match(txt, "clean bill of health", ignore.case = TRUE, info = fmt)
+    expect_match(txt, "Description file", fixed = TRUE, info = fmt)
+    expect_match(txt, "DESCRIPTION does not parse", fixed = TRUE, info = fmt)
   }
 })
 
@@ -72,7 +83,10 @@ test_that("report_findings(): one entry per failing check, in category order", {
   r <- checktor(policy_pkg(), verbose = FALSE, progress = FALSE)
   found <- report_findings(r)
   checks <- vapply(found, function(f) f$check, character(1))
-  failed <- tidy(r)$check[!tidy(r)$passed]
+  td <- tidy(r)
+  # A check that did not run is neither passed nor failed, and has no finding.
+  expect_gt(sum(td$skipped), 0L)
+  failed <- td$check[!td$passed & !td$skipped]
 
   expect_setequal(checks, failed)
   expect_false(anyDuplicated(checks) > 0L)

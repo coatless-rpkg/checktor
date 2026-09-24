@@ -18,7 +18,13 @@ Defaults to reading it from \code{path}.}
 \code{\link[=checktor_check_result]{checktor_check_result()}} with \code{passed}, \code{issues}, \code{message}.
 }
 \description{
-Flags a software name in double quotes. Writing R Extensions reserves double quotes for quotations and requires single quotes for software names, so scare-quoted jargon is left alone.
+Flags a software name in double quotes in \code{Title} or \code{Description}. Writing R Extensions reserves double quotes for quotations and requires single quotes for software names, so scare-quoted jargon is left alone. A lower-case span matches only a name written in lower case, such as \code{shiny}, so an English \code{"rust"} or a parameter \code{"r"} is not read as \code{Rust} or \code{R}.
+}
+\details{
+The names are those \code{\link[=lab_software_names]{lab_software_names()}} and \code{\link[=lab_language_names]{lab_language_names()}} ask to
+see in single quotes, and a few more. Format names such as \code{JSON} or \code{HTML},
+which CRAN accepts bare, are not among them, so one in double quotes is not
+reported; \code{\link[=lab_format_names]{lab_format_names()}} reports them bare, on request.
 }
 \section{Source}{
 

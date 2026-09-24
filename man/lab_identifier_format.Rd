@@ -20,6 +20,10 @@ Defaults to reading it from \code{path}.}
 \description{
 Validates ORCID and ROR identifiers carried in \code{Authors@R} person \code{comment} fields, mirroring CRAN's \code{bad_ORCID_iDs} and \code{bad_ROR_IDs} incoming checks. ORCID iDs are checked against their checksum, ROR IDs against their shape.
 }
+\details{
+An \code{Authors@R} that cannot be read has no identifiers to judge, so the check
+is reported as skipped and \code{\link[=lab_authors]{lab_authors()}} reports the field.
+}
 \section{Source}{
 
 The \href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages}{CRAN incoming check}

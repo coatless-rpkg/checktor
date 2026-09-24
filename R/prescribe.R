@@ -210,6 +210,58 @@ treatments <- list(
   ),
   list(
     category = "description_issues",
+    check = "description_file",
+    title = "DESCRIPTION R Cannot Read",
+    treatment = paste0(
+      "Make {.file DESCRIPTION} a file R can open, with every line a ",
+      "{.code Field: value} pair or a continuation indented by a space or tab, ",
+      "and no blank line between fields"
+    ),
+    # The finding says where R stopped, which the worked example cannot know,
+    # and why: the reflowed line is the fix for a malformed file only, so a
+    # missing file or one R cannot open gets a fix of its own.
+    example_fn = function(check) {
+      found <- if (is.list(check)) check$issues else character(0)
+      fix <- if (any(found == "DESCRIPTION file not found")) {
+        c(
+          "# Every package has a DESCRIPTION at its root; write one to fill in",
+          "usethis::use_description()"
+        )
+      } else if (any(found == "DESCRIPTION is a directory, not a file")) {
+        c(
+          "# DESCRIPTION has to be a file: move the directory out of the way",
+          "# and write the file in its place"
+        )
+      } else if (
+        any(found == "DESCRIPTION cannot be read (permission denied)")
+      ) {
+        c(
+          "# Give the file read permission",
+          "Sys.chmod(\"DESCRIPTION\", \"644\")"
+        )
+      } else {
+        c(
+          "# Before: a reflowed paragraph lost the indent on its second line",
+          "Description: Reads survey exports and tidies them. The paragraph was",
+          "reflowed, and this line lost its leading space.",
+          "",
+          "# After: every continuation line starts with a space",
+          "Description: Reads survey exports and tidies them. The paragraph was",
+          "    reflowed, and this line keeps its leading space."
+        )
+      }
+      c(
+        paste("#", found),
+        "",
+        fix,
+        "",
+        "# Check the fix with the reader R CMD build uses",
+        "read.dcf(\"DESCRIPTION\")"
+      )
+    }
+  ),
+  list(
+    category = "description_issues",
     check = "spelling",
     title = "Possibly Misspelled Words",
     treatment = "Record the correct terms in a {.file .aspell} dictionary, which {.code R CMD check --as-cran} reads",

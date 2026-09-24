@@ -102,8 +102,10 @@ reference:
   desc: >
     Individual checks on the DESCRIPTION file, parsed via `base::read.dcf()`.
   contents:
+  - lab_description_file
   - lab_software_names
   - lab_language_names
+  - lab_format_names
   - lab_acronyms
   - lab_license
   - lab_license_year

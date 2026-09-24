@@ -18,8 +18,8 @@ Defaults to reading it from \code{path}.}
 \code{\link[=checktor_check_result]{checktor_check_result()}} with \code{passed}, \code{issues}, \code{message}.
 }
 \description{
-Flags a bare programming-language, markup, or statistical-computing name --
-\code{Python}, \code{Java}, \verb{C++}, \code{SQL}, \code{HTML}, \code{MATLAB}, \code{SAS} and more -- in \code{Title}
+Flags a bare programming-language or statistical-computing name -- \code{Python},
+\code{Java}, \code{JavaScript}, \code{Rust}, \code{MATLAB}, \code{SAS}, \code{Stata} and more -- in \code{Title}
 or \code{Description} that CRAN asks to see single-quoted. This is the language
 counterpart to \code{\link[=lab_software_names]{lab_software_names()}}: both are policy-tier
 quoting checks, kept separate because a language name and a package name are
@@ -30,8 +30,21 @@ names (\code{C}, \code{Go}, \code{Swift}) are left out because they cannot be to
 ordinary prose.
 }
 \details{
+Data, markup and query formats (\code{JSON}, \code{HTML}, \code{YAML}, \code{SQL}, \code{Markdown},
+\code{LaTeX} and the like) and the languages CRAN packages write either way (\verb{C++},
+\code{Fortran}, \code{Tcl}) are not flagged here. A census of CRAN in September 2026
+found that packages accepted at new-package review in the previous 18 months
+wrote them bare 62\% of the time, against 28\% for the languages this check
+covers, so a bare one is not a policy finding. \code{\link[=lab_format_names]{lab_format_names()}} reports them when you
+ask.
+
 A package can extend the list through \code{Config/checktor/language_names} in its own
 DESCRIPTION.
+
+Each occurrence is judged on its own, as in \code{\link[=lab_software_names]{lab_software_names()}}: a term
+inside a quoted longer name such as \code{'MATLAB Runtime'} or \code{'AWS Python SDK'} is
+quoted, and so is one in a web address, a \verb{<doi:...>} or a double-quoted book
+title.
 }
 \section{Source}{
 
@@ -48,5 +61,5 @@ pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 lab_language_names(pkg, verbose = FALSE)$passed
 }
 \seealso{
-\code{\link[=checktor]{checktor()}}, \code{\link[=lab_software_names]{lab_software_names()}}.
+\code{\link[=checktor]{checktor()}}, \code{\link[=lab_software_names]{lab_software_names()}}, \code{\link[=lab_format_names]{lab_format_names()}}.
 }

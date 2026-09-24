@@ -22,7 +22,8 @@ spelling reads the \code{DESCRIPTION} file directly and ignores it.}
 Spell-checks the \code{Title} and \code{Description} fields with \code{\link[utils:aspell]{utils::aspell()}},
 mirroring the aspell pass in CRAN's incoming check. It reports only words that
 are not already accepted somewhere: a package \verb{.aspell/} dictionary,
-\code{inst/WORDLIST}, or a \code{Config/checktor/acronyms} or \code{software_names} field.
+\code{inst/WORDLIST}, or a \code{Config/checktor/acronyms}, \code{software_names},
+\code{language_names} or \code{format_names} field.
 }
 \details{
 The check needs a spell-check backend (\code{aspell} or \code{hunspell}) on the system.

@@ -801,16 +801,20 @@ test_that("lab_option_changes(): a bare setwd() in ordinary code is still flagge
 # Test lab_home_writing() ----
 
 test_that("lab_home_writing(): does NOT flag formula tildes", {
+  # A formula's `~` is an operator, not a path. The check looks only at write
+  # calls, so a fixture with none could not fail whatever the home test does:
+  # each one here writes, with a formula in the data it writes (f) or in the
+  # expression that names its file (g).
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
     r_code = c(
       "fit <- function(d) lm(y ~ x, data = d)",
-      "f <- function(d) update(fit, . ~ . + z)",
-      "g <- function() y ~ a + b"
+      "f <- function(d, path) saveRDS(lm(y ~ x, data = d), path)",
+      "g <- function(d, dir) write.csv(d, file.path(dir, paste0(all.vars(y ~ x)[1], '.csv')))"
     )
   )
-  expect_true(lab_home_writing(pkg, verbose = FALSE)$passed)
+  expect_identical(lab_home_writing(pkg, verbose = FALSE)$issues, character(0))
 })
 
 test_that("lab_home_writing(): flags WRITES into the home directory", {
@@ -825,7 +829,14 @@ test_that("lab_home_writing(): flags WRITES into the home directory", {
   )
   res <- lab_home_writing(pkg, verbose = FALSE)
   expect_false(res$passed)
-  expect_equal(length(res$issues), 3L)
+  expect_identical(
+    res$issues,
+    c(
+      "test.R:1 (writeLines() writes under the home directory)",
+      "test.R:2 (saveRDS() writes under the home directory)",
+      "test.R:3 (write.csv() writes under the home directory)"
+    )
+  )
 })
 
 test_that("lab_home_writing(): knows the tabular and device writers too", {
@@ -849,7 +860,9 @@ test_that("lab_home_writing(): knows the tabular and device writers too", {
 
 test_that("lab_home_writing(): does not flag reads of the home path", {
   # The old check inspected only path.expand/normalizePath/file.path/Sys.getenv,
-  # which are all reads: it flagged these while MISSING the writes above.
+  # which are all reads: it flagged these while MISSING the writes above. A read
+  # stays a read when its result is what a write sends out, since the file goes
+  # where the destination says. Searching the whole call reported a to d.
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -857,10 +870,128 @@ test_that("lab_home_writing(): does not flag reads of the home path", {
       "f <- function() path.expand('~')",
       "g <- function() Sys.getenv('HOME')",
       "h <- function() normalizePath('~')",
-      "i <- function() file.path('~', 'data.csv')"
+      "i <- function() file.path('~', 'data.csv')",
+      "a <- function(file) writeLines(normalizePath('~'), file)",
+      "b <- function(path) saveRDS(Sys.getenv('HOME'), path)",
+      "c <- function() cat('Home is', path.expand('~'))",
+      "d <- function(dest) file.copy('~/.Rprofile', dest)"
     )
   )
-  expect_true(lab_home_writing(pkg, verbose = FALSE)$passed)
+  expect_identical(lab_home_writing(pkg, verbose = FALSE)$issues, character(0))
+})
+
+test_that("lab_home_writing(): finds the destination however the call names it", {
+  # The destination is resolved per function, as lab_file_operations() does:
+  # positional for writeLines() and file.copy(), named for cat() and save(), which
+  # write to a file only when given `file =`. A call whose data AND destination
+  # are both home is still one write.
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    r_code = c(
+      "a <- function() writeLines(normalizePath('~'), '~/where.txt')",
+      "b <- function(x) cat(x, file = '~/log.txt')",
+      "c <- function(x) save(x, file = file.path(Sys.getenv('HOME'), 'x.rda'))",
+      "d <- function(x) file.copy(x, '~/backup')"
+    )
+  )
+  expect_identical(
+    lab_home_writing(pkg, verbose = FALSE)$issues,
+    c(
+      "test.R:1 (writeLines() writes under the home directory)",
+      "test.R:2 (cat() writes under the home directory)",
+      "test.R:3 (save() writes under the home directory)",
+      "test.R:4 (file.copy() writes under the home directory)"
+    )
+  )
+})
+
+test_that("lab_home_writing(): finds the destination a pipe hands on", {
+  # The left-hand side of `|>` or `%>%` is the call's first argument, so the path
+  # written in the call is the second: the destination. The last two send a home
+  # path as the data and write where the caller says.
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    r_code = c(
+      "a <- function(x) x |> writeLines('~/out.txt')",
+      "b <- function(d) d %>% write.csv('~/out.csv')",
+      "c <- function(x) x |> saveRDS(file.path(Sys.getenv('HOME'), 'x.rds'))",
+      "d <- function(x) x %>% writeLines(., '~/dot.txt')",
+      "e <- function(x) '~/notes.txt' |> writeLines(text = x, con = _)",
+      "f <- function(path) normalizePath('~') |> writeLines(path)",
+      "g <- function(path) normalizePath('~') %>% writeLines(., path)"
+    )
+  )
+  expect_identical(
+    lab_home_writing(pkg, verbose = FALSE)$issues,
+    c(
+      "test.R:1 (writeLines() writes under the home directory)",
+      "test.R:2 (write.csv() writes under the home directory)",
+      "test.R:3 (saveRDS() writes under the home directory)",
+      "test.R:4 (writeLines() writes under the home directory)",
+      "test.R:5 (writeLines() writes under the home directory)"
+    )
+  )
+})
+
+test_that("lab_home_writing(): a named argument does not move the destination", {
+  # Counting `sep =` or `plot =` as a position read the data as the destination.
+  # file.copy() and file.rename() call their destination `to`, and naming the
+  # data formal, as in `saveRDS(object = x, ...)`, leaves the path as the first
+  # unnamed argument. The last line copies FROM home.
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    r_code = c(
+      "a <- function(x) file.copy(to = '~/b', from = x)",
+      "b <- function(x) file.rename(to = '~/b', from = x)",
+      "c <- function(x) writeLines(sep = '\\n', x, '~/o.txt')",
+      "d <- function(x) write.csv(row.names = FALSE, x, '~/o.csv')",
+      "e <- function(p) ggplot2::ggsave(plot = p, '~/p.png')",
+      "f <- function(x) file.copy(from = x, '~/b')",
+      "g <- function(x) saveRDS(object = x, '~/x.rds')",
+      "h <- function(path) file.copy(from = '~/.Rprofile', path)"
+    )
+  )
+  expect_identical(
+    lab_home_writing(pkg, verbose = FALSE)$issues,
+    c(
+      "test.R:1 (file.copy() writes under the home directory)",
+      "test.R:2 (file.rename() writes under the home directory)",
+      "test.R:3 (writeLines() writes under the home directory)",
+      "test.R:4 (write.csv() writes under the home directory)",
+      "test.R:5 (ggsave() writes under the home directory)",
+      "test.R:6 (file.copy() writes under the home directory)",
+      "test.R:7 (saveRDS() writes under the home directory)"
+    )
+  )
+})
+
+test_that("lab_home_writing(): catches a destination that defaults to the home directory", {
+  # Called with no path, a() writes to ~/x.txt, and b() under the HOME it reads.
+  # lab_file_operations() reports a() only: it accepts a default that is itself
+  # a `~` or absolute literal, and b()'s is a computed path. A default that is not
+  # home, or a home default on the data rather than the destination, is not a
+  # home write.
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    r_code = c(
+      "a <- function(x, path = '~/x.txt') writeLines(x, path)",
+      "b <- function(x, dir = file.path(Sys.getenv('HOME'), 'c')) saveRDS(x, file.path(dir, 'x.rds'))",
+      "c <- function(x, path = tempfile()) writeLines(x, path)",
+      "d <- function(x, path = '/srv/x.txt') writeLines(x, path)",
+      "e <- function(path, x = '~/data') writeLines(x, path)"
+    )
+  )
+  expect_identical(
+    lab_home_writing(pkg, verbose = FALSE)$issues,
+    c(
+      "test.R:1 (writeLines() writes under the home directory)",
+      "test.R:2 (saveRDS() writes under the home directory)"
+    )
+  )
 })
 
 test_that("lab_home_writing(): a genuine write to the user's home is caught", {
@@ -874,7 +1005,13 @@ test_that("lab_home_writing(): a genuine write to the user's home is caught", {
       "cache <- function(x) saveRDS(x, '~/.myapp/cache.rds')"
     )
   )
-  expect_false(lab_home_writing(pkg, verbose = FALSE)$passed)
+  expect_identical(
+    lab_home_writing(pkg, verbose = FALSE)$issues,
+    c(
+      "test.R:1 (writeLines() writes under the home directory)",
+      "test.R:2 (saveRDS() writes under the home directory)"
+    )
+  )
 })
 
 # Test lab_temp_cleanup() ----

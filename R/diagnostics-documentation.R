@@ -497,6 +497,54 @@ rd_aliases <- function(rd) {
   out
 }
 
+# The signs that an example's \dontrun{} code is only slow: a Sys.sleep() or a
+# comment calling it long-running.
+SLOW_EXAMPLE_RE <- "Sys\\.sleep\\b|long.running|long.time"
+
+# Whether the slow code in an example's \dontrun{} blocks uses a Suggested package
+# without a guard, which it could not keep doing once moved to \donttest{}. Each
+# block is judged on its own, so a block that needs a package does not hold back
+# the advice for another block that is only slow. The slow blocks are those whose
+# own code shows a sign of it; when the sign sits outside every block, such as a
+# comment before one, any block may be the slow one.
+dontrun_needs_suggests <- function(examples, suggests) {
+  if (length(suggests) == 0L) {
+    return(FALSE)
+  }
+  xml <- rd_example_xml(examples)
+  if (is.null(xml)) {
+    return(FALSE)
+  }
+  marker <- sprintf(
+    "expr[1]/SYMBOL_FUNCTION_CALL[text() = '%s']",
+    HIDDEN_EXAMPLE_MARKERS[["\\dontrun"]]
+  )
+  blocks <- xml2::xml_find_all(
+    xml,
+    sprintf("//expr[%s][not(ancestor::expr[%s])]", marker, marker)
+  )
+  slow <- grepl(
+    SLOW_EXAMPLE_RE,
+    xml2::xml_text(blocks),
+    ignore.case = TRUE,
+    perl = TRUE
+  )
+  if (any(slow)) {
+    blocks <- blocks[slow]
+  }
+  length(blocks) > 0L && all(vapply(
+    blocks,
+    function(block) {
+      inside <- function(use) {
+        ancestors <- xml2::xml_find_all(use, "ancestor::expr")
+        any(vapply(ancestors, identical, logical(1), block))
+      }
+      length(unguarded_suggests(xml, suggests, inside)) > 0L
+    },
+    logical(1)
+  ))
+}
+
 # Suggest \donttest{} for code that is only slow, not impossible to run.
 # Heuristic: an \examples block contains \dontrun{} AND the only "justifying"
 # pattern is Sys.sleep() or a "long.running"/"long.time" comment - in that
@@ -504,6 +552,12 @@ rd_aliases <- function(rd) {
 #' Diagnose dontrun Where donttest Belongs
 #'
 #' Flags `\dontrun{}` around code that is merely slow. `\donttest{}` is the right wrapper, since it still runs under `--run-donttest`.
+#'
+#' A slow block that uses a Suggested package without a guard is left alone:
+#' `R CMD check --as-cran` runs `\donttest{}` code, so after the move
+#' [lab_suggested_in_examples()] would report it. Each `\dontrun{}` block is
+#' judged on its own, so such a block does not hold back the advice for another
+#' that is only slow.
 #'
 #' @section Source:
 #' The CRAN Cookbook covers the distinction under
@@ -532,6 +586,7 @@ lab_donttest_vs_dontrun <- function(path, verbose = TRUE) {
       "donttest vs dontrun check"
     ))
   }
+  suggests <- suggested_packages(path)
 
   issues <- character(0)
   for (file in rd_files) {
@@ -548,7 +603,7 @@ lab_donttest_vs_dontrun <- function(path, verbose = TRUE) {
     }
     text <- collect_rd_text(examples)
     only_slow <- grepl(
-      "Sys\\.sleep\\b|long.running|long.time",
+      SLOW_EXAMPLE_RE,
       text,
       ignore.case = TRUE,
       perl = TRUE
@@ -559,7 +614,10 @@ lab_donttest_vs_dontrun <- function(path, verbose = TRUE) {
         ignore.case = TRUE,
         perl = TRUE
       )
-    if (only_slow) {
+    # R CMD check --as-cran runs \donttest{}, so moving a block that needs a
+    # Suggested package would trade this advice for a suggested_in_examples
+    # finding.
+    if (only_slow && !dontrun_needs_suggests(examples, suggests)) {
       issues <- c(
         issues,
         paste0(
@@ -681,14 +739,137 @@ parse_package_list <- function(field) {
   setdiff(parts, "R")
 }
 
+# Functions an example calls to ask whether a package is installed. cli's examples
+# ask through its own has_packages(), so it is read the same way.
+SUGGESTS_GUARDS <- c("requireNamespace", "require", "is_installed", "has_packages")
+
+# R's base packages, which every R installation has. This is the list
+# tools:::.get_standard_package_names()$base gives, written out because that
+# function is internal.
+BASE_PACKAGES <- c(
+  "base", "tools", "utils", "grDevices", "graphics", "stats", "datasets",
+  "methods", "grid", "splines", "stats4", "tcltk", "compiler", "parallel"
+)
+
+# R's recommended packages, which ship with R. CRAN's checks hide one only when
+# the DESCRIPTION does not declare it (_R_CHECK_NO_RECOMMENDED_), so a recommended
+# package in Suggests is there whenever the examples run. This is the list
+# tools:::.get_standard_package_names()$recommended gives, written out because the
+# installed set varies from machine to machine.
+RECOMMENDED_PACKAGES <- c(
+  "MASS", "lattice", "Matrix", "nlme", "survival", "boot", "cluster",
+  "codetools", "foreign", "KernSmooth", "rpart", "class", "nnet", "spatial",
+  "mgcv"
+)
+
+# The packages a DESCRIPTION suggests that a check machine may lack: its Suggests,
+# less the base and recommended packages. character(0) when there is none or the
+# DESCRIPTION cannot be read.
+suggested_packages <- function(path) {
+  desc_file <- file.path(path, "DESCRIPTION")
+  if (!file.exists(desc_file)) {
+    return(character(0))
+  }
+  desc <- tryCatch(read_description(desc_file), error = function(e) NULL)
+  if (is.null(desc)) {
+    return(character(0))
+  }
+  setdiff(
+    parse_package_list(desc[["Suggests"]]),
+    c(BASE_PACKAGES, RECOMMENDED_PACKAGES)
+  )
+}
+
+# A guard for guarded_by(): whether a term asks if `pkg` is installed, naming it as
+# a string or, as require() also allows, as a bare name. A guard for any other
+# package is no guard for this one. A literal FALSE is the branch that never runs,
+# and a term that is false under R CMD check, such as `interactive()`, is a branch
+# CRAN's noSuggests check never runs either.
+suggests_guard <- function(pkg) {
+  function(node) {
+    if (is_false_constant(node) || is_check_off_guard(node)) {
+      return(TRUE)
+    }
+    parts <- call_parts(node)
+    if (is.null(parts) || !parts$fn %in% SUGGESTS_GUARDS) {
+      return(FALSE)
+    }
+    named <- arg_strings(parts$args)
+    if (parts$fn == "require" && length(parts$args) > 0L) {
+      named <- c(named, xml2::xml_text(xml2::xml_find_all(parts$args[[1L]], "SYMBOL")))
+    }
+    pkg %in% named
+  }
+}
+
+# The package a library() or require() call attaches, when its first argument
+# names one outright, or NA.
+attached_package <- function(fn) {
+  first <- xml2::xml_find_first(
+    fn,
+    "parent::expr/following-sibling::expr[1]/*[self::SYMBOL or self::STR_CONST]"
+  )
+  if (inherits(first, "xml_missing")) NA_character_ else unquote_name(xml2::xml_text(first))
+}
+
+# The packages from `suggests` that parsed example code uses without a guard
+# naming them, in the order `suggests` lists them. A use is `pkg::`, `pkg:::`,
+# library() or require(); Writing R Extensions sanctions
+# `if (require("pkgB", quietly = TRUE))`, so a require() an `if` tests is the guard
+# rather than a use. `judged(use)` picks the uses that count.
+unguarded_suggests <- function(xml, suggests, judged = function(use) TRUE) {
+  qualified <- xml2::xml_find_all(xml, "//SYMBOL_PACKAGE")
+  attaches <- xml2::xml_find_all(
+    xml,
+    paste0(
+      "//SYMBOL_FUNCTION_CALL[text() = 'library' or text() = 'require'][",
+      NOT_MEMBER_ACCESS,
+      "]"
+    )
+  )
+  attaches <- attaches[!vapply(attaches, in_if_condition, logical(1))]
+  uses <- c(as.list(qualified), as.list(attaches))
+  used <- c(
+    xml2::xml_text(qualified),
+    vapply(attaches, attached_package, character(1))
+  )
+  out <- character(0)
+  for (pkg in intersect(suggests, used)) {
+    guard <- suggests_guard(pkg)
+    unguarded <- vapply(
+      uses[used %in% pkg],
+      function(use) judged(use) && !guarded_by(use, guard),
+      logical(1)
+    )
+    if (any(unguarded)) {
+      out <- c(out, pkg)
+    }
+  }
+  out
+}
+
 #' Diagnose Suggested Packages Used in Examples Without a Guard
 #'
 #' Under CRAN's `noSuggests` check a package must work without its Suggested
-#' packages installed. This flags `\examples{}` that load a Suggested package
-#' (`library()`/`require()`/`pkg::`) in code that runs unconditionally and is
-#' not guarded by `requireNamespace()` / `rlang::is_installed()` (the form
-#' `@examplesIf` and `if (requireNamespace(...))` produce). Usage inside
-#' `\dontrun{}` or `\donttest{}` is not flagged.
+#' packages installed. This flags an example that needs a Suggested package, through
+#' `pkg::`, `library()` or `require()`, in code that runs without a guard naming
+#' that package: an enclosing `if (requireNamespace("pkg", quietly = TRUE))` or
+#' `if (require("pkg"))`, including roxygen's `@examplesIf` with one of them.
+#' `rlang::is_installed("pkg")` counts too, but it needs rlang, so it is a use of
+#' rlang when rlang is only suggested.
+#'
+#' The example is read as parsed R, so a package named in a comment or a string is
+#' not a use, and a guard in a comment, a guard for another package, or one that
+#' does not enclose the use excuses nothing. Usage inside `\dontrun{}` is not
+#' flagged, since it never runs. Usage inside `\donttest{}` is, since
+#' `R CMD check --as-cran` runs it. A condition that is false under R CMD check
+#' keeps the use out of the check as surely as `\dontrun{}` does, so
+#' `interactive()`, `identical(Sys.getenv("IN_PKGDOWN"), "true")`,
+#' `nzchar(Sys.getenv("IN_PKGDOWN"))` and a test that `NOT_CRAN` is `"true"` excuse
+#' it too. A bare `as.logical(Sys.getenv("NOT_CRAN"))` does not: it is `NA` there,
+#' and `if (NA)` stops the example with an error. R's base packages, such as
+#' parallel and tools, and its recommended packages, such as MASS, Matrix and
+#' survival, ship with R and are never flagged.
 #'
 #' @inheritParams lab_value_tags
 #' @section Source:
@@ -708,21 +889,8 @@ parse_package_list <- function(field) {
 lab_suggested_in_examples <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
   rd_files <- list_rd_files(path)
-  desc_file <- file.path(path, "DESCRIPTION")
-  if (length(rd_files) == 0L || !file.exists(desc_file)) {
-    return(checktor_check_result(
-      TRUE,
-      character(0),
-      "Suggested-package examples check"
-    ))
-  }
-  desc <- tryCatch(read_description(desc_file), error = function(e) NULL)
-  suggests <- if (is.null(desc)) {
-    character(0)
-  } else {
-    parse_package_list(desc[["Suggests"]])
-  }
-  if (length(suggests) == 0L) {
+  suggests <- suggested_packages(path)
+  if (length(rd_files) == 0L || length(suggests) == 0L) {
     return(checktor_check_result(
       TRUE,
       character(0),
@@ -730,6 +898,15 @@ lab_suggested_in_examples <- function(path, verbose = TRUE) {
     ))
   }
 
+  # The example text used to be grepped, so a package named in a comment was a use,
+  # `library(dplyrExtra)` was a use of dplyr, a guard written anywhere in the file,
+  # even in a comment, excused every use, and the word examplesIf excused them all
+  # whatever the @examplesIf asked. Read the parse tree and judge each use by the
+  # guards that enclose it.
+  #
+  # The rule serves CRAN's noSuggests check, which is R CMD check, so a use
+  # behind a condition that is false there, such as `interactive()`, is never
+  # reached by it and is excused like one behind requireNamespace().
   issues <- character(0)
   for (file in rd_files) {
     rd <- tryCatch(tools::parse_Rd(file), error = function(e) NULL)
@@ -740,61 +917,26 @@ lab_suggested_in_examples <- function(path, verbose = TRUE) {
     if (is.null(examples)) {
       next
     }
-    full <- collect_rd_text(examples)
-    run <- collect_rd_text(examples, skip = c("\\dontrun", "\\donttest"))
-    for (pkg in suggests) {
-      esc <- gsub("([.])", "\\\\\\1", pkg)
-      use_re <- sprintf(
-        "\\b(?:library|require)\\s*\\(\\s*['\"]?%s['\"]?|\\b%s::",
-        esc,
-        esc
-      )
-      if (!grepl(use_re, run, perl = TRUE)) {
-        next
-      }
-
-      # Writing R Extensions sanctions `if (require("pkgB", quietly = TRUE))` as
-      # THE way to use a Suggests conditionally in an example. The old guard
-      # recognised only requireNamespace()/is_installed(), and only with quotes,
-      # while the USE pattern above happily matched `require(chron)` -- so the
-      # guard was reported as the violation. zoo, glue, cli and rlang all write it
-      # the sanctioned way and were all flagged.
-      #
-      # Note `interactive()` is deliberately NOT a guard: it does not make the
-      # package available, so an example wrapped in it still fails when the package
-      # is absent. Some examples do exactly that, and they stay flagged.
-      guard_re <- sprintf(
-        paste0(
-          "(?:requireNamespace|is_installed)\\s*\\(\\s*['\"]?%s['\"]?",
-          "|if\\s*\\(\\s*!?\\s*require(?:Namespace)?\\s*\\(\\s*['\"]?%s['\"]?"
-        ),
-        esc,
-        esc
-      )
-      if (grepl(guard_re, full, perl = TRUE)) {
-        next
-      }
-
-      # roxygen's `@examplesIf` compiles to
-      #   \dontshow{if (COND) (if (getRversion() >= "3.4") withAutoprint else force)({
-      # and COND can be anything: cli writes `cli:::has_packages(c("htmltools"))`.
-      # The GUARD IS THE STRUCTURE, not the predicate, so match the structure. cli,
-      # curl and rlang all guard this way and were all reported.
-      if (
-        grepl("\\dontshow\\s*\\{\\s*if\\s*\\(|examplesIf", full, perl = TRUE)
-      ) {
-        next
-      }
+    xml <- rd_example_xml(examples)
+    if (is.null(xml)) {
+      next
+    }
+    missing <- unguarded_suggests(
+      xml,
+      suggests,
+      function(use) !in_hidden_block(use, "\\dontrun")
+    )
+    if (length(missing) > 0L) {
+      # One report per file is enough.
       issues <- c(
         issues,
         paste0(
           basename(file),
           ": uses Suggested package '",
-          pkg,
+          missing[[1L]],
           "' in \\examples without a guard"
         )
       )
-      break # one report per file is enough
     }
   }
 
@@ -804,7 +946,7 @@ lab_suggested_in_examples <- function(path, verbose = TRUE) {
     verbose,
     "Examples guard Suggested-package usage",
     "Examples use Suggested packages without a guard",
-    "Treatment: Wrap in @examplesIf rlang::is_installed('pkg') or if (requireNamespace('pkg'))",
+    "Treatment: Guard the use with {.code if (requireNamespace(\"pkg\", quietly = TRUE))}, or with {.code @examplesIf requireNamespace(\"pkg\", quietly = TRUE)}",
     level = "warning"
   )
   checktor_check_result(passed, issues, "Suggested-package examples check")

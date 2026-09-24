@@ -16,11 +16,26 @@ lab_suggested_in_examples(path, verbose = TRUE)
 }
 \description{
 Under CRAN's \code{noSuggests} check a package must work without its Suggested
-packages installed. This flags \verb{\\examples\{\}} that load a Suggested package
-(\code{library()}/\code{require()}/\verb{pkg::}) in code that runs unconditionally and is
-not guarded by \code{requireNamespace()} / \code{rlang::is_installed()} (the form
-\verb{@examplesIf} and \verb{if (requireNamespace(...))} produce). Usage inside
-\verb{\dontrun{}} or \verb{\donttest{}} is not flagged.
+packages installed. This flags an example that needs a Suggested package, through
+\verb{pkg::}, \code{library()} or \code{require()}, in code that runs without a guard naming
+that package: an enclosing \verb{if (requireNamespace("pkg", quietly = TRUE))} or
+\verb{if (require("pkg"))}, including roxygen's \verb{@examplesIf} with one of them.
+\code{rlang::is_installed("pkg")} counts too, but it needs rlang, so it is a use of
+rlang when rlang is only suggested.
+}
+\details{
+The example is read as parsed R, so a package named in a comment or a string is
+not a use, and a guard in a comment, a guard for another package, or one that
+does not enclose the use excuses nothing. Usage inside \verb{\dontrun{}} is not
+flagged, since it never runs. Usage inside \verb{\donttest{}} is, since
+\verb{R CMD check --as-cran} runs it. A condition that is false under R CMD check
+keeps the use out of the check as surely as \verb{\dontrun{}} does, so
+\code{interactive()}, \code{identical(Sys.getenv("IN_PKGDOWN"), "true")},
+\code{nzchar(Sys.getenv("IN_PKGDOWN"))} and a test that \code{NOT_CRAN} is \code{"true"} excuse
+it too. A bare \code{as.logical(Sys.getenv("NOT_CRAN"))} does not: it is \code{NA} there,
+and \verb{if (NA)} stops the example with an error. R's base packages, such as
+parallel and tools, and its recommended packages, such as MASS, Matrix and
+survival, ship with R and are never flagged.
 }
 \section{Source}{
 

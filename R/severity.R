@@ -46,8 +46,10 @@ CHECK_SEVERITY <- c(
   internal_ns = "robustness", # ::: reaches an object its author may change
 
   # ---- description ----
+  description_file = "policy", # R CMD build and INSTALL stop on a file R cannot read
   software_names = "policy", # WRE: single-quote other software
-  language_names = "policy", # WRE: single-quote languages/markup (own kind of policy)
+  language_names = "policy", # WRE: single-quote programming languages (own kind of policy)
+  format_names = "opinion", # JSON, HTML, SQL: most accepted packages write them bare
   acronyms = "opinion", # reviewers ask; nothing enforces it
   identifier_format = "policy", # CRAN incoming NOTE on bad ORCID/ROR ids
   date_format = "policy", # CRAN incoming NOTE on non-ISO/stale Date
@@ -128,7 +130,8 @@ CHECK_WHEN <- c(
   cran_comments_file = "request", # a submission workflow, not a package property
   title_starts_with_article = "request", # no authority supports it
   description_function_quotes = "request", # no authority supports it
-  cph_role = "request" # ?person: natural-person authors hold copyright already
+  cph_role = "request", # ?person: natural-person authors hold copyright already
+  format_names = "request" # a style choice CRAN accepts either way
 )
 
 # Every check name checktor knows about, built in or registered at run time. Used

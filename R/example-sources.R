@@ -14,7 +14,12 @@ EXAMPLE_SOURCE_DIRS <- list(
   test = c(file.path("tests", "testthat"), "tests")
 )
 
-# R code from a package's `.Rd` examples, one entry per file that has any.
+# R code from a package's `.Rd` examples, one entry per file that has any. Each
+# line of code is on the line of the .Rd file it came from, so a finding names the
+# line a reader opens. Where a block such as \dontrun{} shares a line with other
+# code, its body is put on lines of its own, as Rd2ex lays out a block it runs
+# (see RD_EXAMPLE_BLOCKS), and `lines` then gives the .Rd line of each line of
+# `code`.
 rd_example_code <- function(path) {
   files <- list_rd_files(path)
   out <- list()
@@ -27,15 +32,64 @@ rd_example_code <- function(path) {
     if (is.null(section)) {
       next
     }
-    # \dontrun{} contents are included: a reader copies them, and CRAN asks about
-    # installs and writes wherever they appear in an example.
-    code <- collect_rd_text(section)
-    if (!nzchar(trimws(code))) {
+    # The example as R runs it: an Rd `%` comment is not R, and kept in the text
+    # it stopped the whole example parsing, which hid the example from every
+    # check. \dontrun{} contents are included: a reader copies them, and CRAN
+    # asks about installs and writes wherever they appear in an example.
+    offset <- strrep("\n", rd_node_line(section) - 1L)
+    src <- rd_example_lines(
+      paste0(offset, rd_example_marked(section, mark = FALSE))
+    )
+    # A hidden block may hold something that is not R, such as a `<your key>`
+    # placeholder. Only then is each block cut down to the lines that parse, since
+    # reading a block a line at a time can split a valid `if` from its `else`.
+    if (!parses(src$code)) {
+      src <- rd_example_lines(
+        paste0(offset, rd_example_marked(section, repair = TRUE, mark = FALSE))
+      )
+    }
+    if (!nzchar(trimws(src$code))) {
       next
     }
-    out[[length(out) + 1L]] <- list(file = file, kind = "example", code = code)
+    out[[length(out) + 1L]] <- list(
+      file = file,
+      kind = "example",
+      code = src$code,
+      # NULL when every line of code is on its own line of the file.
+      lines = if (!identical(src$lines, seq_along(src$lines))) src$lines
+    )
   }
   out
+}
+
+# Put each node of code parsed by parse_text_xml() on the line of its file that
+# `lines` gives for it, for code whose lines are not the file's one for one.
+remap_lines <- function(xml, lines) {
+  for (attr in c("line1", "line2")) {
+    nodes <- xml2::xml_find_all(xml, paste0("//*[@", attr, "]"))
+    at <- as.integer(xml2::xml_attr(nodes, attr))
+    xml2::xml_set_attr(nodes, attr, as.character(lines[at]))
+  }
+  xml
+}
+
+# The line of its .Rd file that a parsed Rd node starts on, from the srcref
+# tools::parse_Rd() attaches, or 1 when there is none.
+rd_node_line <- function(node) {
+  ref <- attr(node, "srcref")
+  if (length(ref) == 0L) 1L else as.integer(ref[[1L]])
+}
+
+# Whether `text` parses as R. keep.source = FALSE, since only the verdict is
+# wanted and the parse is repeated where the tree is needed.
+parses <- function(text) {
+  tryCatch(
+    {
+      parse(text = text, keep.source = FALSE)
+      TRUE
+    },
+    error = function(e) FALSE
+  )
 }
 
 # R code from vignette sources, taking only the chunks that run.
@@ -94,6 +148,9 @@ read_example_xml <- function(path, kinds = c("example", "vignette", "demo")) {
     xml <- parse_text_xml(src$code)
     if (is.null(xml)) {
       next
+    }
+    if (!is.null(src$lines)) {
+      xml <- remap_lines(xml, src$lines)
     }
     out[[length(out) + 1L]] <- list(
       file = src$file,

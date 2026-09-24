@@ -1,0 +1,9 @@
+Package: formatexample
+Title: Convert Between JSON and YAML Configuration Files
+Version: 0.1.0
+Authors@R: person("John", "Doe", email = "john@example.com", role = c("aut", "cre"))
+Description: Reads configuration files written in JSON, YAML or 'TOML' and
+    writes them back in any of the three, preserving comments where the target
+    format allows. Documents render to HTML through 'R Markdown'.
+License: GPL (>= 3)
+Encoding: UTF-8

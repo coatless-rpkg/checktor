@@ -59,10 +59,11 @@ test_that("print.checktor_category_result(): names skipped checks beside failure
 })
 
 test_that("print.checktor_category_result(): keeps an early return's verdict", {
-  # A category that stops before running anything, such as one without a
-  # DESCRIPTION, carries only its own verdict.
+  # A category that stops before running anything, such as the code panel in a
+  # package with no R/, carries only its own verdict. A failing one must still
+  # print as failing.
   early <- structure(
-    list(passed = FALSE, message = "DESCRIPTION file not found"),
+    list(passed = FALSE, message = "Stopped before any check ran"),
     class = "checktor_category_result"
   )
   out <- paste(cli::cli_fmt(print(early)), collapse = "\n")

@@ -23,8 +23,12 @@
 \value{
 A \code{data.frame} with one row per check: \code{category} (results level
 only), \code{check}, \code{severity}, \code{passed}, \code{skipped}, \code{n_issues}, \code{message}.
-\code{skipped} marks a check that did not run, such as the URL fetch away from
-the console, so it never reads as one that passed.
+\code{passed} is \code{TRUE} for a check that ran and found nothing. \code{skipped} marks
+a check that did not run, such as the URL fetch away from the console, and
+such a check is never \code{passed}. A check that failed is neither, so
+\code{!passed & !skipped} picks out the failures, and the three counts match
+\link[=summary.checktor_results]{summary()}. \code{\link[=passed]{passed()}} asks only whether a
+check failed, so it is \code{TRUE} for a skipped check that is \code{FALSE} here.
 }
 \description{
 Tidy a checktor result into a per-check data frame

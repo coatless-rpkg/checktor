@@ -28,7 +28,9 @@ on exit. Default: \code{FALSE} (user manages cleanup).}
 }
 \value{
 Character. Path to the temporary package directory containing the example
-file. Returns \code{NULL} if the example file cannot be found.
+file. Returns \code{NULL}, with a warning, if the example file cannot be found. An
+\code{example_path} that is not an \code{.R}, \code{.Rd}, \code{.Rmd}, \code{.qmd}, \code{.Rnw} or \code{.txt}
+file is an error, since a package has no place for it.
 }
 \description{
 Creates a temporary package structure with a specified example file for
@@ -40,7 +42,9 @@ This function:
 \enumerate{
 \item Locates the specified example file in the package's \verb{inst/diagnose/} directory
 \item Creates a temporary package directory structure
-\item Copies the example file to the appropriate location
+\item Copies the example file to where a package keeps its kind: an \code{.R} file in
+\verb{R/}, an \code{.Rd} file in \verb{man/}, a vignette (\code{.Rmd}, \code{.qmd}, \code{.Rnw}) in
+\verb{vignettes/}, and a DESCRIPTION scenario (\code{.txt}) as the \code{DESCRIPTION}
 \item Optionally displays the example file content
 \item Returns the path to the temporary package for diagnostic testing
 }
@@ -51,14 +55,17 @@ for running diagnostics, plus a basic \code{DESCRIPTION} file.
 \section{Example File Structure}{
 
 
-The temporary package created has this structure:
+The temporary package created has this structure. The example file goes in
+the one place its extension names, and the other directories stay empty:
 
-\if{html}{\out{<div class="sourceCode">}}\preformatted{/tmp/checktor_example_XXXX/
-|-- DESCRIPTION          # Basic or custom DESCRIPTION file
-|-- R/                   # Contains copied example R files
-|   `-- example.R        # The example file with issues
-|-- man/                 # Empty directory for .Rd files
-`-- tests/               # Empty directory for test files
+\if{html}{\out{<div class="sourceCode">}}\preformatted{<tempdir>/checktor_example_XXXX/
+|-- DESCRIPTION          # The template, or a .txt scenario itself
+|-- NEWS.md              # So the NEWS check has nothing to report
+|-- cran-comments.md     # So the cran-comments check has nothing to report
+|-- R/                   # An .R scenario, such as tf_usage_bad.R
+|-- man/                 # An .Rd scenario, such as missing_value_tag.Rd
+|-- tests/               # Always empty
+`-- vignettes/           # An .Rmd, .qmd or .Rnw scenario; made only for one
 }\if{html}{\out{</div>}}
 }
 

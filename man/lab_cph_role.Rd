@@ -2,7 +2,7 @@
 % Please edit documentation in R/diagnostics-description.R
 \name{lab_cph_role}
 \alias{lab_cph_role}
-\title{Diagnose a Missing Copyright-Holder Role}
+\title{Diagnose a Missing Copyright Holder}
 \usage{
 lab_cph_role(path = ".", verbose = TRUE, desc = NULL)
 }
@@ -18,10 +18,18 @@ Defaults to reading it from \code{path}.}
 \code{\link[=checktor_check_result]{checktor_check_result()}} with \code{passed}, \code{issues}, \code{message}.
 }
 \description{
-Flags an \code{Authors@R} with no \verb{[cph]} role. It runs only when you call it:
-authors who are natural persons hold copyright by default, so most packages
-need no \code{cph} role at all. It is worth running when an organisation owns the
+Flags a package that names no copyright holder: no person in \code{Authors@R} has
+the \code{cph} role and there is no \code{Copyright} field. It runs only when you call
+it: authors who are natural persons hold copyright by default, so most
+packages need neither. It is worth running when an organisation owns the
 copyright, since that is the case the role exists for.
+}
+\details{
+The roles are read from the parsed \code{person()} object, never from the text of
+the field, so an address such as \code{cph@example.com} is not a role. The field
+is parsed without running any code it contains, as in \code{\link[=lab_authors]{lab_authors()}}. A
+package with no \code{Authors@R} is read from its legacy \code{Author} field instead,
+where only a role written in square brackets, as in \verb{ACME Corporation [cph]}, counts, in any case, and not one inside a parenthesised comment.
 }
 \section{Source}{
 

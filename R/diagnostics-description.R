@@ -10,6 +10,10 @@
 #' @return
 #' List containing one named element per check. Each element is a list with at
 #' least `passed`, `issues`, and `message` (see [checktor_check_result()]).
+#' When the `DESCRIPTION` is missing or R cannot read it, `description_file`
+#' fails, and every check that reads the parsed fields, registered ones
+#' included, is reported as skipped with the reason "DESCRIPTION could not be
+#' read", since it has nothing to examine.
 #'
 #' @seealso
 #' [checktor()] for complete package diagnostics
@@ -26,29 +30,9 @@ diagnose_description_issues <- function(path = ".", verbose = TRUE) {
     cli::cli_h2("DESCRIPTION File Health Check")
   }
 
-  results <- list()
-
   desc_file <- file.path(path, "DESCRIPTION")
-  if (!file.exists(desc_file)) {
-    if (verbose) {
-      cli::cli_alert_danger("DESCRIPTION file not found")
-    }
-    out <- list(passed = FALSE, message = "DESCRIPTION file not found")
-    class(out) <- "checktor_category_result"
-    return(out)
-  }
-
-  desc <- tryCatch(
-    read_description(desc_file),
-    error = function(e) NULL
-  )
-  if (is.null(desc)) {
-    if (verbose) {
-      cli::cli_alert_danger("Could not parse DESCRIPTION file")
-    }
-    out <- list(passed = FALSE, message = "Could not parse DESCRIPTION file")
-    class(out) <- "checktor_category_result"
-    return(out)
+  desc <- if (file.exists(desc_file)) {
+    tryCatch(read_description(desc_file), error = function(e) NULL)
   }
 
   # The DESCRIPTION sub-checks operate on the parsed `desc` (and `path` for
@@ -56,10 +40,16 @@ diagnose_description_issues <- function(path = ".", verbose = TRUE) {
   # adapter list so we can still use run_checks() for the tryCatch/passed
   # bookkeeping.
   checks <- list(
+    # Whether R can read the file at all. It re-reads the file rather than taking
+    # `desc`, because the question is about the file, not about the fields.
+    description_file = function(p, v) lab_description_file(p, v),
     software_names = function(p, v) {
       lab_software_names(p, v, desc)
     },
     language_names = function(p, v) lab_language_names(p, v, desc),
+    # `format_names` is deliberately NOT here. JSON, HTML, SQL and the other
+    # formats are written bare by most packages CRAN accepts, so a bare one breaks
+    # no rule it enforces (#16). It stays available on request.
     acronyms = function(p, v) lab_acronyms(p, v, desc),
     license = function(p, v) lab_license(p, v, desc),
     title_case = function(p, v) lab_title_case(p, v, desc),
@@ -103,29 +93,161 @@ diagnose_description_issues <- function(path = ".", verbose = TRUE) {
     },
     license_year = function(p, v) lab_license_year(p, v)
   )
-  run_checks(
-    c(checks, registered_checks_for("description", desc = desc)),
-    path,
-    verbose
-  )
+
+  registered <- registered_checks_for("description", desc = desc)
+
+  # A DESCRIPTION R cannot read used to end this category early with no checks in
+  # it. Nothing counts a category, only its checks, so checktor() called such a
+  # package healthy although R cannot build or install it. `description_file`
+  # reports it and counts like any other check. Every check that reads the fields
+  # could not run, so each is reported as skipped under its own name, registered
+  # checks included, and a clean result elsewhere never hides one. license_year
+  # reads LICENSE alone and runs as usual.
+  if (is.null(desc)) {
+    skip_as <- function(message) {
+      force(message)
+      function(p, v) {
+        checktor_skipped_result(message, "DESCRIPTION could not be read")
+      }
+    }
+    for (nm in names(DESCRIPTION_FIELD_CHECKS)) {
+      checks[[nm]] <- skip_as(DESCRIPTION_FIELD_CHECKS[[nm]])
+    }
+    registered <- lapply(stats::setNames(nm = names(registered)), skip_as)
+  }
+  run_checks(c(checks, registered), path, verbose)
 }
+
+# The panel's checks that read the parsed DESCRIPTION, with the message each one
+# reports. When R cannot read the file they are returned skipped under these
+# messages, so they print as they would have. A test holds them to the messages
+# the checks themselves return.
+DESCRIPTION_FIELD_CHECKS <- c(
+  software_names = "Software names check",
+  language_names = "Language names check",
+  acronyms = "Acronyms check",
+  license = "License check",
+  title_case = "Title case check",
+  title_length = "Title length check",
+  title_redundant_phrases = "Title redundant-phrases check",
+  authors = "Authors@R field check",
+  identifier_format = "Author identifier check",
+  references = "References check",
+  date_format = "Date field check",
+  encoding_utf8 = "Encoding field check",
+  version_format = "Version field check",
+  spelling = "Spelling check",
+  description_length = "Description length check",
+  description_starts_with = "Description opening check",
+  description_quoted_quotes = "Description double-quotes check"
+)
 
 # Returns a named list of DESCRIPTION fields, with multi-line fields collapsed.
 # Using read.dcf folds continuation lines into a single string per field.
+#
+# It refuses what R's own reader, tools:::.read_description(), refuses, so a file
+# checktor reads is one R CMD build and INSTALL will read too. The errors name
+# the file, because a user calling a lab_*() function directly sees them as is.
 read_description <- function(desc_file) {
-  raw <- read.dcf(desc_file)
+  # One handler: tryCatch() nests several, so an error raised in the first would
+  # be caught again by the second.
+  raw <- tryCatch(read_dcf_quietly(desc_file), error = function(e) {
+    what <- if (inherits(e, "checktor_unopenable")) {
+      "DESCRIPTION "
+    } else {
+      "DESCRIPTION does not parse: "
+    }
+    stop(what, conditionMessage(e), call. = FALSE)
+  })
   if (nrow(raw) == 0L) {
-    stop("DESCRIPTION has no records")
+    stop("DESCRIPTION has no records", call. = FALSE)
+  }
+  # read.dcf() takes a blank line as the end of a record and reads on, so the
+  # fields after it become a second record. R stops on that file; keeping the
+  # first record would quietly drop every field after the blank line.
+  if (nrow(raw) > 1L) {
+    stop(
+      "DESCRIPTION contains a blank line, which splits it into more than one record",
+      call. = FALSE
+    )
   }
   as.list(raw[1L, ])
+}
+
+#' Diagnose a DESCRIPTION File R Cannot Read
+#'
+#' Flags a `DESCRIPTION` that is missing or that R cannot read: a line that is
+#' neither a `Field: value` pair nor an indented continuation, or a blank line
+#' that splits the file in two. `R CMD build` and `R CMD INSTALL` both stop on
+#' such a file, so the package cannot be built or installed. A `DESCRIPTION`
+#' R cannot open at all fails with the reason, a directory in its place or a
+#' file without read permission, which is found from the file system and so
+#' reads the same in any language. Every other `DESCRIPTION` check reads the
+#' parsed fields, so while this one fails they are reported as skipped.
+#'
+#' @section Source:
+#' [Writing R Extensions](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file),
+#' under "The DESCRIPTION file", specifies the format of a Debian Control File:
+#' "Fields start with an ASCII name immediately followed by a colon" and
+#' "Continuation lines ... start with a space or tab". R reads it with
+#' [base::read.dcf()] and refuses a file that yields more than one record. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to
+#' its source.
+#' @param path Character. Path to the package directory. Default: `"."`.
+#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
+#' @param desc Present for signature parity with the other DESCRIPTION checks;
+#'   this check asks whether R can read the `DESCRIPTION` file itself, so it
+#'   reads the file and ignores `desc`.
+#'
+#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
+#' @seealso [checktor()], which runs this and every other check.
+#' @export
+#' @examples
+#' pkg <- example_diagnose_scenario(
+#'   "description_examples/unparseable_description.txt",
+#'   show_content = FALSE
+#' )
+#' lab_description_file(pkg, verbose = FALSE)$issues
+lab_description_file <- function(path = ".", verbose = TRUE, desc = NULL) {
+  path <- find_package_root(path)
+  desc_file <- file.path(path, "DESCRIPTION")
+  issues <- if (!file.exists(desc_file)) {
+    "DESCRIPTION file not found"
+  } else {
+    tryCatch(
+      {
+        read_description(desc_file)
+        character(0)
+      },
+      error = function(e) conditionMessage(e)
+    )
+  }
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues,
+    verbose,
+    "{.file DESCRIPTION} parses",
+    "R cannot read {.file DESCRIPTION}",
+    "Treatment: Make DESCRIPTION a file R can open, with every line a 'Field: value' pair or a continuation indented by a space or tab, and no blank line between fields"
+  )
+  checktor_check_result(passed, issues, "DESCRIPTION file check")
 }
 
 # Resolve the DESCRIPTION for a check that may be called either directly by a
 # user (who has a path) or from diagnose_description_issues() (which has already
 # parsed it once). Mirrors the `parsed = NULL` convention the code checks use.
+#
+# A `desc` comes back as the named list read_description() returns, which is
+# what the checks read. `desc` is documented as what read.dcf() returns, a
+# one-row matrix whose field names are column names, so desc[["Title"]] on it is
+# a subscript error; so is a missing field on a named vector. As a list, a
+# missing field is NULL.
 resolve_description <- function(path, desc) {
+  if (is.matrix(desc)) {
+    desc <- if (nrow(desc) > 0L) desc[1L, ] else list()
+  }
   if (!is.null(desc)) {
-    return(desc)
+    return(as.list(desc))
   }
   desc_file <- file.path(path, "DESCRIPTION")
   if (!file.exists(desc_file)) {
@@ -134,23 +256,103 @@ resolve_description <- function(path, desc) {
   read_description(desc_file)
 }
 
+# The calls R's own reader allows in Authors@R from R 4.6.0 on
+# (utils:::.read_authors_at_R_field). R CMD build stops on any other as a
+# "Malformed Authors@R field".
+AUTHORS_AT_R_CALLS <- c(
+  "person", "as.person", "c", "list", "paste", "paste0", "("
+)
+
+# The calls in a parsed Authors@R that R's reader refuses, in the order they
+# appear. The walk mirrors tools:::.find_calls(recursive = TRUE) and
+# tools:::.call_names(): a call is refused when its function part does not
+# deparse to one of AUTHORS_AT_R_CALLS, wherever it sits, so a namespaced
+# utils::person(), a parenthesised (c) and an operator such as `-` are all
+# caught by the same rule. Only the parse tree is read; nothing in it runs. Each
+# call is named by its function part with the arguments elided, as in
+# "utils::person(...)", and a refused function part is not walked again, since
+# its name already shows all of it.
+authors_at_r_refused_calls <- function(exprs) {
+  refused <- character(0)
+  # Elements are passed on by index, e[[i]], never bound to a loop variable: an
+  # empty argument, as in person("A", "B", , "a@b.org"), is R's missing-argument
+  # marker, which R refuses to read back from a variable.
+  walk <- function(e) {
+    if (is.pairlist(e)) {
+      # A function's formals, whose defaults are calls too.
+      e <- as.list(e)
+      for (i in seq_along(e)) {
+        walk(e[[i]])
+      }
+      return(invisible())
+    }
+    if (!is.call(e)) {
+      return(invisible())
+    }
+    fn <- e[[1L]]
+    name <- deparse1(fn)
+    args <- as.list(e)[-1L]
+    if (!name %in% AUTHORS_AT_R_CALLS) {
+      label <- if (is.symbol(fn) && name %in% c("::", ":::")) {
+        # A namespaced name that is passed rather than called.
+        deparse1(e)
+      } else {
+        if (is.symbol(fn) && !identical(make.names(name), name)) {
+          name <- paste0("`", name, "`")
+        }
+        paste0(name, if (length(args) > 0L) "(...)" else "()")
+      }
+      refused <<- c(refused, label)
+    }
+    for (i in seq_along(args)) {
+      walk(args[[i]])
+    }
+    invisible()
+  }
+  # The walk recurses once per nesting level, and a field such as
+  # `1 + 1 + ... + 1` nests one call per term, deep enough to exhaust R's stack.
+  # R refuses such a field anyway, so report it rather than crash.
+  tryCatch(
+    for (i in seq_along(exprs)) {
+      walk(exprs[[i]])
+    },
+    error = function(e) {
+      refused <<- c(refused, "a call nested too deeply to read")
+    }
+  )
+  unique(refused)
+}
+
 # Parse the Authors@R field into a person object using only public R. Returns
-# list(persons, error): `persons` is a "person" object (or NULL if the field is
-# absent), `error` is a message string when the field is present but does not
-# evaluate. The eval is scoped to the utils namespace so person()/c() resolve,
-# and wrapped so a malformed field surfaces as a reported issue, never a crash.
-# Shared by the authors and identifier checks so Authors@R is parsed once.
+# list(persons, error, refused): `persons` is a "person" object (or NULL if the
+# field is absent or unreadable), `error` is a message string when the field is
+# present but cannot be read, and `refused` names each call R's own reader
+# refuses (authors_at_r_refused_calls()). A malformed field surfaces as a
+# reported issue, never a crash. Shared by the authors, identifier and cph
+# checks so they read Authors@R the same way.
 parse_authors_at_r <- function(desc) {
   aar <- desc[["Authors@R"]]
   if (is.null(aar) || is.na(aar) || !nzchar(aar)) {
-    return(list(persons = NULL, error = NULL))
+    return(list(persons = NULL, error = NULL, refused = character(0)))
   }
+  exprs <- tryCatch(
+    parse(text = aar, keep.source = FALSE),
+    error = function(e) e
+  )
+  if (inherits(exprs, "error")) {
+    return(list(
+      persons = NULL,
+      error = conditionMessage(exprs),
+      refused = character(0)
+    ))
+  }
+  refused <- authors_at_r_refused_calls(exprs)
   # Authors@R is a raw R expression, and checktor lints other people's packages
   # without otherwise running their code. A plain eval() would execute whatever
   # the field contains (`Authors@R: system("...")`), so evaluate it in a locked
   # environment that exposes only the functions a well-formed field needs, with
   # emptyenv() as parent. Anything else fails to resolve and is reported as an
-  # unparseable field rather than being run.
+  # unparseable field rather than being run. The list is AUTHORS_AT_R_CALLS.
   safe_env <- new.env(parent = emptyenv())
   safe_env$person <- utils::person
   safe_env$as.person <- utils::as.person
@@ -158,25 +360,186 @@ parse_authors_at_r <- function(desc) {
   safe_env$list <- base::list
   safe_env$paste <- base::paste
   safe_env$paste0 <- base::paste0
+  safe_env[["("]] <- base::`(`
+  # R refuses `utils::person(...)`, and `refused` says so, but the field is
+  # still read so the checks of roles and identifiers see what it declares.
+  # `::` and `:::` resolve those two names and nothing else. They look only at
+  # the names as written, never evaluating either side, so a computed name such
+  # as `::`(paste0("ba", "se"), f) is refused too.
+  namespace_get <- function(op) {
+    force(op)
+    function(pkg, name) {
+      pkg <- substitute(pkg)
+      name <- substitute(name)
+      as_name <- function(x) {
+        if (is.symbol(x) || (is.character(x) && length(x) == 1L)) {
+          as.character(x)
+        } else {
+          NA_character_
+        }
+      }
+      pkg <- as_name(pkg)
+      name <- as_name(name)
+      if (!identical(pkg, "utils") || !name %in% c("person", "as.person")) {
+        what <- if (is.na(pkg) || is.na(name)) {
+          "a computed name"
+        } else {
+          paste0(pkg, op, name)
+        }
+        stop(
+          "only utils::person and utils::as.person may be called with a ",
+          "namespace, not ",
+          what,
+          call. = FALSE
+        )
+      }
+      get(name, envir = safe_env, inherits = FALSE)
+    }
+  }
+  safe_env[["::"]] <- namespace_get("::")
+  safe_env[[":::"]] <- namespace_get(":::")
+  unreadable <- function(error) {
+    list(persons = NULL, error = error, refused = refused)
+  }
   parsed <- tryCatch(
-    suppressWarnings(eval(parse(text = aar), envir = safe_env)),
+    suppressWarnings(eval(exprs, envir = safe_env)),
     error = function(e) e
   )
   if (inherits(parsed, "error")) {
-    return(list(persons = NULL, error = conditionMessage(parsed)))
+    return(unreadable(conditionMessage(parsed)))
   }
   if (!inherits(parsed, "person")) {
-    return(list(
-      persons = NULL,
-      error = "Authors@R does not evaluate to a person() object"
-    ))
+    return(unreadable("Authors@R does not evaluate to a person() object"))
   }
-  list(persons = parsed, error = NULL)
+  # c() on a person and anything else, a list(person()) say, still returns a
+  # "person", with the stray value as an entry. R cannot read the authors from
+  # that ("subscript out of bounds"), and reading roles from it crashed here
+  # too.
+  fields <- c("given", "family", "role", "email", "comment")
+  well_formed <- vapply(
+    unclass(parsed),
+    function(e) {
+      is.list(e) &&
+        !inherits(e, "person") &&
+        !is.null(names(e)) &&
+        all(names(e) %in% fields)
+    },
+    logical(1)
+  )
+  if (!all(well_formed)) {
+    return(unreadable(paste0(
+      "entry ",
+      which(!well_formed)[[1L]],
+      " is not a person, so R cannot read the authors from it"
+    )))
+  }
+  list(persons = parsed, error = NULL, refused = refused)
+}
+
+# ---- Quoted names: what counts as bare --------------------------------------
+
+# The spans of a Title or Description that are not bare prose. The first three are
+# the spans CRAN's incoming spell check skips, as tools:::.check_package_CRAN_incoming
+# hands them to aspell: a single-quoted span, a function call written foo() or
+# pkg::foo(), and the target of <https://...>, <doi:...> or <arXiv:...> markup.
+# They depart from CRAN's patterns twice. An apostrophe before two digits that end
+# the word, as in '90s or '21, elides a year and opens no quote, which would
+# otherwise run to the next apostrophe and hide the words between; a quoted name
+# that starts with a digit ('4ti2', '3+3/PC') is still quoted. And the package in
+# a call may contain a dot (shiny.semantic::semanticPage()), where CRAN's takes
+# only letters and digits.
+#
+# The last three are checktor's. CRAN's quote pattern wants a blank or
+# punctuation after the closing quote, so a quoted name that takes a plural or
+# possessive s ('data.table's, 'ggplot2's) fails it although the name is quoted.
+# Double quotes enclose a quotation, such as the title of a book or article, and a
+# name inside one is part of the quotation; a name alone in double quotes is
+# lab_description_quoted_quotes()'s to report. And a name in a bare web address is
+# part of the address, not a mention.
+QUOTING_IGNORED_SPANS <- c(
+  quoted = "(?<=[ \t[:punct:]])'(?![0-9]{2}s?(?![[:alnum:]]))[^']*'(?=[ \t[:punct:]])",
+  call = "(?<=[ \t[:punct:]])([[:alnum:].]+::)?[[:alnum:]_.]*\\(\\)(?=[ \t[:punct:]])",
+  markup = "(?<=[<])(https?://|DOI:|doi:|arXiv:)[^>]+(?=[>])",
+  quoted_s = "(?<=[ \t[:punct:]])'(?![0-9]{2}s?(?![[:alnum:]]))[^']*'(?=s(?![[:alnum:]]))",
+  double_quoted = "(?<=[ \t[:punct:]])\"[^\"]*\"(?=[ \t[:punct:]])",
+  url = "(https?|ftp)://[^[:space:]<>]+"
+)
+
+# A field with every span above blanked to spaces, leaving the prose a
+# reader sees unquoted. The quoting checks search this, so a term inside a quoted
+# longer name ('R Markdown', 'JSON-stat', 'shiny.semantic') is not bare, and each
+# remaining occurrence is judged on its own. Blanking rather than deleting keeps
+# the words either side of a span apart, as aspell does.
+#
+# CRAN's patterns need a blank or punctuation either side of a quote. aspell gets
+# one by blanking the "Field:" tag and appending a blank to every line, so the
+# field is padded here. read.dcf() also joins a continuation line with a newline,
+# which the patterns do not count, so every run of whitespace becomes one blank
+# first; otherwise a quote that opens a continuation line would not be a quote.
+# A missing or empty field has no prose, and comes back empty rather than padded,
+# so an NA is never read as the word "NA".
+blank_ignored_spans <- function(text) {
+  empty <- is.na(text) | !nzchar(text)
+  text <- paste0(" ", gsub("[[:space:]]+", " ", text), " ", recycle0 = TRUE)
+  for (re in QUOTING_IGNORED_SPANS) {
+    hits <- gregexpr(re, text, perl = TRUE)
+    regmatches(text, hits) <- lapply(
+      regmatches(text, hits),
+      function(s) strrep(" ", nchar(s))
+    )
+  }
+  text[empty] <- ""
+  text
+}
+
+# Whether `name` still occurs in text returned by blank_ignored_spans(). A name
+# can carry regex metacharacters (C++, C#, data.table), so it is escaped, and it
+# must not match inside a larger token: Java in JavaScript, SQL in PostgreSQL. A
+# dot joins a token when a word character sits on its other side, so the shiny in
+# shiny.semantic is part of another package's name, while a full stop ending the
+# sentence still ends the name.
+has_bare_name <- function(blanked, name) {
+  pattern <- paste0(
+    "(?<![\\w+#])(?<!\\w\\.)",
+    escape_regex(name),
+    "(?![\\w+#]|\\.\\w)"
+  )
+  grepl(pattern, blanked, perl = TRUE)
+}
+
+# The quoting checks' shared loop: one finding per field and name that still
+# occurs bare once the ignored spans are blanked, in vocabulary order. Searching
+# the blanked text judges each occurrence on its own. Asking whether a literal
+# 'shiny' appeared anywhere let one quoted mention excuse every bare one, and
+# still reported the shiny inside a correctly quoted 'shiny.semantic'.
+bare_name_issues <- function(desc, names, finding) {
+  issues <- character(0)
+  for (field in c("Title", "Description")) {
+    text <- dcf_field(desc, field)
+    if (is.null(text) || is.na(text) || !nzchar(text)) {
+      next
+    }
+    unquoted <- blank_ignored_spans(text)
+    for (name in names) {
+      if (has_bare_name(unquoted, name)) {
+        issues <- c(issues, paste0(field, ": ", name, " ", finding))
+      }
+    }
+  }
+  issues
 }
 
 #' Diagnose Unquoted Software Names in DESCRIPTION
 #'
 #' Flags a package or external-software name in `Title`/`Description` that is not in single quotes, as Writing R Extensions requires.
+#'
+#' Each occurrence is judged on its own, so one quoted mention does not excuse a
+#' bare one elsewhere. A name is not bare inside a single-quoted span such as
+#' `'shiny.semantic'`, a `<https://...>` or `<doi:...>`, or a function call such
+#' as `purrr::map()`, which are the spans CRAN's own incoming spell check skips.
+#' Nor is it bare in a plain web address, or in a double-quoted quotation such as
+#' the title of a book. A name alone in double quotes, in either field, is
+#' reported by [lab_description_quoted_quotes()] instead.
 #'
 #' @section Source:
 #' [Writing R Extensions](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file),
@@ -207,9 +570,10 @@ lab_software_names <- function(
   # packages and external software" in single quotes, and CRAN enforces it for
   # package names, so an unquoted `ggplot2` or `shiny` is flagged here at policy.
   #
-  # PROGRAMMING LANGUAGES and markup names (Python, Java, SQL, HTML) live in their
-  # own policy check, `lab_language_names()` -- a language name and a package
-  # name are different kinds of thing, so they read as separate concerns. ("R"
+  # PROGRAMMING LANGUAGES (Python, Java) live in their own policy check,
+  # `lab_language_names()` -- a language name and a package name are different
+  # kinds of thing, so they read as separate concerns -- and format and markup
+  # names (JSON, HTML, SQL) in `lab_format_names()`, which runs on request. ("R"
   # itself is never flagged anywhere, in either form: no authority names it, and
   # both a bare R and a quoted 'R' clear CRAN, so neither is worth nagging about.)
   #
@@ -235,33 +599,7 @@ lab_software_names <- function(
       "WebAssembly"
     )
   )
-  issues <- character(0)
-
-  for (field in c("Title", "Description")) {
-    text <- desc[[field]]
-    if (is.null(text) || !nzchar(text)) {
-      next
-    }
-    for (name in software_names) {
-      # A name such as data.table is a regex if it is not escaped, where the dot
-      # would match any character and report the plain words "data table".
-      escaped <- escape_regex(name)
-      if (
-        grepl(paste0("\\b", escaped, "\\b"), text) &&
-          !grepl(paste0("'", escaped, "'"), text)
-      ) {
-        issues <- c(
-          issues,
-          paste0(
-            field,
-            ": ",
-            gsub("\\\\", "", name),
-            " should be in single quotes"
-          )
-        )
-      }
-    }
-  }
+  issues <- bare_name_issues(desc, software_names, "should be in single quotes")
 
   passed <- length(issues) == 0
   emit_issue_summary(
@@ -276,8 +614,8 @@ lab_software_names <- function(
 
 #' Diagnose Programming-Language Names in DESCRIPTION
 #'
-#' Flags a bare programming-language, markup, or statistical-computing name --
-#' `Python`, `Java`, `C++`, `SQL`, `HTML`, `MATLAB`, `SAS` and more -- in `Title`
+#' Flags a bare programming-language or statistical-computing name -- `Python`,
+#' `Java`, `JavaScript`, `Rust`, `MATLAB`, `SAS`, `Stata` and more -- in `Title`
 #' or `Description` that CRAN asks to see single-quoted. This is the language
 #' counterpart to [lab_software_names()]: both are policy-tier
 #' quoting checks, kept separate because a language name and a package name are
@@ -287,8 +625,21 @@ lab_software_names <- function(
 #' names (`C`, `Go`, `Swift`) are left out because they cannot be told from
 #' ordinary prose.
 #'
+#' Data, markup and query formats (`JSON`, `HTML`, `YAML`, `SQL`, `Markdown`,
+#' `LaTeX` and the like) and the languages CRAN packages write either way (`C++`,
+#' `Fortran`, `Tcl`) are not flagged here. A census of CRAN in September 2026
+#' found that packages accepted at new-package review in the previous 18 months
+#' wrote them bare 62% of the time, against 28% for the languages this check
+#' covers, so a bare one is not a policy finding. [lab_format_names()] reports them when you
+#' ask.
+#'
 #' A package can extend the list through `Config/checktor/language_names` in its own
 #' DESCRIPTION.
+#'
+#' Each occurrence is judged on its own, as in [lab_software_names()]: a term
+#' inside a quoted longer name such as `'MATLAB Runtime'` or `'AWS Python SDK'` is
+#' quoted, and so is one in a web address, a `<doi:...>` or a double-quoted book
+#' title.
 #'
 #' @section Source:
 #' [Writing R Extensions](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file),
@@ -302,7 +653,7 @@ lab_software_names <- function(
 #'   Defaults to reading it from `path`.
 #'
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @seealso [checktor()], [lab_software_names()].
+#' @seealso [checktor()], [lab_software_names()], [lab_format_names()].
 #' @export
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
@@ -316,45 +667,25 @@ lab_language_names <- function(path = ".", verbose = TRUE, desc = NULL) {
     "language_names",
     c(
       # general-purpose languages
-      "Python", "Java", "JavaScript", "TypeScript", "C++", "C#",
-      "Perl", "PHP", "Ruby", "Rust", "Fortran", "Julia", "Scala",
-      "Kotlin", "Haskell", "Lua", "Tcl",
+      "Python", "Java", "JavaScript", "TypeScript", "C#",
+      "Perl", "PHP", "Ruby", "Rust", "Julia", "Scala",
+      "Kotlin", "Haskell", "Lua",
       # statistical / numerical computing environments
-      "MATLAB", "SAS", "Stata", "SPSS", "Octave", "Mathematica",
-      # query, markup, typesetting and data formats
-      "SQL", "HTML", "CSS", "XML", "JSON", "YAML", "TOML",
-      "LaTeX", "TeX", "Markdown"
+      "MATLAB", "SAS", "Stata", "SPSS", "Octave", "Mathematica"
     )
   )
   # Single-letter names (C, D) and common English words (Go, Swift) are left out:
   # at policy severity their false positives would outweigh the catch. A package
   # that wants them can add them via Config/checktor/language_names.
-  issues <- character(0)
-
-  # A name may carry regex metacharacters ("C++", "C#") and must not match inside
-  # a larger token ("Java" in "JavaScript", "SQL" in "PostgreSQL"), so match the
-  # escaped name between non-name boundaries rather than with a plain word boundary.
-  esc <- escape_regex
-
-  for (field in c("Title", "Description")) {
-    text <- desc[[field]]
-    if (is.null(text) || !nzchar(text)) {
-      next
-    }
-    for (name in language_names) {
-      e <- esc(name)
-      bare <- paste0("(?<![\\w+#])", e, "(?![\\w+#])")
-      if (
-        grepl(bare, text, perl = TRUE) &&
-          !grepl(paste0("'", e, "'"), text, perl = TRUE)
-      ) {
-        issues <- c(
-          issues,
-          paste0(field, ": ", name, " should be in single quotes")
-        )
-      }
-    }
-  }
+  #
+  # Formats and the languages CRAN writes both ways (JSON, HTML, SQL, C++, Tcl, ...)
+  # live in lab_format_names(), on request: most accepted packages write them
+  # bare, so a bare one here would fail a clean package for nothing CRAN enforces.
+  #
+  # The same matcher as software_names: a term inside a quoted longer name
+  # ('AWS Python SDK', 'MATLAB Runtime') is quoted, and one quoted 'Python' no
+  # longer excuses a bare Python elsewhere in the field.
+  issues <- bare_name_issues(desc, language_names, "should be in single quotes")
 
   passed <- length(issues) == 0
   emit_issue_summary(
@@ -367,9 +698,86 @@ lab_language_names <- function(path = ".", verbose = TRUE, desc = NULL) {
   checktor_check_result(passed, issues, "Language names check")
 }
 
+#' Diagnose Bare Format and Markup Names in DESCRIPTION
+#'
+#' Flags a data, markup, typesetting or query format name -- `JSON`, `HTML`,
+#' `XML`, `CSS`, `YAML`, `TOML`, `Markdown`, `LaTeX`, `TeX` or `SQL` -- or one of
+#' the languages CRAN packages write either way (`C++`, `Fortran`, `Tcl`) that
+#' appears in `Title` or `Description` without single quotes. It runs only when
+#' you call it, for a maintainer who wants the quoting consistent. CRAN accepts
+#' these names bare, so a finding here never counts against a clean result.
+#'
+#' Occurrences are judged as in [lab_software_names()]: a name inside a quoted
+#' longer name such as `'R Markdown'` or `'JSON-stat'` is quoted, and so is one in
+#' a web address or a double-quoted span. A format name alone in double quotes,
+#' such as `"JSON"`, is therefore reported by no check, by design: double quotes
+#' are the wrong kind for a name, but CRAN accepts the name with no quotes at all,
+#' so [lab_description_quoted_quotes()] leaves it alone too. A package can extend
+#' the list through `Config/checktor/format_names` in its own DESCRIPTION.
+#'
+#' @section Source:
+#' [Writing R Extensions](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file)
+#' asks for single quotes around "other packages and external software", and a
+#' format is not software. A census of CRAN in September 2026 found that packages
+#' accepted at new-package review in the previous 18 months wrote these names bare
+#' 62% of the time, against 28% for the languages [lab_language_names()] covers, so
+#' this is a matter of style and sits at `opinion` tier. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to
+#' its source.
+#' @param path Character. Path to the package directory. Default: `"."`.
+#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
+#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
+#'   Defaults to reading it from `path`.
+#'
+#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
+#' @seealso [checktor()], [lab_language_names()].
+#' @export
+#' @examples
+#' pkg <- example_diagnose_scenario("description_examples/format_names_bad.txt",
+#'                                  show_content = FALSE)
+#' lab_format_names(pkg, verbose = FALSE)$issues
+lab_format_names <- function(path = ".", verbose = TRUE, desc = NULL) {
+  path <- find_package_root(path)
+  desc <- resolve_description(path, desc)
+  # Split out of language_names (#16). These are formats and specifications rather
+  # than software, or languages whose names CRAN packages write quoted and bare
+  # about equally, and a census of recently accepted packages found most of them
+  # bare. C, Go and the other names that read as ordinary words stay out here too.
+  format_names <- check_vocab(
+    checktor_config(path),
+    "format_names",
+    c(
+      # markup, typesetting and data formats
+      "HTML", "CSS", "XML", "JSON", "YAML", "TOML", "Markdown", "LaTeX", "TeX",
+      # query language
+      "SQL",
+      # languages written both ways on CRAN
+      "C++", "Fortran", "Tcl"
+    )
+  )
+  issues <- bare_name_issues(desc, format_names, "is not in single quotes")
+
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues,
+    verbose,
+    "Format and markup names are single-quoted",
+    "Format and markup names written without single quotes",
+    "Treatment: Optional. CRAN accepts these names bare; quote them only to keep the quoting consistent throughout the Title and Description",
+    level = "warning"
+  )
+  checktor_check_result(passed, issues, "Format names check")
+}
+
 #' Diagnose Unexplained Acronyms in DESCRIPTION
 #'
 #' Flags an acronym in `Description` that is never spelled out. A parenthetical gloss in either order counts as explained.
+#'
+#' A name in single quotes, straight or typographic, is not read as an acronym,
+#' so `'YAML'` or `'MATLAB'` written as [lab_language_names()] and
+#' [lab_format_names()] ask is not reported here. Nor is anything inside a web
+#' address, a `<doi:...>`, a function call or a quotation in double quotes,
+#' straight or typographic, such as the title of an article.
 #'
 #' @section Source:
 #' The CRAN Cookbook covers this under
@@ -398,11 +806,37 @@ lab_acronyms <- function(
   path <- find_package_root(path)
   desc <- resolve_description(path, desc)
   text <- desc[["Description"]]
-  if (is.null(text) || !nzchar(text)) {
+  if (is.null(text) || is.na(text) || !nzchar(text)) {
     return(checktor_check_result(TRUE, character(0), "Acronyms check"))
   }
 
-  acronyms <- regmatches(text, gregexpr("\\b[A-Z]{2,6}\\b", text))[[1]]
+  # Candidates come from the prose a reader sees unquoted, with the same spans
+  # blanked that the quoting checks skip: single-quoted names, web addresses,
+  # DOIs and function calls. language_names and format_names ask for 'MATLAB' and
+  # 'YAML' in single quotes, so reading a quoted name as an unexplained acronym
+  # had checktor contradict itself whichever way the user wrote it.
+  #
+  # Typographic quotes (U+2018/U+2019 and U+201C/U+201D) are skipped too, here
+  # only. The quoting checks keep to CRAN's ASCII pattern, but an acronym in curly
+  # quotes has been quoted as surely as 'GLMM' or "GLMM", and the gloss detection
+  # below already reads a curly closing quote. A curly quote follows the rules of
+  # the straight one: it opens after a blank or punctuation and not at an elided
+  # year (\u201890s), and it closes where a quote ends the word or, for a single
+  # quote, takes a plural or possessive s, so the apostrophe in package\u2019s
+  # closes nothing. Word processors may curl one side only, so a straight quote
+  # can close a curly one (\u2018CFO').
+  typographic <- c(
+    single = paste0(
+      "(?<=[ \t[:punct:]])\u2018(?![0-9]{2}s?(?![[:alnum:]]))",
+      "[^\u2018\u2019]*?['\u2019](?=[ \t[:punct:]]|s(?![[:alnum:]]))"
+    ),
+    double = "(?<=[ \t[:punct:]])\u201c[^\u201c\u201d]*?[\"\u201d](?=[ \t[:punct:]])"
+  )
+  prose <- blank_ignored_spans(text)
+  for (re in typographic) {
+    prose <- gsub(re, " ", prose, perl = TRUE)
+  }
+  acronyms <- regmatches(prose, gregexpr("\\b[A-Z]{2,6}\\b", prose))[[1]]
   # "CMD" is here because it is not an acronym anyone expands, it is part of the
   # literal command name `R CMD check`, which turns up in any Description that
   # talks about the standard toolchain.
@@ -417,6 +851,8 @@ lab_acronyms <- function(
       "PDF",
       "XML",
       "JSON",
+      "YAML",
+      "TOML",
       "URL",
       "HTTP",
       "HTTPS",
@@ -482,6 +918,14 @@ lab_acronyms <- function(
 #' Diagnose the Authors@R Field
 #'
 #' Flags a missing `Authors@R`, and an unfilled `usethis` template such as `person("First", "Last", ...)`, which is a hard CRAN rejection that `R CMD check` says nothing about.
+#'
+#' The field is evaluated without running any code it contains: only
+#' `person()`, `as.person()`, `c()`, `list()`, `paste()`, `paste0()` and `(`
+#' resolve, the calls R's own reader allows from R 4.6.0 on. Every other call
+#' in the field is reported, since `R CMD build` refuses it as a malformed
+#' `Authors@R` field. That includes a namespaced `utils::person()` and a
+#' function in parentheses, as in `(c)(...)`, which are still read so the
+#' other checks see their roles.
 #'
 #' @section Source:
 #' The [CRAN Repository Policy](https://cran.r-project.org/web/packages/policies.html)
@@ -572,6 +1016,30 @@ lab_authors <- function(path = ".", verbose = TRUE, desc = NULL) {
   #     reviewer rejection: a person with no name, a person with no role, or no
   #     maintainer (cre) at all. Parsed with public R via parse_authors_at_r().
   pa <- parse_authors_at_r(desc)
+  # From R 4.6.0 on, R's own reader allows only person(), as.person(), c(),
+  # list(), paste(), paste0() and `(` in the field, each called by its bare
+  # name, and R CMD build stops on anything else as a "Malformed Authors@R
+  # field". Every call it would refuse is named in one issue, whether the
+  # parser could still read the field (utils::person(), (c)(...)) or not.
+  refused <- unique(pa$refused)
+  if (length(refused) > 0L) {
+    n <- length(refused)
+    named <- if (n == 1L) {
+      refused
+    } else {
+      paste(paste(refused[-n], collapse = ", "), "and", refused[[n]])
+    }
+    issues <- c(
+      issues,
+      paste0(
+        "Authors@R calls ",
+        named,
+        ", which R CMD build refuses from R 4.6.0 on as a malformed field: ",
+        "call only person(), as.person(), c(), list(), paste() and paste0(), ",
+        "by their bare names"
+      )
+    )
+  }
   if (!is.null(pa$error)) {
     issues <- c(issues, paste0("Authors@R does not parse: ", pa$error))
   } else if (!is.null(pa$persons)) {
@@ -891,6 +1359,9 @@ ror_id_is_valid <- function(x) {
 #'
 #' Validates ORCID and ROR identifiers carried in `Authors@R` person `comment` fields, mirroring CRAN's `bad_ORCID_iDs` and `bad_ROR_IDs` incoming checks. ORCID iDs are checked against their checksum, ROR IDs against their shape.
 #'
+#' An `Authors@R` that cannot be read has no identifiers to judge, so the check
+#' is reported as skipped and [lab_authors()] reports the field.
+#'
 #' @section Source:
 #' The [CRAN incoming check](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages)
 #' run by `R CMD check --as-cran` NOTEs a malformed ORCID or ROR
@@ -917,6 +1388,14 @@ lab_identifier_format <- function(
   path <- find_package_root(path)
   desc <- resolve_description(path, desc)
   pa <- parse_authors_at_r(desc)
+  # A field R cannot read has no identifiers to judge. lab_authors() reports the
+  # field itself, so this check says it did not run rather than passing it.
+  if (!is.null(pa$error)) {
+    return(checktor_skipped_result(
+      "Author identifier check",
+      "Authors@R could not be read"
+    ))
+  }
   issues <- character(0)
   if (!is.null(pa$persons)) {
     persons <- pa$persons
@@ -1031,13 +1510,15 @@ lab_description_length <- function(
   )
 }
 
-# Double quotes in Description should only enclose publication titles.
-# Heuristic: flag any pair of double quotes whose content is short (< 80 chars)
-# and contains no title-case multi-word pattern (very common indicator of a
-# colloquial phrase like "doctor" vs "A Theory of Everything: Foo Bar").
+# Double quotes in the Title and Description should only enclose quotations.
 #' Diagnose Double-Quoted Software Names
 #'
-#' Flags a software name in double quotes. Writing R Extensions reserves double quotes for quotations and requires single quotes for software names, so scare-quoted jargon is left alone.
+#' Flags a software name in double quotes in `Title` or `Description`. Writing R Extensions reserves double quotes for quotations and requires single quotes for software names, so scare-quoted jargon is left alone. A lower-case span matches only a name written in lower case, such as `shiny`, so an English `"rust"` or a parameter `"r"` is not read as `Rust` or `R`.
+#'
+#' The names are those [lab_software_names()] and [lab_language_names()] ask to
+#' see in single quotes, and a few more. Format names such as `JSON` or `HTML`,
+#' which CRAN accepts bare, are not among them, so one in double quotes is not
+#' reported; [lab_format_names()] reports them bare, on request.
 #'
 #' @section Source:
 #' [Writing R Extensions](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file),
@@ -1064,16 +1545,18 @@ lab_description_quoted_quotes <- function(
 ) {
   path <- find_package_root(path)
   desc <- resolve_description(path, desc)
-  text <- desc[["Description"]]
-  if (is.null(text) || !nzchar(text)) {
-    return(checktor_check_result(
-      TRUE,
-      character(0),
-      "Description double-quotes check"
-    ))
+  # Both fields. lab_software_names() and lab_language_names() read a
+  # double-quoted span in either as a quotation, so a name alone in double quotes
+  # in the Title is reported here or nowhere.
+  quoted <- list()
+  for (field in c("Title", "Description")) {
+    text <- desc[[field]]
+    if (is.null(text) || is.na(text) || !nzchar(text)) {
+      next
+    }
+    quoted[[field]] <- regmatches(text, gregexpr("\"[^\"]*\"", text))[[1]]
   }
-  quoted <- regmatches(text, gregexpr("\"[^\"]*\"", text))[[1]]
-  if (length(quoted) == 0L) {
+  if (length(unlist(quoted)) == 0L) {
     return(checktor_check_result(
       TRUE,
       character(0),
@@ -1090,28 +1573,35 @@ lab_description_quoted_quotes <- function(
   # designs" that appear on CRAN today. Those ARE the quotations double quotes are
   # reserved for. Only flag a double-quoted name we can actually recognise as
   # software.
-  extra_names <- checktor_config(path)$software_names
+  # The names a package adds to either quoting check count too, since those checks
+  # leave a name alone in double quotes to this one.
+  config <- checktor_config(path)
+  extra_names <- c(config$software_names, config$language_names)
   issues <- character(0)
-  for (q in quoted) {
-    body <- trimws(gsub("^\"|\"$", "", q))
-    if (is_software_name(body, extra_names)) {
-      issues <- c(
-        issues,
-        paste0(
-          "Software name in double quotes: ",
-          q,
-          " (Writing R Extensions reserves double quotes for quotations; ",
-          "use single quotes for software and package names)"
+  for (field in names(quoted)) {
+    for (q in quoted[[field]]) {
+      body <- trimws(gsub("^\"|\"$", "", q))
+      if (is_software_name(body, extra_names)) {
+        issues <- c(
+          issues,
+          paste0(
+            field,
+            ": ",
+            q,
+            " is a software name in double quotes (Writing R Extensions ",
+            "reserves double quotes for quotations; use single quotes for ",
+            "software and package names)"
+          )
         )
-      )
+      }
     }
   }
   passed <- length(issues) == 0L
   emit_issue_summary(
     issues,
     verbose,
-    "Description double-quote usage looks OK",
-    "Description double-quotes a software name",
+    "Title and Description double-quote usage looks OK",
+    "Title or Description double-quotes a software name",
     "Treatment: Use single quotes for software and package names",
     level = "warning"
   )
@@ -1121,19 +1611,30 @@ lab_description_quoted_quotes <- function(
 # Software and package names that Writing R Extensions requires to be in SINGLE
 # quotes. Deliberately a closed list: guessing from shape would re-introduce the
 # false positives on scare-quoted English that this check used to produce.
+#
+# It holds every name lab_software_names() and lab_language_names() look for by
+# default. Those read a double-quoted span as a quotation, so a name alone in
+# double quotes is reported here or nowhere. The names lab_format_names() covers
+# (JSON, HTML, SQL, C++, ...) are not here: CRAN accepts them bare (#16), so double
+# quotes around one are not a policy finding either.
 SOFTWARE_NAMES <- c(
   "R",
   "Python",
   "Java",
   "C",
-  "C++",
-  "Fortran",
   "JavaScript",
-  "SQL",
-  "HTML",
-  "CSS",
-  "XML",
-  "JSON",
+  "TypeScript",
+  "C#",
+  "Perl",
+  "PHP",
+  "Ruby",
+  "Rust",
+  "Scala",
+  "Kotlin",
+  "Haskell",
+  "Lua",
+  "Octave",
+  "Mathematica",
   "Excel",
   "Stata",
   "SAS",
@@ -1144,12 +1645,15 @@ SOFTWARE_NAMES <- c(
   "Git",
   "GitHub",
   "Quarto",
-  "LaTeX",
   "Pandoc",
   "shiny",
   "ggplot2",
   "dplyr",
   "tidyr",
+  "purrr",
+  "tibble",
+  "plotly",
+  "tidyverse",
   "knitr",
   "rmarkdown",
   "Rcpp",
@@ -1166,11 +1670,20 @@ SOFTWARE_NAMES <- c(
   "Shinylive"
 )
 
+# Case is ignored, so "Matlab" is MATLAB and "Shiny" is shiny, except in one
+# direction: a name is a proper noun, and a span in lower case is an ordinary word
+# or a symbol unless the name itself is written in lower case. An English "rust",
+# BFF's hyperparameter "r" and R2WinBUGS's class "bugs" are not Rust, R and BUGS,
+# and at policy tier reading them as such was a false finding.
 is_software_name <- function(x, extra = character(0)) {
   if (!nzchar(x)) {
     return(FALSE)
   }
-  any(tolower(x) == tolower(c(SOFTWARE_NAMES, extra)))
+  names <- c(SOFTWARE_NAMES, extra)
+  if (identical(x, tolower(x))) {
+    names <- names[names == tolower(names)]
+  }
+  any(tolower(x) == tolower(names))
 }
 
 # Title should not start with "A ", "An ", or "The ".
@@ -1296,13 +1809,22 @@ lab_title_redundant_phrases <- function(
   checktor_check_result(passed, issues, "Title redundant-phrases check")
 }
 
-# Require at least one [cph] role in Authors@R.
-#' Diagnose a Missing Copyright-Holder Role
+# Require a named copyright holder: a [cph] role in Authors@R, or a Copyright
+# field.
+#' Diagnose a Missing Copyright Holder
 #'
-#' Flags an `Authors@R` with no `[cph]` role. It runs only when you call it:
-#' authors who are natural persons hold copyright by default, so most packages
-#' need no `cph` role at all. It is worth running when an organisation owns the
+#' Flags a package that names no copyright holder: no person in `Authors@R` has
+#' the `cph` role and there is no `Copyright` field. It runs only when you call
+#' it: authors who are natural persons hold copyright by default, so most
+#' packages need neither. It is worth running when an organisation owns the
 #' copyright, since that is the case the role exists for.
+#'
+#' The roles are read from the parsed `person()` object, never from the text of
+#' the field, so an address such as `cph@example.com` is not a role. The field
+#' is parsed without running any code it contains, as in [lab_authors()]. A
+#' package with no `Authors@R` is read from its legacy `Author` field instead,
+#' where only a role written in square brackets, as in `ACME Corporation
+#' [cph]`, counts, in any case, and not one inside a parenthesised comment.
 #'
 #' @section Source:
 #' [utils::person()] documents `"cph"` as the role for "all copyright holders",
@@ -1326,22 +1848,72 @@ lab_title_redundant_phrases <- function(
 lab_cph_role <- function(path = ".", verbose = TRUE, desc = NULL) {
   path <- find_package_root(path)
   desc <- resolve_description(path, desc)
-  authors <- desc[["Authors@R"]]
-  if (is.null(authors) || !nzchar(authors)) {
-    return(checktor_check_result(FALSE, "Authors@R missing", "cph role check"))
+  # CRAN asks only that ownership be clear, and a Copyright field says so as
+  # plainly as a cph role does. The help and the treatment both offered it,
+  # while the check itself looked only at Authors@R and failed a package that
+  # took the advice.
+  copyright <- dcf_field(desc, "Copyright")
+  has_copyright <- length(copyright) == 1L &&
+    !is.na(copyright) &&
+    nzchar(trimws(copyright))
+
+  issues <- character(0)
+  if (!has_copyright) {
+    authors <- dcf_field(desc, "Authors@R")
+    author <- dcf_field(desc, "Author")
+    filled <- function(x) length(x) == 1L && !is.na(x) && nzchar(trimws(x))
+    if (!filled(authors) && filled(author)) {
+      # With no Authors@R, R reads the authors from the legacy Author field,
+      # which writes each person's roles in square brackets:
+      # "Ann Bee [aut, cre], ACME Corporation [cph]". Only a role in brackets
+      # counts, so an address or a name containing "cph" does not.
+      # A comment follows the roles in parentheses, "Ann Bee [aut] (ORCID)",
+      # so drop the parenthesised spans, innermost first, before looking: a
+      # bracket quoted in a comment is not a role. The code is matched in any
+      # case, as a person writing the field by hand might type [CPH].
+      text <- author
+      repeat {
+        stripped <- gsub("\\([^()]*\\)", "", text)
+        if (identical(stripped, text)) {
+          break
+        }
+        text <- stripped
+      }
+      brackets <- regmatches(text, gregexpr("\\[[^]]*\\]", text))[[1L]]
+      roles <- trimws(unlist(strsplit(gsub("^\\[|\\]$", "", brackets), ",")))
+      if (!("cph" %in% tolower(roles))) {
+        issues <- "No [cph] role in Author and no Copyright field"
+      }
+    } else if (!filled(authors)) {
+      issues <- "No Authors@R and no Copyright field"
+    } else {
+      # Read the roles from the parsed person() object. A grep for "cph" over
+      # the raw field matched it anywhere, so an address like cph@example.com
+      # or a comment naming the role passed a field that gives it to nobody.
+      # The parser is the one lab_authors() uses, which never runs the field's
+      # code.
+      pa <- parse_authors_at_r(desc)
+      if (!is.null(pa$error)) {
+        issues <- paste0("Authors@R does not parse: ", pa$error)
+      } else {
+        persons <- pa$persons
+        roles <- unlist(lapply(seq_along(persons), function(i) persons[i]$role))
+        if (!("cph" %in% roles)) {
+          issues <- "No [cph] role in Authors@R and no Copyright field"
+        }
+      }
+    }
   }
-  has_cph <- grepl("\\bcph\\b", authors, perl = TRUE)
-  issues <- if (has_cph) {
-    character(0)
-  } else {
-    "Authors@R lacks any [cph] (copyright holder) role"
-  }
-  passed <- has_cph
+
+  passed <- length(issues) == 0L
   emit_issue_summary(
     issues,
     verbose,
-    "{.code Authors@R} includes a {.code [cph]} role",
-    "{.code Authors@R} has no {.code [cph]} (copyright holder)",
+    paste(
+      "A copyright holder is named in {.code Authors@R}, {.code Author} or",
+      "{.code Copyright}"
+    ),
+    "No copyright holder is named",
     "Treatment: If an organisation owns the copyright, give it role 'cph' or name it in a Copyright field. Authors who are natural persons hold copyright already",
     level = "warning"
   )
@@ -1465,9 +2037,10 @@ lab_description_function_quotes <- function(
 
 `%||%` <- function(a, b) if (is.null(a)) b else a
 
-# `desc` is a named character vector from read.dcf(). `desc[["Nope"]]` on one of
-# those is a subscript error, not NULL, so any check that reads a field it does
-# not itself require must go through this.
+# `desc` is a named list from read_description() or resolve_description(), or a
+# named character vector. `desc[["Nope"]]` on a vector is a subscript error, not
+# NULL, so any code that may be handed one and reads a field it does not itself
+# require must go through this.
 dcf_field <- function(desc, field) {
   if (!field %in% names(desc)) {
     return(NULL)
@@ -1808,7 +2381,8 @@ lab_license_year <- function(path, verbose) {
 #' Spell-checks the `Title` and `Description` fields with [utils::aspell()],
 #' mirroring the aspell pass in CRAN's incoming check. It reports only words that
 #' are not already accepted somewhere: a package `.aspell/` dictionary,
-#' `inst/WORDLIST`, or a `Config/checktor/acronyms` or `software_names` field.
+#' `inst/WORDLIST`, or a `Config/checktor/acronyms`, `software_names`,
+#' `language_names` or `format_names` field.
 #'
 #' @details
 #' The check needs a spell-check backend (`aspell` or `hunspell`) on the system.
@@ -1891,9 +2465,9 @@ lab_spelling <- function(path = ".", verbose = TRUE, desc = NULL) {
 
 # Words a package has already declared acceptable, gathered from every mechanism
 # a maintainer might use: an aspell `.aspell/*.rds` dictionary, the spelling
-# package's `inst/WORDLIST`, and checktor's own `Config/checktor` acronyms and
-# software_names. Subtracting these keeps lab_spelling silenceable no matter
-# which one the package reaches for.
+# package's `inst/WORDLIST`, and every one of checktor's own `Config/checktor`
+# vocabularies. Subtracting these keeps lab_spelling silenceable no matter which
+# one the package reaches for.
 spelling_accepted_words <- function(path) {
   words <- character(0)
 
@@ -1913,7 +2487,13 @@ spelling_accepted_words <- function(path) {
   }
 
   cfg <- checktor_config(path)
-  words <- c(words, cfg$acronyms, cfg$software_names)
+  words <- c(
+    words,
+    cfg$acronyms,
+    cfg$software_names,
+    cfg$language_names,
+    cfg$format_names
+  )
 
   unique(words[nzchar(words)])
 }

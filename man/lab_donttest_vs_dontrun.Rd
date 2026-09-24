@@ -17,6 +17,13 @@ lab_donttest_vs_dontrun(path, verbose = TRUE)
 \description{
 Flags \verb{\dontrun{}} around code that is merely slow. \verb{\donttest{}} is the right wrapper, since it still runs under \code{--run-donttest}.
 }
+\details{
+A slow block that uses a Suggested package without a guard is left alone:
+\verb{R CMD check --as-cran} runs \verb{\donttest{}} code, so after the move
+\code{\link[=lab_suggested_in_examples]{lab_suggested_in_examples()}} would report it. Each \verb{\dontrun{}} block is
+judged on its own, so such a block does not hold back the advice for another
+that is only slow.
+}
 \section{Source}{
 
 The CRAN Cookbook covers the distinction under

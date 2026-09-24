@@ -14,6 +14,10 @@ diagnose_description_issues(path = ".", verbose = TRUE)
 \value{
 List containing one named element per check. Each element is a list with at
 least \code{passed}, \code{issues}, and \code{message} (see \code{\link[=checktor_check_result]{checktor_check_result()}}).
+When the \code{DESCRIPTION} is missing or R cannot read it, \code{description_file}
+fails, and every check that reads the parsed fields, registered ones
+included, is reported as skipped with the reason "DESCRIPTION could not be
+read", since it has nothing to examine.
 }
 \description{
 Runs diagnostics against the package DESCRIPTION file. Fields are parsed

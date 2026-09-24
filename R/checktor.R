@@ -67,7 +67,8 @@
 #'   `metadata$suppressed`, while a `disable`d check is removed entirely and
 #'   never counted there.
 #' - `Config/checktor/software_names`, `Config/checktor/language_names`,
-#'   `Config/checktor/acronyms`: names appended to those checks' vocabularies.
+#'   `Config/checktor/format_names`, `Config/checktor/acronyms`: names appended
+#'   to those checks' vocabularies.
 #'
 #' @seealso
 #' [health_report()] to generate detailed reports, [prescribe()] for treatment
@@ -364,7 +365,7 @@ package_label <- function(path) {
   desc <- file.path(path, "DESCRIPTION")
   if (file.exists(desc)) {
     nm <- tryCatch(
-      unname(read.dcf(desc, fields = "Package")[1, 1]),
+      unname(read_dcf_quietly(desc, fields = "Package")[1, 1]),
       error = function(e) NA_character_
     )
     if (!is.na(nm) && nzchar(nm)) return(nm)

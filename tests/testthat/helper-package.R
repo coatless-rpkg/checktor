@@ -116,7 +116,8 @@ write_pkg <- function(
 # the top of a test file so that neither shuffling a file nor moving a test can
 # separate a test from its fixture.
 
-rd_pkg <- function(example, envir = parent.frame()) {
+# `...` goes to write_pkg(), e.g. `extra = "Suggests: dplyr"`.
+rd_pkg <- function(example, ..., envir = parent.frame()) {
   pkg <- make_temp_dir(envir = envir)
   write_pkg(
     pkg,
@@ -125,7 +126,8 @@ rd_pkg <- function(example, envir = parent.frame()) {
         "\\name{f}", "\\alias{f}", "\\title{F}", "\\description{d}",
         "\\value{x}", "\\examples{", example, "}"
       )
-    )
+    ),
+    ...
   )
   pkg
 }
@@ -157,6 +159,33 @@ tiered_pkg <- function(envir = parent.frame()) {
     description = "Too short.",
     r_code = "f <- function() {\n  set.seed(42)\n  x <- T\n  x\n}"
   )
+  pkg
+}
+
+# A package whose DESCRIPTION R cannot read: the last line is neither a field nor
+# an indented continuation, so read.dcf(), and with it R CMD build and INSTALL,
+# stops on it.
+unparseable_pkg <- function(envir = parent.frame()) {
+  pkg <- make_temp_dir(envir = envir)
+  write_pkg(pkg, extra = "this line is not a field")
+  pkg
+}
+
+# A package whose DESCRIPTION is there but cannot be opened: a directory in its
+# place, or a file nobody may read. The mode is put back before the directory is
+# removed, since withr runs the deferred calls last in, first out.
+unopenable_pkg <- function(kind = c("directory", "no_permission"), envir = parent.frame()) {
+  kind <- match.arg(kind)
+  pkg <- make_temp_dir(envir = envir)
+  write_pkg(pkg)
+  desc <- file.path(pkg, "DESCRIPTION")
+  if (kind == "directory") {
+    unlink(desc)
+    dir.create(desc)
+  } else {
+    Sys.chmod(desc, "000")
+    withr::defer(Sys.chmod(desc, "644"), envir = envir)
+  }
   pkg
 }
 

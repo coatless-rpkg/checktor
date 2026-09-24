@@ -24,10 +24,10 @@ Sets session-wide defaults for \code{\link[=checktor]{checktor()}} behavior. Sub
 \code{getOption()}.
 }
 \examples{
-# Save defaults so we can restore them after the example runs
-old <- options(checktor.verbose = NULL, checktor.progress = NULL)
-on.exit(options(old), add = TRUE)
-
-configure_doctor(verbose_default = FALSE)
+# configure_doctor() returns the options it replaced
+old <- configure_doctor(verbose_default = FALSE)
 getOption("checktor.verbose")
+
+# Put them back
+options(old)
 }

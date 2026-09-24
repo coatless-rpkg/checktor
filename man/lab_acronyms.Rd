@@ -20,6 +20,13 @@ Defaults to reading it from \code{path}.}
 \description{
 Flags an acronym in \code{Description} that is never spelled out. A parenthetical gloss in either order counts as explained.
 }
+\details{
+A name in single quotes, straight or typographic, is not read as an acronym,
+so \code{'YAML'} or \code{'MATLAB'} written as \code{\link[=lab_language_names]{lab_language_names()}} and
+\code{\link[=lab_format_names]{lab_format_names()}} ask is not reported here. Nor is anything inside a web
+address, a \verb{<doi:...>}, a function call or a quotation in double quotes,
+straight or typographic, such as the title of an article.
+}
 \section{Source}{
 
 The CRAN Cookbook covers this under

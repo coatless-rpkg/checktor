@@ -6,6 +6,7 @@ test_that("checktor_config(): splits and trims Config/checktor/* fields", {
     pkg,
     extra = c(
       "Config/checktor/software_names: brms, cmdstanr",
+      "Config/checktor/format_names: GeoJSON, NDJSON",
       "Config/checktor/acronyms: MCMC,GLMM",
       "Config/checktor/disable: news_file",
       "Config/checktor/allow: urls:README.md, temp_cleanup"
@@ -13,6 +14,7 @@ test_that("checktor_config(): splits and trims Config/checktor/* fields", {
   )
   cfg <- checktor_config(pkg)
   expect_equal(cfg$software_names, c("brms", "cmdstanr"))
+  expect_equal(cfg$format_names, c("GeoJSON", "NDJSON"))
   expect_equal(cfg$acronyms, c("MCMC", "GLMM"))
   expect_equal(cfg$disable, "news_file")
   expect_equal(cfg$allow, c("urls:README.md", "temp_cleanup"))
@@ -23,6 +25,7 @@ test_that("checktor_config(): returns empty vectors when nothing is set", {
   write_pkg(pkg) # no Config/checktor/* fields
   cfg <- checktor_config(pkg)
   expect_equal(cfg$software_names, character(0))
+  expect_equal(cfg$format_names, character(0))
   expect_equal(cfg$allow, character(0))
 
   bare <- make_temp_dir() # no DESCRIPTION at all

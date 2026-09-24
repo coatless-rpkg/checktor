@@ -186,11 +186,23 @@ issues.checktor_results <- function(x, ...) {
 
 #' Status predicates for checktor results
 #'
+#' These ask the question a verdict asks: did a check fail? `passed()` means
+#' "did not fail", so a check that did not run, such as `url_liveness` away
+#' from the console, is `TRUE` there. A skipped check cannot fail a verdict,
+#' and `is_healthy()`, `failed_checks()` and `n_failed_checks()` treat it the
+#' same way.
+#'
+#' [tidy()][tidy.checktor_results] answers a different question. It gives each
+#' check one state, so the same skipped check has `passed = FALSE` and
+#' `skipped = TRUE` there. To tell a pass from a skip, use `tidy()` or
+#' [summary()][summary.checktor_results].
+#'
 #' @param x A `checktor_results`, `checktor_category_result`, or
 #'   `checktor_check_result` object.
 #' @param ... Unused.
-#' @return `passed()`: logical — a single value for a check, a named logical by
-#'   check for a category, and a named logical by category for results.
+#' @return `passed()`: logical, `TRUE` for a check that did not fail, a skipped
+#'   one included. It is a single value for a check, a named logical by check
+#'   for a category, and a named logical by category for results.
 #'   `is_healthy()`: a single logical. `n_issues()` / `n_failed_checks()`:
 #'   integer counts. `failed_checks()`: character vector of failing check names
 #'   (qualified `"category.check"` at the results level).
@@ -310,19 +322,19 @@ failed_checks.checktor_results <- function(x, ...) {
       stringsAsFactors = FALSE
     )
   } else {
+    # One state per check, read the way summary() and print() read it. A skipped
+    # check keeps `$passed = TRUE` so it cannot fail a verdict, and copying that
+    # field here made every check that sat out a pass as well as a skip.
+    status <- vapply(
+      check_names,
+      function(nm) check_status(cat[[nm]]),
+      character(1)
+    )
     out <- data.frame(
       check = check_names,
       severity = check_severity(check_names),
-      passed = vapply(
-        check_names,
-        function(nm) isTRUE(cat[[nm]]$passed),
-        logical(1)
-      ),
-      skipped = vapply(
-        check_names,
-        function(nm) isTRUE(cat[[nm]]$skipped),
-        logical(1)
-      ),
+      passed = status == "passed",
+      skipped = status == "skipped",
       n_issues = vapply(
         check_names,
         function(nm) length(cat[[nm]]$issues),
@@ -359,8 +371,12 @@ failed_checks.checktor_results <- function(x, ...) {
 #' @param ... Unused.
 #' @return A `data.frame` with one row per check: `category` (results level
 #'   only), `check`, `severity`, `passed`, `skipped`, `n_issues`, `message`.
-#'   `skipped` marks a check that did not run, such as the URL fetch away from
-#'   the console, so it never reads as one that passed.
+#'   `passed` is `TRUE` for a check that ran and found nothing. `skipped` marks
+#'   a check that did not run, such as the URL fetch away from the console, and
+#'   such a check is never `passed`. A check that failed is neither, so
+#'   `!passed & !skipped` picks out the failures, and the three counts match
+#'   [summary()][summary.checktor_results]. [passed()] asks only whether a
+#'   check failed, so it is `TRUE` for a skipped check that is `FALSE` here.
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)

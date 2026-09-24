@@ -17,6 +17,22 @@ lab_network_operations(path, verbose = TRUE)
 \description{
 Flags network access in code or examples that runs without a guard.
 }
+\details{
+An example is read as parsed R, so a function named in a comment, a string or
+an Rd \verb{\%} comment is not a call. A request counts as guarded when it sits in
+\verb{\dontrun{}} or \verb{\donttest{}}, or in the branch of an \code{if} whose condition
+confines it to a connection or a session: \code{curl::has_internet()},
+\code{pingr::is_online()}, \code{capabilities("libcurl")} or \code{interactive()}, including
+roxygen's \verb{@examplesIf} with any of them. Only a guard that encloses the call
+excuses it, and a guard kept in a variable counts only when it is assigned in
+the same function and on every path to the test. A request function handed to
+something that calls it, as in \code{lapply(urls, download.file)},
+\code{purrr::map(reqs, httr2::req_perform)}, \code{do.call(httr::GET, args)} or
+\code{do.call("download.file", args)}, is a request too. Named anywhere else, as in
+\code{args(download.file)} or a mock that redefines it, it is not. Neither is a
+helper from a network package that only builds a request, such as
+\code{curl::form_file()}.
+}
 \section{Source}{
 
 The \href{https://cran.r-project.org/web/packages/policies.html}{CRAN Repository Policy}
@@ -27,9 +43,9 @@ source.
 }
 
 \examples{
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("network_examples/bad_network_example.Rd",
                                  show_content = FALSE)
-lab_network_operations(pkg, verbose = FALSE)$passed
+lab_network_operations(pkg, verbose = FALSE)$issues
 }
 \seealso{
 \code{\link[=checktor]{checktor()}}, which runs this and every other check.

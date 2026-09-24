@@ -766,7 +766,7 @@ lab_home_writing <- function(path, verbose = TRUE, parsed = NULL) {
     collapse = " or "
   )
 
-  # An argument resolves to the user's home if it contains a `~`-rooted literal
+  # A destination resolves to the user's home if it contains a `~`-rooted literal
   # anywhere, or reads HOME / USERPROFILE from the environment. STR_CONST text
   # retains its quotes, hence the "~ / '~ alternation.
   home_pred <- paste0(
@@ -778,12 +778,45 @@ lab_home_writing <- function(path, verbose = TRUE, parsed = NULL) {
     "]"
   )
 
-  xpath <- sprintf(
-    "//SYMBOL_FUNCTION_CALL[%s][parent::expr/parent::expr[%s]]",
-    write_pred,
-    home_pred
-  )
+  # Only the destination says where a write lands. Searching the whole call
+  # reported `writeLines(normalizePath("~"), file)`, where the home path is the
+  # text being written and the caller supplies the file, and `file.copy("~/x",
+  # dest)`, which reads from home. write_destination() is how lab_file_operations()
+  # finds the destination, so the two checks agree on which argument it is. A call
+  # with none, such as cat() without `file =`, writes to the console.
+  #
+  # A destination rooted at a formal whose default is a home path, as in
+  # `function(x, path = "~/x.txt") writeLines(x, path)`, writes there whenever
+  # the caller leaves it out. A default counts when home_pred matches anywhere in
+  # it, so `path = Sys.getenv("HOME")`, `path = normalizePath("~")` and
+  # `dir = file.path("~", "c")` count too. lab_file_operations() is narrower:
+  # formals_with_unsafe_default() accepts only a default that IS a `~` or
+  # absolute literal, so of these it reports `path = "~/x.txt"` alone. It also
+  # reports `path = "/srv/x.txt"`, which is not home and is not reported here.
+  # Both read the formals of the innermost enclosing function only.
+  xpath <- sprintf("//SYMBOL_FUNCTION_CALL[%s]", write_pred)
+  home_test <- sprintf("boolean(%s)", home_pred)
   issues <- xpath_per_file(parsed, xpath, function(file, nodes) {
+    keep <- vapply(
+      nodes,
+      function(n) {
+        dest <- write_destination(n)
+        if (is.null(dest)) {
+          return(FALSE)
+        }
+        if (xml2::xml_find_lgl(dest, home_test)) {
+          return(TRUE)
+        }
+        root <- xml2::xml_find_first(dest_root(dest), "./SYMBOL")
+        !inherits(root, "xml_missing") &&
+          xml2::xml_text(root) %in% formals_with_default(n, home_pred)
+      },
+      logical(1)
+    )
+    nodes <- nodes[keep]
+    if (length(nodes) == 0L) {
+      return(character(0))
+    }
     paste0(
       basename(file),
       ":",

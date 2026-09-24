@@ -1,0 +1,11 @@
+---
+title: "Changing an option in a vignette"
+---
+
+This vignette changes a global option and never puts it back, so the reader's
+session keeps the change after the vignette has run.
+
+```{r}
+options(digits = 3)
+pi
+```

@@ -1,0 +1,8 @@
+Package: unparseable
+Title: A Package Whose DESCRIPTION R Cannot Read
+Version: 0.1.0
+Authors@R: person("Test", "User", email = "test@example.com", role = c("aut", "cre"))
+Description: The next line lost its leading space when the paragraph was
+reflowed, so it reads as neither a field nor a continuation.
+License: GPL (>= 3)
+Encoding: UTF-8

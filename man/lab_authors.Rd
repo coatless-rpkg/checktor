@@ -20,6 +20,15 @@ Defaults to reading it from \code{path}.}
 \description{
 Flags a missing \code{Authors@R}, and an unfilled \code{usethis} template such as \code{person("First", "Last", ...)}, which is a hard CRAN rejection that \verb{R CMD check} says nothing about.
 }
+\details{
+The field is evaluated without running any code it contains: only
+\code{person()}, \code{as.person()}, \code{c()}, \code{list()}, \code{paste()}, \code{paste0()} and \code{(}
+resolve, the calls R's own reader allows from R 4.6.0 on. Every other call
+in the field is reported, since \verb{R CMD build} refuses it as a malformed
+\code{Authors@R} field. That includes a namespaced \code{utils::person()} and a
+function in parentheses, as in \code{(c)(...)}, which are still read so the
+other checks see their roles.
+}
 \section{Source}{
 
 The \href{https://cran.r-project.org/web/packages/policies.html}{CRAN Repository Policy}
