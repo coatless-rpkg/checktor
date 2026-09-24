@@ -7,17 +7,22 @@
 health_report(results, file = NULL, format = "markdown")
 }
 \arguments{
-\item{results}{List. Results from checktor()}
+\item{results}{A \code{checktor_results} object from \code{\link[=checktor]{checktor()}}.}
 
-\item{file}{Character. Output file path (optional)}
+\item{file}{Character. A path to write the report to, or \code{NULL} (the default)
+to only return it.}
 
-\item{format}{Character. Report format: "markdown", "html", or "text"}
+\item{format}{Character. Report format: \code{"markdown"} (the default), \code{"html"},
+or \code{"text"}. Any other value gives the text format.}
 }
 \value{
-Character vector with report content
+The report as a character vector, one element per line. It is
+returned visibly even when \code{file} is given, so assign it to keep a console
+call from printing it.
 }
 \description{
-Creates a comprehensive report with specific treatment instructions
+Creates a report of every failing check, whatever its severity
+tier, with treatment instructions for the checks that have them.
 }
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",

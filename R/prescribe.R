@@ -1,6 +1,8 @@
 #' Treatment Recommendations
 #'
-#' Prints specific treatment recommendations for issues found by [checktor()].
+#' Prints specific treatment recommendations for the checks that failed in a
+#' [checktor()] run, whatever their severity tier, so an advisory finding outside
+#' the verdict still gets its remedy.
 #'
 #' @param results A `checktor_results` object.
 #'

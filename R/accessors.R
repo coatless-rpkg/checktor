@@ -108,10 +108,11 @@
 #'   `checktor_check_result` object.
 #' @param ... Unused.
 #'
-#' @return `issues()` returns a `data.frame` with one row per issue. At the
-#'   results level the columns are `category`, `check`, `file`, `line`,
-#'   `location`, `message`; a single category drops `category`; a single check
-#'   drops `category` and `check`. A healthy object yields a 0-row frame.
+#' @return `issues()` returns a `data.frame` with one row per issue, whatever
+#'   its severity tier. At the results level the columns are `category`,
+#'   `check`, `severity`, `file`, `line`, `location`, `message`; a single
+#'   category drops `category`; a single check drops `category`, `check` and
+#'   `severity`. A healthy object yields a 0-row frame.
 #'
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
@@ -206,6 +207,13 @@ issues.checktor_results <- function(x, ...) {
 #'   `is_healthy()`: a single logical. `n_issues()` / `n_failed_checks()`:
 #'   integer counts. `failed_checks()`: character vector of failing check names
 #'   (qualified `"category.check"` at the results level).
+#'
+#'   On a `checktor_results`, `is_healthy()`, `n_issues()` and
+#'   `n_failed_checks()` count only the tiers named in [checktor()]'s
+#'   `severity` (they read `metadata$total_issues` and `metadata$failed_checks`),
+#'   so they agree with [checkup()]. `failed_checks()`, and every predicate on a
+#'   category or a check, count every tier, so an `opinion` finding can appear in
+#'   `failed_checks()` and in `nrow(issues(x))` without changing `n_issues()`.
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                  show_content = FALSE)

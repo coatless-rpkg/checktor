@@ -35,7 +35,7 @@ space between them is where afternoons disappear. A missing `\value{}` tag. A
 `set.seed()` left inside a function. A Description that never grew past one
 line. Nothing in the standard toolchain says a word about any of them.
 
-![Seven failure modes against the three tools that might catch them. `R CMD check` alone catches undocumented arguments. `lintr` alone catches a line over 80 characters, which checktor does not check. Both catch a bare `T`, and `R CMD check` also flags a Title that is not in title case. The last three rows, a `set.seed()` left in a function, a one-line Description, and a missing `\value{}` tag, are caught only by checktor.](figures/coverage-light.svg){.ct-fig .ct-light}
+![Seven failure modes against the three tools that might catch them. `R CMD check` alone catches undocumented arguments. `lintr` alone catches a line over 80 characters, which checktor does not check. `lintr` and checktor both catch a bare `T` in package code, and `R CMD check` and checktor both flag a Title that is not in title case. The last three rows, a `set.seed()` left in a function, a one-line Description, and a missing `\value{}` tag, are caught only by checktor.](figures/coverage-light.svg){.ct-fig .ct-light}
 ![](figures/coverage-dark.svg){.ct-fig .ct-dark aria-hidden="true"}
 
 `checktor` is the specialist your build refers you to before that appointment.
@@ -118,7 +118,7 @@ filter them, count them, fold them into a report of your own, reach for the
 accessors. They return plain data frames, so you never spelunk through nested
 lists.
 
-![The one `checktor_results` object fans out into three plain data frames. `summary()` gives 5 rows, one per category. `issues()` gives 8 rows, one per issue, carrying the file and line. `tidy()` gives 51 rows, one per check, whether it passed or not.](figures/result-shapes-light.svg){.ct-fig .ct-light}
+![The one `checktor_results` object fans out into three plain data frames. `summary()` gives 5 rows, one per category, counting the checks that passed, failed and were skipped. `issues()` gives 7 rows, one per issue, carrying its severity, file and line. `tidy()` gives 57 rows, one per check, with its severity and whether it passed or was skipped.](figures/result-shapes-light.svg){.ct-fig .ct-light}
 ![](figures/result-shapes-dark.svg){.ct-fig .ct-dark aria-hidden="true"}
 
 ```{r}
@@ -132,7 +132,9 @@ issues(results)    # one row per issue, with file and line
 `tidy(results)` gives one row per check, passed or not, and `as.data.frame()` is
 its alias. Its `skipped` column marks any check that did not run, such as the URL
 fetch when you are not at the console, so a check that sat out never reads as one
-that passed. Three predicates answer the yes/no questions directly:
+that passed. `summary()` counts such a check under `skipped`, so `passed`,
+`failed` and `skipped` add up to `checks`. Three helpers answer the common
+questions directly:
 
 ```{r}
 is_healthy(results)
@@ -140,8 +142,10 @@ n_issues(results)
 failed_checks(results)
 ```
 
-Each accessor also works on a single category, as in `issues(results$code_issues)`,
-or on a single check.
+`is_healthy()` and `n_issues()` follow the verdict, counting only the policy and
+robustness tiers, while `issues()` and `failed_checks()` list every tier, opinion
+included. Each accessor also works on a single category, as in
+`issues(results$code_issues)`, or on a single check.
 
 ## The one-line gate
 
@@ -181,8 +185,8 @@ would rather not hear about the others:
 ```{r eval=FALSE}
 diagnose_code_issues()           # just the R sources
 diagnose_description_issues()    # just DESCRIPTION
-diagnose_documentation_issues()  # just the .Rd files
-diagnose_general_issues()        # size, URLs
+diagnose_documentation_issues()  # help pages, examples, vignettes, demos
+diagnose_general_issues()        # size, URLs, NEWS, README links
 diagnose_policy_violations()     # CRAN policy
 ```
 
@@ -212,6 +216,39 @@ configure_doctor(verbose_default = FALSE, progress_default = FALSE)
 results <- checktor(verbose = FALSE, progress = FALSE)
 ```
 
+## Checks you ask for, and checks you turn off
+
+A few checks never join a run, because no authority backs them or they ask about
+your submission workflow rather than the package itself. They are not skipped,
+since nothing tried to run them. A quiet run does not mention them, but the results
+name them:
+
+```{r}
+results$metadata$on_request_checks
+```
+
+Each one is a `lab_*()` function like any other check, so running it is one call:
+
+```{r}
+lab_cran_comments_file(pkg, verbose = FALSE)
+```
+
+Going the other way, a check you have decided against can be turned off. For one
+package, name it in that package's `DESCRIPTION`:
+
+```
+Config/checktor/disable: news_file
+```
+
+For every package, set the option once, for example in `.Rprofile`:
+
+```{r eval=FALSE}
+options(checktor.disable = "news_file")
+```
+
+A disabled check does not run and is not counted anywhere. That is the difference
+from a skipped check, which was meant to run and could not.
+
 ## Where it fits
 
 Run `checktor` in the gap between writing code and `R CMD check`:
@@ -221,7 +258,7 @@ devtools::document()
 devtools::test()
 
 results <- checktor()  # the extra-CRAN checkup
-prescribe(results)     # apply the remedies
+prescribe(results)     # read the remedies
 
 devtools::check()      # the standard checks
 ```
@@ -240,6 +277,8 @@ nothing left to say. That is the entire point.
 
 - [Where the Checks Come From](check-sources.html): the source and severity tier
   behind every check, from CRAN policy to convention.
+- [What R CMD check Checks](r-cmd-check.html): every step `R CMD check` takes,
+  so you can see where checktor begins.
 - [checktor in Continuous Integration](checktor-in-ci.html): put `checkup()` in
   charge of a GitHub Actions build as a quality gate.
 - [Writing Your Own Checks](writing-checks.html): add project-specific checks

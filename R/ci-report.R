@@ -291,12 +291,16 @@ fingerprint <- function(check, path, line, detail) {
 #'   `path` quietly, so a build can call this on its own.
 #' @param format Character. One of `"auto"`, `"github"`, `"gitlab"`,
 #'   `"checkstyle"`, `"sarif"`, `"azure"` or `"text"`. `"auto"` reads the
-#'   environment variables each forge sets.
-#' @param file Character. Where to write. Omit it for the format's natural
-#'   destination, standard output for the comment styles and a conventional file
-#'   name for the report styles. Pass `NULL` to emit nothing and only return the
-#'   lines, which is what you want when testing or post-processing a report rather
-#'   than handing it to a build. Pass `stdout()` to print regardless of format.
+#'   environment variables each forge sets: `"github"` when `GITHUB_ACTIONS` is
+#'   set, `"gitlab"` for `GITLAB_CI`, `"azure"` for `TF_BUILD`, `"checkstyle"` for
+#'   `JENKINS_URL`, and `"text"` anywhere else.
+#' @param file Character. Where to write. Leave it out for the format's natural
+#'   destination: standard output for `"github"`, `"azure"` and `"text"`, and
+#'   `gl-code-quality-report.json`, `checktor-checkstyle.xml` or `checktor.sarif`
+#'   for the report styles. Passing `file = NULL` is not the same as leaving it
+#'   out: nothing is written and the lines are only returned, which is what you
+#'   want when testing or post-processing a report rather than handing it to a
+#'   build. Pass `stdout()` to print regardless of format.
 #' @param severity Character. Which tiers to report. Defaults to every tier, since
 #'   an annotation is information rather than a verdict.
 #' @param skipped Logical. Report the checks that did not run. Defaults to `TRUE`,
@@ -320,7 +324,7 @@ ci_report <- function(
   results = NULL,
   format = c("auto", "github", "gitlab", "checkstyle", "sarif", "azure", "text"),
   file = NULL,
-  severity = SEVERITY_LEVELS,
+  severity = c("policy", "robustness", "opinion"),
   skipped = TRUE,
   path = "."
 ) {

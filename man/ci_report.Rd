@@ -8,7 +8,7 @@ ci_report(
   results = NULL,
   format = c("auto", "github", "gitlab", "checkstyle", "sarif", "azure", "text"),
   file = NULL,
-  severity = SEVERITY_LEVELS,
+  severity = c("policy", "robustness", "opinion"),
   skipped = TRUE,
   path = "."
 )
@@ -19,13 +19,17 @@ ci_report(
 
 \item{format}{Character. One of \code{"auto"}, \code{"github"}, \code{"gitlab"},
 \code{"checkstyle"}, \code{"sarif"}, \code{"azure"} or \code{"text"}. \code{"auto"} reads the
-environment variables each forge sets.}
+environment variables each forge sets: \code{"github"} when \code{GITHUB_ACTIONS} is
+set, \code{"gitlab"} for \code{GITLAB_CI}, \code{"azure"} for \code{TF_BUILD}, \code{"checkstyle"} for
+\code{JENKINS_URL}, and \code{"text"} anywhere else.}
 
-\item{file}{Character. Where to write. Omit it for the format's natural
-destination, standard output for the comment styles and a conventional file
-name for the report styles. Pass \code{NULL} to emit nothing and only return the
-lines, which is what you want when testing or post-processing a report rather
-than handing it to a build. Pass \code{stdout()} to print regardless of format.}
+\item{file}{Character. Where to write. Leave it out for the format's natural
+destination: standard output for \code{"github"}, \code{"azure"} and \code{"text"}, and
+\code{gl-code-quality-report.json}, \code{checktor-checkstyle.xml} or \code{checktor.sarif}
+for the report styles. Passing \code{file = NULL} is not the same as leaving it
+out: nothing is written and the lines are only returned, which is what you
+want when testing or post-processing a report rather than handing it to a
+build. Pass \code{stdout()} to print regardless of format.}
 
 \item{severity}{Character. Which tiers to report. Defaults to every tier, since
 an annotation is information rather than a verdict.}

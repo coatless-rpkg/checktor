@@ -34,7 +34,9 @@ CHECK_CATEGORIES <- c(
 #'   any `lab_*` check. It is called as `fn(path, verbose)`. If it also
 #'   declares a `parsed` argument (for `code` and `policy` checks) or a `desc`
 #'   argument (for `description` checks), checktor forwards its shared parse cache
-#'   so the check does not re-read the sources.
+#'   so the check does not re-read the sources. A check that cannot run where it
+#'   is returns a skipped result, as [checktor_check_result()] describes, so it is
+#'   reported as not run rather than as passing.
 #' @param category Character. Which category the check joins: one of `"code"`,
 #'   `"description"`, `"documentation"`, `"general"`, `"policy"`.
 #' @param severity Character. The tier the check reports at: one of

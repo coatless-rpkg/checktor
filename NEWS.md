@@ -22,13 +22,17 @@ fields in its own DESCRIPTION.
   name `tidy()` reports and `Config/checktor` refers to, which several old names did
   not match. The five category functions such as `diagnose_code_issues()` keep their
   names, since they run a panel rather than one test. The names released in 0.1.0
-  were renamed outright rather than deprecated, so update any call to
-  `diagnose_tf_usage()`, `diagnose_seed_setting()`, `diagnose_print_cat_usage()`,
-  `diagnose_roxygen_usage()`, `diagnose_value_tags()`, `diagnose_example_structure()`,
-  `diagnose_package_size()` or `diagnose_urls()`.
+  were renamed outright rather than deprecated, so replace `diagnose_` with `lab_`
+  in any call to `diagnose_tf_usage()`, `diagnose_seed_setting()`,
+  `diagnose_print_cat_usage()`, `diagnose_roxygen_usage()`, `diagnose_value_tags()`,
+  `diagnose_example_structure()`, `diagnose_missing_examples()`,
+  `diagnose_suggested_in_examples()`, `diagnose_package_size()`, `diagnose_urls()`,
+  `diagnose_news_file()` or `diagnose_cran_comments_file()`.
+  `diagnose_readme_relative_links()` is now `lab_readme_links()`, after the
+  `readme_links` check it runs.
 
-  Check names themselves are unchanged, so a `Config/checktor` field written
-  against 0.1.0 keeps working.
+  Check names themselves are unchanged, so code that picks rows of `tidy()` or
+  `issues()` by check name keeps working.
 
 * Every check carries a severity tier, and `checktor()` gained a `severity` argument
   deciding which tiers the verdict is about. It defaults to policy and robustness.
@@ -42,7 +46,10 @@ fields in its own DESCRIPTION.
   Every check still runs and every finding is still reported with its tier. The tier
   only decides what counts against a clean bill of health, so zero issues now means
   your package is submission ready and nothing here will crash a user. `checkup()`
-  follows the same default, so a missing `NEWS.md` no longer fails a build.
+  follows the same default, so a missing `NEWS.md` no longer fails a build. On a
+  `checktor()` result, `metadata$total_issues`, `metadata$failed_checks`,
+  `n_issues()`, `n_failed_checks()` and `is_healthy()` now count those tiers alone,
+  while `issues()` and `failed_checks()` still list every finding.
 
 * A check that does not run is reported as skipped rather than as passing, so a
   clean bill of health never includes a check that never happened. `tidy()` gained a
@@ -231,16 +238,18 @@ fields in its own DESCRIPTION.
   earlier run left behind.
 
 * A few checks sit outside every run, because no authority backs them or they ask
-  about a submission workflow rather than the package itself. The summary now names
-  them so you can find out they are there, and `metadata$on_request_checks` carries
-  the list. Calling one is the only way to run it, and since they sit in the opinion
-  tier, running one never changes a verdict.
+  about a submission workflow rather than the package itself. The summary a verbose
+  `checktor()` run prints now names them so you can find out they are there, and
+  `metadata$on_request_checks` carries the list. Calling one is the only way to run
+  it, and since they sit in the opinion tier, running one never changes a verdict.
 
 * `register_check()` adds a check of your own to every `checktor()` run without
   editing checktor's source. Give it a name, a function returning a
   `checktor_check_result()`, a category and a severity tier, and it runs alongside
   the built-ins, appears in `issues()` and `tidy()`, and counts toward the verdict at
-  its tier. `unregister_check()` and `registered_checks()` manage the registry.
+  its tier. `unregister_check()` and `registered_checks()` manage the registry. A
+  check that cannot run returns `checktor_check_result()` with `skipped = TRUE` and
+  a `skip_reason`, and is reported as skipped like a built-in one (#15).
 
 * The AST toolkit the built-in checks use is exported, so a registered check has the
   same tools: `read_r_xml()`, `xpath_lints()`, `xpath_per_file()`,
@@ -409,8 +418,8 @@ the code you wrote.
 * `health_report()` reports the CRAN policy findings. It skipped that panel
   entirely, so the citable rejections were missing from every report, and the text
   and HTML formats carried no findings at all. Every format now lists each failing
-  check, and says when the sections include advisory findings that the headline
-  total leaves out.
+  check, and the Markdown report says when the sections include advisory findings
+  that the headline total leaves out.
 
 * A treatment line renders its markup instead of printing braces. The report showed
   `{.code message()}` on screen, because the treatment reached `cli` as a value

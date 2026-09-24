@@ -21,10 +21,13 @@ in the console. Default: \code{TRUE}.}
 
 \item{description_type}{Character. Type of DESCRIPTION file to create.
 Options: "minimal" (basic fields only), "bad" (with known issues),
-"good" (properly formatted). Default: "minimal".}
+"good" (properly formatted). Default: "minimal". Ignored when
+\code{example_path} is a \code{.txt} scenario, which becomes the \code{DESCRIPTION} itself.}
 
-\item{cleanup}{Logical. Whether to register cleanup of temporary directory
-on exit. Default: \code{FALSE} (user manages cleanup).}
+\item{cleanup}{Logical. Whether to delete the temporary package when the
+function that called \code{example_diagnose_scenario()} returns. Called at top
+level there is no such function, so the package stays until R removes the
+session's temporary directory. Default: \code{FALSE} (you manage cleanup).}
 }
 \value{
 Character. Path to the temporary package directory containing the example
@@ -79,9 +82,9 @@ issues(checktor(pkg_path, verbose = FALSE, progress = FALSE))
 pkg_path <- example_diagnose_scenario("code_examples/seed_setting_bad.R",
                                       show_content = FALSE)
 
-# Create scenario with problematic DESCRIPTION file
-pkg_path <- example_diagnose_scenario("description_examples/bad_description.txt",
-                                      description_type = "bad")
+# Create scenario with problematic DESCRIPTION file. A .txt scenario is the
+# DESCRIPTION, so it needs no description_type
+pkg_path <- example_diagnose_scenario("description_examples/bad_description.txt")
 desc_result <- diagnose_description_issues(pkg_path)
 
 # Manual cleanup when done
@@ -90,7 +93,7 @@ unlink(pkg_path, recursive = TRUE)
 # Or use with automatic cleanup
 pkg_path <- example_diagnose_scenario("code_examples/browser_calls_bad.R",
                                       cleanup = TRUE)
-# Cleanup happens automatically when R session ends
+# Inside a function, the package is deleted when that function returns
 }
 \seealso{
 Used in examples for diagnostic functions like \code{\link[=lab_tf_usage]{lab_tf_usage()}},

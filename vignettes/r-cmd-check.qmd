@@ -101,7 +101,7 @@ roxygen2.
 |---|---|
 | `checking Rd files` | Every `.Rd` file parses and has the required tags. |
 | `checking Rd metadata` | `\name` and `\alias` entries are present and unique. |
-| `checking Rd line widths` | (`--as-cran`) Flags `\usage` and `\examples` lines wider than 100 characters. |
+| `checking Rd line widths` | (`--as-cran`) Flags `\usage` lines wider than 90 characters and `\examples` lines wider than 100. |
 | `checking Rd cross-references` | Every `\link{}` points at a topic that exists. |
 | `checking for missing documentation entries` | Every exported object has a documented `\alias`. |
 | `checking for code/documentation mismatches` | Argument names in `\usage`, `\arguments`, and function signatures agree. |
@@ -115,7 +115,8 @@ The dynamic checks: R actually runs your code and fails on any error.
 | Step | What it checks |
 |---|---|
 | `checking for unstated dependencies in examples` | Examples use only declared packages. |
-| `checking examples` | Every `\examples{}` block runs without error (`\dontrun{}` is skipped). |
+| `checking examples` | Every `\examples{}` block runs without error. `\dontrun{}` and `\donttest{}` code is skipped. |
+| `checking examples with --run-donttest` | (`--as-cran`) When the examples contain `\donttest{}`, they run again with that code included, so it must run without error too. |
 | `checking installed files from 'inst/doc'` | Files under `inst/doc` are consistent with the vignettes. |
 | `checking files in 'vignettes'` | The `vignettes/` sources are well-formed. |
 | `checking for unstated dependencies in 'tests'` | Tests use only declared packages. |

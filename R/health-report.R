@@ -2,13 +2,18 @@
 
 #' Comprehensive Health Report
 #'
-#' @description Creates a comprehensive report with specific treatment instructions
+#' @description Creates a report of every failing check, whatever its severity
+#'   tier, with treatment instructions for the checks that have them.
 #'
-#' @param results List. Results from checktor()
-#' @param file Character. Output file path (optional)
-#' @param format Character. Report format: "markdown", "html", or "text"
+#' @param results A `checktor_results` object from [checktor()].
+#' @param file Character. A path to write the report to, or `NULL` (the default)
+#'   to only return it.
+#' @param format Character. Report format: `"markdown"` (the default), `"html"`,
+#'   or `"text"`. Any other value gives the text format.
 #'
-#' @return Character vector with report content
+#' @return The report as a character vector, one element per line. It is
+#'   returned visibly even when `file` is given, so assign it to keep a console
+#'   call from printing it.
 #'
 #' @export
 #' @examples

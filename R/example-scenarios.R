@@ -11,9 +11,12 @@
 #'   in the console. Default: `TRUE`.
 #' @param description_type Character. Type of DESCRIPTION file to create.
 #'   Options: "minimal" (basic fields only), "bad" (with known issues),
-#'   "good" (properly formatted). Default: "minimal".
-#' @param cleanup Logical. Whether to register cleanup of temporary directory
-#'   on exit. Default: `FALSE` (user manages cleanup).
+#'   "good" (properly formatted). Default: "minimal". Ignored when
+#'   `example_path` is a `.txt` scenario, which becomes the `DESCRIPTION` itself.
+#' @param cleanup Logical. Whether to delete the temporary package when the
+#'   function that called `example_diagnose_scenario()` returns. Called at top
+#'   level there is no such function, so the package stays until R removes the
+#'   session's temporary directory. Default: `FALSE` (you manage cleanup).
 #'
 #' @return
 #' Character. Path to the temporary package directory containing the example
@@ -66,9 +69,9 @@
 #' pkg_path <- example_diagnose_scenario("code_examples/seed_setting_bad.R",
 #'                                       show_content = FALSE)
 #'
-#' # Create scenario with problematic DESCRIPTION file
-#' pkg_path <- example_diagnose_scenario("description_examples/bad_description.txt",
-#'                                       description_type = "bad")
+#' # Create scenario with problematic DESCRIPTION file. A .txt scenario is the
+#' # DESCRIPTION, so it needs no description_type
+#' pkg_path <- example_diagnose_scenario("description_examples/bad_description.txt")
 #' desc_result <- diagnose_description_issues(pkg_path)
 #'
 #' # Manual cleanup when done
@@ -77,7 +80,7 @@
 #' # Or use with automatic cleanup
 #' pkg_path <- example_diagnose_scenario("code_examples/browser_calls_bad.R",
 #'                                       cleanup = TRUE)
-#' # Cleanup happens automatically when R session ends
+#' # Inside a function, the package is deleted when that function returns
 example_diagnose_scenario <- function(
   example_path,
   show_content = TRUE,
@@ -191,7 +194,7 @@ create_example_description <- function(desc_path, type = "minimal") {
       "Title: Example Package for Diagnostic Testing",
       "Version: 0.1.0",
       "Authors@R: person('Test', 'User', email = 'test@example.com', role = c('aut', 'cre'))",
-      "Description: This is a temporary package created for testing checktor",
+      "Description: This is a temporary package created for testing the",
       "    diagnostic functions with example code that contains known issues.",
       # A bare `MIT` is not a valid CRAN license. MIT is a template
       # licence with no copyright holder of its own, so CRAN requires

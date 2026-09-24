@@ -71,6 +71,13 @@ for a category, and a named logical by category for results.
 \code{is_healthy()}: a single logical. \code{n_issues()} / \code{n_failed_checks()}:
 integer counts. \code{failed_checks()}: character vector of failing check names
 (qualified \code{"category.check"} at the results level).
+
+On a \code{checktor_results}, \code{is_healthy()}, \code{n_issues()} and
+\code{n_failed_checks()} count only the tiers named in \code{\link[=checktor]{checktor()}}'s
+\code{severity} (they read \code{metadata$total_issues} and \code{metadata$failed_checks}),
+so they agree with \code{\link[=checkup]{checkup()}}. \code{failed_checks()}, and every predicate on a
+category or a check, count every tier, so an \code{opinion} finding can appear in
+\code{failed_checks()} and in \code{nrow(issues(x))} without changing \code{n_issues()}.
 }
 \description{
 These ask the question a verdict asks: did a check fail? \code{passed()} means

@@ -17,7 +17,7 @@
     <rect x="6" y="111" width="132" height="52" rx="7"
           fill="#0E2A47" fill-opacity="0.04" stroke="#0E2A47" stroke-opacity="0.14"/>
     <text x="16" y="134" font-size="10" fill="#0E2A47">checktor_results</text>
-    <text x="16" y="151" font-size="8" fill="#0E2A47" fill-opacity="0.5">51 checks, 5 categories</text>
+    <text x="16" y="151" font-size="8" fill="#0E2A47" fill-opacity="0.5">57 checks, 5 categories</text>
 
     <!-- fan out -->
     <g fill="none" stroke="#1FA45C" stroke-width="1.4" stroke-opacity="0.75">
@@ -36,19 +36,19 @@
     <text x="206" y="66" font-size="8" letter-spacing="0.9" font-weight="600"
           font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
           fill="#0E2A47" fill-opacity="0.55">ONE ROW PER CATEGORY</text>
-    <text x="206" y="82" font-size="8" fill="#0E2A47" fill-opacity="0.45">category  checks  passed  failed  issues</text>
+    <text x="206" y="82" font-size="8" fill="#0E2A47" fill-opacity="0.45">category  checks  passed  failed  skipped  issues</text>
 
     <!-- issues() -->
     <rect x="190" y="104" width="336" height="66" rx="7"
           fill="#0E2A47" fill-opacity="0.04" stroke="#0E2A47" stroke-opacity="0.14"/>
     <text x="206" y="128" font-size="11" fill="#0E2A47">issues()</text>
-    <rect x="452" y="116" width="58" height="16" rx="3" fill="#157F49"/>
-    <text x="460" y="127" font-size="7.5" letter-spacing="0.8" font-weight="700" fill="#FFFFFF"
-          font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">8 ROWS</text>
+    <rect x="458" y="116" width="52" height="16" rx="3" fill="#157F49"/>
+    <text x="466" y="127" font-size="7.5" letter-spacing="0.8" font-weight="700" fill="#FFFFFF"
+          font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">7 ROWS</text>
     <text x="206" y="144" font-size="8" letter-spacing="0.9" font-weight="600"
           font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
           fill="#0E2A47" fill-opacity="0.55">ONE ROW PER ISSUE, WITH FILE AND LINE</text>
-    <text x="206" y="160" font-size="8" fill="#0E2A47" fill-opacity="0.45">category  check  file  line  location  message</text>
+    <text x="206" y="160" font-size="8" fill="#0E2A47" fill-opacity="0.45">category  check  severity  file  line  location  message</text>
 
     <!-- tidy() -->
     <rect x="190" y="182" width="336" height="66" rx="7"
@@ -56,10 +56,10 @@
     <text x="206" y="206" font-size="11" fill="#0E2A47">tidy()</text>
     <rect x="452" y="194" width="58" height="16" rx="3" fill="#157F49"/>
     <text x="460" y="205" font-size="7.5" letter-spacing="0.8" font-weight="700" fill="#FFFFFF"
-          font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">51 ROWS</text>
+          font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">57 ROWS</text>
     <text x="206" y="222" font-size="8" letter-spacing="0.9" font-weight="600"
           font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
           fill="#0E2A47" fill-opacity="0.55">ONE ROW PER CHECK, PASSED OR NOT</text>
-    <text x="206" y="238" font-size="8" fill="#0E2A47" fill-opacity="0.45">category  check  passed  n_issues  message</text>
+    <text x="206" y="238" font-size="8" fill="#0E2A47" fill-opacity="0.45">category  check  severity  passed  skipped  n_issues  message</text>
   </g>
 </svg>

@@ -10,17 +10,18 @@
 #'   package to the conventions as well. See [checktor()].
 #'
 #' @return
-#' Logical. `TRUE` if no issues were found, `FALSE` otherwise.
+#' Logical. `TRUE` if no finding in the `severity` tiers was found, `FALSE`
+#' otherwise. Findings in the other tiers do not change it.
 #'
 #' @export
 #' @examples
-#' # A clean synthetic package passes; a known-bad one does not
+#' # A package that uses a bare T fails the gate
 #' pkg_bad <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 #'                                      show_content = FALSE)
 #' checkup(pkg_bad)
 checkup <- function(
   path = ".",
-  severity = getOption("checktor.severity", DEFAULT_SEVERITY)
+  severity = getOption("checktor.severity", c("policy", "robustness"))
 ) {
   results <- checktor(
     path,

@@ -65,6 +65,15 @@ test_that("check_severity(): `urls` is advice, not policy", {
   expect_equal(check_severity("urls"), "opinion")
 })
 
+test_that("checktor(): the severity defaults spelled out in the usage match the registry", {
+  # The usage shows the tiers literally, since `DEFAULT_SEVERITY` and
+  # `SEVERITY_LEVELS` are not exported and a reader could not type them.
+  withr::local_options(checktor.severity = NULL)
+  expect_identical(eval(formals(checktor)$severity), DEFAULT_SEVERITY)
+  expect_identical(eval(formals(checkup)$severity), DEFAULT_SEVERITY)
+  expect_identical(eval(formals(ci_report)$severity), SEVERITY_LEVELS)
+})
+
 # Test check_when() ----
 
 test_that("check_when(): agrees with what a default run actually does", {
@@ -88,4 +97,42 @@ test_that("check_when(): defaults to always for anything unlisted", {
   expect_equal(check_when("spelling"), "backend")
   expect_equal(check_when("cran_comments_file"), "request")
   expect_equal(check_when("format_names"), "request")
+})
+
+# Test the check-sources vignette ----
+
+test_that("check_severity(): the check-sources vignette lists every check at its tier", {
+  path <- vignette_source("check-sources.qmd")
+  skip_if(!nzchar(path), "vignette source not available")
+
+  cells <- vignette_table_cells(path)
+  tiers <- gsub("`", "", cells, fixed = TRUE)
+  listed <- tiers[tiers %in% SEVERITY_LEVELS]
+
+  dupes <- names(listed)[duplicated(names(listed))]
+  expect_identical(dupes, character(0))
+  expect_setequal(names(listed), names(CHECK_SEVERITY))
+  shown <- listed[names(CHECK_SEVERITY)]
+  differ <- names(CHECK_SEVERITY)[shown != CHECK_SEVERITY | is.na(shown)]
+  expect_identical(shown, CHECK_SEVERITY, info = paste(differ, collapse = ", "))
+})
+
+test_that("check_when(): the check-sources vignette lists every check that does not always run", {
+  path <- vignette_source("check-sources.qmd")
+  skip_if(!nzchar(path), "vignette source not available")
+
+  phrases <- c(
+    "at the console" = "console",
+    "with a backend" = "backend",
+    "when you call it" = "request"
+  )
+  cells <- vignette_table_cells(path, section = "Which checks run")
+  unknown <- setdiff(cells, names(phrases))
+  expect_identical(unknown, character(0))
+
+  listed <- stats::setNames(unname(phrases[cells]), names(cells))
+  expect_setequal(names(listed), names(CHECK_WHEN))
+  shown <- listed[names(CHECK_WHEN)]
+  differ <- names(CHECK_WHEN)[shown != CHECK_WHEN | is.na(shown)]
+  expect_identical(shown, CHECK_WHEN, info = paste(differ, collapse = ", "))
 })

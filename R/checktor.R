@@ -37,11 +37,17 @@
 #' - `documentation_issues`: Results from documentation diagnostics
 #' - `general_issues`: Results from general package diagnostics
 #' - `policy_issues`: Results from CRAN policy violation diagnostics
-#' - `metadata`: List with package path, diagnosis time, total issue count,
-#'   total failed-check count, and checktor version
+#' - `metadata`: List with the package path, the diagnosis time, the issue and
+#'   failed-check counts (`total_issues`, `failed_checks`), the `severity` tiers
+#'   they count, the findings outside those tiers (`advisory_issues`), the
+#'   findings muted by `Config/checktor/allow` (`suppressed`), the checks that
+#'   did not run (`skipped_checks`), the checks that run only when called
+#'   (`on_request_checks`), and the checktor version (`checktor_version`)
 #'
 #' Each diagnostic category contains a `passed` element showing which individual
-#' checks passed/failed, plus detailed results for each check.
+#' checks did not fail, plus detailed results for each check. A check that did
+#' not run is `TRUE` there, and its own `skipped` element records that it did
+#' not run.
 #'
 #' @details
 #' The function runs five categories of diagnostics: **Code**, **DESCRIPTION**,
@@ -50,16 +56,23 @@
 #' [diagnose_general_issues()], and [diagnose_policy_violations()] for the
 #' specific checks within each category.
 #'
-#' The `metadata$total_issues` figure counts the total number of distinct
-#' issues found across all checks (e.g., 80 lines using `T`/`F` count as 80,
-#' not 1). The `metadata$failed_checks` figure counts how many individual
-#' checks reported any issue at all.
+#' The `metadata$total_issues` figure counts the individual findings of the
+#' checks in the `severity` tiers (e.g., 80 lines using `T`/`F` count as 80,
+#' not 1), and `metadata$failed_checks` counts how many of those checks
+#' reported anything. Findings in the other tiers are still in the result and
+#' are counted in `metadata$advisory_issues` instead.
+#'
+#' A few checks never join a run, because no authority backs them or they ask
+#' about a submission workflow rather than the package. They are not skipped,
+#' since nothing tried to run them. `metadata$on_request_checks` names them;
+#' call `lab_<name>()` to run one.
 #'
 #' A package can configure checktor from `Config/checktor/*` fields in its own
-#' `DESCRIPTION` (comma-separated lists):
+#' `DESCRIPTION` (comma-separated lists; `DESCRIPTION` has no comment syntax, so
+#' anything after the last name becomes part of it):
 #' - `Config/checktor/disable`: check names to skip entirely. A disabled check
 #'   does not run and is not counted anywhere in the results. To turn a check
-#'   off in every package, set `options(checktor.disable = "cph_role")` once,
+#'   off in every package, set `options(checktor.disable = "news_file")` once,
 #'   for example in `.Rprofile`; the two lists are combined.
 #' - `Config/checktor/allow`: `check` to mute a whole check, or `check:substring`
 #'   to mute only findings whose text contains `substring`. The check still
@@ -69,6 +82,17 @@
 #' - `Config/checktor/software_names`, `Config/checktor/language_names`,
 #'   `Config/checktor/format_names`, `Config/checktor/acronyms`: names appended
 #'   to those checks' vocabularies.
+#'
+#' @section Options:
+#' - `checktor.verbose`, `checktor.progress`: the defaults for `verbose` and
+#'   `progress`. [configure_doctor()] sets both.
+#' - `checktor.severity`: the default tiers for `checktor()` and [checkup()].
+#' - `checktor.disable`: checks to leave out of every run, combined with
+#'   `Config/checktor/disable`.
+#' - `checktor.url_check`: `TRUE` or `FALSE` to run or skip [lab_url_liveness()]
+#'   wherever you are. It defaults to `interactive()`.
+#' - `checktor.spelling`: `FALSE` turns off [lab_spelling()], which is then
+#'   reported as skipped.
 #'
 #' @seealso
 #' [health_report()] to generate detailed reports, [prescribe()] for treatment
@@ -89,7 +113,7 @@ checktor <- function(
   path = ".",
   verbose = getOption("checktor.verbose", TRUE),
   progress = getOption("checktor.progress", verbose),
-  severity = getOption("checktor.severity", DEFAULT_SEVERITY)
+  severity = getOption("checktor.severity", c("policy", "robustness"))
 ) {
   path <- find_package_root(path)
   validate_package_directory(path)

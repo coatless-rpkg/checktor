@@ -1,7 +1,7 @@
 ---
-title: "Where checktor's Checks Come From"
+title: "Where the Checks Come From"
 vignette: >
-  %\VignetteIndexEntry{Where checktor's Checks Come From}
+  %\VignetteIndexEntry{Where the Checks Come From}
   %\VignetteEngine{quarto::html}
   %\VignetteEncoding{UTF-8}
 knitr:
@@ -47,14 +47,16 @@ one. Where a check has no citable source at all, it says so plainly.
 Almost every check runs every time. Two depend on the machine, and when one cannot
 run `checktor()` reports it as skipped rather than passed, so a clean bill of health
 never includes a check that never happened. `tidy()` carries a `skipped` column, and
-the names are in `metadata$skipped_checks`. Five more run only when you call them;
-they were never asked for, so they are not skipped, and `metadata$on_request_checks`
-names them so you can find them.
+the names are in `metadata$skipped_checks`. The same goes for the checks that read
+`DESCRIPTION` fields when R cannot read the file, which `description_file` reports
+as a policy finding, and for `identifier_format` when `Authors@R` cannot be read.
+Five more run only when you call them; they were never asked for, so they are not
+skipped, and `metadata$on_request_checks` names them so you can find them.
 
 | Check | Runs | Why |
 |---|---|---|
 | `url_liveness` | at the console | It fetches every URL, so it stays off in scripts and under `R CMD check`, where the network would decide the result. `options(checktor.url_check = TRUE)` runs it everywhere. |
-| `spelling` | with a backend | It needs `aspell` or `hunspell` installed. `options(checktor.spelling = FALSE)` turns it off. |
+| `spelling` | with a backend | It needs `aspell` or `hunspell` installed. `options(checktor.spelling = FALSE)` turns it off and reports it as skipped; `options(checktor.disable = "spelling")` or `Config/checktor/disable: spelling` leaves it out of the run entirely. |
 | `cran_comments_file` | when you call it | A `cran-comments.md` is a submission workflow rather than a property of the package. |
 | `title_starts_with_article` | when you call it | No authority supports it, so it stays available without being part of a run. |
 | `description_function_quotes` | when you call it | The same, and Writing R Extensions reads the other way. |
@@ -185,8 +187,10 @@ them: `cph_role`, because its source says most authors need no `cph` role, and
 `cran_comments_file`, because it asks about a submission workflow rather than the
 package. If a finding does not match your reading of the policy, the tier is
 the first thing to look at: an `opinion` finding is a conversation, not a
-requirement, and you can turn any check off through `Config/checktor` in your own
-DESCRIPTION.
+requirement. You can turn any check off for one package with
+`Config/checktor/disable` in its DESCRIPTION, or for every package with
+`options(checktor.disable = ...)`, for example in `.Rprofile`. A disabled check
+does not run at all.
 
 [policy]: https://cran.r-project.org/web/packages/policies.html
 [wre]: https://cran.r-project.org/doc/manuals/r-release/R-exts.html

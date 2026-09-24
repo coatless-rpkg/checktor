@@ -28,7 +28,7 @@ MD_FENCE_RE <- "^ {0,3}(`{3,}|~{3,})"
 #' calls ```` ```{r, eval = `r ok`} ```` a chunk, and so do we.
 #'
 #' @param lines Character. The lines of a markdown file, as returned by
-#'   [safe_read_lines()].
+#'   `safe_read_lines()`.
 #'
 #' @return Character, the same length as `lines`, with fenced lines blanked.
 #' @noRd
@@ -118,7 +118,7 @@ blank_code_spans <- function(line) {
 #' swallowing the badges.
 #'
 #' @param lines Character. The lines of a markdown file, as returned by
-#'   [safe_read_lines()].
+#'   `safe_read_lines()`.
 #'
 #' @return Character(1). The lines rejoined with `"\n"`, literal spans blanked.
 #' @noRd

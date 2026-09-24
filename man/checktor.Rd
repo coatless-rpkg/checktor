@@ -8,7 +8,7 @@ checktor(
   path = ".",
   verbose = getOption("checktor.verbose", TRUE),
   progress = getOption("checktor.progress", verbose),
-  severity = getOption("checktor.severity", DEFAULT_SEVERITY)
+  severity = getOption("checktor.severity", c("policy", "robustness"))
 )
 }
 \arguments{
@@ -46,12 +46,18 @@ A \code{checktor_results} object (list) containing:
 \item \code{documentation_issues}: Results from documentation diagnostics
 \item \code{general_issues}: Results from general package diagnostics
 \item \code{policy_issues}: Results from CRAN policy violation diagnostics
-\item \code{metadata}: List with package path, diagnosis time, total issue count,
-total failed-check count, and checktor version
+\item \code{metadata}: List with the package path, the diagnosis time, the issue and
+failed-check counts (\code{total_issues}, \code{failed_checks}), the \code{severity} tiers
+they count, the findings outside those tiers (\code{advisory_issues}), the
+findings muted by \code{Config/checktor/allow} (\code{suppressed}), the checks that
+did not run (\code{skipped_checks}), the checks that run only when called
+(\code{on_request_checks}), and the checktor version (\code{checktor_version})
 }
 
 Each diagnostic category contains a \code{passed} element showing which individual
-checks passed/failed, plus detailed results for each check.
+checks did not fail, plus detailed results for each check. A check that did
+not run is \code{TRUE} there, and its own \code{skipped} element records that it did
+not run.
 }
 \description{
 Runs a comprehensive diagnostic suite for common CRAN submission issues that
@@ -67,17 +73,24 @@ The function runs five categories of diagnostics: \strong{Code}, \strong{DESCRIP
 \code{\link[=diagnose_general_issues]{diagnose_general_issues()}}, and \code{\link[=diagnose_policy_violations]{diagnose_policy_violations()}} for the
 specific checks within each category.
 
-The \code{metadata$total_issues} figure counts the total number of distinct
-issues found across all checks (e.g., 80 lines using \code{T}/\code{F} count as 80,
-not 1). The \code{metadata$failed_checks} figure counts how many individual
-checks reported any issue at all.
+The \code{metadata$total_issues} figure counts the individual findings of the
+checks in the \code{severity} tiers (e.g., 80 lines using \code{T}/\code{F} count as 80,
+not 1), and \code{metadata$failed_checks} counts how many of those checks
+reported anything. Findings in the other tiers are still in the result and
+are counted in \code{metadata$advisory_issues} instead.
+
+A few checks never join a run, because no authority backs them or they ask
+about a submission workflow rather than the package. They are not skipped,
+since nothing tried to run them. \code{metadata$on_request_checks} names them;
+call \verb{lab_<name>()} to run one.
 
 A package can configure checktor from \verb{Config/checktor/*} fields in its own
-\code{DESCRIPTION} (comma-separated lists):
+\code{DESCRIPTION} (comma-separated lists; \code{DESCRIPTION} has no comment syntax, so
+anything after the last name becomes part of it):
 \itemize{
 \item \code{Config/checktor/disable}: check names to skip entirely. A disabled check
 does not run and is not counted anywhere in the results. To turn a check
-off in every package, set \code{options(checktor.disable = "cph_role")} once,
+off in every package, set \code{options(checktor.disable = "news_file")} once,
 for example in \code{.Rprofile}; the two lists are combined.
 \item \code{Config/checktor/allow}: \code{check} to mute a whole check, or \code{check:substring}
 to mute only findings whose text contains \code{substring}. The check still
@@ -89,6 +102,21 @@ never counted there.
 to those checks' vocabularies.
 }
 }
+\section{Options}{
+
+\itemize{
+\item \code{checktor.verbose}, \code{checktor.progress}: the defaults for \code{verbose} and
+\code{progress}. \code{\link[=configure_doctor]{configure_doctor()}} sets both.
+\item \code{checktor.severity}: the default tiers for \code{checktor()} and \code{\link[=checkup]{checkup()}}.
+\item \code{checktor.disable}: checks to leave out of every run, combined with
+\code{Config/checktor/disable}.
+\item \code{checktor.url_check}: \code{TRUE} or \code{FALSE} to run or skip \code{\link[=lab_url_liveness]{lab_url_liveness()}}
+wherever you are. It defaults to \code{interactive()}.
+\item \code{checktor.spelling}: \code{FALSE} turns off \code{\link[=lab_spelling]{lab_spelling()}}, which is then
+reported as skipped.
+}
+}
+
 \examples{
 # Run against a synthetic package with known T/F issues
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",

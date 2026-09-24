@@ -63,10 +63,10 @@ jobs:
           results <- checktor::checktor(".", verbose = FALSE, progress = FALSE)
 
           # Puts each finding on the line that caused it, in the pull request.
-          checktor::ci_report(results, format = "github", file = NULL)
+          checktor::ci_report(results, format = "github")
 
           # The same findings as a report to keep, whatever the outcome.
-          checktor::health_report(results, file = "checktor-report.md")
+          invisible(checktor::health_report(results, file = "checktor-report.md"))
 
           if (!checktor::is_healthy(results)) {
             stop("checktor reported issues in its own sources")

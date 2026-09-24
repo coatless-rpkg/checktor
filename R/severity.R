@@ -121,7 +121,7 @@ CHECK_SEVERITY <- c(
 #            a workflow convention rather than a package property
 #
 # A check that does not run is reported as skipped rather than passed, so a clean
-# bill of health never includes a check that never happened. `test-registry.R`
+# bill of health never includes a check that never happened. `test-severity.R`
 # holds this table to what actually runs.
 CHECK_WHEN_DEFAULT <- "always"
 CHECK_WHEN <- c(

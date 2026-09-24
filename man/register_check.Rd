@@ -20,7 +20,9 @@ consistent with the built-in checks, where the two always match.}
 any \verb{lab_*} check. It is called as \code{fn(path, verbose)}. If it also
 declares a \code{parsed} argument (for \code{code} and \code{policy} checks) or a \code{desc}
 argument (for \code{description} checks), checktor forwards its shared parse cache
-so the check does not re-read the sources.}
+so the check does not re-read the sources. A check that cannot run where it
+is returns a skipped result, as \code{\link[=checktor_check_result]{checktor_check_result()}} describes, so it is
+reported as not run rather than as passing.}
 
 \item{category}{Character. Which category the check joins: one of \code{"code"},
 \code{"description"}, \code{"documentation"}, \code{"general"}, \code{"policy"}.}

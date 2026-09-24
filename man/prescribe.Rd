@@ -14,7 +14,9 @@ Invisibly returns \code{NULL}. Called for the side effect of printing
 recommendations.
 }
 \description{
-Prints specific treatment recommendations for issues found by \code{\link[=checktor]{checktor()}}.
+Prints specific treatment recommendations for the checks that failed in a
+\code{\link[=checktor]{checktor()}} run, whatever their severity tier, so an advisory finding outside
+the verdict still gets its remedy.
 }
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
