@@ -65,7 +65,8 @@ source.
 \examples{
 pkg <- example_diagnose_scenario("code_examples/credentials_bad.R",
                                  show_content = FALSE)
-lab_hardcoded_credentials(pkg, verbose = FALSE)$passed
+lab_hardcoded_credentials(pkg, verbose = FALSE)$issues
+unlink(pkg, recursive = TRUE)
 }
 \references{
 Provider token formats and the gitleaks ruleset:

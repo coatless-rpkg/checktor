@@ -1,12 +1,11 @@
-# Example showing temp file usage without cleanup
+# Example showing a temp file made and never removed
 
-test_temp_files <- function() {
+#' Round-Trip a Data Frame Through CSV
+#' @param data A data frame.
+#' @return `data` as read back from the CSV file.
+round_trip_csv <- function(data) {
   temp_file <- tempfile(fileext = ".csv")
-  temp_dir <- tempdir()
-
-  write.csv(mtcars, temp_file)
-
-  # Issue: No cleanup with unlink() or on.exit()
-
-  return(temp_file)
+  write.csv(data, temp_file, row.names = FALSE)
+  # Issue: nothing unlinks temp_file, and it is not returned to the caller
+  read.csv(temp_file)
 }

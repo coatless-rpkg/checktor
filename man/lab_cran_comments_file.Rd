@@ -34,8 +34,9 @@ source.
 }
 
 \examples{
-pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
-                                      show_content = FALSE)
-file.remove(file.path(pkg_path, "cran-comments.md"))  # failing case
-issues(lab_cran_comments_file(pkg_path, verbose = FALSE))
+pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+                                 show_content = FALSE)
+invisible(file.remove(file.path(pkg, "cran-comments.md")))
+lab_cran_comments_file(pkg, verbose = FALSE)$issues
+unlink(pkg, recursive = TRUE)
 }

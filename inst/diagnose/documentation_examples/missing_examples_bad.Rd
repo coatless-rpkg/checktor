@@ -2,7 +2,7 @@
 \alias{undocumented_fn}
 \title{Undocumented Function}
 \description{
-An exported function that is missing an \examples section.
+An exported function that has no examples section.
 }
 \usage{
 undocumented_fn(x)

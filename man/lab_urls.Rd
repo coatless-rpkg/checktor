@@ -38,7 +38,8 @@ source.
 }
 
 \examples{
-pkg_path <- example_diagnose_scenario("description_examples/bad_description.txt",
-                                      show_content = FALSE)
-issues(lab_urls(pkg_path, verbose = FALSE))
+pkg <- example_diagnose_scenario("description_examples/bad_description.txt",
+                                 show_content = FALSE)
+lab_urls(pkg, verbose = FALSE)$issues
+unlink(pkg, recursive = TRUE)
 }

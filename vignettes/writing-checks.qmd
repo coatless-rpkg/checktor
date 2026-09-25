@@ -29,9 +29,9 @@ library(checktor)
 `checktor` includes more than sixty checks, but every team has house rules too
 local to upstream: a function you have banned, a header you insist on, a habit
 you keep relapsing into. This vignette is for those. It walks through the
-handful of helpers in `R/ast.R` and shows how to author a new check against the
-parsed syntax tree in a few lines of XPath, with the orchestrator handling the
-bookkeeping.
+handful of helpers in `R/ast.R` and `R/rd.R` and shows how to author a new check
+against the parsed syntax tree in a few lines of XPath, with the orchestrator
+handling the bookkeeping.
 
 Every check walks the same road. Your sources are parsed once into a syntax
 tree, an XPath query picks out the nodes you object to, and each match comes
@@ -69,13 +69,14 @@ lab_<name> <- function(path, verbose = TRUE, parsed = NULL) {
 > hands the cache to every check. Sixteen code-side checks against a 200-file
 > package then mean 200 parses rather than 3,200.
 
-## Helpers in `R/ast.R`
+## Helpers in `R/ast.R` and `R/rd.R`
 
-`R/ast.R` collects the shared machinery, and a check leans on the handful below in
-roughly the order of the road above. `read_r_xml()` does the parsing and
-`xpath_lints()` does the querying, so between them they carry every check in the
-package. The rest are shorthands for patterns common enough to have earned a name.
-Learn the first two and you can already write a check.
+`R/ast.R` collects the shared machinery and `R/rd.R` the help-page walkers. A
+check leans on the handful below in roughly the order of the road above.
+`read_r_xml()` does the parsing and `xpath_lints()` does the querying, so
+between them they carry every check in the package. The rest are shorthands for
+patterns common enough to have earned a name. Learn the first two and you can
+already write a check.
 
 ### `read_r_xml(path)`
 
@@ -139,10 +140,10 @@ xpath <- paste0(
 
 ### `extract_rd_section(rd, tag)` and `collect_rd_text(node, skip)`
 
-Walking `.Rd` files structurally via `tools::parse_Rd()`. Reading `man/` yourself
-sees every help page, including any that `.Rbuildignore` keeps out of the tarball.
-The built-in checks skip those, so leave them out too if your check should judge
-only what CRAN receives.
+Walking `.Rd` files structurally via `tools::parse_Rd()`; both live in `R/rd.R`.
+Reading `man/` yourself sees every help page, including any that `.Rbuildignore`
+keeps out of the tarball. The built-in checks skip those, so leave them out too
+if your check should judge only what CRAN receives.
 
 ```r
 rd <- tools::parse_Rd("man/my_fn.Rd")
@@ -292,17 +293,19 @@ and `collect_rd_text()`.
 
 > Contributing a check to checktor itself? Then skip the registry and wire it the
 > way the built-in checks are: add `lab_my_check()` to the right
-> `R/diagnostics-*.R` file, add one line to that file's category function inside
-> its `run_checks(list(...))` call
-> (`my_check = function(p, v) lab_my_check(p, v, parsed = parsed)`), and give it a
-> tier in `CHECK_SEVERITY` (`R/severity.R`). A check that should not run every
-> time also gets a `CHECK_WHEN` entry there: `console` or `backend` when it needs
+> `R/diagnostics-*.R` file and add a row for it to the check table in
+> `R/registry.R`, which gives its category, its tier and when it runs. The
+> category function runs every row of its category in table order, passing
+> `parsed` or `desc` to a check whose signature takes it. A check that reads
+> `desc` also gives the message it reports, so it can be shown as skipped when R
+> cannot read the `DESCRIPTION`. A check that should
+> not run every time says so in the row: `console` or `backend` when it needs
 > the network or an external tool, in which case it returns
 > `checktor_skipped_result()` when it cannot run, or `request` when it runs only
-> if called, in which case it stays out of `run_checks()` altogether. Then add a
-> row for it to [Where the Checks Come From](check-sources.html), and a matching
-> `*_bad` scenario under `inst/diagnose/` for its example. `test-severity.R`
-> holds both tables, and the vignette's copy of them, to what actually runs.
+> if called, in which case it stays out of the run altogether. Then add a row for
+> it to [Where the Checks Come From](check-sources.html), and a matching `*_bad`
+> scenario under `inst/diagnose/` for its example. `test-severity.R` holds the
+> table, and the vignette's copy of it, to what actually runs.
 
 ## Without writing code
 

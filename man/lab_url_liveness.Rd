@@ -46,8 +46,15 @@ source.
 }
 
 \examples{
-# Needs a network, so this is not run automatically:
+# Needs a network: it asks every URL the package lists whether it answers,
+# so it is not run here. The scenario lists one page that exists and one that
+# does not, and the missing one is reported with its 404. Outside an
+# interactive session the check is skipped unless
+# options(checktor.url_check = TRUE) turns it on.
 \dontrun{
-lab_url_liveness(".")
+pkg <- example_diagnose_scenario("general_examples/url_liveness_bad.txt",
+                                 show_content = FALSE)
+lab_url_liveness(pkg, verbose = FALSE)$issues
+unlink(pkg, recursive = TRUE)
 }
 }

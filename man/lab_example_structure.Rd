@@ -30,7 +30,8 @@ source.
 }
 
 \examples{
-pkg_path <- example_diagnose_scenario("network_examples/bad_network_example.Rd",
-                                      show_content = FALSE)
-lab_example_structure(pkg_path, verbose = FALSE)
+pkg <- example_diagnose_scenario("documentation_examples/example_structure_bad.Rd",
+                                 show_content = FALSE)
+lab_example_structure(pkg, verbose = FALSE)$issues
+unlink(pkg, recursive = TRUE)
 }

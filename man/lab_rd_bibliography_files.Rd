@@ -39,9 +39,14 @@ source.
 }
 
 \examples{
-pkg <- example_diagnose_scenario(
-  "documentation_examples/rd_bibliography_bad.Rd", show_content = FALSE)
-lab_rd_bibliography_files(pkg, verbose = FALSE)$passed
+pkg <- example_diagnose_scenario("documentation_examples/rd_bibliography_bad.Rd",
+                                 show_content = FALSE)
+# Give the page a REFERENCES.bib, without 'bibtex' in Suggests to read it
+dir.create(file.path(pkg, "inst"))
+writeLines("@book{smith2020, author = {Ann Smith}, title = {Smoothing}, year = {2020}}",
+           file.path(pkg, "inst", "REFERENCES.bib"))
+lab_rd_bibliography_files(pkg, verbose = FALSE)$issues
+unlink(pkg, recursive = TRUE)
 }
 \seealso{
 \code{\link[=checktor]{checktor()}}, \code{\link[=lab_rd_bibliography]{lab_rd_bibliography()}}.

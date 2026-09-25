@@ -35,8 +35,9 @@ source.
 }
 
 \examples{
-pkg_path <- example_diagnose_scenario(
-  "documentation_examples/missing_examples_bad.Rd", show_content = FALSE)
-writeLines("export(undocumented_fn)", file.path(pkg_path, "NAMESPACE"))
-issues(lab_missing_examples(pkg_path, verbose = FALSE))
+pkg <- example_diagnose_scenario("documentation_examples/missing_examples_bad.Rd",
+                                 show_content = FALSE)
+writeLines("export(undocumented_fn)", file.path(pkg, "NAMESPACE"))
+lab_missing_examples(pkg, verbose = FALSE)$issues
+unlink(pkg, recursive = TRUE)
 }

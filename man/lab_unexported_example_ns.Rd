@@ -33,7 +33,10 @@ source.
 }
 
 \examples{
-pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
-                                      show_content = FALSE)
-lab_unexported_example_ns(pkg_path, verbose = FALSE)$passed
+pkg <- example_diagnose_scenario("documentation_examples/unexported_example_ns_bad.Rd",
+                                 show_content = FALSE)
+# The package exports something, but not internal_values()
+writeLines("export(public_values)", file.path(pkg, "NAMESPACE"))
+lab_unexported_example_ns(pkg, verbose = FALSE)$issues
+unlink(pkg, recursive = TRUE)
 }

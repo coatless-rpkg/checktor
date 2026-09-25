@@ -46,6 +46,7 @@ source.
 pkg <- example_diagnose_scenario("network_examples/bad_network_example.Rd",
                                  show_content = FALSE)
 lab_network_operations(pkg, verbose = FALSE)$issues
+unlink(pkg, recursive = TRUE)
 }
 \seealso{
 \code{\link[=checktor]{checktor()}}, which runs this and every other check.

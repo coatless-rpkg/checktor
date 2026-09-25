@@ -118,6 +118,9 @@ checktor <- function(
   path <- find_package_root(path)
   validate_package_directory(path)
   severity <- match.arg(severity, SEVERITY_LEVELS, several.ok = TRUE)
+  # Every category reads the sources through one cache that lasts this run, so
+  # each file is parsed once rather than once per check; see R/cache.R.
+  local_run_cache()
 
   if (verbose) {
     cli::cli_rule(
@@ -128,12 +131,9 @@ checktor <- function(
     cli::cli_text()
   }
 
-  categories <- list(
-    code_issues = diagnose_code_issues,
-    description_issues = diagnose_description_issues,
-    documentation_issues = diagnose_documentation_issues,
-    general_issues = diagnose_general_issues,
-    policy_issues = diagnose_policy_violations
+  categories <- stats::setNames(
+    lapply(CATEGORY_ORCHESTRATORS, match.fun),
+    CATEGORY_FIELDS[names(CATEGORY_ORCHESTRATORS)]
   )
 
   if (progress && verbose) {
@@ -333,14 +333,7 @@ print.checktor_results <- function(x, ...) {
   cli::cli_text("Doctor version: {x$metadata$checktor_version}")
   cli::cli_text()
 
-  categories <- c(
-    "code_issues",
-    "description_issues",
-    "documentation_issues",
-    "general_issues",
-    "policy_issues"
-  )
-  for (cat in categories) {
+  for (cat in CATEGORY_FIELDS) {
     if (!cat %in% names(x)) {
       next
     }

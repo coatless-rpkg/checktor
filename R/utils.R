@@ -498,3 +498,38 @@ own_option_prefix <- function(path) {
   )
   if (is.na(nm)) "" else as.character(nm)
 }
+
+# Verbose output helper shared across diagnostic functions.
+emit_issue_summary <- function(
+  issues,
+  verbose,
+  success_msg,
+  failure_msg,
+  treatment = NULL,
+  max_show = 5L,
+  level = c("danger", "warning")
+) {
+  if (!verbose) {
+    return(invisible())
+  }
+  level <- match.arg(level)
+  if (length(issues) == 0L) {
+    cli::cli_alert_success(success_msg)
+    return(invisible())
+  }
+  if (level == "danger") {
+    cli::cli_alert_danger(failure_msg)
+  } else {
+    cli::cli_alert_warning(failure_msg)
+  }
+  cli::cli_ul(cli_literal(utils::head(issues, max_show)))
+  if (length(issues) > max_show) {
+    cli::cli_text("{.emph ... and {length(issues) - max_show} more}")
+  }
+  # Treatment strings carry inline markup such as {.code TRUE}. Interpolating one
+  # as a value leaves the braces on screen, so it has to reach cli as part of the
+  # format string, the same way prescribe() passes its treatments.
+  if (!is.null(treatment)) {
+    cli::cli_text(paste0("{.emph ", treatment, "}"))
+  }
+}

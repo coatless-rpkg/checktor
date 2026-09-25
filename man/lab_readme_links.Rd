@@ -37,9 +37,11 @@ source.
 }
 
 \examples{
-pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
-                                      show_content = FALSE)
+pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+                                 show_content = FALSE)
+# A relative link to a file the package does not have
 writeLines("See [the guide](docs/guide.md) for details.",
-           file.path(pkg_path, "README.md"))
-issues(lab_readme_links(pkg_path, verbose = FALSE))
+           file.path(pkg, "README.md"))
+lab_readme_links(pkg, verbose = FALSE)$issues
+unlink(pkg, recursive = TRUE)
 }

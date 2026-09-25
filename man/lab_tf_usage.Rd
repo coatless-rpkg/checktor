@@ -38,5 +38,6 @@ check maps to its source.
 \examples{
 # show_content defaults to TRUE, so the offending file prints first
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R")
-issues(lab_tf_usage(pkg, verbose = FALSE))
+lab_tf_usage(pkg, verbose = FALSE)$issues
+unlink(pkg, recursive = TRUE)
 }

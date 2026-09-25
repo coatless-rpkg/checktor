@@ -1,0 +1,7 @@
+Package: shortexample
+Title: Summaries of Survey Weights
+Version: 0.1.0
+Authors@R: person("Jane", "Roe", email = "jane@example.com", role = c("aut", "cre"))
+Description: Summarises survey weights.
+License: GPL-3
+Encoding: UTF-8

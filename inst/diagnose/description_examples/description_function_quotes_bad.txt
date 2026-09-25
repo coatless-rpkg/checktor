@@ -1,0 +1,8 @@
+Package: fnquoteexample
+Title: Summaries of Survey Weights
+Version: 0.1.0
+Authors@R: person("Jane", "Roe", email = "jane@example.com", role = c("aut", "cre"))
+Description: Computes design effects with 'deff()' and effective sample sizes
+    with 'ess()' from survey weights, with summaries by stratum.
+License: GPL-3
+Encoding: UTF-8

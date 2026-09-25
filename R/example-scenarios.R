@@ -21,8 +21,9 @@
 #' @return
 #' Character. Path to the temporary package directory containing the example
 #' file. Returns `NULL`, with a warning, if the example file cannot be found. An
-#' `example_path` that is not an `.R`, `.Rd`, `.Rmd`, `.qmd`, `.Rnw`, `.txt` or
-#' `.CITATION` file is an error, since a package has no place for it.
+#' `example_path` that is not an `.R`, `.Rd`, `.Rmd`, `.qmd`, `.Rnw`, `.txt`,
+#' `.CITATION` or `.LICENSE` file is an error, since a package has no place for
+#' it.
 #'
 #' @details
 #' This function:
@@ -31,8 +32,9 @@
 #' 2. Creates a temporary package directory structure
 #' 3. Copies the example file to where a package keeps its kind: an `.R` file in
 #'    `R/`, an `.Rd` file in `man/`, a vignette (`.Rmd`, `.qmd`, `.Rnw`) in
-#'    `vignettes/`, a DESCRIPTION scenario (`.txt`) as the `DESCRIPTION`, and a
-#'    citation scenario (`.CITATION`) as `inst/CITATION`
+#'    `vignettes/`, a DESCRIPTION scenario (`.txt`) as the `DESCRIPTION`, a
+#'    citation scenario (`.CITATION`) as `inst/CITATION`, and a licence scenario
+#'    (`.LICENSE`) as `LICENSE`
 #' 4. Optionally displays the example file content
 #' 5. Returns the path to the temporary package for diagnostic testing
 #'
@@ -47,6 +49,7 @@
 #' ```
 #' <tempdir>/checktor_example_XXXX/
 #' |-- DESCRIPTION          # The template, or a .txt scenario itself
+#' |-- LICENSE              # A .LICENSE scenario; made only for one
 #' |-- NEWS.md              # So the NEWS check has nothing to report
 #' |-- cran-comments.md     # So the cran-comments check has nothing to report
 #' |-- R/                   # An .R scenario, such as tf_usage_bad.R
@@ -62,27 +65,26 @@
 #'
 #' @export
 #' @examples
-#' # Create scenario with T/F usage issues
+#' # A scenario with T/F usage issues. show_content defaults to TRUE, so the
+#' # offending file prints first
 #' pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R")
-#' result <- lab_tf_usage(pkg_path, verbose = TRUE)
+#' lab_tf_usage(pkg_path, verbose = FALSE)$issues
 #' issues(checktor(pkg_path, verbose = FALSE, progress = FALSE))
-#'
-#' # Create scenario without showing file content
-#' pkg_path <- example_diagnose_scenario("code_examples/seed_setting_bad.R",
-#'                                       show_content = FALSE)
-#'
-#' # Create scenario with problematic DESCRIPTION file. A .txt scenario is the
-#' # DESCRIPTION, so it needs no description_type
-#' pkg_path <- example_diagnose_scenario("description_examples/bad_description.txt")
-#' desc_result <- diagnose_description_issues(pkg_path)
-#'
-#' # Manual cleanup when done
 #' unlink(pkg_path, recursive = TRUE)
 #'
-#' # Or use with automatic cleanup
-#' pkg_path <- example_diagnose_scenario("code_examples/browser_calls_bad.R",
-#'                                       cleanup = TRUE)
-#' # Inside a function, the package is deleted when that function returns
+#' # A .txt scenario is the DESCRIPTION, so it needs no description_type
+#' pkg_path <- example_diagnose_scenario("description_examples/bad_description.txt",
+#'                                       show_content = FALSE)
+#' issues(diagnose_description_issues(pkg_path, verbose = FALSE))
+#' unlink(pkg_path, recursive = TRUE)
+#'
+#' # With cleanup = TRUE the package is deleted when the calling function returns
+#' count_tf <- function() {
+#'   pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+#'                                         show_content = FALSE, cleanup = TRUE)
+#'   length(lab_tf_usage(pkg_path, verbose = FALSE)$issues)
+#' }
+#' count_tf()
 example_diagnose_scenario <- function(
   example_path,
   show_content = TRUE,
@@ -104,8 +106,8 @@ example_diagnose_scenario <- function(
     cli::cli_abort(c(
       paste(
         "{.arg example_path} must be an {.file .R}, {.file .Rd}, vignette",
-        "({.file .Rmd}, {.file .qmd}, {.file .Rnw}), DESCRIPTION ({.file .txt})",
-        "or CITATION ({.file .CITATION}) scenario."
+        "({.file .Rmd}, {.file .qmd}, {.file .Rnw}), DESCRIPTION ({.file .txt}),",
+        "CITATION ({.file .CITATION}) or LICENSE ({.file .LICENSE}) scenario."
       ),
       "x" = "{.file {example_path}} is none of these."
     ))
@@ -184,6 +186,7 @@ scenario_target <- function(example_path) {
     qmd = ,
     rnw = file.path("vignettes", basename(example_path)),
     citation = file.path("inst", "CITATION"),
+    license = "LICENSE",
     NA_character_
   )
 }
@@ -283,7 +286,8 @@ create_example_description <- function(desc_path, type = "minimal") {
 #'
 #' # Use with example_diagnose_scenario
 #' examples <- show_example_files("code")
-#' pkg_path <- example_diagnose_scenario(examples[1])
+#' pkg_path <- example_diagnose_scenario(examples[1], show_content = FALSE)
+#' unlink(pkg_path, recursive = TRUE)
 show_example_files <- function(category = "all", pattern = NULL) {
   base_path <- system.file("diagnose", package = "checktor")
 

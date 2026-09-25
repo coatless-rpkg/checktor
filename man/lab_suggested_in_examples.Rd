@@ -47,9 +47,10 @@ source.
 }
 
 \examples{
-pkg_path <- example_diagnose_scenario(
-  "documentation_examples/suggested_in_examples_bad.Rd", show_content = FALSE)
+pkg <- example_diagnose_scenario("documentation_examples/suggested_in_examples_bad.Rd",
+                                 show_content = FALSE)
 cat("Suggests: somesuggest\n",
-    file = file.path(pkg_path, "DESCRIPTION"), append = TRUE)
-issues(lab_suggested_in_examples(pkg_path, verbose = FALSE))
+    file = file.path(pkg, "DESCRIPTION"), append = TRUE)
+lab_suggested_in_examples(pkg, verbose = FALSE)$issues
+unlink(pkg, recursive = TRUE)
 }

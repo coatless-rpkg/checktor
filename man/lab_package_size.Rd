@@ -29,7 +29,11 @@ source.
 }
 
 \examples{
-pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
-                                      show_content = FALSE)
-lab_package_size(pkg_path, verbose = FALSE)$size_mb
+pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+                                 show_content = FALSE)
+# About 7 MB of data that gzip cannot shrink much
+dir.create(file.path(pkg, "inst", "extdata"), recursive = TRUE)
+writeBin(sin(seq_len(1e6) * 1.1), file.path(pkg, "inst", "extdata", "series.bin"))
+lab_package_size(pkg, verbose = FALSE)$issues
+unlink(pkg, recursive = TRUE)
 }

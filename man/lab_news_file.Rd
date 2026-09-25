@@ -28,8 +28,9 @@ source.
 }
 
 \examples{
-pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
-                                      show_content = FALSE)
-file.remove(file.path(pkg_path, "NEWS.md"))   # demonstrate the failing case
-issues(lab_news_file(pkg_path, verbose = FALSE))
+pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+                                 show_content = FALSE)
+invisible(file.remove(file.path(pkg, "NEWS.md")))
+lab_news_file(pkg, verbose = FALSE)$issues
+unlink(pkg, recursive = TRUE)
 }

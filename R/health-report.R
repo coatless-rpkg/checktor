@@ -43,22 +43,11 @@ health_report <- function(results, file = NULL, format = "markdown") {
   return(report)
 }
 
-# The categories a report walks, in the order checktor() runs them. Kept in one
-# place because every format has to agree: the CRAN policy panel was once missing
-# from the markdown report, which hid exactly the findings a reviewer acts on.
-REPORT_CATEGORIES <- c(
-  "code_issues",
-  "description_issues",
-  "documentation_issues",
-  "general_issues",
-  "policy_issues"
-)
-
 # Every failing check in a result, flattened to list(category, check, result), so
 # the markdown, text and HTML writers all report the same findings.
 report_findings <- function(results) {
   out <- list()
-  for (category in intersect(REPORT_CATEGORIES, names(results))) {
+  for (category in intersect(CATEGORY_FIELDS, names(results))) {
     cat_results <- results[[category]]
     if (!("passed" %in% names(cat_results))) {
       next

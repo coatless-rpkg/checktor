@@ -37,23 +37,13 @@ prescribe <- function(results) {
 
   cli::cli_rule("Treatment Recommendations")
 
-  # Index the curated treatments by "category::check" so any failed check can
-  # look up its rich remediation snippet in one step.
+  # Index the curated treatments by check so any failed check can look up its
+  # rich remediation snippet in one step. Check names are unique across
+  # categories, and a registered check may not take a built-in name.
   rx_index <- treatments
-  names(rx_index) <- vapply(
-    treatments,
-    function(rx) paste(rx$category, rx$check, sep = "::"),
-    character(1)
-  )
+  names(rx_index) <- vapply(treatments, function(rx) rx$check, character(1))
 
-  categories <- c(
-    "code_issues",
-    "description_issues",
-    "documentation_issues",
-    "general_issues",
-    "policy_issues"
-  )
-  for (cat in categories) {
+  for (cat in CATEGORY_FIELDS) {
     cat_res <- results[[cat]]
     if (
       is.null(cat_res) ||
@@ -64,7 +54,7 @@ prescribe <- function(results) {
     }
     failed <- names(cat_res$passed)[!cat_res$passed]
     for (chk in failed) {
-      rx <- rx_index[[paste(cat, chk, sep = "::")]]
+      rx <- rx_index[[chk]]
       if (!is.null(rx)) {
         # Curated treatment: heading, one-line remedy, worked example.
         cli::cli_h3(rx$title)
@@ -116,11 +106,10 @@ prescribe_generic <- function(check, chk_name) {
   )
 }
 
-# Treatment data indexed by (category, check). Adding a new treatment is just
+# Treatment data indexed by check. Adding a new treatment is just
 # appending an entry here - no need to edit prescribe()'s control flow.
 treatments <- list(
   list(
-    category = "code_issues",
     check = "tf_usage",
     title = "T/F Usage Issues",
     treatment = "Replace {.code T} with {.code TRUE} and {.code F} with {.code FALSE}",
@@ -133,7 +122,6 @@ treatments <- list(
     )
   ),
   list(
-    category = "code_issues",
     check = "seed_setting",
     title = "Hardcoded Seed Issues",
     treatment = "Add a seed parameter so callers control randomness",
@@ -152,7 +140,6 @@ treatments <- list(
     )
   ),
   list(
-    category = "code_issues",
     check = "print_cat_usage",
     title = "Unsuppressable Output Issues",
     treatment = "Use {.code message()} or gate output on a verbose parameter",
@@ -170,7 +157,6 @@ treatments <- list(
     )
   ),
   list(
-    category = "code_issues",
     check = "option_changes",
     title = "Unrestored Option Changes",
     treatment = paste0(
@@ -198,7 +184,6 @@ treatments <- list(
     )
   ),
   list(
-    category = "documentation_issues",
     check = "value_tags",
     title = "Missing \\value Tags",
     treatment = "Add {.code @return} tags to your roxygen documentation",
@@ -211,7 +196,6 @@ treatments <- list(
     )
   ),
   list(
-    category = "description_issues",
     check = "description_file",
     title = "DESCRIPTION R Cannot Read",
     treatment = paste0(
@@ -263,7 +247,6 @@ treatments <- list(
     }
   ),
   list(
-    category = "description_issues",
     check = "spelling",
     title = "Possibly Misspelled Words",
     treatment = "Record the correct terms in a {.file .aspell} dictionary, which {.code R CMD check --as-cran} reads",

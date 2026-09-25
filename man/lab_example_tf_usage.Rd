@@ -37,7 +37,8 @@ source.
 \examples{
 pkg <- example_diagnose_scenario("documentation_examples/example_tf_usage_bad.Rd",
                                  show_content = FALSE)
-issues(lab_example_tf_usage(pkg, verbose = FALSE))
+lab_example_tf_usage(pkg, verbose = FALSE)$issues
+unlink(pkg, recursive = TRUE)
 }
 \seealso{
 \code{\link[=checktor]{checktor()}}, \code{\link[=lab_tf_usage]{lab_tf_usage()}} for the same rule in \verb{R/}.

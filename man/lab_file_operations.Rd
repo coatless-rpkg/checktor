@@ -30,9 +30,10 @@ source.
 }
 
 \examples{
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("code_examples/file_operations_bad.R",
                                  show_content = FALSE)
-lab_file_operations(pkg, verbose = FALSE)$passed
+lab_file_operations(pkg, verbose = FALSE)$issues
+unlink(pkg, recursive = TRUE)
 }
 \seealso{
 \code{\link[=checktor]{checktor()}}, which runs this and every other check.

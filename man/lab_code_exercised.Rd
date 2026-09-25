@@ -44,11 +44,10 @@ check maps to its source.
 }
 
 \examples{
-pkg_path <- example_diagnose_scenario(
-  "general_examples/code_exercised_bad.R",
-  show_content = FALSE
-)
+pkg <- example_diagnose_scenario("general_examples/code_exercised_bad.R",
+                                 show_content = FALSE)
 # The scenario's function is exported, as roxygen2 would record it
-writeLines("export(tidy_values)", file.path(pkg_path, "NAMESPACE"))
-issues(lab_code_exercised(pkg_path, verbose = FALSE))
+writeLines("export(tidy_values)", file.path(pkg, "NAMESPACE"))
+lab_code_exercised(pkg, verbose = FALSE)$issues
+unlink(pkg, recursive = TRUE)
 }

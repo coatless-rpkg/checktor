@@ -44,9 +44,10 @@ source.
 }
 
 \examples{
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("documentation_examples/example_interactive_bad.Rd",
                                  show_content = FALSE)
-lab_example_interactive(pkg, verbose = FALSE)$passed
+lab_example_interactive(pkg, verbose = FALSE)$issues
+unlink(pkg, recursive = TRUE)
 }
 \seealso{
 \code{\link[=checktor]{checktor()}}, \code{\link[=lab_example_structure]{lab_example_structure()}}.

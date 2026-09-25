@@ -1,21 +1,14 @@
 # Runtime registry of user-supplied checks.
 #
-# checktor's built-in checks are hard-coded into each diagnose_<category>_issues()
-# function. This registry lets a downstream package or script add its own check to
-# a checktor() run without editing checktor's source: register_check() records a
-# function, its category, and its severity tier, and the category functions append
-# the registry's entries to their own list. State is session-scoped and lives in
-# this internal environment, never in .GlobalEnv, so it does not outlive the R
-# session or trip checktor's own policy checks.
+# checktor's built-in checks are listed in the table in R/registry.R, which each
+# diagnose_<category>_issues() function runs. This registry lets a downstream
+# package or script add its own check to a checktor() run without editing
+# checktor's source: register_check() records a function, its category, and its
+# severity tier, and the category functions append the registry's entries to
+# their own list. State is session-scoped and lives in this internal environment,
+# never in .GlobalEnv, so it does not outlive the R session or trip checktor's own
+# policy checks.
 .checktor_registry <- new.env(parent = emptyenv())
-
-CHECK_CATEGORIES <- c(
-  "code",
-  "description",
-  "documentation",
-  "general",
-  "policy"
-)
 
 #' Register a Custom Check with `checktor()`
 #'
@@ -184,13 +177,11 @@ registered_checks_for <- function(category, ...) {
     if (!identical(e$category, category)) {
       next
     }
-    extra <- cache[names(cache) %in% names(formals(e$fn))]
     out[[nm]] <- local({
-      fn_local <- e$fn
-      extra_local <- extra
+      run <- forward_cache(e$fn, cache)
       nm_local <- nm
       function(p, v) {
-        res <- do.call(fn_local, c(list(p, v), extra_local))
+        res <- run(p, v)
         if (!inherits(res, "checktor_check_result")) {
           cli::cli_abort(
             "Registered check {.val {nm_local}} must return a {.cls checktor_check_result}."

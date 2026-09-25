@@ -458,3 +458,24 @@ test_that("checkup(): fails a package whose DESCRIPTION R cannot read", {
   # R CMD build and INSTALL both stop on it, so no build should go green.
   expect_false(checkup(unparseable_pkg()))
 })
+
+# Test emit_issue_summary() ----
+
+test_that("emit_issue_summary(): prints issue text literally, never evaluating it", {
+  # A finding quotes the package under check: a Title, a file name, a README
+  # link. A URL template such as `/items/{id}` there used to reach cli as R code.
+  out <- NULL
+  expect_no_error(
+    out <- cli::cli_fmt(emit_issue_summary(
+      "README.md: http://api.example.org/items/{stop('evaluated')}",
+      verbose = TRUE,
+      "No issues",
+      "Issues found"
+    ))
+  )
+  expect_match(
+    paste(out, collapse = "\n"),
+    "items/{stop('evaluated')}",
+    fixed = TRUE
+  )
+})

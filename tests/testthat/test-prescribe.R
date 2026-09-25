@@ -125,3 +125,11 @@ test_that("prescribe(): still offers remedies for advisory-only findings", {
   # prescription is exactly the silence this test is here to rule out.
   expect_match(txt, "No NEWS file found", fixed = TRUE)
 })
+
+test_that("prescribe(): every curated treatment names a built-in check", {
+  # Treatments are looked up by check name alone, so a misspelt one would never
+  # be shown.
+  checks <- vapply(treatments, function(rx) rx$check, character(1))
+  expect_true(all(checks %in% BUILTIN_CHECKS$name), info = paste(checks, collapse = ", "))
+  expect_identical(anyDuplicated(checks), 0L)
+})

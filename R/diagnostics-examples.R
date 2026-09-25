@@ -23,9 +23,10 @@
 #' @seealso [checktor()], [lab_software_install()] for the same rule in `R/`.
 #' @export
 #' @examples
-#' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+#' pkg <- example_diagnose_scenario("documentation_examples/example_installs_bad.Rd",
 #'                                  show_content = FALSE)
-#' lab_example_installs(pkg, verbose = FALSE)$passed
+#' lab_example_installs(pkg, verbose = FALSE)$issues
+#' unlink(pkg, recursive = TRUE)
 lab_example_installs <- function(path = ".", verbose = TRUE) {
   path <- find_package_root(path)
   parsed <- read_example_xml(path, kinds = c("example", "vignette", "demo"))
@@ -86,9 +87,10 @@ lab_example_installs <- function(path = ".", verbose = TRUE) {
 #' @seealso [checktor()], [lab_file_operations()] for the same rule in `R/`.
 #' @export
 #' @examples
-#' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+#' pkg <- example_diagnose_scenario("documentation_examples/example_writes_bad.Rd",
 #'                                  show_content = FALSE)
-#' lab_example_writes(pkg, verbose = FALSE)$passed
+#' lab_example_writes(pkg, verbose = FALSE)$issues
+#' unlink(pkg, recursive = TRUE)
 lab_example_writes <- function(path = ".", verbose = TRUE) {
   path <- find_package_root(path)
   parsed <- read_example_xml(path, kinds = c("example", "vignette", "demo"))
@@ -175,14 +177,15 @@ lab_example_writes <- function(path = ".", verbose = TRUE) {
 #' @seealso [checktor()], [lab_example_structure()].
 #' @export
 #' @examples
-#' pkg <- example_diagnose_scenario(
-#'   "documentation_examples/example_unparseable_bad.Rd", show_content = FALSE)
-#' issues(lab_example_unparseable(pkg, verbose = FALSE))
+#' pkg <- example_diagnose_scenario("documentation_examples/example_unparseable_bad.Rd",
+#'                                  show_content = FALSE)
+#' lab_example_unparseable(pkg, verbose = FALSE)$issues
+#' unlink(pkg, recursive = TRUE)
 lab_example_unparseable <- function(path = ".", verbose = TRUE) {
   path <- find_package_root(path)
   issues <- character(0)
   for (file in list_rd_files(path)) {
-    rd <- tryCatch(tools::parse_Rd(file), error = function(e) NULL)
+    rd <- tryCatch(read_rd(file), error = function(e) NULL)
     section <- if (!is.null(rd)) extract_rd_section(rd, "\\examples")
     if (is.null(section)) {
       next
@@ -258,7 +261,8 @@ unparseable_issue <- function(err, src, file) {
 #' @examples
 #' pkg <- example_diagnose_scenario("documentation_examples/example_tf_usage_bad.Rd",
 #'                                  show_content = FALSE)
-#' issues(lab_example_tf_usage(pkg, verbose = FALSE))
+#' lab_example_tf_usage(pkg, verbose = FALSE)$issues
+#' unlink(pkg, recursive = TRUE)
 lab_example_tf_usage <- function(path = ".", verbose = TRUE, tests = FALSE) {
   path <- find_package_root(path)
   kinds <- c("example", "vignette", "demo", if (isTRUE(tests)) "test")
@@ -296,9 +300,10 @@ lab_example_tf_usage <- function(path = ".", verbose = TRUE, tests = FALSE) {
 #' @seealso [checktor()], [lab_option_changes()] for the same rule in `R/`.
 #' @export
 #' @examples
-#' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+#' pkg <- example_diagnose_scenario("documentation_examples/example_state_bad.Rmd",
 #'                                  show_content = FALSE)
-#' lab_example_state(pkg, verbose = FALSE)$passed
+#' lab_example_state(pkg, verbose = FALSE)$issues
+#' unlink(pkg, recursive = TRUE)
 lab_example_state <- function(path = ".", verbose = TRUE) {
   path <- find_package_root(path)
   parsed <- read_example_xml(path, kinds = c("example", "vignette", "demo"))
@@ -1179,9 +1184,10 @@ hidden_interactive_calls <- function(xml) {
 #' @seealso [checktor()], [lab_example_structure()].
 #' @export
 #' @examples
-#' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+#' pkg <- example_diagnose_scenario("documentation_examples/example_interactive_bad.Rd",
 #'                                  show_content = FALSE)
-#' lab_example_interactive(pkg, verbose = FALSE)$passed
+#' lab_example_interactive(pkg, verbose = FALSE)$issues
+#' unlink(pkg, recursive = TRUE)
 lab_example_interactive <- function(path = ".", verbose = TRUE) {
   path <- find_package_root(path)
   rd_files <- list_rd_files(path)
@@ -1195,7 +1201,7 @@ lab_example_interactive <- function(path = ".", verbose = TRUE) {
 
   issues <- character(0)
   for (file in rd_files) {
-    rd <- tryCatch(tools::parse_Rd(file), error = function(e) NULL)
+    rd <- tryCatch(read_rd(file), error = function(e) NULL)
     if (is.null(rd)) {
       next
     }
@@ -1262,9 +1268,10 @@ lab_example_interactive <- function(path = ".", verbose = TRUE) {
 #' @seealso [checktor()], [lab_unexported_example_ns()].
 #' @export
 #' @examples
-#' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+#' pkg <- example_diagnose_scenario("documentation_examples/example_internal_ns_bad.Rd",
 #'                                  show_content = FALSE)
-#' lab_example_internal_ns(pkg, verbose = FALSE)$passed
+#' lab_example_internal_ns(pkg, verbose = FALSE)$issues
+#' unlink(pkg, recursive = TRUE)
 lab_example_internal_ns <- function(path = ".", verbose = TRUE) {
   path <- find_package_root(path)
   parsed <- read_example_xml(path, kinds = c("example", "vignette"))

@@ -1,0 +1,8 @@
+Package: dquoteexample
+Title: Summaries of Survey Weights
+Version: 0.1.0
+Authors@R: person("Jane", "Roe", email = "jane@example.com", role = c("aut", "cre"))
+Description: Computes design effects and effective sample sizes from survey
+    weights, and draws them with "ggplot2" by stratum.
+License: GPL-3
+Encoding: UTF-8

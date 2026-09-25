@@ -34,7 +34,8 @@ show_example_files(pattern = "bad")
 
 # Use with example_diagnose_scenario
 examples <- show_example_files("code")
-pkg_path <- example_diagnose_scenario(examples[1])
+pkg_path <- example_diagnose_scenario(examples[1], show_content = FALSE)
+unlink(pkg_path, recursive = TRUE)
 }
 \seealso{
 \code{\link[=example_diagnose_scenario]{example_diagnose_scenario()}} to create test scenarios with these files

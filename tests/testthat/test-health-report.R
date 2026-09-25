@@ -76,7 +76,7 @@ test_that("report_findings(): walks every category checktor() runs", {
   # The guard against one format quietly dropping a panel again.
   r <- checktor(policy_pkg(), verbose = FALSE, progress = FALSE)
   categories <- grep("_issues$", names(r), value = TRUE)
-  expect_setequal(REPORT_CATEGORIES, categories)
+  expect_setequal(CATEGORY_FIELDS, categories)
 })
 
 test_that("report_findings(): one entry per failing check, in category order", {
@@ -91,7 +91,7 @@ test_that("report_findings(): one entry per failing check, in category order", {
   expect_setequal(checks, failed)
   expect_false(anyDuplicated(checks) > 0L)
   cats <- unique(vapply(found, function(f) f$category, character(1)))
-  expect_equal(cats, intersect(REPORT_CATEGORIES, cats))
+  expect_equal(cats, intersect(CATEGORY_FIELDS, cats))
 })
 
 # Test validate_package_directory() ----

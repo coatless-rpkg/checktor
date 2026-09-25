@@ -30,9 +30,10 @@ maps to its source.
 }
 
 \examples{
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("documentation_examples/example_state_bad.Rmd",
                                  show_content = FALSE)
-lab_example_state(pkg, verbose = FALSE)$passed
+lab_example_state(pkg, verbose = FALSE)$issues
+unlink(pkg, recursive = TRUE)
 }
 \seealso{
 \code{\link[=checktor]{checktor()}}, \code{\link[=lab_option_changes]{lab_option_changes()}} for the same rule in \verb{R/}.

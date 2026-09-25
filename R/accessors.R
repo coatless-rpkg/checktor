@@ -1,12 +1,3 @@
-# Short-name -> results field map, reused across accessors.
-.checktor_cat_map <- c(
-  code = "code_issues",
-  description = "description_issues",
-  documentation = "documentation_issues",
-  general = "general_issues",
-  policy = "policy_issues"
-)
-
 # Names of the actual check elements in a category result: every named
 # element except the `passed` summary, restricted to list-valued elements so
 # early-return categories (which carry a bare `message` string) are skipped.
@@ -148,8 +139,8 @@ issues.checktor_category_result <- function(x, ...) {
 #' @rdname issues
 #' @export
 issues.checktor_results <- function(x, ...) {
-  parts <- lapply(names(.checktor_cat_map), function(short) {
-    cn <- .checktor_cat_map[[short]]
+  parts <- lapply(names(CATEGORY_FIELDS), function(short) {
+    cn <- CATEGORY_FIELDS[[short]]
     if (!cn %in% names(x)) {
       return(NULL)
     }
@@ -236,9 +227,9 @@ passed.checktor_category_result <- function(x, ...) x$passed
 #' @export
 passed.checktor_results <- function(x, ...) {
   vapply(
-    names(.checktor_cat_map),
+    names(CATEGORY_FIELDS),
     function(short) {
-      cn <- .checktor_cat_map[[short]]
+      cn <- CATEGORY_FIELDS[[short]]
       if (!cn %in% names(x)) {
         return(NA)
       }
@@ -304,8 +295,8 @@ failed_checks.checktor_category_result <- function(x, ...) {
 #' @export
 failed_checks.checktor_results <- function(x, ...) {
   out <- character(0)
-  for (short in names(.checktor_cat_map)) {
-    cn <- .checktor_cat_map[[short]]
+  for (short in names(CATEGORY_FIELDS)) {
+    cn <- CATEGORY_FIELDS[[short]]
     if (!cn %in% names(x)) {
       next
     }
@@ -393,8 +384,8 @@ failed_checks.checktor_results <- function(x, ...) {
 #' @rdname tidy
 #' @exportS3Method generics::tidy
 tidy.checktor_results <- function(x, ...) {
-  parts <- lapply(names(.checktor_cat_map), function(short) {
-    cn <- .checktor_cat_map[[short]]
+  parts <- lapply(names(CATEGORY_FIELDS), function(short) {
+    cn <- CATEGORY_FIELDS[[short]]
     if (!cn %in% names(x)) {
       return(NULL)
     }
@@ -463,8 +454,8 @@ summary.checktor_category_result <- function(object, ...) {
 #' @rdname checktor-summary
 #' @export
 summary.checktor_results <- function(object, ...) {
-  rows <- lapply(names(.checktor_cat_map), function(short) {
-    cn <- .checktor_cat_map[[short]]
+  rows <- lapply(names(CATEGORY_FIELDS), function(short) {
+    cn <- CATEGORY_FIELDS[[short]]
     if (!cn %in% names(object)) {
       return(NULL)
     }

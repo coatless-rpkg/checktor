@@ -8,10 +8,7 @@
 # on "," and trim. Written so a dedicated config file could later be merged in
 # without changing callers.
 checktor_config <- function(path) {
-  fields <- c(
-    "disable", "allow", "software_names", "language_names", "format_names",
-    "acronyms"
-  )
+  fields <- c("disable", "allow", VOCABULARY_FIELDS)
   empty <- stats::setNames(rep(list(character(0)), length(fields)), fields)
 
   empty$disable <- as.character(getOption("checktor.disable"))

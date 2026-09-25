@@ -1,0 +1,8 @@
+Package: redundantexample
+Title: Summaries of Survey Weights for R
+Version: 0.1.0
+Authors@R: person("Jane", "Roe", email = "jane@example.com", role = c("aut", "cre"))
+Description: Computes design effects and effective sample sizes from survey
+    weights, with summaries by stratum.
+License: GPL-3
+Encoding: UTF-8

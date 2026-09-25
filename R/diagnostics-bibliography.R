@@ -51,9 +51,10 @@ REFERENCES_FILES <- c("REFERENCES.rds", "REFERENCES.R", "REFERENCES.bib")
 #' @seealso [checktor()], [lab_rd_bibliography_files()].
 #' @export
 #' @examples
-#' pkg <- example_diagnose_scenario(
-#'   "documentation_examples/rd_bibliography_bad.Rd", show_content = FALSE)
-#' issues(lab_rd_bibliography(pkg, verbose = FALSE))
+#' pkg <- example_diagnose_scenario("documentation_examples/rd_bibliography_bad.Rd",
+#'                                  show_content = FALSE)
+#' lab_rd_bibliography(pkg, verbose = FALSE)$issues
+#' unlink(pkg, recursive = TRUE)
 lab_rd_bibliography <- function(path = ".", verbose = TRUE) {
   path <- find_package_root(path)
   label <- "Rd bibliography check"
@@ -142,9 +143,14 @@ lab_rd_bibliography <- function(path = ".", verbose = TRUE) {
 #' @seealso [checktor()], [lab_rd_bibliography()].
 #' @export
 #' @examples
-#' pkg <- example_diagnose_scenario(
-#'   "documentation_examples/rd_bibliography_bad.Rd", show_content = FALSE)
-#' lab_rd_bibliography_files(pkg, verbose = FALSE)$passed
+#' pkg <- example_diagnose_scenario("documentation_examples/rd_bibliography_bad.Rd",
+#'                                  show_content = FALSE)
+#' # Give the page a REFERENCES.bib, without 'bibtex' in Suggests to read it
+#' dir.create(file.path(pkg, "inst"))
+#' writeLines("@book{smith2020, author = {Ann Smith}, title = {Smoothing}, year = {2020}}",
+#'            file.path(pkg, "inst", "REFERENCES.bib"))
+#' lab_rd_bibliography_files(pkg, verbose = FALSE)$issues
+#' unlink(pkg, recursive = TRUE)
 lab_rd_bibliography_files <- function(path = ".", verbose = TRUE) {
   path <- find_package_root(path)
   label <- "Rd bibliography files check"

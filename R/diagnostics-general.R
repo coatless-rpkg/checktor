@@ -38,21 +38,15 @@
 #' general_results$package_size$size_mb
 diagnose_general_issues <- function(path = ".", verbose = TRUE) {
   path <- find_package_root(path)
+  # Share each parse among this panel's checks; see R/cache.R.
+  local_run_cache()
   if (verbose) {
     cli::cli_h2("General Health Check")
   }
 
   run_checks(
     c(
-      list(
-        package_size = lab_package_size,
-        urls = lab_urls,
-        url_liveness = lab_url_liveness,
-        news_file = lab_news_file,
-        readme_links = lab_readme_links,
-        code_exercised = lab_code_exercised,
-        citation_file = lab_citation_file
-      ),
+      builtin_checks_for("general"),
       registered_checks_for("general")
     ),
     path,
@@ -78,9 +72,13 @@ diagnose_general_issues <- function(path = ".", verbose = TRUE) {
 #'   and `size_mb`.
 #' @export
 #' @examples
-#' pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
-#'                                       show_content = FALSE)
-#' lab_package_size(pkg_path, verbose = FALSE)$size_mb
+#' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+#'                                  show_content = FALSE)
+#' # About 7 MB of data that gzip cannot shrink much
+#' dir.create(file.path(pkg, "inst", "extdata"), recursive = TRUE)
+#' writeBin(sin(seq_len(1e6) * 1.1), file.path(pkg, "inst", "extdata", "series.bin"))
+#' lab_package_size(pkg, verbose = FALSE)$issues
+#' unlink(pkg, recursive = TRUE)
 lab_package_size <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
   all_files <- list.files(
@@ -168,10 +166,11 @@ lab_package_size <- function(path, verbose = TRUE) {
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @export
 #' @examples
-#' pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
-#'                                       show_content = FALSE)
-#' file.remove(file.path(pkg_path, "NEWS.md"))   # demonstrate the failing case
-#' issues(lab_news_file(pkg_path, verbose = FALSE))
+#' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+#'                                  show_content = FALSE)
+#' invisible(file.remove(file.path(pkg, "NEWS.md")))
+#' lab_news_file(pkg, verbose = FALSE)$issues
+#' unlink(pkg, recursive = TRUE)
 lab_news_file <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
   candidates <- file.path(
@@ -232,13 +231,12 @@ lab_news_file <- function(path, verbose = TRUE) {
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @export
 #' @examples
-#' pkg_path <- example_diagnose_scenario(
-#'   "general_examples/code_exercised_bad.R",
-#'   show_content = FALSE
-#' )
+#' pkg <- example_diagnose_scenario("general_examples/code_exercised_bad.R",
+#'                                  show_content = FALSE)
 #' # The scenario's function is exported, as roxygen2 would record it
-#' writeLines("export(tidy_values)", file.path(pkg_path, "NAMESPACE"))
-#' issues(lab_code_exercised(pkg_path, verbose = FALSE))
+#' writeLines("export(tidy_values)", file.path(pkg, "NAMESPACE"))
+#' lab_code_exercised(pkg, verbose = FALSE)$issues
+#' unlink(pkg, recursive = TRUE)
 lab_code_exercised <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
   pass <- function() {
@@ -300,7 +298,7 @@ lab_code_exercised <- function(path, verbose = TRUE) {
 package_has_examples <- function(path) {
   for (file in list_rd_files(path)) {
     rd <- tryCatch(
-      suppressWarnings(tools::parse_Rd(file)),
+      suppressWarnings(read_rd(file)),
       error = function(e) NULL
     )
     if (is.null(rd) || !is.null(extract_rd_section(rd, "\\examples"))) {
@@ -359,11 +357,10 @@ package_has_vignettes <- function(path) {
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @export
 #' @examples
-#' pkg_path <- example_diagnose_scenario(
-#'   "general_examples/citation_file_bad.CITATION",
-#'   show_content = FALSE
-#' )
-#' issues(lab_citation_file(pkg_path, verbose = FALSE))
+#' pkg <- example_diagnose_scenario("general_examples/citation_file_bad.CITATION",
+#'                                  show_content = FALSE)
+#' lab_citation_file(pkg, verbose = FALSE)$issues
+#' unlink(pkg, recursive = TRUE)
 lab_citation_file <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
   file <- list_included_files(path, "inst", "^CITATION$")
@@ -545,10 +542,11 @@ citation_call_issues <- function(xml, rel) {
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @export
 #' @examples
-#' pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
-#'                                       show_content = FALSE)
-#' file.remove(file.path(pkg_path, "cran-comments.md"))  # failing case
-#' issues(lab_cran_comments_file(pkg_path, verbose = FALSE))
+#' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+#'                                  show_content = FALSE)
+#' invisible(file.remove(file.path(pkg, "cran-comments.md")))
+#' lab_cran_comments_file(pkg, verbose = FALSE)$issues
+#' unlink(pkg, recursive = TRUE)
 lab_cran_comments_file <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
   has_it <- file.exists(file.path(path, "cran-comments.md"))
@@ -627,11 +625,13 @@ is_external_or_anchor <- function(tgt) {
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @export
 #' @examples
-#' pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
-#'                                       show_content = FALSE)
+#' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+#'                                  show_content = FALSE)
+#' # A relative link to a file the package does not have
 #' writeLines("See [the guide](docs/guide.md) for details.",
-#'            file.path(pkg_path, "README.md"))
-#' issues(lab_readme_links(pkg_path, verbose = FALSE))
+#'            file.path(pkg, "README.md"))
+#' lab_readme_links(pkg, verbose = FALSE)$issues
+#' unlink(pkg, recursive = TRUE)
 lab_readme_links <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
   readmes <- file.path(path, c("README.md", "README.Rmd"))
@@ -718,9 +718,10 @@ lab_readme_links <- function(path, verbose = TRUE) {
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @export
 #' @examples
-#' pkg_path <- example_diagnose_scenario("description_examples/bad_description.txt",
-#'                                       show_content = FALSE)
-#' issues(lab_urls(pkg_path, verbose = FALSE))
+#' pkg <- example_diagnose_scenario("description_examples/bad_description.txt",
+#'                                  show_content = FALSE)
+#' lab_urls(pkg, verbose = FALSE)$issues
+#' unlink(pkg, recursive = TRUE)
 lab_urls <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
   rd_files <- list_rd_files(path)
@@ -770,7 +771,7 @@ lab_urls <- function(path, verbose = TRUE) {
 
   rd_literal_spans <- c("\\verb", "\\code")
   for (file in rd_files) {
-    rd <- tryCatch(tools::parse_Rd(file), error = function(e) NULL)
+    rd <- tryCatch(read_rd(file), error = function(e) NULL)
     if (is.null(rd)) {
       next
     }
@@ -847,9 +848,16 @@ fetch_url_db <- function(path) {
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @export
 #' @examples
-#' # Needs a network, so this is not run automatically:
+#' # Needs a network: it asks every URL the package lists whether it answers,
+#' # so it is not run here. The scenario lists one page that exists and one that
+#' # does not, and the missing one is reported with its 404. Outside an
+#' # interactive session the check is skipped unless
+#' # options(checktor.url_check = TRUE) turns it on.
 #' \dontrun{
-#' lab_url_liveness(".")
+#' pkg <- example_diagnose_scenario("general_examples/url_liveness_bad.txt",
+#'                                  show_content = FALSE)
+#' lab_url_liveness(pkg, verbose = FALSE)$issues
+#' unlink(pkg, recursive = TRUE)
 #' }
 lab_url_liveness <- function(path, verbose = TRUE) {
   path <- find_package_root(path)

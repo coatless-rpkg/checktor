@@ -1,0 +1,9 @@
+Package: orcidexample
+Title: Summaries of Survey Weights
+Version: 0.1.0
+Authors@R: person("Jane", "Roe", email = "jane@example.com", role = c("aut", "cre"),
+    comment = c(ORCID = "0000-0002-1825-0098"))
+Description: Computes design effects and effective sample sizes from survey
+    weights, with summaries by stratum.
+License: GPL-3
+Encoding: UTF-8

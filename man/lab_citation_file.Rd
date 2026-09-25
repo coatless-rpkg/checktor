@@ -46,9 +46,8 @@ its source.
 }
 
 \examples{
-pkg_path <- example_diagnose_scenario(
-  "general_examples/citation_file_bad.CITATION",
-  show_content = FALSE
-)
-issues(lab_citation_file(pkg_path, verbose = FALSE))
+pkg <- example_diagnose_scenario("general_examples/citation_file_bad.CITATION",
+                                 show_content = FALSE)
+lab_citation_file(pkg, verbose = FALSE)$issues
+unlink(pkg, recursive = TRUE)
 }

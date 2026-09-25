@@ -24,7 +24,7 @@ rd_example_code <- function(path) {
   files <- list_rd_files(path)
   out <- list()
   for (file in files) {
-    rd <- tryCatch(tools::parse_Rd(file), error = function(e) NULL)
+    rd <- tryCatch(read_rd(file), error = function(e) NULL)
     if (is.null(rd)) {
       next
     }
@@ -136,37 +136,45 @@ script_code <- function(path, dirs, kind) {
 # Returns a list of list(file, kind, xml), skipping anything that will not parse
 # rather than failing the run, exactly as read_r_xml() does.
 read_example_xml <- function(path, kinds = c("example", "vignette", "demo")) {
-  sources <- list()
-  if ("example" %in% kinds) {
-    sources <- c(sources, rd_example_code(path))
-  }
-  if ("vignette" %in% kinds) {
-    sources <- c(sources, vignette_code(path))
-  }
-  if ("demo" %in% kinds) {
-    sources <- c(sources, script_code(path, EXAMPLE_SOURCE_DIRS$demo, "demo"))
-  }
-  if ("test" %in% kinds) {
-    sources <- c(sources, script_code(path, EXAMPLE_SOURCE_DIRS$test, "test"))
-  }
-
   out <- list()
-  for (src in sources) {
-    xml <- parse_text_xml(src$code)
-    if (is.null(xml)) {
-      next
+  for (kind in c("example", "vignette", "demo", "test")) {
+    if (kind %in% kinds) {
+      out <- c(out, read_example_kind(path, kind))
     }
-    if (!is.null(src$lines)) {
-      xml <- remap_lines(xml, src$lines)
-    }
-    out[[length(out) + 1L]] <- list(
-      file = src$file,
-      kind = src$kind,
-      xml = xml,
-      code = src$code
-    )
   }
   out
+}
+
+# The parsed code of one kind. Several checks ask for the same kinds, so within a
+# checktor() run each kind is read and parsed once; see R/cache.R. Nothing edits
+# the parsed trees after this, so the checks can share them.
+read_example_kind <- function(path, kind) {
+  run_cached(paste0("example_xml:", kind, ":", path), function() {
+    sources <- switch(
+      kind,
+      example = rd_example_code(path),
+      vignette = vignette_code(path),
+      demo = script_code(path, EXAMPLE_SOURCE_DIRS$demo, "demo"),
+      test = script_code(path, EXAMPLE_SOURCE_DIRS$test, "test")
+    )
+    out <- list()
+    for (src in sources) {
+      xml <- parse_text_xml(src$code)
+      if (is.null(xml)) {
+        next
+      }
+      if (!is.null(src$lines)) {
+        xml <- remap_lines(xml, src$lines)
+      }
+      out[[length(out) + 1L]] <- list(
+        file = src$file,
+        kind = src$kind,
+        xml = xml,
+        code = src$code
+      )
+    }
+    out
+  })
 }
 
 # Run an XPath over parsed example code and report "kind file.R:line" per match,

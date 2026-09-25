@@ -35,9 +35,10 @@ source.
 }
 
 \examples{
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("documentation_examples/donttest_vs_dontrun_bad.Rd",
                                  show_content = FALSE)
-lab_donttest_vs_dontrun(pkg, verbose = FALSE)$passed
+lab_donttest_vs_dontrun(pkg, verbose = FALSE)$issues
+unlink(pkg, recursive = TRUE)
 }
 \seealso{
 \code{\link[=checktor]{checktor()}}, which runs this and every other check.

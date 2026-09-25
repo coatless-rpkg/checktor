@@ -32,30 +32,14 @@
 #' issues(doc_results)
 diagnose_documentation_issues <- function(path = ".", verbose = TRUE) {
   path <- find_package_root(path)
+  # Share each parse among this panel's checks; see R/cache.R.
+  local_run_cache()
   if (verbose) {
     cli::cli_h2("Documentation Health Check")
   }
   run_checks(
     c(
-      list(
-        value_tags = lab_value_tags,
-        missing_examples = lab_missing_examples,
-        roxygen_usage = lab_roxygen_usage,
-        example_structure = lab_example_structure,
-        commented_examples = lab_commented_examples,
-        donttest_vs_dontrun = lab_donttest_vs_dontrun,
-        unexported_example_ns = lab_unexported_example_ns,
-        suggested_in_examples = lab_suggested_in_examples,
-        rd_bibliography = lab_rd_bibliography,
-        rd_bibliography_files = lab_rd_bibliography_files,
-        example_interactive = lab_example_interactive,
-        example_installs = lab_example_installs,
-        example_writes = lab_example_writes,
-        example_state = lab_example_state,
-        example_tf_usage = lab_example_tf_usage,
-        example_unparseable = lab_example_unparseable,
-        example_internal_ns = lab_example_internal_ns
-      ),
+      builtin_checks_for("documentation"),
       registered_checks_for("documentation")
     ),
     path,
@@ -109,9 +93,10 @@ is_non_function_rd_obj <- function(rd) {
 #'   `message`.
 #' @export
 #' @examples
-#' pkg_path <- example_diagnose_scenario("documentation_examples/missing_value_tag.Rd",
-#'                                       show_content = FALSE)
-#' issues(lab_value_tags(pkg_path, verbose = FALSE))
+#' pkg <- example_diagnose_scenario("documentation_examples/missing_value_tag.Rd",
+#'                                  show_content = FALSE)
+#' lab_value_tags(pkg, verbose = FALSE)$issues
+#' unlink(pkg, recursive = TRUE)
 lab_value_tags <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
   rd_files <- list_rd_files(path)
@@ -141,7 +126,7 @@ lab_value_tags <- function(path, verbose = TRUE) {
     )
   }
   needs_value <- function(rd_file) {
-    rd <- tryCatch(tools::parse_Rd(rd_file), error = function(e) NULL)
+    rd <- tryCatch(read_rd(rd_file), error = function(e) NULL)
     if (is.null(rd)) {
       return(FALSE)
     }
@@ -199,9 +184,10 @@ lab_value_tags <- function(path, verbose = TRUE) {
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @export
 #' @examples
-#' pkg_path <- example_diagnose_scenario("network_examples/bad_network_example.Rd",
-#'                                       show_content = FALSE)
-#' lab_example_structure(pkg_path, verbose = FALSE)
+#' pkg <- example_diagnose_scenario("documentation_examples/example_structure_bad.Rd",
+#'                                  show_content = FALSE)
+#' lab_example_structure(pkg, verbose = FALSE)$issues
+#' unlink(pkg, recursive = TRUE)
 lab_example_structure <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
   rd_files <- list_rd_files(path)
@@ -267,7 +253,7 @@ lab_example_structure <- function(path, verbose = TRUE) {
 
   issues <- character(0)
   for (file in rd_files) {
-    rd <- tryCatch(tools::parse_Rd(file), error = function(e) NULL)
+    rd <- tryCatch(read_rd(file), error = function(e) NULL)
     if (is.null(rd)) {
       next
     }
@@ -331,9 +317,10 @@ contains_dontrun <- function(node) contains_rd_tag(node, "\\dontrun")
 #' @seealso [checktor()], which runs this and every other check.
 #' @export
 #' @examples
-#' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+#' pkg <- example_diagnose_scenario("documentation_examples/commented_examples_bad.Rd",
 #'                                  show_content = FALSE)
-#' lab_commented_examples(pkg, verbose = FALSE)$passed
+#' lab_commented_examples(pkg, verbose = FALSE)$issues
+#' unlink(pkg, recursive = TRUE)
 lab_commented_examples <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
   rd_files <- list_rd_files(path)
@@ -347,7 +334,7 @@ lab_commented_examples <- function(path, verbose = TRUE) {
 
   issues <- character(0)
   for (file in rd_files) {
-    rd <- tryCatch(tools::parse_Rd(file), error = function(e) NULL)
+    rd <- tryCatch(read_rd(file), error = function(e) NULL)
     if (is.null(rd)) {
       next
     }
@@ -577,9 +564,10 @@ dontrun_needs_suggests <- function(examples, suggests) {
 #' @seealso [checktor()], which runs this and every other check.
 #' @export
 #' @examples
-#' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+#' pkg <- example_diagnose_scenario("documentation_examples/donttest_vs_dontrun_bad.Rd",
 #'                                  show_content = FALSE)
-#' lab_donttest_vs_dontrun(pkg, verbose = FALSE)$passed
+#' lab_donttest_vs_dontrun(pkg, verbose = FALSE)$issues
+#' unlink(pkg, recursive = TRUE)
 lab_donttest_vs_dontrun <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
   rd_files <- list_rd_files(path)
@@ -594,7 +582,7 @@ lab_donttest_vs_dontrun <- function(path, verbose = TRUE) {
 
   issues <- character(0)
   for (file in rd_files) {
-    rd <- tryCatch(tools::parse_Rd(file), error = function(e) NULL)
+    rd <- tryCatch(read_rd(file), error = function(e) NULL)
     if (is.null(rd)) {
       next
     }
@@ -667,10 +655,11 @@ lab_donttest_vs_dontrun <- function(path, verbose = TRUE) {
 #'   `message`.
 #' @export
 #' @examples
-#' pkg_path <- example_diagnose_scenario(
-#'   "documentation_examples/missing_examples_bad.Rd", show_content = FALSE)
-#' writeLines("export(undocumented_fn)", file.path(pkg_path, "NAMESPACE"))
-#' issues(lab_missing_examples(pkg_path, verbose = FALSE))
+#' pkg <- example_diagnose_scenario("documentation_examples/missing_examples_bad.Rd",
+#'                                  show_content = FALSE)
+#' writeLines("export(undocumented_fn)", file.path(pkg, "NAMESPACE"))
+#' lab_missing_examples(pkg, verbose = FALSE)$issues
+#' unlink(pkg, recursive = TRUE)
 lab_missing_examples <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
   rd_files <- list_rd_files(path)
@@ -688,7 +677,7 @@ lab_missing_examples <- function(path, verbose = TRUE) {
 
   missing <- character(0)
   for (file in rd_files) {
-    rd <- tryCatch(tools::parse_Rd(file), error = function(e) NULL)
+    rd <- tryCatch(read_rd(file), error = function(e) NULL)
     if (is.null(rd)) {
       next
     }
@@ -885,11 +874,12 @@ unguarded_suggests <- function(xml, suggests, judged = function(use) TRUE) {
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @export
 #' @examples
-#' pkg_path <- example_diagnose_scenario(
-#'   "documentation_examples/suggested_in_examples_bad.Rd", show_content = FALSE)
+#' pkg <- example_diagnose_scenario("documentation_examples/suggested_in_examples_bad.Rd",
+#'                                  show_content = FALSE)
 #' cat("Suggests: somesuggest\n",
-#'     file = file.path(pkg_path, "DESCRIPTION"), append = TRUE)
-#' issues(lab_suggested_in_examples(pkg_path, verbose = FALSE))
+#'     file = file.path(pkg, "DESCRIPTION"), append = TRUE)
+#' lab_suggested_in_examples(pkg, verbose = FALSE)$issues
+#' unlink(pkg, recursive = TRUE)
 lab_suggested_in_examples <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
   rd_files <- list_rd_files(path)
@@ -913,7 +903,7 @@ lab_suggested_in_examples <- function(path, verbose = TRUE) {
   # reached by it and is excused like one behind requireNamespace().
   issues <- character(0)
   for (file in rd_files) {
-    rd <- tryCatch(tools::parse_Rd(file), error = function(e) NULL)
+    rd <- tryCatch(read_rd(file), error = function(e) NULL)
     if (is.null(rd)) {
       next
     }
@@ -993,9 +983,13 @@ lab_suggested_in_examples <- function(path, verbose = TRUE) {
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @export
 #' @examples
-#' pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
-#'                                       show_content = FALSE)
-#' lab_roxygen_usage(pkg_path, verbose = FALSE)$passed
+#' pkg <- example_diagnose_scenario("code_examples/roxygen_usage_bad.R",
+#'                                  show_content = FALSE)
+#' # NAMESPACE as roxygen2 wrote it before rescale01() was tagged @export
+#' writeLines("# Generated by roxygen2: do not edit by hand",
+#'            file.path(pkg, "NAMESPACE"))
+#' lab_roxygen_usage(pkg, verbose = FALSE)$issues
+#' unlink(pkg, recursive = TRUE)
 lab_roxygen_usage <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
   pass <- function() {
@@ -1180,9 +1174,12 @@ roxygen_exported_names <- function(parsed) {
 #' @return [checktor_check_result()] with `passed`, `issues`, `message`.
 #' @export
 #' @examples
-#' pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
-#'                                       show_content = FALSE)
-#' lab_unexported_example_ns(pkg_path, verbose = FALSE)$passed
+#' pkg <- example_diagnose_scenario("documentation_examples/unexported_example_ns_bad.Rd",
+#'                                  show_content = FALSE)
+#' # The package exports something, but not internal_values()
+#' writeLines("export(public_values)", file.path(pkg, "NAMESPACE"))
+#' lab_unexported_example_ns(pkg, verbose = FALSE)$issues
+#' unlink(pkg, recursive = TRUE)
 lab_unexported_example_ns <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
   rd_files <- list_rd_files(path)
@@ -1205,7 +1202,7 @@ lab_unexported_example_ns <- function(path, verbose = TRUE) {
 
   issues <- character(0)
   for (file in rd_files) {
-    rd <- tryCatch(tools::parse_Rd(file), error = function(e) NULL)
+    rd <- tryCatch(read_rd(file), error = function(e) NULL)
     if (is.null(rd)) {
       next
     }

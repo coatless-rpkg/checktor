@@ -33,7 +33,8 @@ source.
 }
 
 \examples{
-pkg_path <- example_diagnose_scenario("documentation_examples/missing_value_tag.Rd",
-                                      show_content = FALSE)
-issues(lab_value_tags(pkg_path, verbose = FALSE))
+pkg <- example_diagnose_scenario("documentation_examples/missing_value_tag.Rd",
+                                 show_content = FALSE)
+lab_value_tags(pkg, verbose = FALSE)$issues
+unlink(pkg, recursive = TRUE)
 }

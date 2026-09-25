@@ -290,3 +290,101 @@ test_that("scenario_target(): puts a CITATION scenario at inst/CITATION", {
   )
   expect_false(lab_citation_file(pkg, verbose = FALSE)$passed)
 })
+
+test_that("scenario_target(): puts a LICENSE scenario at the package root", {
+  expect_identical(
+    scenario_target("description_examples/license_year_bad.LICENSE"),
+    "LICENSE"
+  )
+  pkg <- example_diagnose_scenario(
+    "description_examples/license_year_bad.LICENSE",
+    show_content = FALSE,
+    cleanup = TRUE
+  )
+  expect_true(file.exists(file.path(pkg, "LICENSE")))
+  expect_false(lab_license_year(pkg, verbose = FALSE)$passed)
+})
+
+# Test the scenarios the help pages use ----
+
+test_that("example_diagnose_scenario(): every lab_*() example shows its check finding something", {
+  # An example that runs its check on a package where the check passes shows the
+  # reader nothing, which is what 46 of them did. Each one builds a scenario
+  # that trips its own check, and this holds every exported check to that.
+  #
+  # The exceptions, and why:
+  # - lab_url_liveness() needs a network, so its example is in \dontrun{} and
+  #   never runs here.
+  # - lab_spelling() needs aspell or hunspell. Without one it is skipped, and
+  #   which words a dictionary flags differs by machine, so a finding is
+  #   required only off CRAN on a machine with a backend.
+  not_run <- "lab_url_liveness"
+  backend <- "lab_spelling"
+  withr::local_options(checktor.spelling = TRUE)
+  has_backend <- nzchar(Sys.which("aspell")) || nzchar(Sys.which("hunspell"))
+
+  rd_db <- package_rd_db()
+  labs <- sort(grep("^lab_", getNamespaceExports("checktor"), value = TRUE))
+  scenario_dirs <- function() {
+    list.files(tempdir(), pattern = "^checktor_example_")
+  }
+  before <- scenario_dirs()
+  for (fn in labs) {
+    rd <- rd_db[[paste0(fn, ".Rd")]]
+    expect_false(is.null(rd), label = paste(fn, "has a help page"))
+    seen <- run_rd_example(rd, fn)
+    if (fn %in% not_run) {
+      expect_length(seen, 0L)
+      next
+    }
+    expect_gt(length(seen), 0L, label = paste(fn, "calls in its example"))
+    res <- seen[[length(seen)]]
+    if (fn %in% backend && (!has_backend || !identical(Sys.getenv("NOT_CRAN"), "true"))) {
+      next
+    }
+    expect_false(isTRUE(res$skipped), label = paste(fn, "skipped in its example"))
+    expect_gt(length(res$issues), 0L, label = paste(fn, "issues in its example"))
+  }
+  # Every example deletes the package it built.
+  expect_identical(scenario_dirs(), before)
+})
+
+test_that("show_example_files(): every shipped scenario is used by a help page", {
+  # A scenario no example uses is one nobody sees; six sat unused while the
+  # examples of their checks ran on tf_usage_bad.R. The good fixtures are the
+  # exception: a clean package has nothing to show, so the next test uses them.
+  fixtures <- c(
+    "description_examples/good_description.txt",
+    "documentation_examples/good_documentation.Rd"
+  )
+  code <- unlist(lapply(package_rd_db(), function(rd) {
+    out <- withr::local_tempfile(fileext = ".R")
+    tools::Rd2ex(rd, out, commentDontrun = TRUE)
+    if (file.exists(out)) readLines(out) else character(0)
+  }))
+  code <- paste(code, collapse = "\n")
+  for (example in setdiff(show_example_files(), fixtures)) {
+    expect_true(
+      grepl(paste0("\"", example, "\""), code, fixed = TRUE),
+      label = paste(example, "is used by an example")
+    )
+  }
+})
+
+test_that("example_diagnose_scenario(): the good fixtures pass every check that runs", {
+  for (example in c(
+    "description_examples/good_description.txt",
+    "documentation_examples/good_documentation.Rd"
+  )) {
+    pkg <- example_diagnose_scenario(example, show_content = FALSE, cleanup = TRUE)
+    # At every tier, so an opinion-tier finding in a fixture meant to be clean
+    # is caught too.
+    res <- checktor(
+      pkg,
+      verbose = FALSE,
+      progress = FALSE,
+      severity = c("policy", "robustness", "opinion")
+    )
+    expect_identical(failed_checks(res), character(0), label = example)
+  }
+})

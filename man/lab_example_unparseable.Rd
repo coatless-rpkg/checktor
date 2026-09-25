@@ -35,9 +35,10 @@ source.
 }
 
 \examples{
-pkg <- example_diagnose_scenario(
-  "documentation_examples/example_unparseable_bad.Rd", show_content = FALSE)
-issues(lab_example_unparseable(pkg, verbose = FALSE))
+pkg <- example_diagnose_scenario("documentation_examples/example_unparseable_bad.Rd",
+                                 show_content = FALSE)
+lab_example_unparseable(pkg, verbose = FALSE)$issues
+unlink(pkg, recursive = TRUE)
 }
 \seealso{
 \code{\link[=checktor]{checktor()}}, \code{\link[=lab_example_structure]{lab_example_structure()}}.

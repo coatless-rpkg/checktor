@@ -44,9 +44,10 @@ every check maps to its source.
 }
 
 \examples{
-pkg <- example_diagnose_scenario(
-  "documentation_examples/rd_bibliography_bad.Rd", show_content = FALSE)
-issues(lab_rd_bibliography(pkg, verbose = FALSE))
+pkg <- example_diagnose_scenario("documentation_examples/rd_bibliography_bad.Rd",
+                                 show_content = FALSE)
+lab_rd_bibliography(pkg, verbose = FALSE)$issues
+unlink(pkg, recursive = TRUE)
 }
 \seealso{
 \code{\link[=checktor]{checktor()}}, \code{\link[=lab_rd_bibliography_files]{lab_rd_bibliography_files()}}.

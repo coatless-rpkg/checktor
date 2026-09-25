@@ -405,6 +405,10 @@ reimplementing them.
   advice for a `suggested_in_examples` finding. Each block is judged on its own, so
   such a block does not hold back the advice for another that is only slow.
 
+* A run parses each help page, R file and example once, rather than once for every
+  check that reads it, so `checktor()` finishes in well under half the time it
+  took.
+
 ## Understands more of R
 
 checktor reads far more of the ways R is actually written, so a clean run reflects

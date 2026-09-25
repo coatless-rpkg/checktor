@@ -24,6 +24,8 @@
 #' issues(policy)
 diagnose_policy_violations <- function(path = ".", verbose = TRUE) {
   path <- find_package_root(path)
+  # Share each parse among this panel's checks; see R/cache.R.
+  local_run_cache()
   if (verbose) {
     cli::cli_h2("CRAN Policy Violations Check")
   }
@@ -33,18 +35,7 @@ diagnose_policy_violations <- function(path = ".", verbose = TRUE) {
 
   run_checks(
     c(
-      list(
-        browser_calls = function(p, v) {
-          lab_browser_calls(p, v, parsed = parsed)
-        },
-        system_calls = function(p, v) {
-          lab_system_calls(p, v, parsed = parsed)
-        },
-        file_operations = function(p, v) {
-          lab_file_operations(p, v, parsed = parsed)
-        },
-        network_operations = function(p, v) lab_network_operations(p, v)
-      ),
+      builtin_checks_for("policy", parsed = parsed),
       registered_checks_for("policy", parsed = parsed)
     ),
     path,
@@ -71,9 +62,10 @@ diagnose_policy_violations <- function(path = ".", verbose = TRUE) {
 #' @seealso [checktor()], which runs this and every other check.
 #' @export
 #' @examples
-#' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+#' pkg <- example_diagnose_scenario("code_examples/browser_calls_bad.R",
 #'                                  show_content = FALSE)
-#' lab_browser_calls(pkg, verbose = FALSE)$passed
+#' lab_browser_calls(pkg, verbose = FALSE)$issues
+#' unlink(pkg, recursive = TRUE)
 lab_browser_calls <- function(path, verbose = TRUE, parsed = NULL) {
   path <- find_package_root(path)
   if (is.null(parsed)) {
@@ -112,9 +104,10 @@ lab_browser_calls <- function(path, verbose = TRUE, parsed = NULL) {
 #' @seealso [checktor()], which runs this and every other check.
 #' @export
 #' @examples
-#' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+#' pkg <- example_diagnose_scenario("code_examples/system_calls_bad.R",
 #'                                  show_content = FALSE)
-#' lab_system_calls(pkg, verbose = FALSE)$passed
+#' lab_system_calls(pkg, verbose = FALSE)$issues
+#' unlink(pkg, recursive = TRUE)
 lab_system_calls <- function(path, verbose = TRUE, parsed = NULL) {
   path <- find_package_root(path)
   if (is.null(parsed)) {
@@ -209,9 +202,10 @@ lab_system_calls <- function(path, verbose = TRUE, parsed = NULL) {
 #' @seealso [checktor()], which runs this and every other check.
 #' @export
 #' @examples
-#' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+#' pkg <- example_diagnose_scenario("code_examples/file_operations_bad.R",
 #'                                  show_content = FALSE)
-#' lab_file_operations(pkg, verbose = FALSE)$passed
+#' lab_file_operations(pkg, verbose = FALSE)$issues
+#' unlink(pkg, recursive = TRUE)
 lab_file_operations <- function(path, verbose = TRUE, parsed = NULL) {
   path <- find_package_root(path)
   if (is.null(parsed)) {
@@ -441,6 +435,7 @@ is_network_guard <- function(node) {
 #' pkg <- example_diagnose_scenario("network_examples/bad_network_example.Rd",
 #'                                  show_content = FALSE)
 #' lab_network_operations(pkg, verbose = FALSE)$issues
+#' unlink(pkg, recursive = TRUE)
 lab_network_operations <- function(path, verbose = TRUE) {
   path <- find_package_root(path)
   rd_files <- list_rd_files(path)
@@ -465,7 +460,7 @@ lab_network_operations <- function(path, verbose = TRUE) {
   # own `curl::has_internet()` was reported as the network access. Read the parse
   # tree instead, as the other example checks do.
   for (file in rd_files) {
-    rd <- tryCatch(tools::parse_Rd(file), error = function(e) NULL)
+    rd <- tryCatch(read_rd(file), error = function(e) NULL)
     if (is.null(rd)) {
       next
     }
