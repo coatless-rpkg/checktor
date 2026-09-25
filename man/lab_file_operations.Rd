@@ -4,7 +4,7 @@
 \alias{lab_file_operations}
 \title{Diagnose Writes to the User's Filespace}
 \usage{
-lab_file_operations(path, verbose = TRUE, parsed = NULL)
+lab_file_operations(path = ".", verbose = TRUE, parsed = NULL)
 }
 \arguments{
 \item{path}{Character. Path to the package directory. Default: \code{"."}.}

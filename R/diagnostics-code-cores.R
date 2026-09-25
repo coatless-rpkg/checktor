@@ -26,13 +26,11 @@
 #'                                  show_content = FALSE)
 #' lab_core_usage(pkg, verbose = FALSE)$issues
 #' unlink(pkg, recursive = TRUE)
-lab_core_usage <- function(path, verbose = TRUE, parsed = NULL) {
+lab_core_usage <- function(path = ".", verbose = TRUE, parsed = NULL) {
   path <- find_package_root(path)
-  if (is.null(parsed)) {
-    parsed <- read_r_xml(path)
-  }
+  parsed <- code_sources(path, parsed)
   if (length(parsed) == 0L) {
-    return(checktor_check_result(TRUE, character(0), "Core usage check"))
+    return(pass_result(check_label("core_usage")))
   }
 
   # CRAN's rule is: "If running a package uses multiple threads/cores it must
@@ -55,57 +53,27 @@ lab_core_usage <- function(path, verbose = TRUE, parsed = NULL) {
   # So a worker count is risky when it is a literal above 2, or is derived from
   # detectCores(). It is safe when it comes from availableCores(), is capped at 2,
   # or sits in a function that guards on the CRAN environment variables.
-  issues <- character(0)
-  for (p in parsed) {
-    if (!is.null(p$error) || is.null(p$xml)) {
-      next
-    }
-    calls <- xml2::xml_find_all(
-      p$xml,
-      sprintf(
-        "//SYMBOL_FUNCTION_CALL[%s]",
-        paste(
-          sprintf("text() = '%s'", names(PARALLEL_WORKER_ARG)),
-          collapse = " or "
-        )
-      )
-    )
-    for (cl in calls) {
-      fn <- xml2::xml_text(cl)
-      w <- worker_count_expr(cl, PARALLEL_WORKER_ARG[[fn]])
-      if (is.null(w)) {
-        next
-      } # no explicit count: defaults are safe
-      if (!worker_count_is_risky(w)) {
-        next
-      }
-      if (has_cran_core_guard(cl)) {
-        next
-      }
-      issues <- c(
-        issues,
-        paste0(
-          basename(p$file),
-          ":",
-          xml2::xml_attr(cl, "line1"),
-          " (",
-          fn,
-          "() worker count is unbounded)"
-        )
-      )
-    }
+  unbounded <- function(cl) {
+    w <- worker_count_expr(cl, PARALLEL_WORKER_ARG[[xml2::xml_text(cl)]])
+    # No explicit count: the framework defaults are all safe.
+    !is.null(w) && worker_count_is_risky(w) && !has_cran_core_guard(cl)
   }
+  issues <- xpath_filter(
+    parsed,
+    sprintf("//SYMBOL_FUNCTION_CALL[%s]", xp_text_in(names(PARALLEL_WORKER_ARG))),
+    unbounded,
+    function(file, nodes) fn_hits(file, nodes, " worker count is unbounded")
+  )
 
-  passed <- length(issues) == 0L
-  emit_issue_summary(
+  report_check(
     issues,
     verbose,
+    check_label("core_usage"),
     "Core usage is bounded for CRAN",
     "Worker count may exceed the two cores CRAN allows",
-    "Treatment: Use {.code parallelly::availableCores()}, which caps at 2 under {.envvar _R_CHECK_LIMIT_CORES_}, or guard the count yourself",
+    paste("Treatment:", treatments$core_usage$treatment),
     max_show = 3L
   )
-  checktor_check_result(passed, issues, "Core usage check")
 }
 
 # Worker-count argument per parallel framework. A name means a named argument;
@@ -243,16 +211,14 @@ has_cran_core_guard <- function(call_node) {
 #' lab_detect_cores_robustness(pkg, verbose = FALSE)$issues
 #' unlink(pkg, recursive = TRUE)
 lab_detect_cores_robustness <- function(
-  path,
+  path = ".",
   verbose = TRUE,
   parsed = NULL
 ) {
   path <- find_package_root(path)
-  if (is.null(parsed)) {
-    parsed <- read_r_xml(path)
-  }
+  parsed <- code_sources(path, parsed)
   if (length(parsed) == 0L) {
-    return(checktor_check_result(TRUE, character(0), "detectCores() NA check"))
+    return(pass_result(check_label("detect_cores_robustness")))
   }
 
   # Guarded when the enclosing function tests for NA, strips it, or defaults it.
@@ -268,22 +234,16 @@ lab_detect_cores_robustness <- function(
     guarded
   )
   issues <- xpath_per_file(parsed, xpath, function(file, nodes) {
-    paste0(
-      basename(file),
-      ":",
-      xml2::xml_attr(nodes, "line1"),
-      " (detectCores() may return NA)"
-    )
+    line_hits(file, nodes, " (detectCores() may return NA)")
   })
 
-  passed <- length(issues) == 0L
-  emit_issue_summary(
+  report_check(
     issues,
     verbose,
+    check_label("detect_cores_robustness"),
     "{.code detectCores()} results are NA-guarded",
     "{.code detectCores()} result used without an {.code NA} guard",
-    "Treatment: Use {.code parallelly::availableCores()}, which never returns NA",
+    paste("Treatment:", treatments$detect_cores_robustness$treatment),
     level = "warning"
   )
-  checktor_check_result(passed, issues, "detectCores() NA check")
 }

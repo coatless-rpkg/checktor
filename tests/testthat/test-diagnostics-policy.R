@@ -583,6 +583,32 @@ test_that("lab_network_operations(): a request function handed on as a value is 
   }
 })
 
+test_that("lab_network_operations(): a request called through parentheses or a wrapper is a request", {
+  # `(f)(x)` calls f, a magrittr pipe calls the function on its right, and
+  # Vectorize() or purrr's adverbs return a function that calls the one they wrap.
+  for (use in c(
+    "(download.file)(u, f)",
+    "((utils::download.file))(u, f)",
+    "lapply(urls, (download.file))",
+    "Vectorize(download.file)(urls, files)",
+    "fetch <- Vectorize(curl::curl_download)",
+    "safe_get <- purrr::possibly(httr::GET, NULL)",
+    "purrr::insistently(download.file)(u, f)",
+    "urls \\%T>\\% download.file"
+  )) {
+    pkg <- rd_pkg(use)
+    expect_equal(
+      lab_network_operations(pkg, verbose = FALSE)$issues,
+      "f.Rd (unwrapped network call in \\examples)",
+      label = use
+    )
+  }
+
+  # Parentheses alone call nothing.
+  pkg <- rd_pkg(c("(download.file)", "print((download.file))", "g <- (httr::GET)"))
+  expect_true(lab_network_operations(pkg, verbose = FALSE)$passed)
+})
+
 test_that("lab_network_operations(): a request handed on as a value is guarded like a call", {
   pkg <- rd_pkg(c(
     "if (curl::has_internet()) lapply(urls, download.file, destfile = f)",
@@ -742,6 +768,28 @@ test_that("lab_network_operations(): \\dontshow{} code runs, so it is read", {
   expect_false(lab_network_operations(pkg, verbose = FALSE)$passed)
 })
 
+test_that("lab_network_operations(): reads \\dontdiff{} code written beside another block", {
+  # Rd2ex puts each block's code on lines of its own, and R CMD check runs
+  # \dontdiff{}, \dontshow{} and \testonly{} code, so a request there is read
+  # even when the block sits against another one on the same line.
+  for (example in c(
+    "\\dontrun{f()}\\dontdiff{download.file(u, f)}",
+    "\\dontshow{x <- 1}\\dontdiff{download.file(u, f)}",
+    "\\dontdiff{x <- 1}\\testonly{download.file(u, f)}",
+    "\\donttest{\\dontdiff{f()}\\dontdiff{g()}}; download.file(u, f)"
+  )) {
+    pkg <- rd_pkg(example)
+    expect_equal(
+      lab_network_operations(pkg, verbose = FALSE)$issues,
+      "f.Rd (unwrapped network call in \\examples)",
+      label = example
+    )
+  }
+
+  pkg <- rd_pkg("\\dontdiff{x <- 1}\\dontrun{download.file(u, f)}")
+  expect_true(lab_network_operations(pkg, verbose = FALSE)$passed)
+})
+
 test_that("lab_network_operations(): a block that will not parse hides no call", {
   # A \dontrun{} block can hold a `<your key>` placeholder, which stops the whole
   # example parsing. The runnable call outside it must still be read.
@@ -759,18 +807,16 @@ test_that("lab_network_operations(): reports each Rd file once", {
   expect_length(lab_network_operations(pkg, verbose = FALSE)$issues, 1L)
 })
 
-test_that("lab_network_operations(): skips a build-ignored pkgdown article", {
-  # usethis::use_article() writes vignettes/articles/ and excludes the directory
-  # in .Rbuildignore, so nothing under it reaches CRAN.
+test_that("lab_network_operations(): skips a pkgdown article", {
+  # usethis::use_article() writes vignettes/articles/. R builds only the
+  # vignettes at the top of vignettes/, so an article never runs on CRAN,
+  # excluded in .Rbuildignore or not.
   pkg <- script_pkg(
     c("```{r}", "download.file('https://example.com', 'f')", "```"),
     dir = file.path("vignettes", "articles"),
     file = "extra.Rmd"
   )
-  expect_equal(
-    lab_network_operations(pkg, verbose = FALSE)$issues,
-    "extra.Rmd: unguarded network access in a code chunk (download.file)"
-  )
+  expect_true(lab_network_operations(pkg, verbose = FALSE)$passed)
 
   writeLines("^vignettes/articles$", file.path(pkg, ".Rbuildignore"))
   expect_true(lab_network_operations(pkg, verbose = FALSE)$passed)

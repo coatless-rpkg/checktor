@@ -199,6 +199,25 @@ test_that("lab_spelling(): flags DESCRIPTION words and honours a whitelist", {
   expect_true(lab_spelling(pkg3, verbose = FALSE)$passed)
 })
 
+test_that("lab_spelling(): skips what CRAN incoming skips", {
+  skip_on_cran() # the words flagged depend on the installed dictionary
+  skip_if_not(
+    nzchar(Sys.which("aspell")) || nzchar(Sys.which("hunspell")),
+    "no spell-check backend"
+  )
+  withr::local_options(checktor.spelling = TRUE)
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    description = paste0(
+      "Extends 'ggplot2' and 'dplyr' through mutate() and dplyr::filter(), ",
+      "see <doi:10.1234/zzqqxx> and <https://example.org/zzqqyy>. Also qwzxv."
+    )
+  )
+  res <- lab_spelling(pkg, verbose = FALSE)
+  expect_equal(res$issues, "qwzxv")
+})
+
 test_that("lab_spelling(): reports a skip, not a pass, when turned off", {
   # A skipped check that reads as a passing one is exactly the failure mode the
   # skipped-result contract exists to prevent: the printed summary would drop
@@ -209,6 +228,23 @@ test_that("lab_spelling(): reports a skip, not a pass, when turned off", {
   res <- lab_spelling(pkg, verbose = FALSE)
   expect_true(res$skipped)
   expect_true(res$passed)
+  expect_equal(length(res$issues), 0L)
+})
+
+test_that("lab_spelling(): reports a skip when the backend fails", {
+  skip_on_os("windows") # the stand-in backend is a shell script
+  withr::local_options(checktor.spelling = TRUE)
+  # An aspell on the PATH that always fails: nothing was spell-checked, so the
+  # check must not read as a pass.
+  bin <- make_temp_dir()
+  writeLines(c("#!/bin/sh", "exit 1"), file.path(bin, "aspell"))
+  Sys.chmod(file.path(bin, "aspell"), "755")
+  withr::local_envvar(PATH = bin)
+  pkg <- make_temp_dir()
+  write_pkg(pkg, description = "Build a WASM REPL for WebAssembly.")
+  # utils::aspell() warns about the failed version probe on its way to the error
+  res <- suppressWarnings(lab_spelling(pkg, verbose = FALSE))
+  expect_true(res$skipped)
   expect_equal(length(res$issues), 0L)
 })
 

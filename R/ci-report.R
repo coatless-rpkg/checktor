@@ -64,12 +64,10 @@ escape_ci_property <- function(x) {
 
 # Azure logging commands take the same percent escapes, but `;` separates the
 # properties and `]` closes the block, so those have to go too. A registered check
-# supplies its own message, so this is reachable rather than theoretical.
-escape_azure_data <- function(x) {
-  escape_ci_data(x)
-}
+# supplies its own message, so this is reachable rather than theoretical. The
+# message body sits after `]` and needs only escape_ci_data().
 escape_azure_property <- function(x) {
-  x <- escape_azure_data(x)
+  x <- escape_ci_data(x)
   x <- gsub(";", "%3B", x, fixed = TRUE)
   gsub("]", "%5D", x, fixed = TRUE)
 }
@@ -116,7 +114,7 @@ azure_annotations <- function(df) {
     escape_azure_property(df$path),
     ifelse(is.na(df$line), 1L, df$line),
     escape_azure_property(df$check),
-    escape_azure_data(df$detail)
+    escape_ci_data(df$detail)
   )
 }
 
@@ -446,7 +444,7 @@ skipped_note <- function(checks, format) {
     ),
     azure = sprintf(
       "##vso[task.logissue type=warning;code=skipped]%s",
-      escape_azure_data(detail)
+      escape_ci_data(detail)
     ),
     paste0("skipped: ", flatten_lines(detail))
   )

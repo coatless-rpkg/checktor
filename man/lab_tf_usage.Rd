@@ -4,7 +4,7 @@
 \alias{lab_tf_usage}
 \title{Diagnose \code{T}/\code{F} Usage in R Code}
 \usage{
-lab_tf_usage(path, verbose = TRUE, parsed = NULL)
+lab_tf_usage(path = ".", verbose = TRUE, parsed = NULL)
 }
 \arguments{
 \item{path}{Character. Path to package directory.}

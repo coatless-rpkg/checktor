@@ -126,12 +126,8 @@ checktor_category_result <- function(...) {
     }
   }
 
-  # Extract passed status for each check
-  passed_status <- sapply(checks, function(x) x$passed)
-  names(passed_status) <- names(checks)
-
-  # Add passed status to the result
-  result <- c(checks, list(passed = passed_status))
+  passed <- vapply(checks, function(x) x$passed, logical(1))
+  result <- c(checks, list(passed = passed))
 
   # Set class and return
   class(result) <- "checktor_category_result"

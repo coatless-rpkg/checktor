@@ -310,14 +310,9 @@ defer_cleanup <- function(path, envir = parent.frame()) {
 }
 
 # Build the named $passed logical vector from a list of checktor_check_result
-# objects (one per sub-diagnostic). Tolerates entries that are themselves
-# raw logicals (e.g., the no-R-files shortcut).
+# objects (one per sub-diagnostic).
 summarise_passed <- function(results) {
-  vapply(
-    results,
-    function(x) if (is.logical(x)) x[[1L]] else isTRUE(x$passed),
-    logical(1)
-  )
+  vapply(results, function(x) isTRUE(x$passed), logical(1))
 }
 
 # Runs a list of sub-diagnostics under a tryCatch wrapper. Each entry of
@@ -488,15 +483,8 @@ chunk_evaluates <- function(header, body) {
 # The package's own name, for recognising options it owns (`datatable.verbose`,
 # `cli.width`, `knitr.progress`). Empty string when DESCRIPTION is unreadable.
 own_option_prefix <- function(path) {
-  f <- file.path(path, "DESCRIPTION")
-  if (!file.exists(f)) {
-    return("")
-  }
-  nm <- tryCatch(
-    read_dcf_quietly(f, fields = "Package")[1, 1],
-    error = function(e) NA
-  )
-  if (is.na(nm)) "" else as.character(nm)
+  nm <- description_value(path, "Package")
+  if (is.na(nm)) "" else nm
 }
 
 # Verbose output helper shared across diagnostic functions.
@@ -532,4 +520,71 @@ emit_issue_summary <- function(
   if (!is.null(treatment)) {
     cli::cli_text(paste0("{.emph ", treatment, "}"))
   }
+}
+
+#' End a check: report its findings and return its result
+#'
+#' The tail every `lab_*()` check shares. It prints the verbose summary through
+#' `emit_issue_summary()` and returns a `checktor_check_result` that passes when
+#' `issues` is empty, so a check body ends with
+#'
+#'     report_check(
+#'       issues, verbose, check_label("tf_usage"),
+#'       "No {.code T}/{.code F} usage found",
+#'       "Found {.code T}/{.code F} usage",
+#'       treatment = "Treatment: ..."
+#'     )
+#'
+#' instead of computing `passed`, calling `emit_issue_summary()` and building the
+#' result by hand. The printed output is the same as that sequence's.
+#'
+#' A check whose `passed` is not simply "no issues" (one that fails with no
+#' findings, or passes despite them) keeps calling `emit_issue_summary()` and
+#' `checktor_check_result()` itself.
+#'
+#' @param issues Character vector of findings, typically `"file:line"`.
+#' @param verbose Logical. Print the summary.
+#' @param message The check's label, the result's `$message`.
+#' @param success,failure,treatment,level,max_show Passed to
+#'   `emit_issue_summary()`: the line printed when there is nothing to report,
+#'   the line printed above the findings, an optional treatment line, the alert
+#'   level (`"danger"` or `"warning"`) and how many findings to list.
+#' @param ... Extra named elements for the result, such as `nchar = n`.
+#' @noRd
+report_check <- function(
+  issues,
+  verbose,
+  message,
+  success,
+  failure,
+  treatment = NULL,
+  level = c("danger", "warning"),
+  max_show = 5L,
+  ...
+) {
+  emit_issue_summary(
+    issues,
+    verbose,
+    success,
+    failure,
+    treatment = treatment,
+    max_show = max_show,
+    level = level
+  )
+  checktor_check_result(length(issues) == 0L, issues, message, ...)
+}
+
+#' A passing result with nothing to report
+#'
+#' For a check's early return when there is nothing to examine (no `R/`, no help
+#' pages, no DESCRIPTION field), which prints nothing:
+#' `if (length(parsed) == 0L) return(pass_result(check_label("tf_usage")))`.
+#' A check that could not run where it is returns `checktor_skipped_result()`
+#' instead, so it is not mistaken for a pass.
+#'
+#' @param message The check's label, the result's `$message`.
+#' @param ... Extra named elements for the result.
+#' @noRd
+pass_result <- function(message, ...) {
+  checktor_check_result(TRUE, character(0), message, ...)
 }

@@ -21,17 +21,10 @@ EXAMPLE_SOURCE_DIRS <- list(
 # (see RD_EXAMPLE_BLOCKS), and `lines` then gives the .Rd line of each line of
 # `code`.
 rd_example_code <- function(path) {
-  files <- list_rd_files(path)
   out <- list()
-  for (file in files) {
-    rd <- tryCatch(read_rd(file), error = function(e) NULL)
-    if (is.null(rd)) {
-      next
-    }
-    section <- extract_rd_section(rd, "\\examples")
-    if (is.null(section)) {
-      next
-    }
+  for (page in rd_examples(path)) {
+    file <- page$file
+    section <- page$examples
     # The example as R runs it: an Rd `%` comment is not R, and kept in the text
     # it stopped the whole example parsing, which hid the example from every
     # check. \dontrun{} contents are included: a reader copies them, and CRAN

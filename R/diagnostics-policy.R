@@ -24,23 +24,9 @@
 #' issues(policy)
 diagnose_policy_violations <- function(path = ".", verbose = TRUE) {
   path <- find_package_root(path)
-  # Share each parse among this panel's checks; see R/cache.R.
-  local_run_cache()
-  if (verbose) {
-    cli::cli_h2("CRAN Policy Violations Check")
-  }
-
-  # Pre-parse once for the code-side checks.
-  parsed <- if (dir.exists(file.path(path, "R"))) read_r_xml(path) else list()
-
-  run_checks(
-    c(
-      builtin_checks_for("policy", parsed = parsed),
-      registered_checks_for("policy", parsed = parsed)
-    ),
-    path,
-    verbose
-  )
+  begin_category("policy", path, verbose)
+  # Parse once for the code-side checks; with no R/ there is nothing to parse.
+  run_category("policy", path, verbose, parsed = read_r_xml(path))
 }
 
 #' Diagnose Leftover browser() Calls
@@ -66,23 +52,19 @@ diagnose_policy_violations <- function(path = ".", verbose = TRUE) {
 #'                                  show_content = FALSE)
 #' lab_browser_calls(pkg, verbose = FALSE)$issues
 #' unlink(pkg, recursive = TRUE)
-lab_browser_calls <- function(path, verbose = TRUE, parsed = NULL) {
+lab_browser_calls <- function(path = ".", verbose = TRUE, parsed = NULL) {
   path <- find_package_root(path)
-  if (is.null(parsed)) {
-    parsed <- read_r_xml(path)
-  }
+  parsed <- code_sources(path, parsed)
   if (length(parsed) == 0L) {
-    return(checktor_check_result(TRUE, character(0), "Browser calls check"))
+    return(pass_result(check_label("browser_calls")))
   }
-  issues <- undesirable_function_check(parsed, "browser", label = FALSE)
-  passed <- length(issues) == 0L
-  emit_issue_summary(
-    issues,
+  report_check(
+    undesirable_function_check(parsed, "browser", label = FALSE),
     verbose,
+    check_label("browser_calls"),
     "No {.code browser()} calls found",
     "{.code browser()} calls found (should be removed for CRAN)"
   )
-  checktor_check_result(passed, issues, "Browser calls check")
 }
 
 #' Diagnose System Calls
@@ -108,13 +90,11 @@ lab_browser_calls <- function(path, verbose = TRUE, parsed = NULL) {
 #'                                  show_content = FALSE)
 #' lab_system_calls(pkg, verbose = FALSE)$issues
 #' unlink(pkg, recursive = TRUE)
-lab_system_calls <- function(path, verbose = TRUE, parsed = NULL) {
+lab_system_calls <- function(path = ".", verbose = TRUE, parsed = NULL) {
   path <- find_package_root(path)
-  if (is.null(parsed)) {
-    parsed <- read_r_xml(path)
-  }
+  parsed <- code_sources(path, parsed)
   if (length(parsed) == 0L) {
-    return(checktor_check_result(TRUE, character(0), "System calls check"))
+    return(pass_result(check_label("system_calls")))
   }
   # The check's own remediation says "may need platform checks". A call that ALREADY
   # sits in a function doing exactly that is not what we are asking about. shell()
@@ -130,39 +110,20 @@ lab_system_calls <- function(path, verbose = TRUE, parsed = NULL) {
     "capabilities",
     "Sys.which"
   ))
-  predicate <- paste(
-    sprintf("text() = '%s'", c("system", "system2", "shell")),
-    collapse = " or "
+  xpath <- xp_call(
+    c("system", "system2", "shell"),
+    platform_aware,
+    "not(ancestor::expr[FUNCTION][1]//SYMBOL[text() = '.Platform'])"
   )
-  xpath <- sprintf(
-    paste0(
-      "//SYMBOL_FUNCTION_CALL[(%s) and %s and %s",
-      " and not(ancestor::expr[FUNCTION][1]//SYMBOL[text() = '.Platform'])]"
-    ),
-    predicate,
-    NOT_MEMBER_ACCESS,
-    platform_aware
-  )
-  issues <- xpath_per_file(parsed, xpath, function(file, nodes) {
-    paste0(
-      basename(file),
-      ":",
-      xml2::xml_attr(nodes, "line1"),
-      " (",
-      xml2::xml_text(nodes),
-      "())"
-    )
-  })
-  passed <- length(issues) == 0L
-  emit_issue_summary(
-    issues,
+  report_check(
+    xpath_per_file(parsed, xpath, fn_hits),
     verbose,
+    check_label("system_calls"),
     "No dangerous system calls found",
     "Potential dangerous system calls found",
-    "Treatment: Review these carefully - may need platform checks",
+    paste("Treatment:", treatments$system_calls$treatment),
     level = "warning"
   )
-  checktor_check_result(passed, issues, "System calls check")
 }
 
 # Writes to a path we can PROVE lands in the user's filespace.
@@ -206,56 +167,31 @@ lab_system_calls <- function(path, verbose = TRUE, parsed = NULL) {
 #'                                  show_content = FALSE)
 #' lab_file_operations(pkg, verbose = FALSE)$issues
 #' unlink(pkg, recursive = TRUE)
-lab_file_operations <- function(path, verbose = TRUE, parsed = NULL) {
+lab_file_operations <- function(path = ".", verbose = TRUE, parsed = NULL) {
   path <- find_package_root(path)
-  if (is.null(parsed)) {
-    parsed <- read_r_xml(path)
-  }
+  parsed <- code_sources(path, parsed)
   if (length(parsed) == 0L) {
-    return(checktor_check_result(TRUE, character(0), "File operations check"))
+    return(pass_result(check_label("file_operations")))
   }
 
-  predicate <- paste(
-    sprintf("text() = '%s'", WRITE_FUNCTIONS),
-    collapse = " or "
+  issues <- xpath_filter(
+    parsed,
+    sprintf("//SYMBOL_FUNCTION_CALL[%s]", xp_text_in(WRITE_FUNCTIONS)),
+    function(n) {
+      dest_is_unsafe_literal(write_destination(n), formals_with_unsafe_default(n))
+    },
+    fn_hits
   )
-  xpath <- sprintf("//SYMBOL_FUNCTION_CALL[%s]", predicate)
 
-  issues <- xpath_per_file(parsed, xpath, function(file, nodes) {
-    keep <- vapply(
-      nodes,
-      function(n) {
-        dest_is_unsafe_literal(
-          write_destination(n),
-          formals_with_unsafe_default(n)
-        )
-      },
-      logical(1)
-    )
-    nodes <- nodes[keep]
-    if (length(nodes) == 0L) {
-      return(character(0))
-    }
-    paste0(
-      basename(file),
-      ":",
-      xml2::xml_attr(nodes, "line1"),
-      " (",
-      xml2::xml_text(nodes),
-      "())"
-    )
-  })
-
-  passed <- length(issues) == 0L
-  emit_issue_summary(
+  report_check(
     issues,
     verbose,
+    check_label("file_operations"),
     "File operations use {.code tempdir()} or a caller-supplied path",
     "File operations write to a hardcoded path",
-    "Treatment: Write to {.code tempdir()}, or take the destination as an argument",
+    paste("Treatment:", treatments$file_operations$treatment),
     level = "warning"
   )
-  checktor_check_result(passed, issues, "File operations check")
 }
 
 # Calls that make a request when they run. download.file() and curl's fetchers
@@ -290,14 +226,17 @@ NETWORK_QUALIFIED_CALLS <- list(
 # Functions that call the function they are handed: the apply family, with its
 # parallel and future.apply variants, Map() and its kin, purrr's and furrr's
 # mappers, do.call() and match.fun(). Naming a request function in a call to one
-# of them makes the request as surely as calling it. Handed to anything else, as
-# in `args(download.file)` or `class(download.file)`, or defined, as a mock is,
-# it makes none.
+# of them makes the request as surely as calling it. So does handing it to
+# Vectorize(), purrr's adverbs or memoise(), which return a function that calls it
+# and exist only to have that function called. Handed to anything else, as in
+# `args(download.file)` or `class(download.file)`, or defined, as a mock is, it
+# makes none.
 VALUE_CALLER_RE <- paste0(
   "^(future_)?(",
   "[lsvmtre]?apply|Map|Reduce|Filter|Find|Position|do\\.call|match\\.fun|",
   "mclapply|mcmapply|mcMap|par[LS]?apply|clusterApply(LB)?|clusterMap|",
-  "(map|map2|pmap|imap|lmap|walk|walk2|pwalk|iwalk)(_[a-z]+)?",
+  "(map|map2|pmap|imap|lmap|walk|walk2|pwalk|iwalk)(_[a-z]+)?|",
+  "Vectorize|possibly|safely|quietly|insistently|slowly|partial|memoi[sz]e",
   ")$"
 )
 
@@ -309,14 +248,34 @@ STRING_CALLERS <- list(
 )
 
 # Whether a request function named as a value -- its SYMBOL, or a STR_CONST
-# holding its name -- is handed to something that calls it: an argument of a
-# VALUE_CALLER_RE function, the right side of magrittr's `%>%`, or, for a string,
-# the function do.call() or match.fun() is asked for.
+# holding its name -- is handed to something that calls it: the function position
+# of a call, as in `(download.file)(u, f)`, an argument of a VALUE_CALLER_RE
+# function, the right side of a magrittr pipe, or, for a string, the function
+# do.call() or match.fun() is asked for. Parentheses around the name change
+# nothing.
 handed_to_caller <- function(node) {
   arg <- xml2::xml_parent(node)
   if (xml2::xml_name(node) == "SYMBOL") {
+    repeat {
+      up <- xml2::xml_parent(arg)
+      if (xml2::xml_name(up) != "expr" ||
+        !identical(
+          xml2::xml_name(code_children(up)),
+          c("OP-LEFT-PAREN", "expr", "OP-RIGHT-PAREN")
+        )) {
+        break
+      }
+      arg <- up
+    }
+    called <- xml2::xml_find_lgl(
+      arg,
+      paste0(
+        "boolean(self::node()[not(preceding-sibling::*)]",
+        "[following-sibling::*[not(self::COMMENT)][1][self::OP-LEFT-PAREN]])"
+      )
+    )
     before <- xml2::xml_find_first(arg, "preceding-sibling::*[not(self::COMMENT)][1]")
-    if (identical(xml2::xml_text(before), "%>%")) {
+    if (called || xml2::xml_text(before) %in% MAGRITTR_PIPES) {
       return(TRUE)
     }
   }
@@ -340,15 +299,8 @@ handed_to_caller <- function(node) {
 # package.
 network_calls <- function(xml) {
   known <- unique(c(NETWORK_CALLS, unlist(NETWORK_QUALIFIED_CALLS)))
-  named <- paste0("[", paste0("text() = '", known, "'", collapse = " or "), "]")
-  quoted <- paste0(
-    "[",
-    paste0(
-      "text() = '\"", NETWORK_CALLS, "\"' or text() = \"'", NETWORK_CALLS, "'\"",
-      collapse = " or "
-    ),
-    "]"
-  )
+  named <- paste0("[", xp_text_in(known), "]")
+  quoted <- paste0("[", xp_str_const_in(NETWORK_CALLS), "]")
   nodes <- xml2::xml_find_all(
     xml,
     paste0(
@@ -414,7 +366,10 @@ is_network_guard <- function(node) {
 #' the same function and on every path to the test. A request function handed to
 #' something that calls it, as in `lapply(urls, download.file)`,
 #' `purrr::map(reqs, httr2::req_perform)`, `do.call(httr::GET, args)` or
-#' `do.call("download.file", args)`, is a request too. Named anywhere else, as in
+#' `do.call("download.file", args)`, is a request too, and so is one called
+#' through parentheses, as in `(download.file)(u, f)`, or wrapped by
+#' `Vectorize()`, `memoise()` or an adverb such as `purrr::possibly()`, which
+#' return a function that calls it. Named anywhere else, as in
 #' `args(download.file)` or a mock that redefines it, it is not. Neither is a
 #' helper from a network package that only builds a request, such as
 #' `curl::form_file()`.
@@ -436,21 +391,14 @@ is_network_guard <- function(node) {
 #'                                  show_content = FALSE)
 #' lab_network_operations(pkg, verbose = FALSE)$issues
 #' unlink(pkg, recursive = TRUE)
-lab_network_operations <- function(path, verbose = TRUE) {
+lab_network_operations <- function(path = ".", verbose = TRUE) {
   path <- find_package_root(path)
   rd_files <- list_rd_files(path)
-  vignette_files <- list_included_files(
-    path,
-    "vignettes",
-    "\\.(Rmd|qmd|md)$",
-    recursive = TRUE
-  )
+  # The vignette sources R builds; R does not build one in a subfolder, so a
+  # draft under vignettes/wip/ never runs.
+  vignette_files <- list_included_files(path, "vignettes", VIGNETTE_SOURCE_PATTERN)
   if (length(rd_files) == 0L && length(vignette_files) == 0L) {
-    return(checktor_check_result(
-      TRUE,
-      character(0),
-      "Network operations check"
-    ))
+    return(pass_result(check_label("network_operations")))
   }
 
   issues <- character(0)
@@ -459,16 +407,9 @@ lab_network_operations <- function(path, verbose = TRUE) {
   # in a comment or a string was a call, no guard was ever read, and the guard's
   # own `curl::has_internet()` was reported as the network access. Read the parse
   # tree instead, as the other example checks do.
-  for (file in rd_files) {
-    rd <- tryCatch(read_rd(file), error = function(e) NULL)
-    if (is.null(rd)) {
-      next
-    }
-    ex <- extract_rd_section(rd, "\\examples")
-    if (is.null(ex)) {
-      next
-    }
-    xml <- rd_example_xml(ex)
+  for (page in rd_examples(path, rd_files)) {
+    file <- page$file
+    xml <- rd_example_xml(page$examples)
     if (is.null(xml)) {
       next
     }
@@ -509,10 +450,7 @@ lab_network_operations <- function(path, verbose = TRUE) {
     guards <- c("interactive", "capabilities", NETWORK_PROBES)
     guarded <- length(xml2::xml_find_all(
       xml,
-      sprintf(
-        "//SYMBOL_FUNCTION_CALL[%s]",
-        paste0("text() = '", guards, "'", collapse = " or ")
-      )
+      sprintf("//SYMBOL_FUNCTION_CALL[%s]", xp_text_in(guards))
     )) >
       0L
     if (guarded) {
@@ -533,14 +471,13 @@ lab_network_operations <- function(path, verbose = TRUE) {
     }
   }
 
-  passed <- length(issues) == 0L
-  emit_issue_summary(
+  report_check(
     issues,
     verbose,
+    check_label("network_operations"),
     "Network operations appear properly wrapped",
     "Potential unwrapped network operations",
-    "Treatment: Wrap in \\dontrun{{}}, \\donttest{{}}, or capability checks",
+    paste("Treatment:", treatments$network_operations$treatment),
     level = "warning"
   )
-  checktor_check_result(passed, issues, "Network operations check")
 }

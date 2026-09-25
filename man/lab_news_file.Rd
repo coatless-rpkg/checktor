@@ -4,7 +4,7 @@
 \alias{lab_news_file}
 \title{Diagnose a Missing NEWS File}
 \usage{
-lab_news_file(path, verbose = TRUE)
+lab_news_file(path = ".", verbose = TRUE)
 }
 \arguments{
 \item{path}{Character. Path to package directory}

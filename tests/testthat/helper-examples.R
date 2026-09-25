@@ -36,6 +36,8 @@ run_rd_example <- function(rd, fn) {
     },
     envir = env
   )
-  utils::capture.output(sys.source(code, envir = env))
+  # An example prints, both to the console and through cli, which reports as
+  # messages; neither is what the test is about.
+  suppressMessages(utils::capture.output(sys.source(code, envir = env)))
   seen
 }

@@ -172,65 +172,14 @@ checktor <- function(
   skipped <- count_skipped(results)
 
   if (verbose) {
-    cli::cli_text()
-    cli::cli_rule(left = "Diagnosis Summary")
-    if (suppression$suppressed > 0L) {
-      cli::cli_alert_info(
-        "{suppression$suppressed} finding{?s} muted by Config/checktor."
-      )
-    }
-    if (skipped$n > 0L) {
-      cli::cli_alert_info(
-        "{skipped$n} check{?s} did not run: {.val {skipped$names}}."
-      )
-    }
-    # Not a skip and never a penalty, just so you can find out they exist.
-    on_request <- on_request_checks()
-    if (length(on_request) > 0L) {
-      cli::cli_alert_info(
-        paste(
-          "{length(on_request)} check{?s} {?is/are} available on request:",
-          "{.val {on_request}}. Call {.code lab_<name>()} to run one."
-        )
-      )
-    }
-    if (total_issues == 0L) {
-      cli::cli_alert_success(
-        "Clean bill of health! No CRAN submission issues found."
-      )
-      cli::cli_text("{.emph Your package appears ready for CRAN submission.}")
-      if (advisory > 0L) {
-        cli::cli_alert_info(
-          "{advisory} advisory finding{?s} not counted here (severity: {.val {setdiff(SEVERITY_LEVELS, severity)}})."
-        )
-      }
-    } else {
-      cli::cli_alert_danger(
-        "Found {total_issues} issue{?s} across {failed_checks} failed check{?s}"
-      )
-      cli::cli_text(
-        "Review the detailed diagnosis above for specific remedies."
-      )
-      cli::cli_text()
-      cli::cli_text("Use {.code prescribe()} to get treatment recommendations.")
-    }
-
-    cli::cli_text()
-    cli::cli_h3("Recommended Next Steps")
-    if (total_issues > 0L) {
-      cli::cli_ol(c(
-        "Apply the treatments suggested above",
-        "Run {.code devtools::check()} for standard R CMD check",
-        "Re-run {.code checktor()} to verify treatments",
-        "Submit to CRAN when diagnosis is clean"
-      ))
-    } else {
-      cli::cli_ol(c(
-        "Run {.code devtools::check()} for standard R CMD check",
-        "Review any additional CRAN submission requirements",
-        "Submit to CRAN with confidence!"
-      ))
-    }
+    print_diagnosis_summary(
+      total_issues,
+      failed_checks,
+      advisory,
+      skipped,
+      suppression$suppressed,
+      severity
+    )
   }
 
   results$metadata <- list(
@@ -250,61 +199,116 @@ checktor <- function(
   invisible(results)
 }
 
-# Single walk over a checktor_results-shaped list. Returns a list with:
+# The checks that did not run, so the summary can report them instead of letting
+# a skipped check read as a passing one.
+count_skipped <- function(results) {
+  checks <- result_checks(results)
+  status <- vapply(checks, function(r) check_status(r$check), character(1))
+  check_names <- vapply(checks, `[[`, character(1), "name")
+  out <- check_names[status == "skipped"]
+  list(names = out, n = length(out))
+}
+
+# The findings of the checks in the `severity` tiers. Returns a list with:
 #   $issues        - total individual issues (e.g., 80 T/F hits -> 80)
-#   $failed_checks - number of sub-checks where any issue was found
-# A check that errored (no $issues, only $error) counts as one issue so it
-# surfaces in reports instead of being silently dropped.
+#   $failed_checks - number of checks where any issue was found
+# A check that failed with no $issues counts as one issue, so it surfaces in
+# reports instead of being silently dropped.
+#
 # The headline verdict counts only the tiers it is a verdict ABOUT. Every check
 # still RUNS and its findings stay in the object; what `severity` decides is
 # whether a finding counts against a clean bill of health. So the default,
 # policy + robustness, makes "0 issues" mean "nothing here will get you rejected,
 # and nothing here will crash a user" -- rather than "nobody disagrees with any of
 # your stylistic choices", which is not a question anyone was asking.
-# Names the checks that did not run, so the summary can report them instead of
-# letting a skipped check read as a passing one.
-count_skipped <- function(results) {
-  out <- character(0)
-  for (cat in results) {
-    if (!is.list(cat)) {
-      next
-    }
-    for (nm in setdiff(names(cat), "passed")) {
-      check <- cat[[nm]]
-      if (is.list(check) && check_status(check) == "skipped") {
-        out <- c(out, nm)
+count_results <- function(results, severity = SEVERITY_LEVELS) {
+  checks <- result_checks(results)
+  check_names <- vapply(checks, `[[`, character(1), "name")
+  checks <- checks[check_severity(check_names) %in% severity]
+  failed <- vapply(checks, function(r) isFALSE(r$check$passed), logical(1))
+  issues <- vapply(
+    checks,
+    function(r) {
+      if (is.null(r$check$issues)) {
+        as.integer(isFALSE(r$check$passed))
+      } else {
+        length(r$check$issues)
       }
-    }
-  }
-  list(names = out, n = length(out))
+    },
+    integer(1)
+  )
+  list(issues = sum(issues), failed_checks = sum(failed))
 }
 
-count_results <- function(results, severity = SEVERITY_LEVELS) {
-  issues <- 0L
-  failed <- 0L
-  for (cat in results) {
-    if (!is.list(cat)) {
-      next
-    }
-    for (nm in setdiff(names(cat), "passed")) {
-      check <- cat[[nm]]
-      if (!is.list(check)) {
-        next
-      }
-      if (!(check_severity(nm) %in% severity)) {
-        next
-      }
-      if (isFALSE(check$passed)) {
-        failed <- failed + 1L
-      }
-      if (!is.null(check$issues)) {
-        issues <- issues + length(check$issues)
-      } else if (isFALSE(check$passed)) {
-        issues <- issues + 1L
-      }
-    }
+# The summary checktor() prints at the end of a verbose run: what was muted or
+# did not run, the verdict, and what to do next.
+print_diagnosis_summary <- function(
+  total_issues,
+  failed_checks,
+  advisory,
+  skipped,
+  suppressed,
+  severity
+) {
+  cli::cli_text()
+  cli::cli_rule(left = "Diagnosis Summary")
+  if (suppressed > 0L) {
+    cli::cli_alert_info(
+      "{suppressed} finding{?s} muted by Config/checktor."
+    )
   }
-  list(issues = issues, failed_checks = failed)
+  if (skipped$n > 0L) {
+    cli::cli_alert_info(
+      "{skipped$n} check{?s} did not run: {.val {skipped$names}}."
+    )
+  }
+  # Not a skip and never a penalty, just so you can find out they exist.
+  on_request <- on_request_checks()
+  if (length(on_request) > 0L) {
+    cli::cli_alert_info(
+      paste(
+        "{length(on_request)} check{?s} {?is/are} available on request:",
+        "{.val {on_request}}. Call {.code lab_<name>()} to run one."
+      )
+    )
+  }
+  if (total_issues == 0L) {
+    cli::cli_alert_success(
+      "Clean bill of health! No CRAN submission issues found."
+    )
+    cli::cli_text("{.emph Your package appears ready for CRAN submission.}")
+    if (advisory > 0L) {
+      cli::cli_alert_info(
+        "{advisory} advisory finding{?s} not counted here (severity: {.val {setdiff(SEVERITY_LEVELS, severity)}})."
+      )
+    }
+  } else {
+    cli::cli_alert_danger(
+      "Found {total_issues} issue{?s} across {failed_checks} failed check{?s}"
+    )
+    cli::cli_text(
+      "Review the detailed diagnosis above for specific remedies."
+    )
+    cli::cli_text()
+    cli::cli_text("Use {.code prescribe()} to get treatment recommendations.")
+  }
+
+  cli::cli_text()
+  cli::cli_h3("Recommended Next Steps")
+  if (total_issues > 0L) {
+    cli::cli_ol(c(
+      "Apply the treatments suggested above",
+      "Run {.code devtools::check()} for standard R CMD check",
+      "Re-run {.code checktor()} to verify treatments",
+      "Submit to CRAN when diagnosis is clean"
+    ))
+  } else {
+    cli::cli_ol(c(
+      "Run {.code devtools::check()} for standard R CMD check",
+      "Review any additional CRAN submission requirements",
+      "Submit to CRAN with confidence!"
+    ))
+  }
 }
 
 #' Print Method for checktor_results Objects
@@ -333,17 +337,15 @@ print.checktor_results <- function(x, ...) {
   cli::cli_text("Doctor version: {x$metadata$checktor_version}")
   cli::cli_text()
 
-  for (cat in CATEGORY_FIELDS) {
-    if (!cat %in% names(x)) {
-      next
-    }
-    failed <- sum(!x[[cat]]$passed, na.rm = TRUE)
+  cats <- present_categories(x)
+  for (short in names(cats)) {
+    failed <- sum(!cats[[short]]$passed, na.rm = TRUE)
     status <- if (failed == 0L) {
       "HEALTHY"
     } else {
       paste0(failed, " failing check", if (failed > 1L) "s" else "")
     }
-    cat_label <- gsub("_", " ", toupper(cat))
+    cat_label <- gsub("_", " ", toupper(CATEGORY_FIELDS[[short]]))
     cli::cli_text("{.strong {cat_label}}: {status}")
   }
 
@@ -379,13 +381,9 @@ print.checktor_results <- function(x, ...) {
 # Human-friendly package label: the DESCRIPTION Package field if readable,
 # else the directory basename.
 package_label <- function(path) {
-  desc <- file.path(path, "DESCRIPTION")
-  if (file.exists(desc)) {
-    nm <- tryCatch(
-      unname(read_dcf_quietly(desc, fields = "Package")[1, 1]),
-      error = function(e) NA_character_
-    )
-    if (!is.na(nm) && nzchar(nm)) return(nm)
+  nm <- description_value(path, "Package")
+  if (!is.na(nm) && nzchar(nm)) {
+    return(nm)
   }
   basename(normalizePath(path, mustWork = FALSE))
 }

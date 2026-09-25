@@ -25,13 +25,11 @@
 #'                                  show_content = FALSE)
 #' lab_home_writing(pkg, verbose = FALSE)$issues
 #' unlink(pkg, recursive = TRUE)
-lab_home_writing <- function(path, verbose = TRUE, parsed = NULL) {
+lab_home_writing <- function(path = ".", verbose = TRUE, parsed = NULL) {
   path <- find_package_root(path)
-  if (is.null(parsed)) {
-    parsed <- read_r_xml(path)
-  }
+  parsed <- code_sources(path, parsed)
   if (length(parsed) == 0L) {
-    return(checktor_check_result(TRUE, character(0), "Home writing check"))
+    return(pass_result(check_label("home_writing")))
   }
 
   # The CRAN rule is about WRITING into the user's filespace. Earlier versions of
@@ -39,20 +37,15 @@ lab_home_writing <- function(path, verbose = TRUE, parsed = NULL) {
   # which are all *reads*: it flagged `Sys.getenv("HOME")` (which writes nothing)
   # while missing `writeLines(x, "~/leaked.txt")`, the actual violation. So flag a
   # WRITE whose destination resolves to the user's home.
-  write_pred <- paste(
-    sprintf("text() = '%s'", WRITE_FUNCTIONS),
-    collapse = " or "
-  )
 
   # A destination resolves to the user's home if it contains a `~`-rooted literal
   # anywhere, or reads HOME / USERPROFILE from the environment. STR_CONST text
   # retains its quotes, hence the "~ / '~ alternation.
   home_pred <- paste0(
-    ".//STR_CONST[starts-with(text(), '\"~') or starts-with(text(), \"'~\")]",
+    ".//STR_CONST[", xp_str_starts("~"), "]",
     " or .//SYMBOL_FUNCTION_CALL[text() = 'Sys.getenv']/parent::expr",
     "/following-sibling::expr[1]/STR_CONST[",
-    "  starts-with(text(), '\"HOME') or starts-with(text(), \"'HOME\")",
-    "  or starts-with(text(), '\"USERPROFILE') or starts-with(text(), \"'USERPROFILE\")",
+    xp_str_starts(c("HOME", "USERPROFILE")),
     "]"
   )
 
@@ -72,48 +65,32 @@ lab_home_writing <- function(path, verbose = TRUE, parsed = NULL) {
   # absolute literal, so of these it reports `path = "~/x.txt"` alone. It also
   # reports `path = "/srv/x.txt"`, which is not home and is not reported here.
   # Both read the formals of the innermost enclosing function only.
-  xpath <- sprintf("//SYMBOL_FUNCTION_CALL[%s]", write_pred)
+  xpath <- sprintf("//SYMBOL_FUNCTION_CALL[%s]", xp_text_in(WRITE_FUNCTIONS))
   home_test <- sprintf("boolean(%s)", home_pred)
-  issues <- xpath_per_file(parsed, xpath, function(file, nodes) {
-    keep <- vapply(
-      nodes,
-      function(n) {
-        dest <- write_destination(n)
-        if (is.null(dest)) {
-          return(FALSE)
-        }
-        if (xml2::xml_find_lgl(dest, home_test)) {
-          return(TRUE)
-        }
-        root <- xml2::xml_find_first(dest_root(dest), "./SYMBOL")
-        !inherits(root, "xml_missing") &&
-          xml2::xml_text(root) %in% formals_with_default(n, home_pred)
-      },
-      logical(1)
-    )
-    nodes <- nodes[keep]
-    if (length(nodes) == 0L) {
-      return(character(0))
+  writes_home <- function(n) {
+    dest <- write_destination(n)
+    if (is.null(dest)) {
+      return(FALSE)
     }
-    paste0(
-      basename(file),
-      ":",
-      xml2::xml_attr(nodes, "line1"),
-      " (",
-      xml2::xml_text(nodes),
-      "() writes under the home directory)"
-    )
+    if (xml2::xml_find_lgl(dest, home_test)) {
+      return(TRUE)
+    }
+    root <- xml2::xml_find_first(dest_root(dest), "./SYMBOL")
+    !inherits(root, "xml_missing") &&
+      xml2::xml_text(root) %in% formals_with_default(n, home_pred)
+  }
+  issues <- xpath_filter(parsed, xpath, writes_home, function(file, nodes) {
+    fn_hits(file, nodes, " writes under the home directory")
   })
 
-  passed <- length(issues) == 0L
-  emit_issue_summary(
+  report_check(
     issues,
     verbose,
+    check_label("home_writing"),
     "No home directory writing detected",
     "Writes into the user's home directory",
-    "Treatment: Write to tempdir(), or to a path the caller supplies"
+    paste("Treatment:", treatments$home_writing$treatment)
   )
-  checktor_check_result(passed, issues, "Home writing check")
 }
 
 # Per-tempfile cleanup detection. Only scans `tests/` since R/ helpers may
@@ -144,7 +121,7 @@ lab_home_writing <- function(path, verbose = TRUE, parsed = NULL) {
 #'                                  show_content = FALSE)
 #' lab_temp_cleanup(pkg, verbose = FALSE)$issues
 #' unlink(pkg, recursive = TRUE)
-lab_temp_cleanup <- function(path, verbose = TRUE, parsed = NULL) {
+lab_temp_cleanup <- function(path = ".", verbose = TRUE, parsed = NULL) {
   path <- find_package_root(path)
   # Scope: package code under R/, NOT tests/.
   #
@@ -160,13 +137,10 @@ lab_temp_cleanup <- function(path, verbose = TRUE, parsed = NULL) {
   # therefore `opinion`: a tidiness hint about disk accumulating inside one long
   # session, not a policy violation. Writing OUTSIDE tempdir is a real breach, and
   # that is what home_writing and file_operations are for.
-  if (is.null(parsed)) {
-    parsed <- read_r_xml(path)
-  }
+  parsed <- code_sources(path, parsed)
   if (length(parsed) == 0L) {
-    return(checktor_check_result(TRUE, character(0), "Temp cleanup check"))
+    return(pass_result(check_label("temp_cleanup")))
   }
-  test_parsed <- parsed
 
   cleanup_funs <- c(
     "unlink",
@@ -177,7 +151,7 @@ lab_temp_cleanup <- function(path, verbose = TRUE, parsed = NULL) {
     "local_tempfile",
     "deferred_run"
   )
-  predicate <- paste(sprintf("text() = '%s'", cleanup_funs), collapse = " or ")
+  predicate <- xp_text_in(cleanup_funs)
   # A tempfile() call is "clean" if cleanup exists in:
   #   (a) the innermost enclosing function, formals included, for a call inside a
   #       function, so `p = tempfile()` is cleaned by an on.exit() in the body;
@@ -231,15 +205,12 @@ lab_temp_cleanup <- function(path, verbose = TRUE, parsed = NULL) {
     predicate,
     predicate
   )
-  issues <- xpath_lints(test_parsed, xpath)
-
-  passed <- length(issues) == 0L
-  emit_issue_summary(
-    issues,
+  report_check(
+    xpath_lints(parsed, xpath),
     verbose,
+    check_label("temp_cleanup"),
     "Temp file usage appears to include cleanup",
     "Temp files without apparent cleanup",
-    "Treatment: Add cleanup (unlink, on.exit, withr::local_tempfile, ...)"
+    paste("Treatment:", treatments$temp_cleanup$treatment)
   )
-  checktor_check_result(passed, issues, "Temp cleanup check")
 }

@@ -18,7 +18,7 @@ Defaults to reading it from \code{path}.}
 \code{\link[=checktor_check_result]{checktor_check_result()}} with \code{passed}, \code{issues}, \code{message}.
 }
 \description{
-Flags a software name in double quotes in \code{Title} or \code{Description}. Writing R Extensions reserves double quotes for quotations and requires single quotes for software names, so scare-quoted jargon is left alone. A lower-case span matches only a name written in lower case, such as \code{shiny}, so an English \code{"rust"} or a parameter \code{"r"} is not read as \code{Rust} or \code{R}.
+Flags a software name in double quotes in \code{Title} or \code{Description}. Writing R Extensions reserves double quotes for quotations and requires single quotes for software names, so scare-quoted jargon is left alone. A lower-case span matches only a name written in lower case, such as \code{shiny}, so an English \code{"rust"} or a parameter \code{"r"} is not read as \code{Rust} or \code{R}. In the \code{Title}, where Title Case capitalises every word, a capitalised \code{"Bugs"} is likewise the word and not \code{BUGS}.
 }
 \details{
 The names are those \code{\link[=lab_software_names]{lab_software_names()}} and \code{\link[=lab_language_names]{lab_language_names()}} ask to

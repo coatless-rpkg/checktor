@@ -4,7 +4,7 @@
 \alias{lab_library_in_pkg}
 \title{Diagnose library() in Package Code}
 \usage{
-lab_library_in_pkg(path, verbose = TRUE, parsed = NULL)
+lab_library_in_pkg(path = ".", verbose = TRUE, parsed = NULL)
 }
 \arguments{
 \item{path}{Character. Path to the package directory. Default: \code{"."}.}

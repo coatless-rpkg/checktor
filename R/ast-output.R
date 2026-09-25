@@ -14,18 +14,13 @@
 s3_output_delegates <- function(parsed) {
   s4_named <- s4_registered_method_names(parsed)
   is_method <- function(nm) {
-    grepl("^(print|format|summary)\\.", nm) |
-      nm == S4_SHOW_CALLER |
-      nm %in% s4_named
+    is_output_method_name(nm) | nm == S4_SHOW_CALLER | nm %in% s4_named
   }
 
   defined <- character(0) # every top-level function name
   callers <- list() # callee -> character vector of caller names
 
-  for (p in parsed) {
-    if (!is.null(p$error) || is.null(p$xml)) {
-      next
-    }
+  for (p in parsed_docs(parsed)) {
     fns <- xml2::xml_find_all(
       p$xml,
       sprintf("//expr[FUNCTION][%s]", DEF_NAME_XPATH)
@@ -51,10 +46,7 @@ s3_output_delegates <- function(parsed) {
   # DBI hands its cat()ing to show_connection(), whose only caller is exactly such
   # a method -- so without this, show_connection() has no callers at all, is not
   # recognised as a delegate, and gets reported.
-  for (p in parsed) {
-    if (!is.null(p$error) || is.null(p$xml)) {
-      next
-    }
+  for (p in parsed_docs(parsed)) {
     for (body in xml2::xml_find_all(p$xml, s4_output_method_xpath())) {
       callees <- unique(xml2::xml_text(
         xml2::xml_find_all(body, ".//SYMBOL_FUNCTION_CALL")
@@ -92,47 +84,40 @@ s3_output_delegates <- function(parsed) {
 # nothing at all. Yet that function IS the show method, and cat() inside it is as
 # legitimate as cat() inside print.default().
 s4_registered_method_names <- function(parsed) {
-  out <- character(0)
-  quoted <- paste(
-    sprintf(
-      "text() = '\"%s\"' or text() = \"'%s'\"",
-      S4_OUTPUT_GENERICS,
-      S4_OUTPUT_GENERICS
-    ),
-    collapse = " or "
-  )
   xpath <- sprintf(
-    "//expr[expr[1]/SYMBOL_FUNCTION_CALL[
-       text() = 'setMethod' or text() = 'setReplaceMethod'
-     ]][expr[2]/STR_CONST[%s]]/expr[last()]/SYMBOL",
-    quoted
+    "//expr[expr[1]/SYMBOL_FUNCTION_CALL[%s]][expr[2]/STR_CONST[%s]]/expr[last()]/SYMBOL",
+    xp_text_in(S4_METHOD_SETTERS),
+    xp_str_const_in(S4_OUTPUT_GENERICS)
   )
-  for (p in parsed) {
-    if (!is.null(p$error) || is.null(p$xml)) {
-      next
-    }
-    out <- c(out, xml2::xml_text(xml2::xml_find_all(p$xml, xpath)))
-  }
-  unique(out)
+  unique(xpath_per_file(parsed, xpath, function(file, nodes) {
+    xml2::xml_text(nodes)
+  }))
 }
 
 # Every function whose job is producing console output: S3 methods by name prefix,
 # plus S4 methods registered by name. cat() inside any of them is the idiom, not a
 # leak.
 output_method_names <- function(parsed) {
-  defined <- character(0)
-  for (p in parsed) {
-    if (!is.null(p$error) || is.null(p$xml)) {
-      next
-    }
-    syms <- xml2::xml_find_all(
-      p$xml,
-      "//expr[FUNCTION]/parent::*/expr[1]/SYMBOL | //expr[FUNCTION]/parent::*/expr[1]/STR_CONST"
-    )
-    defined <- c(defined, unquote_name(xml2::xml_text(syms)))
-  }
-  s3 <- unique(defined[grepl("^(print|format|summary)\\.", defined)])
+  defined <- xpath_per_file(
+    parsed,
+    "//expr[FUNCTION]/parent::*/expr[1]/SYMBOL | //expr[FUNCTION]/parent::*/expr[1]/STR_CONST",
+    function(file, nodes) unquote_name(xml2::xml_text(nodes))
+  )
+  s3 <- unique(defined[is_output_method_name(defined)])
   unique(c(s3, s4_registered_method_names(parsed)))
+}
+
+# The generics whose S3 methods exist to produce console output. CRAN's rule ends
+# "(except for print, summary, interactive functions)", and format() is print()'s
+# workhorse.
+OUTPUT_METHOD_PREFIXES <- c("print", "format", "summary")
+
+# Is `nm` the name of an S3 output method, such as `print.foo`?
+is_output_method_name <- function(nm) {
+  grepl(
+    paste0("^(", paste(OUTPUT_METHOD_PREFIXES, collapse = "|"), ")\\."),
+    nm
+  )
 }
 
 # A sentinel caller name for "an S4 output method". It cannot collide with a real
@@ -146,27 +131,21 @@ S4_SHOW_CALLER <- "<S4 output method>"
 # one, exactly as it is inside print.default().
 S4_OUTPUT_GENERICS <- c("show", "print", "format", "summary")
 
+# The calls that register an S4 method.
+S4_METHOD_SETTERS <- c("setMethod", "setReplaceMethod")
+
 # XPath selecting the function body of any setMethod("show", ...) and friends.
 # The method function is an argument of the setMethod call, so from the function
 # expr the call is `parent::expr` and the generic is that call's second expr.
-s4_output_method_xpath <- function() {
-  quoted <- paste(
-    sprintf(
-      "text() = '\"%s\"' or text() = \"'%s'\"",
-      S4_OUTPUT_GENERICS,
-      S4_OUTPUT_GENERICS
-    ),
-    collapse = " or "
-  )
-  bare <- paste(sprintf("text() = '%s'", S4_OUTPUT_GENERICS), collapse = " or ")
+# `axis` is where to look: `//` finds every such method, and `ancestor::` asks
+# whether a node sits inside one.
+s4_output_method_xpath <- function(axis = "//") {
   sprintf(
-    "//expr[FUNCTION][
-       parent::expr[expr[1]/SYMBOL_FUNCTION_CALL[
-         text() = 'setMethod' or text() = 'setReplaceMethod'
-       ]][expr[2][STR_CONST[%s] or SYMBOL[%s]]]
-     ]",
-    quoted,
-    bare
+    "%sexpr[FUNCTION][parent::expr[expr[1]/SYMBOL_FUNCTION_CALL[%s]][expr[2][STR_CONST[%s] or SYMBOL[%s]]]]",
+    axis,
+    xp_text_in(S4_METHOD_SETTERS),
+    xp_str_const_in(S4_OUTPUT_GENERICS),
+    xp_text_in(S4_OUTPUT_GENERICS)
   )
 }
 
@@ -199,43 +178,9 @@ s4_output_method_xpath <- function() {
 # reviewer convention rather than policy text, and precision is the only thing this
 # package sells.
 is_console_reporter <- function(node) {
-  fn <- xml2::xml_find_first(node, "ancestor::expr[FUNCTION][1]")
-  if (inherits(fn, "xml_missing")) {
-    return(FALSE)
-  } # top-level code: not our call
-
-  # A function expr is FUNCTION ( formals ) BODY, so the body is its last expr.
-  body <- xml2::xml_find_first(fn, "./expr[last()]")
-  if (inherits(body, "xml_missing")) {
-    return(FALSE)
-  }
-
-  stmt_is_side_effect_only(body)
-}
-
-# Does the function assign a local it then never reads?
-has_dead_binding <- function(fn, body, braced) {
-  if (!braced) {
-    return(FALSE)
-  } # a one-liner has no bindings
-
-  targets <- character(0)
-  for (stmt in xml2::xml_find_all(body, sprintf("./%s", ASSIGN_NODE))) {
-    nm <- assign_target_of(stmt)
-    if (!is.na(nm)) targets <- c(targets, nm)
-  }
-  if (length(targets) == 0L) {
-    return(FALSE)
-  }
-
-  all_syms <- xml2::xml_text(xml2::xml_find_all(fn, ".//SYMBOL"))
-  for (nm in unique(targets)) {
-    n_assigned <- sum(targets == nm)
-    n_total <- sum(all_syms == nm)
-    # Every appearance was as an assignment target, so it is never read.
-    if (n_total <= n_assigned) return(TRUE)
-  }
-  FALSE
+  # Top-level code is not our call.
+  body <- enclosing_function_body(node)
+  !is.null(body) && stmt_is_side_effect_only(body)
 }
 
 # Calls whose value is never the point.

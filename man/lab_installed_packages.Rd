@@ -4,7 +4,7 @@
 \alias{lab_installed_packages}
 \title{Diagnose installed.packages() Usage}
 \usage{
-lab_installed_packages(path, verbose = TRUE, parsed = NULL)
+lab_installed_packages(path = ".", verbose = TRUE, parsed = NULL)
 }
 \arguments{
 \item{path}{Character. Path to the package directory. Default: \code{"."}.}

@@ -10,6 +10,18 @@ test_that("dcf_field(): reads a field from a list or a vector", {
   }
 })
 
+# Test desc_value() ----
+
+test_that("desc_value(): a missing, NA or blank field is NULL, anything else as written", {
+  desc <- list(Title = " Tools ", Blank = "", Space = "  ", Missing = NA_character_)
+  expect_identical(desc_value(desc, "Title"), " Tools ")
+  expect_null(desc_value(desc, "Blank"))
+  expect_null(desc_value(desc, "Space"))
+  expect_null(desc_value(desc, "Missing"))
+  expect_null(desc_value(desc, "Copyright"))
+  expect_null(desc_value(c(Title = "Tools"), "Copyright"))
+})
+
 # Test resolve_description() ----
 
 test_that("resolve_description(): reads a read.dcf() matrix or a vector as the list read_description() gives", {

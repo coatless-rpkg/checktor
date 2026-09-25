@@ -10,13 +10,9 @@
 #' callable but off by default. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
-#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
-#'   Defaults to reading it from `path`.
+#' @inheritParams lab_description_fields
 #'
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @seealso [checktor()], which runs this and every other check.
+#' @inherit lab_description_fields return seealso
 #' @export
 #' @examples
 #' pkg <- example_diagnose_scenario("description_examples/title_starts_with_article_bad.txt",
@@ -30,30 +26,27 @@ lab_title_starts_with_article <- function(
 ) {
   path <- find_package_root(path)
   desc <- resolve_description(path, desc)
-  title <- desc[["Title"]]
-  if (is.null(title) || !nzchar(title)) {
-    return(checktor_check_result(
-      TRUE,
-      character(0),
-      "Title starts-with-article check"
-    ))
+  title <- desc_value(desc, "Title")
+  if (is.null(title)) {
+    return(pass_result(check_label("title_starts_with_article")))
   }
-  if (grepl("^(A|An|The)\\s+", title, perl = TRUE)) {
-    issues <- "Title starts with an article (A/An/The)"
-    passed <- FALSE
+  issues <- if (grepl("^(A|An|The)\\s+", title, perl = TRUE)) {
+    "Title starts with an article (A/An/The)"
   } else {
-    issues <- character(0)
-    passed <- TRUE
+    character(0)
   }
-  emit_issue_summary(
+  report_check(
     issues,
     verbose,
+    check_label("title_starts_with_article"),
     "Title does not start with an article",
     "Title starts with an article",
-    "Treatment: Drop the leading 'A'/'An'/'The'",
+    treatment = paste(
+      "Treatment:",
+      treatments$title_starts_with_article$treatment
+    ),
     level = "warning"
   )
-  checktor_check_result(passed, issues, "Title starts-with-article check")
 }
 
 # Title should not include redundant phrases like "for R", "A Toolkit for",
@@ -67,13 +60,9 @@ lab_title_starts_with_article <- function(
 #' `Title`, a convention which is why this sits at `opinion` tier. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
-#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
-#'   Defaults to reading it from `path`.
+#' @inheritParams lab_description_fields
 #'
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @seealso [checktor()], which runs this and every other check.
+#' @inherit lab_description_fields return seealso
 #' @export
 #' @examples
 #' pkg <- example_diagnose_scenario("description_examples/title_redundant_phrases_bad.txt",
@@ -87,13 +76,9 @@ lab_title_redundant_phrases <- function(
 ) {
   path <- find_package_root(path)
   desc <- resolve_description(path, desc)
-  title <- desc[["Title"]]
-  if (is.null(title) || !nzchar(title)) {
-    return(checktor_check_result(
-      TRUE,
-      character(0),
-      "Title redundant-phrases check"
-    ))
+  title <- desc_value(desc, "Title")
+  if (is.null(title)) {
+    return(pass_result(check_label("title_redundant_phrases")))
   }
   patterns <- c(
     "\\bfor R\\b",
@@ -113,16 +98,18 @@ lab_title_redundant_phrases <- function(
       )
     }
   }
-  passed <- length(issues) == 0L
-  emit_issue_summary(
+  report_check(
     issues,
     verbose,
+    check_label("title_redundant_phrases"),
     "Title is free of redundant phrases",
     "Title contains redundant phrases that CRAN flags",
-    "Treatment: Remove 'for R'/'A Toolkit for'/'Tools for'",
+    treatment = paste(
+      "Treatment:",
+      treatments$title_redundant_phrases$treatment
+    ),
     level = "warning"
   )
-  checktor_check_result(passed, issues, "Title redundant-phrases check")
 }
 
 # A Title longer than 65 characters risks being cut off in a package listing.
@@ -137,13 +124,9 @@ lab_title_redundant_phrases <- function(
 #' tail. Nothing rejects a long title, which is why this sits at `opinion` tier.
 #' See `vignette("check-sources", package = "checktor")` for how every check maps
 #' to its source.
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
-#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
-#'   Defaults to reading it from `path`.
+#' @inheritParams lab_description_fields
 #'
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @seealso [checktor()], which runs this and every other check.
+#' @inherit lab_description_fields return seealso
 #' @export
 #' @examples
 #' pkg <- example_diagnose_scenario("description_examples/title_length_bad.txt",
@@ -153,9 +136,9 @@ lab_title_redundant_phrases <- function(
 lab_title_length <- function(path = ".", verbose = TRUE, desc = NULL) {
   path <- find_package_root(path)
   desc <- resolve_description(path, desc)
-  title <- desc[["Title"]]
-  if (is.null(title) || !nzchar(title)) {
-    return(checktor_check_result(TRUE, character(0), "Title length check"))
+  title <- desc_value(desc, "Title")
+  if (is.null(title)) {
+    return(pass_result(check_label("title_length")))
   }
   flat <- trimws(gsub("\\s+", " ", title))
   n <- nchar(flat)
@@ -170,16 +153,16 @@ lab_title_length <- function(path = ".", verbose = TRUE, desc = NULL) {
   } else {
     character(0)
   }
-  passed <- length(issues) == 0L
-  emit_issue_summary(
+  report_check(
     issues,
     verbose,
+    check_label("title_length"),
     "Title fits the 65 characters a listing may truncate to",
     "Title is longer than a listing may show",
-    "Treatment: Bring the Title down to 65 characters so none of it is cut off",
-    level = "warning"
+    treatment = paste("Treatment:", treatments$title_length$treatment),
+    level = "warning",
+    nchar = n
   )
-  checktor_check_result(passed, issues, "Title length check", nchar = n)
 }
 
 #' Diagnose a Title That Repeats the Package Name
@@ -204,13 +187,9 @@ lab_title_length <- function(path = ".", verbose = TRUE, desc = NULL) {
 #' "The Title field starts with the package name.". See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to
 #' its source.
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
-#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
-#'   Defaults to reading it from `path`.
+#' @inheritParams lab_description_fields
 #'
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @seealso [checktor()], which runs this and every other check.
+#' @inherit lab_description_fields return seealso
 #' @export
 #' @examples
 #' pkg <- example_diagnose_scenario("description_examples/title_package_name_bad.txt",
@@ -220,13 +199,10 @@ lab_title_length <- function(path = ".", verbose = TRUE, desc = NULL) {
 lab_title_package_name <- function(path = ".", verbose = TRUE, desc = NULL) {
   path <- find_package_root(path)
   desc <- resolve_description(path, desc)
-  title <- dcf_field(desc, "Title")
-  pkg <- dcf_field(desc, "Package")
+  title <- desc_value(desc, "Title")
+  pkg <- desc_value(desc, "Package")
   issues <- character(0)
-  if (
-    !is.null(title) && !is.na(title) && !is.null(pkg) && !is.na(pkg) &&
-      nzchar(trimws(pkg))
-  ) {
+  if (!is.null(title) && !is.null(pkg)) {
     # As R reads them: the Title on one line, the name with its dots escaped.
     title <- trimws(gsub("[\n\t]", " ", title))
     pkg <- trimws(pkg)
@@ -234,7 +210,7 @@ lab_title_package_name <- function(path = ".", verbose = TRUE, desc = NULL) {
       issues <- "Title is just the package name: provide a real title"
     } else if (
       grepl(
-        paste0("^", gsub(".", "[.]", pkg, fixed = TRUE), "[[:space:]]*:"),
+        paste0("^", escape_regex(pkg), "[[:space:]]*:"),
         title,
         ignore.case = TRUE
       )
@@ -245,15 +221,14 @@ lab_title_package_name <- function(path = ".", verbose = TRUE, desc = NULL) {
       )
     }
   }
-  passed <- length(issues) == 0L
-  emit_issue_summary(
+  report_check(
     issues,
     verbose,
+    check_label("title_package_name"),
     "Title does not repeat the package name",
     "Title repeats the package name",
-    "Treatment: Drop the package name from the Title, since listings show it already"
+    treatment = paste("Treatment:", treatments$title_package_name$treatment)
   )
-  checktor_check_result(passed, issues, "Title package-name check")
 }
 
 # ---- Title / Description / License checks -------------------------------------
@@ -280,13 +255,9 @@ lab_title_package_name <- function(path = ".", verbose = TRUE, desc = NULL) {
 #' incoming check flags one that does not. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
-#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
-#'   Defaults to reading it from `path`.
+#' @inheritParams lab_description_fields
 #'
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @seealso [checktor()], which runs this and every other check.
+#' @inherit lab_description_fields return seealso
 #' @export
 #' @examples
 #' pkg <- example_diagnose_scenario("description_examples/title_case_bad.txt",
@@ -296,9 +267,9 @@ lab_title_package_name <- function(path = ".", verbose = TRUE, desc = NULL) {
 lab_title_case <- function(path = ".", verbose = TRUE, desc = NULL) {
   path <- find_package_root(path)
   desc <- resolve_description(path, desc)
-  title <- desc[["Title"]]
-  if (is.null(title) || !nzchar(title)) {
-    return(checktor_check_result(TRUE, character(0), "Title case check"))
+  title <- desc_value(desc, "Title")
+  if (is.null(title)) {
+    return(pass_result(check_label("title_case")))
   }
 
   proposed <- tools::toTitleCase(title)
@@ -318,13 +289,13 @@ lab_title_case <- function(path = ".", verbose = TRUE, desc = NULL) {
       proposed
     )
   }
-  emit_issue_summary(
+  report_check(
     issues,
     verbose,
+    check_label("title_case"),
     "Title is in title case",
     "Title is not in title case",
-    "Treatment: Use the capitalisation tools::toTitleCase() proposes",
+    treatment = paste("Treatment:", treatments$title_case$treatment),
     level = "warning"
   )
-  checktor_check_result(length(issues) == 0L, issues, "Title case check")
 }

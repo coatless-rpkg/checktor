@@ -4,7 +4,7 @@
 \alias{lab_value_tags}
 \title{Diagnose Missing Value Tags in Documentation}
 \usage{
-lab_value_tags(path, verbose = TRUE)
+lab_value_tags(path = ".", verbose = TRUE)
 }
 \arguments{
 \item{path}{Character. Path to package directory}

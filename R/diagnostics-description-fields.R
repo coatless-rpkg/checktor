@@ -19,14 +19,12 @@
 #' [base::read.dcf()] and refuses a file that yields more than one record. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to
 #' its source.
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
+#' @inheritParams lab_description_fields
 #' @param desc Present for signature parity with the other DESCRIPTION checks;
 #'   this check asks whether R can read the `DESCRIPTION` file itself, so it
 #'   reads the file and ignores `desc`.
 #'
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @seealso [checktor()], which runs this and every other check.
+#' @inherit lab_description_fields return seealso
 #' @export
 #' @examples
 #' pkg <- example_diagnose_scenario("description_examples/unparseable_description.txt",
@@ -47,15 +45,14 @@ lab_description_file <- function(path = ".", verbose = TRUE, desc = NULL) {
       error = function(e) conditionMessage(e)
     )
   }
-  passed <- length(issues) == 0L
-  emit_issue_summary(
+  report_check(
     issues,
     verbose,
+    check_label("description_file"),
     "{.file DESCRIPTION} parses",
     "R cannot read {.file DESCRIPTION}",
-    "Treatment: Make DESCRIPTION a file R can open, with every line a 'Field: value' pair or a continuation indented by a space or tab, and no blank line between fields"
+    treatment = paste("Treatment:", treatments$description_file$treatment)
   )
-  checktor_check_result(passed, issues, "DESCRIPTION file check")
 }
 
 # The DESCRIPTION fields R knows, copied from
@@ -156,18 +153,14 @@ lab_description_fields <- function(path = ".", verbose = TRUE, desc = NULL) {
     "",
     USE.NAMES = FALSE
   )
-  passed <- length(issues) == 0L
-  emit_issue_summary(
+  report_check(
     issues,
     verbose,
+    check_label("description_fields"),
     "Every DESCRIPTION field is one R knows",
     "DESCRIPTION fields R does not know",
-    paste0(
-      "Treatment: Fix a misspelt field name, and remove Remotes and any other ",
-      "field R does not know, or move it under Config/"
-    )
+    treatment = paste("Treatment:", treatments$description_fields$treatment)
   )
-  checktor_check_result(passed, issues, "DESCRIPTION fields check")
 }
 
 # The template text usethis and package.skeleton() leave in a DESCRIPTION, as
@@ -203,13 +196,9 @@ DESCRIPTION_PLACEHOLDERS <- list(
 #' asks for a `Title` and `Description` that describe the package. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to
 #' its source.
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
-#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
-#'   Defaults to reading it from `path`.
+#' @inheritParams lab_description_fields
 #'
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @seealso [checktor()], which runs this and every other check.
+#' @inherit lab_description_fields return seealso
 #' @export
 #' @examples
 #' pkg <- example_diagnose_scenario("description_examples/description_placeholders_bad.txt",
@@ -221,8 +210,8 @@ lab_description_placeholders <- function(path = ".", verbose = TRUE, desc = NULL
   desc <- resolve_description(path, desc)
   issues <- character(0)
   for (field in names(DESCRIPTION_PLACEHOLDERS)) {
-    value <- dcf_field(desc, field)
-    if (is.null(value) || is.na(value)) {
+    value <- desc_value(desc, field)
+    if (is.null(value)) {
       next
     }
     value <- trimws(gsub("[\n\t]", " ", value))
@@ -230,15 +219,17 @@ lab_description_placeholders <- function(path = ".", verbose = TRUE, desc = NULL
       issues <- c(issues, paste0(field, " is template text: ", value))
     }
   }
-  passed <- length(issues) == 0L
-  emit_issue_summary(
+  report_check(
     issues,
     verbose,
+    check_label("description_placeholders"),
     "No template text left in DESCRIPTION",
     "DESCRIPTION still holds template text",
-    "Treatment: Replace the template text with the package's own Title, Description and authors"
+    treatment = paste(
+      "Treatment:",
+      treatments$description_placeholders$treatment
+    )
   )
-  checktor_check_result(passed, issues, "DESCRIPTION placeholders check")
 }
 
 #' Diagnose the DESCRIPTION Date Field
@@ -253,13 +244,9 @@ lab_description_placeholders <- function(path = ".", verbose = TRUE, desc = NULL
 #' also flags a stale or future date. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
-#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
-#'   Defaults to reading it from `path`.
+#' @inheritParams lab_description_fields
 #'
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @seealso [checktor()], which runs this and every other check.
+#' @inherit lab_description_fields return seealso
 #' @export
 #' @examples
 #' pkg <- example_diagnose_scenario("description_examples/date_format_bad.txt",
@@ -269,9 +256,9 @@ lab_description_placeholders <- function(path = ".", verbose = TRUE, desc = NULL
 lab_date_format <- function(path = ".", verbose = TRUE, desc = NULL) {
   path <- find_package_root(path)
   desc <- resolve_description(path, desc)
-  date <- desc[["Date"]]
+  date <- desc_value(desc, "Date")
   issues <- character(0)
-  if (!is.null(date) && !is.na(date) && nzchar(trimws(date))) {
+  if (!is.null(date)) {
     date <- trimws(date)
     dd <- as.Date(date, "%Y-%m-%d")
     if (is.na(dd)) {
@@ -282,16 +269,15 @@ lab_date_format <- function(path = ".", verbose = TRUE, desc = NULL) {
       issues <- paste0("Date is in the future: ", date)
     }
   }
-  passed <- length(issues) == 0L
-  emit_issue_summary(
+  report_check(
     issues,
     verbose,
+    check_label("date_format"),
     "{.field Date} field is absent or current",
     "DESCRIPTION Date field problem",
-    "Treatment: use ISO 8601 yyyy-mm-dd and keep it current, or drop the Date field",
+    treatment = paste("Treatment:", treatments$date_format$treatment),
     level = "warning"
   )
-  checktor_check_result(passed, issues, "Date field check")
 }
 
 #' Diagnose a DESCRIPTION Encoding Other Than UTF-8
@@ -310,13 +296,9 @@ lab_date_format <- function(path = ".", verbose = TRUE, desc = NULL) {
 #' encoding '...' is deprecated. Please change to UTF-8 for non-ASCII content."
 #' See `vignette("check-sources", package = "checktor")` for how every check
 #' maps to its source.
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
-#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
-#'   Defaults to reading it from `path`.
+#' @inheritParams lab_description_fields
 #'
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @seealso [checktor()], which runs this and every other check.
+#' @inherit lab_description_fields return seealso
 #' @export
 #' @examples
 #' pkg <- example_diagnose_scenario("description_examples/encoding_utf8_bad.txt",
@@ -332,6 +314,9 @@ lab_encoding_utf8 <- function(path = ".", verbose = TRUE, desc = NULL) {
   #     if (!is.na(enc <- meta["Encoding"]) && (enc != "UTF-8"))
   # An exact, case-sensitive comparison. latin1 and latin2 are portable in the
   # sense Writing R Extensions uses, but CRAN now calls them deprecated.
+  # A blank Encoding is not UTF-8 either, and R flags it, so this reads the
+  # field as written rather than through desc_value(), which takes blank as
+  # absent.
   if (!is.null(enc) && !is.na(enc) && !identical(trimws(enc), "UTF-8")) {
     enc <- trimws(enc)
     issues <- paste0(
@@ -339,16 +324,15 @@ lab_encoding_utf8 <- function(path = ".", verbose = TRUE, desc = NULL) {
       "encoding '", enc, "' is deprecated and asks for UTF-8"
     )
   }
-  passed <- length(issues) == 0L
-  emit_issue_summary(
+  report_check(
     issues,
     verbose,
+    check_label("encoding_utf8"),
     "{.field Encoding} is UTF-8 or unset",
     "Encoding other than UTF-8 declared",
-    "Treatment: re-encode sources as UTF-8 and set Encoding: UTF-8",
+    treatment = paste("Treatment:", treatments$encoding_utf8$treatment),
     level = "warning"
   )
-  checktor_check_result(passed, issues, "Encoding field check")
 }
 
 #' Diagnose the DESCRIPTION Version Field
@@ -363,13 +347,9 @@ lab_encoding_utf8 <- function(path = ".", verbose = TRUE, desc = NULL) {
 #' flags a leading zero or an implausible value. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
-#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
-#'   Defaults to reading it from `path`.
+#' @inheritParams lab_description_fields
 #'
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @seealso [checktor()], which runs this and every other check.
+#' @inherit lab_description_fields return seealso
 #' @export
 #' @examples
 #' pkg <- example_diagnose_scenario("description_examples/version_format_bad.txt",
@@ -379,9 +359,9 @@ lab_encoding_utf8 <- function(path = ".", verbose = TRUE, desc = NULL) {
 lab_version_format <- function(path = ".", verbose = TRUE, desc = NULL) {
   path <- find_package_root(path)
   desc <- resolve_description(path, desc)
-  ver <- desc[["Version"]]
+  ver <- desc_value(desc, "Version")
   issues <- character(0)
-  if (!is.null(ver) && !is.na(ver) && nzchar(trimws(ver))) {
+  if (!is.null(ver)) {
     ver <- trimws(ver)
     if (grepl("(^|[.-])0[0-9]+", ver) && !grepl("^[0-9]{4}[.-][0-9]{2}", ver)) {
       issues <- c(
@@ -411,13 +391,12 @@ lab_version_format <- function(path = ".", verbose = TRUE, desc = NULL) {
       }
     }
   }
-  passed <- length(issues) == 0L
-  emit_issue_summary(
+  report_check(
     issues,
     verbose,
+    check_label("version_format"),
     "{.field Version} is well formed",
     "DESCRIPTION Version field problem",
-    "Treatment: use a numeric x.y.z version without leading zeroes"
+    treatment = paste("Treatment:", treatments$version_format$treatment)
   )
-  checktor_check_result(passed, issues, "Version field check")
 }

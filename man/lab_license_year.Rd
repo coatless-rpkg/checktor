@@ -4,7 +4,7 @@
 \alias{lab_license_year}
 \title{Diagnose an Unfilled LICENSE Template}
 \usage{
-lab_license_year(path, verbose)
+lab_license_year(path = ".", verbose = TRUE)
 }
 \arguments{
 \item{path}{Character. Path to the package directory. Default: \code{"."}.}

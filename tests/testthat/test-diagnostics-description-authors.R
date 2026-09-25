@@ -53,6 +53,53 @@ test_that("lab_authors(): flags a placeholder email and Your Name", {
   expect_match(res$issues, "you@example.com", all = FALSE)
 })
 
+test_that("lab_authors(): flags the package.skeleton() template", {
+  # What utils::package.skeleton() writes (R 4.6.1). R's incoming check tests
+  # only the Author and Maintainer fields older skeletons wrote, so it is silent.
+  skeleton <- paste0(
+    "c(person(\"Givenname\", \"Familyname\", role = c(\"aut\", \"cre\"),\n",
+    "    email = \"yourfault@somewhere.net\"),\n",
+    "  person(\"Anotherone\", \"Ifany\", role = \"ctb\"))"
+  )
+  res <- lab_authors(make_temp_dir(),
+    verbose = FALSE,
+    desc = c(`Authors@R` = skeleton)
+  )
+  expect_identical(
+    res$issues,
+    paste(
+      "Authors@R: unfilled template placeholder (\"Givenname\", \"Familyname\",",
+      "\"Anotherone\", \"Ifany\", \"yourfault@somewhere.net\")"
+    )
+  )
+})
+
+test_that("lab_authors(): reads the Authors@R strings, not its comments", {
+  # CGGP's field carries the old skeleton's Maintainer line as an R comment.
+  d <- c(`Authors@R` = paste0(
+    "c(person(\"Collin\", \"Erickson\", email = \"ce@example.org\",\n",
+    "  role = c(\"aut\", \"cre\"))) # Maintainer: Who to complain to ",
+    "<yourfault@somewhere.net>"
+  ))
+  res <- lab_authors(make_temp_dir(), verbose = FALSE, desc = d)
+  expect_identical(res$issues, character(0))
+})
+
+test_that("lab_authors(): leaves the old skeleton's Maintainer to lab_description_placeholders()", {
+  # Older package.skeleton() versions wrote Author and Maintainer fields, whose
+  # text R's incoming check and lab_description_placeholders() already report.
+  d <- c(
+    `Authors@R` = "person(\"Ann\", \"Smith\", email = \"ann@example.org\", role = c(\"aut\", \"cre\"))",
+    Maintainer = "Who to complain to <yourfault@somewhere.net>"
+  )
+  res <- lab_authors(make_temp_dir(), verbose = FALSE, desc = d)
+  expect_identical(res$issues, character(0))
+  expect_length(
+    lab_description_placeholders(make_temp_dir(), verbose = FALSE, desc = d)$issues,
+    1L
+  )
+})
+
 test_that("lab_authors(): does not invent placeholders in a real name", {
   # "Firstname Lastly" contains the placeholder words as substrings; the word
   # boundaries in the matcher are what keep this a pass.
@@ -620,4 +667,39 @@ test_that("lab_cph_role(): does not ask a natural person to add cph", {
   expect_match(out, "If an organisation owns the copyright", fixed = TRUE)
   expect_match(out, "natural persons hold copyright already", fixed = TRUE)
   expect_snapshot(res <- lab_cph_role(pkg))
+})
+
+# Test refused_call_issue() ----
+
+test_that("refused_call_issue(): names every refused call in one issue", {
+  expect_identical(refused_call_issue(character(0)), character(0))
+  expect_match(
+    refused_call_issue("utils::person(...)"),
+    "Authors@R calls utils::person(...), which",
+    fixed = TRUE
+  )
+  expect_match(
+    refused_call_issue(c("a()", "b()", "c()", "a()")),
+    "calls a(), b() and c(), which",
+    fixed = TRUE
+  )
+})
+
+# Test person_issues() ----
+
+test_that("person_issues(): flags a person with no name or role, and no maintainer", {
+  expect_identical(person_issues(NULL), character(0))
+  expect_identical(
+    person_issues(utils::person("Ann", "Bee", role = c("aut", "cre"))),
+    character(0)
+  )
+  p <- c(utils::person(role = "aut", email = "a@b.org"), utils::person("Cy"))
+  expect_identical(
+    person_issues(p),
+    c(
+      "Authors@R has a person entry with no name",
+      "Authors@R has a person entry with no role",
+      "Authors@R declares no maintainer (a person with role \"cre\")"
+    )
+  )
 })

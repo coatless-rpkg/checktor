@@ -4,7 +4,7 @@
 \alias{lab_package_size}
 \title{Diagnose Package Size}
 \usage{
-lab_package_size(path, verbose = TRUE)
+lab_package_size(path = ".", verbose = TRUE)
 }
 \arguments{
 \item{path}{Character. Path to package directory}

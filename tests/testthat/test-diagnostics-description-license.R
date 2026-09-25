@@ -47,6 +47,48 @@ test_that("lab_license(): flags a missing referenced LICENSE file", {
   expect_match(res$issues, "LICENSE", all = FALSE)
 })
 
+test_that("lab_license(): flags the full MIT text where R wants the two-line stub", {
+  # `MIT + file LICENSE` points at a DCF stub naming the year and holder. The
+  # full license text is not DCF, and R CMD check NOTEs "License stub is invalid
+  # DCF", which CRAN sends back.
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  writeLines(
+    c(
+      "MIT License",
+      "",
+      "Copyright (c) 2026 Jane Doe",
+      "",
+      "Permission is hereby granted, free of charge, to any person obtaining a copy",
+      "of this software and associated documentation files (the \"Software\"), to deal"
+    ),
+    file.path(pkg, "LICENSE")
+  )
+  res <- lab_license(pkg, verbose = FALSE, desc = c(License = "MIT + file LICENSE"))
+  expect_false(res$passed)
+  expect_match(res$issues, "License stub is invalid DCF", fixed = TRUE)
+})
+
+test_that("lab_license(): flags a stub missing a field its license needs", {
+  # BSD 3-clause needs ORGANIZATION too, and an empty field is as good as none.
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  writeLines(
+    c("YEAR: 2026", "COPYRIGHT HOLDER: Jane Doe"),
+    file.path(pkg, "LICENSE")
+  )
+  res <- lab_license(pkg, verbose = FALSE, desc = c(License = "BSD_3_clause + file LICENSE"))
+  expect_match(res$issues, "missing or empty fields: ORGANIZATION", fixed = TRUE)
+  writeLines(c("YEAR: 2026", "COPYRIGHT HOLDER:"), file.path(pkg, "LICENSE"))
+  res <- lab_license(pkg, verbose = FALSE, desc = c(License = "MIT + file LICENSE"))
+  expect_match(res$issues, "missing or empty fields: COPYRIGHT HOLDER", fixed = TRUE)
+
+  # A LICENSE that is not a stub's is not read as one.
+  writeLines("Anything the author likes.", file.path(pkg, "LICENSE"))
+  res <- lab_license(pkg, verbose = FALSE, desc = c(License = "GPL-3 | file LICENSE"))
+  expect_true(res$passed)
+})
+
 # Test lab_license_file_unneeded() ----
 
 test_that("lab_license_file_unneeded(): flags a file pointer on a standard license", {
@@ -126,7 +168,7 @@ test_that("lab_license_file_unneeded(): runs with the DESCRIPTION panel at polic
   expect_identical(check_severity("license_file_unneeded"), "policy")
 })
 
-test_that("lab_license_file_unneeded(): prints the Cookbook's fix", {
+test_that("lab_license_file_unneeded(): prints the treatment prescribe() gives", {
   out <- paste(
     cli::cli_fmt(lab_license_file_unneeded(
       make_temp_dir(),
@@ -134,7 +176,7 @@ test_that("lab_license_file_unneeded(): prints the Cookbook's fix", {
     )),
     collapse = " "
   )
-  expect_match(out, "part of R", fixed = TRUE)
+  expect_match(out, "R ships the text of standard licenses", fixed = TRUE)
 })
 
 # Test lab_license_year() ----

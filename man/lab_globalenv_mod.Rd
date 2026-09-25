@@ -4,7 +4,7 @@
 \alias{lab_globalenv_mod}
 \title{Diagnose Writes to the Global Environment}
 \usage{
-lab_globalenv_mod(path, verbose = TRUE, parsed = NULL)
+lab_globalenv_mod(path = ".", verbose = TRUE, parsed = NULL)
 }
 \arguments{
 \item{path}{Character. Path to the package directory. Default: \code{"."}.}

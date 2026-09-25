@@ -341,7 +341,7 @@ test_that("escape_azure_property(): escapes Azure's command delimiters", {
   # `;` separates properties and `]` closes the block, so a property carrying
   # either would be misparsed. The message body sits after `]` and keeps them.
   expect_equal(escape_azure_property("a;b]c"), "a%3Bb%5Dc")
-  expect_equal(escape_azure_data("a;b]c"), "a;b]c")
+  expect_equal(escape_ci_data("a;b]c"), "a;b]c")
   expect_equal(escape_azure_property("a\nb"), "a%0Ab")
   expect_equal(flatten_lines("a\r\n  b"), "a b")
 })

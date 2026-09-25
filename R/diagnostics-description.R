@@ -26,11 +26,9 @@
 #' issues(results)     # description-field problems, if any
 diagnose_description_issues <- function(path = ".", verbose = TRUE) {
   path <- find_package_root(path)
-  # Share each parse among this panel's checks; see R/cache.R.
-  local_run_cache()
-  if (verbose) {
-    cli::cli_h2("DESCRIPTION File Health Check")
-  }
+  # Resolving again finds the same root; the line above is the one every
+  # path-taking entry point opens with.
+  path <- begin_category("description", path, verbose)
 
   desc_file <- file.path(path, "DESCRIPTION")
   desc <- if (file.exists(desc_file)) {
@@ -38,9 +36,9 @@ diagnose_description_issues <- function(path = ".", verbose = TRUE) {
   }
 
   # Each check that takes a `desc` argument reads the parsed fields rather than
-  # the file. The checks come from the table in R/registry.R.
-  checks <- builtin_checks_for("description", desc = desc)
-  registered <- registered_checks_for("description", desc = desc)
+  # the file. The checks come from the table in R/registry.R, followed by the
+  # registered ones.
+  checks <- category_checks("description", desc = desc)
 
   # A DESCRIPTION R cannot read used to end this category early with no checks in
   # it. Nothing counts a category, only its checks, so checktor() called such a
@@ -56,12 +54,16 @@ diagnose_description_issues <- function(path = ".", verbose = TRUE) {
         checktor_skipped_result(message, "DESCRIPTION could not be read")
       }
     }
+    # A registered check may not take a built-in name, so the names that are not
+    # built in are the registered ones, which come last.
+    registered <- setdiff(names(checks), BUILTIN_CHECKS$name)
+    builtin <- checks[setdiff(names(checks), registered)]
     for (nm in names(DESCRIPTION_FIELD_CHECKS)) {
-      checks[[nm]] <- skip_as(DESCRIPTION_FIELD_CHECKS[[nm]])
+      builtin[[nm]] <- skip_as(DESCRIPTION_FIELD_CHECKS[[nm]])
     }
-    registered <- lapply(stats::setNames(nm = names(registered)), skip_as)
+    checks <- c(builtin, lapply(stats::setNames(nm = registered), skip_as))
   }
-  run_checks(c(checks, registered), path, verbose)
+  run_checks(checks, path, verbose)
 }
 
 # Returns a named list of DESCRIPTION fields, with multi-line fields collapsed.
@@ -119,8 +121,6 @@ resolve_description <- function(path, desc) {
   read_description(desc_file)
 }
 
-`%||%` <- function(a, b) if (is.null(a)) b else a
-
 # `desc` is a named list from read_description() or resolve_description(), or a
 # named character vector. `desc[["Nope"]]` on a vector is a subscript error, not
 # NULL, so any code that may be handed one and reads a field it does not itself
@@ -130,4 +130,16 @@ dcf_field <- function(desc, field) {
     return(NULL)
   }
   desc[[field]]
+}
+
+# One field of a parsed DESCRIPTION, or NULL when it is missing, NA or blank, so
+# every check tells "no value" the same way. read.dcf() strips the whitespace
+# around a value, so a blank field read from a file is "", and the trim matters
+# only for a `desc` built by hand. The value comes back as written, untrimmed.
+desc_value <- function(desc, field) {
+  x <- dcf_field(desc, field)
+  if (length(x) != 1L || is.na(x) || !nzchar(trimws(x))) {
+    return(NULL)
+  }
+  x
 }

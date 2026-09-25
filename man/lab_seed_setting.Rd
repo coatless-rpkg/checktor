@@ -4,7 +4,7 @@
 \alias{lab_seed_setting}
 \title{Diagnose Hardcoded Seed Setting}
 \usage{
-lab_seed_setting(path, verbose = TRUE, parsed = NULL)
+lab_seed_setting(path = ".", verbose = TRUE, parsed = NULL)
 }
 \arguments{
 \item{path}{Character. Path to package directory.}

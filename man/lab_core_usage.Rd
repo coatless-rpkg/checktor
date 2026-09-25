@@ -4,7 +4,7 @@
 \alias{lab_core_usage}
 \title{Diagnose Parallel Core Usage}
 \usage{
-lab_core_usage(path, verbose = TRUE, parsed = NULL)
+lab_core_usage(path = ".", verbose = TRUE, parsed = NULL)
 }
 \arguments{
 \item{path}{Character. Path to the package directory. Default: \code{"."}.}

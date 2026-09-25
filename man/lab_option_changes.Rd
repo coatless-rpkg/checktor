@@ -4,7 +4,7 @@
 \alias{lab_option_changes}
 \title{Diagnose Unrestored Option Changes}
 \usage{
-lab_option_changes(path, verbose = TRUE, parsed = NULL)
+lab_option_changes(path = ".", verbose = TRUE, parsed = NULL)
 }
 \arguments{
 \item{path}{Character. Path to the package directory. Default: \code{"."}.}

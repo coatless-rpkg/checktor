@@ -31,11 +31,7 @@
 #' issues(code_results)    # the issues found
 diagnose_code_issues <- function(path = ".", verbose = TRUE) {
   path <- find_package_root(path)
-  # Share each parse among this panel's checks; see R/cache.R.
-  local_run_cache()
-  if (verbose) {
-    cli::cli_h2("Code Health Check")
-  }
+  begin_category("code", path, verbose)
 
   if (!dir.exists(file.path(path, "R"))) {
     if (verbose) {
@@ -46,18 +42,9 @@ diagnose_code_issues <- function(path = ".", verbose = TRUE) {
     return(out)
   }
 
-  # Parse all R files once and pass the cache to each check that takes a
+  # Parse all R files once and pass the parse to each check that takes a
   # `parsed` argument. The checks come from the table in R/registry.R.
-  parsed <- read_r_xml(path)
-
-  run_checks(
-    c(
-      builtin_checks_for("code", parsed = parsed),
-      registered_checks_for("code", parsed = parsed)
-    ),
-    path,
-    verbose
-  )
+  run_category("code", path, verbose, parsed = read_r_xml(path))
 }
 
 # In the xmlparsedata XML, a call `fn(a, b)` is:
@@ -107,13 +94,11 @@ diagnose_code_issues <- function(path = ".", verbose = TRUE) {
 #'                                  show_content = FALSE)
 #' lab_internal_ns(pkg, verbose = FALSE)$issues
 #' unlink(pkg, recursive = TRUE)
-lab_internal_ns <- function(path, verbose = TRUE, parsed = NULL) {
+lab_internal_ns <- function(path = ".", verbose = TRUE, parsed = NULL) {
   path <- find_package_root(path)
-  if (is.null(parsed)) {
-    parsed <- read_r_xml(path)
-  }
+  parsed <- code_sources(path, parsed)
   if (length(parsed) == 0L) {
-    return(checktor_check_result(TRUE, character(0), "Internal namespace check"))
+    return(pass_result(check_label("internal_ns")))
   }
 
   issues <- xpath_per_file(parsed, "//NS_GET_INT", function(file, nodes) {
@@ -126,27 +111,17 @@ lab_internal_ns <- function(path, verbose = TRUE, parsed = NULL) {
       nodes,
       "following-sibling::*[1]"
     ))
-    paste0(
-      basename(file),
-      ":",
-      xml2::xml_attr(nodes, "line1"),
-      " (",
-      pkgs,
-      ":::",
-      objs,
-      ")"
-    )
+    line_hits(file, nodes, paste0(" (", pkgs, ":::", objs, ")"))
   })
 
-  passed <- length(issues) == 0L
-  emit_issue_summary(
+  report_check(
     issues,
     verbose,
+    check_label("internal_ns"),
     "No {.code :::} calls in package code",
     "{.code :::} calls found in package code",
-    "Treatment: Use {.code ::} on an exported object, or ask the other author to export what you need"
+    paste("Treatment:", treatments$internal_ns$treatment)
   )
-  checktor_check_result(passed, issues, "Internal namespace check")
 }
 
 # A bare `T` or `F` read as the logical. lab_tf_usage() runs it over R/ and
@@ -172,13 +147,7 @@ TF_XPATH <- sprintf(
     "  and not(ancestor::expr[expr[1]/SYMBOL_FUNCTION_CALL[%s]])",
     "]"
   ),
-  paste(
-    sprintf(
-      "text() = '%s'",
-      c("quote", "bquote", "expression", "substitute", "Quote")
-    ),
-    collapse = " or "
-  )
+  xp_text_in(c("quote", "bquote", "expression", "substitute", "Quote"))
 )
 
 #' Diagnose `T`/`F` Usage in R Code
@@ -209,25 +178,22 @@ TF_XPATH <- sprintf(
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R")
 #' lab_tf_usage(pkg, verbose = FALSE)$issues
 #' unlink(pkg, recursive = TRUE)
-lab_tf_usage <- function(path, verbose = TRUE, parsed = NULL) {
+lab_tf_usage <- function(path = ".", verbose = TRUE, parsed = NULL) {
   path <- find_package_root(path)
-  if (is.null(parsed)) {
-    parsed <- read_r_xml(path)
-  }
+  parsed <- code_sources(path, parsed)
   if (length(parsed) == 0L) {
-    return(checktor_check_result(TRUE, character(0), "T/F usage check"))
+    return(pass_result(check_label("tf_usage")))
   }
 
   issues <- c(xpath_lints(parsed, TF_XPATH), parse_error_issues(parsed))
 
-  passed <- length(issues) == 0L
-  emit_issue_summary(
+  report_check(
     issues,
     verbose,
+    check_label("tf_usage"),
     "No {.code T}/{.code F} usage found",
     "Found {.code T}/{.code F} usage (should use {.code TRUE}/{.code FALSE})"
   )
-  checktor_check_result(passed, issues, "T/F usage check")
 }
 
 #' Diagnose Hardcoded Credentials in Package Code
@@ -285,20 +251,14 @@ lab_tf_usage <- function(path, verbose = TRUE, parsed = NULL) {
 #' lab_hardcoded_credentials(pkg, verbose = FALSE)$issues
 #' unlink(pkg, recursive = TRUE)
 lab_hardcoded_credentials <- function(
-  path,
+  path = ".",
   verbose = TRUE,
   parsed = NULL
 ) {
   path <- find_package_root(path)
-  if (is.null(parsed)) {
-    parsed <- read_r_xml(path)
-  }
+  parsed <- code_sources(path, parsed)
   if (length(parsed) == 0L) {
-    return(checktor_check_result(
-      TRUE,
-      character(0),
-      "Hardcoded credential check"
-    ))
+    return(pass_result(check_label("hardcoded_credentials")))
   }
 
   # Well-known secret shapes only, keyed on a provider prefix so ordinary code
@@ -341,7 +301,6 @@ lab_hardcoded_credentials <- function(
 
   issues <- xpath_per_file(parsed, "//STR_CONST", function(file, nodes) {
     text <- xml2::xml_text(nodes)
-    line <- xml2::xml_attr(nodes, "line1")
     hits <- character(0)
     for (k in seq_along(patterns)) {
       # A left boundary so a prefix like `sk-` or `AKIA` only matches when it
@@ -354,21 +313,18 @@ lab_hardcoded_credentials <- function(
       if (any(m)) {
         hits <- c(
           hits,
-          paste0(basename(file), ":", line[m], " (", names(patterns)[k], ")")
+          line_hits(file, nodes[m], paste0(" (", names(patterns)[k], ")"))
         )
       }
     }
     hits
   })
-  issues <- unique(issues)
-
-  passed <- length(issues) == 0L
-  emit_issue_summary(
-    issues,
+  report_check(
+    unique(issues),
     verbose,
+    check_label("hardcoded_credentials"),
     "No hardcoded credentials found",
     "Possible hardcoded credential in package code",
-    "Treatment: remove the secret, revoke it, and read it from an environment variable at run time"
+    paste("Treatment:", treatments$hardcoded_credentials$treatment)
   )
-  checktor_check_result(passed, issues, "Hardcoded credential check")
 }

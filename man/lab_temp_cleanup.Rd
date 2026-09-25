@@ -4,7 +4,7 @@
 \alias{lab_temp_cleanup}
 \title{Diagnose Missing Temp-File Cleanup}
 \usage{
-lab_temp_cleanup(path, verbose = TRUE, parsed = NULL)
+lab_temp_cleanup(path = ".", verbose = TRUE, parsed = NULL)
 }
 \arguments{
 \item{path}{Character. Path to the package directory. Default: \code{"."}.}

@@ -34,6 +34,27 @@ test_that("checktor_config(): returns empty vectors when nothing is set", {
   expect_equal(cfg2$disable, character(0))
 })
 
+test_that("checktor_config(): reads DESCRIPTION once per run", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, extra = "Config/checktor/disable: news_file")
+  reads <- 0L
+  real_read <- read_dcf_quietly
+  local_mocked_bindings(read_dcf_quietly = function(file, fields = NULL) {
+    reads <<- reads + 1L
+    real_read(file, fields)
+  })
+  run <- function() {
+    local_run_cache()
+    for (i in 1:3) cfg <- checktor_config(pkg)
+    cfg
+  }
+  expect_equal(run()$disable, "news_file")
+  expect_identical(reads, 1L)
+  # Outside a run, each call reads the file afresh.
+  checktor_config(pkg)
+  expect_identical(reads, 2L)
+})
+
 # Test apply_suppressions() ----
 
 test_that("apply_suppressions(): disable drops a check and its passed entry", {

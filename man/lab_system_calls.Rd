@@ -4,7 +4,7 @@
 \alias{lab_system_calls}
 \title{Diagnose System Calls}
 \usage{
-lab_system_calls(path, verbose = TRUE, parsed = NULL)
+lab_system_calls(path = ".", verbose = TRUE, parsed = NULL)
 }
 \arguments{
 \item{path}{Character. Path to the package directory. Default: \code{"."}.}

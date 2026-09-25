@@ -4,7 +4,7 @@
 \alias{lab_cran_comments_file}
 \title{Diagnose a Missing cran-comments.md File}
 \usage{
-lab_cran_comments_file(path, verbose = TRUE)
+lab_cran_comments_file(path = ".", verbose = TRUE)
 }
 \arguments{
 \item{path}{Character. Path to package directory}

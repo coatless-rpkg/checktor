@@ -301,7 +301,7 @@ test_that("lab_print_cat_usage(): a treatment line renders its markup", {
 
   out <- cli::cli_fmt(lab_print_cat_usage(pkg, verbose = TRUE))
   txt <- paste(out, collapse = "\n")
-  expect_match(txt, "Treatment: Use `message()`", fixed = TRUE)
+  expect_match(txt, "with `message()`", fixed = TRUE)
   expect_false(grepl("{.code", txt, fixed = TRUE))
 })
 

@@ -116,13 +116,9 @@ arxiv_doi_for <- function(span) {
 #' usually surface first on win-builder or at CRAN. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to
 #' its source.
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
-#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
-#'   Defaults to reading it from `path`.
+#' @inheritParams lab_description_fields
 #'
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @seealso [checktor()], which runs this and every other check.
+#' @inherit lab_description_fields return seealso
 #' @export
 #' @examples
 #' pkg <- example_diagnose_scenario("description_examples/references_bad.txt",
@@ -136,9 +132,9 @@ lab_references <- function(
 ) {
   path <- find_package_root(path)
   desc <- resolve_description(path, desc)
-  text <- dcf_field(desc, "Description")
+  text <- desc_value(desc, "Description")
   issues <- character(0)
-  if (!is.null(text) && !is.na(text) && nzchar(trimws(text))) {
+  if (!is.null(text)) {
     # As R reads it: one line, then wrapped. The width is fixed at the one R
     # uses in an 80-column session, so the result does not depend on the console.
     flat <- gsub("[\n\t]", " ", trimws(text))
@@ -201,16 +197,12 @@ lab_references <- function(
     }
   }
 
-  passed <- length(issues) == 0L
-  emit_issue_summary(
+  report_check(
     issues,
     verbose,
+    check_label("references"),
     "References in Description are in CRAN's form",
     "References in Description are not in CRAN's form",
-    paste0(
-      "Treatment: Write links as <https://...>, DOIs as <doi:prefix/suffix> ",
-      "and arXiv e-prints as <doi:10.48550/arXiv.ID>, each closed with '>'"
-    )
+    treatment = paste("Treatment:", treatments$references$treatment)
   )
-  checktor_check_result(passed, issues, "References check")
 }

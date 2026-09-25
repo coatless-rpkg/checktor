@@ -4,7 +4,7 @@
 \alias{lab_home_writing}
 \title{Diagnose Writes to the User's Home Directory}
 \usage{
-lab_home_writing(path, verbose = TRUE, parsed = NULL)
+lab_home_writing(path = ".", verbose = TRUE, parsed = NULL)
 }
 \arguments{
 \item{path}{Character. Path to the package directory. Default: \code{"."}.}

@@ -4,7 +4,7 @@
 \alias{lab_code_exercised}
 \title{Diagnose a Package Nothing Exercises}
 \usage{
-lab_code_exercised(path, verbose = TRUE)
+lab_code_exercised(path = ".", verbose = TRUE)
 }
 \arguments{
 \item{path}{Character. Path to package directory}

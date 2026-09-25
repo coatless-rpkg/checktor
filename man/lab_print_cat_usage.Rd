@@ -4,7 +4,7 @@
 \alias{lab_print_cat_usage}
 \title{Diagnose Print/Cat Usage in Functions}
 \usage{
-lab_print_cat_usage(path, verbose = TRUE, parsed = NULL)
+lab_print_cat_usage(path = ".", verbose = TRUE, parsed = NULL)
 }
 \arguments{
 \item{path}{Character. Path to package directory.}

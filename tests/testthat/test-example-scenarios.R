@@ -214,26 +214,36 @@ test_that("example_diagnose_scenario(): cleanup = TRUE removes the scenario when
 })
 
 test_that("example_diagnose_scenario(): show_content prints the scenario file", {
-  expect_output(
-    pkg <- example_diagnose_scenario("code_examples/seed_setting_bad.R"),
-    "=== Example file: seed_setting_bad.R ===",
-    fixed = TRUE
+  out <- cli::cli_fmt(
+    pkg <- example_diagnose_scenario("code_examples/seed_setting_bad.R")
   )
   withr::defer(unlink(pkg, recursive = TRUE))
-  out <- capture.output(
-    pkg2 <- example_diagnose_scenario("code_examples/seed_setting_bad.R")
-  )
-  withr::defer(unlink(pkg2, recursive = TRUE))
   shipped <- readLines(
     system.file("diagnose", "code_examples", "seed_setting_bad.R", package = "checktor")
   )
+  expect_match(out[1], "Example file: seed_setting_bad.R", fixed = TRUE)
   expect_true(all(shipped[nzchar(shipped)] %in% out))
-  expect_match(out, "=== End of example ===", all = FALSE, fixed = TRUE)
+  expect_match(out, "End of example", all = FALSE, fixed = TRUE)
 
   expect_silent(
     pkg3 <- example_diagnose_scenario("code_examples/seed_setting_bad.R", show_content = FALSE)
   )
   withr::defer(unlink(pkg3, recursive = TRUE))
+})
+
+test_that("example_diagnose_scenario(): show_content prints every scenario as written", {
+  # The scenarios are full of braces (function bodies, Rd macros), which cli
+  # would read as code to run if the file reached it as a template.
+  for (example in show_example_files()) {
+    out <- NULL
+    expect_no_error(
+      out <- cli::cli_fmt(
+        pkg <- example_diagnose_scenario(example, cleanup = TRUE)
+      )
+    )
+    shipped <- readLines(system.file("diagnose", example, package = "checktor"))
+    expect_true(all(shipped[nzchar(shipped)] %in% out), info = example)
+  }
 })
 
 # Test show_example_files() ----

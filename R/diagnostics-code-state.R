@@ -21,13 +21,11 @@
 #'                                  show_content = FALSE)
 #' lab_seed_setting(pkg, verbose = FALSE)$issues
 #' unlink(pkg, recursive = TRUE)
-lab_seed_setting <- function(path, verbose = TRUE, parsed = NULL) {
+lab_seed_setting <- function(path = ".", verbose = TRUE, parsed = NULL) {
   path <- find_package_root(path)
-  if (is.null(parsed)) {
-    parsed <- read_r_xml(path)
-  }
+  parsed <- code_sources(path, parsed)
   if (length(parsed) == 0L) {
-    return(checktor_check_result(TRUE, character(0), "Seed setting check"))
+    return(pass_result(check_label("seed_setting")))
   }
 
   # set.seed() call whose first positional arg expression contains a numeric
@@ -39,17 +37,14 @@ lab_seed_setting <- function(path, verbose = TRUE, parsed = NULL) {
     "[not(ancestor::expr[IF][expr[1][count(*) = 1][NUM_CONST[text() = 'FALSE'] or SYMBOL[text() = 'FALSE']]])]",
     "/parent::expr/following-sibling::expr[1]//NUM_CONST"
   )
-  issues <- xpath_lints(parsed, xpath)
-
-  passed <- length(issues) == 0L
-  emit_issue_summary(
-    issues,
+  report_check(
+    xpath_lints(parsed, xpath),
     verbose,
+    check_label("seed_setting"),
     "No hardcoded seed setting found",
     "Found hardcoded seed setting",
-    "Treatment: Add a seed parameter to allow user control"
+    paste("Treatment:", treatments$seed_setting$treatment)
   )
-  checktor_check_result(passed, issues, "Seed setting check")
 }
 
 #' Diagnose Unrestored Option Changes
@@ -91,13 +86,11 @@ lab_seed_setting <- function(path, verbose = TRUE, parsed = NULL) {
 #'                                  show_content = FALSE)
 #' lab_option_changes(pkg, verbose = FALSE)$issues
 #' unlink(pkg, recursive = TRUE)
-lab_option_changes <- function(path, verbose = TRUE, parsed = NULL) {
+lab_option_changes <- function(path = ".", verbose = TRUE, parsed = NULL) {
   path <- find_package_root(path)
-  if (is.null(parsed)) {
-    parsed <- read_r_xml(path)
-  }
+  parsed <- code_sources(path, parsed)
   if (length(parsed) == 0L) {
-    return(checktor_check_result(TRUE, character(0), "Option changes check"))
+    return(pass_result(check_label("option_changes")))
   }
 
   # options/par/setwd call whose innermost enclosing function body does NOT
@@ -157,11 +150,9 @@ lab_option_changes <- function(path, verbose = TRUE, parsed = NULL) {
   # in a child R process and cannot touch the user's session: the child exits and
   # takes its working directory and options with it. aisdk's `callr::r(function()
   # { setwd(wd); ... })` is the canonical shape.
-  in_subprocess <- paste0(
-    "not(ancestor::expr[expr[1]/SYMBOL_FUNCTION_CALL[",
-    "  text() = 'r' or text() = 'r_bg' or text() = 'r_session'",
-    "  or text() = 'rcmd' or text() = 'callr'",
-    "]])"
+  in_subprocess <- sprintf(
+    "not(ancestor::expr[expr[1]/SYMBOL_FUNCTION_CALL[%s]])",
+    xp_text_in(c("r", "r_bg", "r_session", "rcmd", "callr"))
   )
   # A function factored out as an on.exit() restore handler -- registered by the
   # caller as `on.exit(restore_par(op))` -- is doing the restoring, so its own
@@ -171,44 +162,35 @@ lab_option_changes <- function(path, verbose = TRUE, parsed = NULL) {
   not_restore_handler <- not_on_exit_handler_xpath(on_exit_handler_names(
     parsed
   ))
-  xpath <- paste0(
-    "//SYMBOL_FUNCTION_CALL[text() = 'options' or text() = 'par' or text() = 'setwd'][",
-    "  ",
-    sets_something,
-    "  and ",
-    not_under_fn_with_call_xpath(c(
-      "on.exit",
-      "local_options",
-      "with_options",
-      "local_par",
-      "with_par",
-      "local_dir",
-      "with_dir"
-    )),
-    "  and ",
-    in_subprocess,
-    "  and ",
-    not_restore_handler,
-    "  and ",
-    captured,
-    "]"
-  )
-  issues <- xpath_lints(parsed, xpath)
-
-  passed <- length(issues) == 0L
-  emit_issue_summary(
-    issues,
-    verbose,
-    "Option changes appear to be properly reset",
-    "Option changes without apparent reset",
-    paste0(
-      "Treatment: For a setting you keep for the session, namespace it as ",
-      "{.code options(<PackageName>.key = ...)}. For a temporary change, restore ",
-      "it on exit, e.g. ",
-      "{.code oldpar <- par(no.readonly = TRUE); on.exit(par(oldpar))}."
+  xpath <- sprintf(
+    "//SYMBOL_FUNCTION_CALL[%s][%s]",
+    xp_text_in(c("options", "par", "setwd")),
+    paste(
+      sets_something,
+      not_under_fn_with_call_xpath(c(
+        "on.exit",
+        "local_options",
+        "with_options",
+        "local_par",
+        "with_par",
+        "local_dir",
+        "with_dir"
+      )),
+      in_subprocess,
+      not_restore_handler,
+      captured,
+      sep = " and "
     )
   )
-  checktor_check_result(passed, issues, "Option changes check")
+
+  report_check(
+    xpath_lints(parsed, xpath),
+    verbose,
+    check_label("option_changes"),
+    "Option changes appear to be properly reset",
+    "Option changes without apparent reset",
+    paste("Treatment:", treatments$option_changes$treatment)
+  )
 }
 
 #' Diagnose Writes to the Global Environment
@@ -235,20 +217,14 @@ lab_option_changes <- function(path, verbose = TRUE, parsed = NULL) {
 #' lab_globalenv_mod(pkg, verbose = FALSE)$issues
 #' unlink(pkg, recursive = TRUE)
 lab_globalenv_mod <- function(
-  path,
+  path = ".",
   verbose = TRUE,
   parsed = NULL
 ) {
   path <- find_package_root(path)
-  if (is.null(parsed)) {
-    parsed <- read_r_xml(path)
-  }
+  parsed <- code_sources(path, parsed)
   if (length(parsed) == 0L) {
-    return(checktor_check_result(
-      TRUE,
-      character(0),
-      "GlobalEnv modification check"
-    ))
+    return(pass_result(check_label("globalenv_mod")))
   }
 
   # `<<-` does NOT mean ".GlobalEnv". It walks the enclosing environments and
@@ -266,63 +242,37 @@ lab_globalenv_mod <- function(
   # it here would only add noise.
   pkg_level <- package_level_names(parsed)
 
-  issues <- character(0)
-  for (p in parsed) {
-    if (!is.null(p$error) || is.null(p$xml)) {
-      next
-    }
-    # A `<<-` inside a setRefClass()/R6Class()/setClass() body is FIELD or PRIVATE
-    # assignment, not a global write: it is the documented way an RC method updates
-    # its object's own field, and R6's active-binding setters use it too. chapensk's
-    # Reference Class alone produced 52 findings this way.
-    ops <- xml2::xml_find_all(
-      p$xml,
-      paste0(
-        "(//LEFT_ASSIGN[text() = '<<-'] | //RIGHT_ASSIGN[text() = '->>'])",
-        "[not(ancestor::expr[expr[1]/SYMBOL_FUNCTION_CALL[",
-        "  text() = 'setRefClass' or text() = 'R6Class' or text() = 'setClass'",
-        "]])]"
-      )
-    )
-    for (op in ops) {
-      target <- superassign_target(op)
-      if (!nzchar(target)) {
-        next
-      }
-      if (target %in% pkg_level) {
-        next
-      } # package-level binding, e.g. a cache
-      if (binds_in_enclosing_function(op, target)) {
-        next
-      }
-      # The function was stored into a container and gets its closure environment
-      # at run time, so we cannot see where this `<<-` lands. Do not guess.
-      if (in_container_assigned_function(op)) {
-        next
-      }
-      issues <- c(
-        issues,
-        paste0(
-          basename(p$file),
-          ":",
-          xml2::xml_attr(op, "line1"),
-          " (",
-          target,
-          ")"
-        )
-      )
-    }
+  # A `<<-` inside a setRefClass()/R6Class()/setClass() body is FIELD or PRIVATE
+  # assignment, not a global write: it is the documented way an RC method updates
+  # its object's own field, and R6's active-binding setters use it too. chapensk's
+  # Reference Class alone produced 52 findings this way.
+  xpath <- sprintf(
+    "(//LEFT_ASSIGN[text() = '<<-'] | //RIGHT_ASSIGN[text() = '->>'])[not(ancestor::expr[expr[1]/SYMBOL_FUNCTION_CALL[%s]])]",
+    xp_text_in(c("setRefClass", "R6Class", "setClass"))
+  )
+  reaches_global <- function(op) {
+    target <- superassign_target(op)
+    # A package-level binding, such as a cache, or one in an enclosing function.
+    # And a function stored into a container gets its closure environment at run
+    # time, so we cannot see where its `<<-` lands. Do not guess.
+    nzchar(target) &&
+      !target %in% pkg_level &&
+      !binds_in_enclosing_function(op, target) &&
+      !in_container_assigned_function(op)
   }
+  issues <- xpath_filter(parsed, xpath, reaches_global, function(file, ops) {
+    targets <- vapply(ops, superassign_target, character(1))
+    line_hits(file, ops, paste0(" (", targets, ")"))
+  })
 
-  passed <- length(issues) == 0L
-  emit_issue_summary(
+  report_check(
     issues,
     verbose,
+    check_label("globalenv_mod"),
     "No {.code .GlobalEnv} modification detected",
     "Assignment reaches the global environment",
-    "Treatment: Bind the name in the package or an enclosing function, or use a local cache environment"
+    paste("Treatment:", treatments$globalenv_mod$treatment)
   )
-  checktor_check_result(passed, issues, "GlobalEnv modification check")
 }
 
 # `options(..., warn = -1)` in any form: standalone, multi-arg, or wrapped in
@@ -352,33 +302,29 @@ lab_globalenv_mod <- function(
 #'                                  show_content = FALSE)
 #' lab_warn_option(pkg, verbose = FALSE)$issues
 #' unlink(pkg, recursive = TRUE)
-lab_warn_option <- function(path, verbose = TRUE, parsed = NULL) {
+lab_warn_option <- function(path = ".", verbose = TRUE, parsed = NULL) {
   path <- find_package_root(path)
-  if (is.null(parsed)) {
-    parsed <- read_r_xml(path)
-  }
+  parsed <- code_sources(path, parsed)
   if (length(parsed) == 0L) {
-    return(checktor_check_result(TRUE, character(0), "Warn option check"))
+    return(pass_result(check_label("warn_option")))
   }
 
   xpath <- paste0(
     "//SYMBOL_FUNCTION_CALL[",
-    "  text() = 'options' or text() = 'local_options' or text() = 'with_options'",
+    xp_text_in(c("options", "local_options", "with_options")),
     "]/parent::expr/parent::expr/SYMBOL_SUB[text() = 'warn'][",
     "  following-sibling::expr[1][OP-MINUS and expr/NUM_CONST[text() = '1']]",
     "]"
   )
-  issues <- xpath_lints(parsed, xpath)
 
-  passed <- length(issues) == 0L
-  emit_issue_summary(
-    issues,
+  report_check(
+    xpath_lints(parsed, xpath),
     verbose,
+    check_label("warn_option"),
     "No {.code options(warn = -1)} usage found",
     "{.code options(warn = -1)} usage found",
-    "Treatment: Use {.code suppressWarnings()} for a narrow scope instead"
+    paste("Treatment:", treatments$warn_option$treatment)
   )
-  checktor_check_result(passed, issues, "Warn option check")
 }
 
 # Sys.setenv() without on.exit()/withr cleanup in the same function body.
@@ -408,13 +354,11 @@ lab_warn_option <- function(path, verbose = TRUE, parsed = NULL) {
 #'                                  show_content = FALSE)
 #' lab_sys_setenv(pkg, verbose = FALSE)$issues
 #' unlink(pkg, recursive = TRUE)
-lab_sys_setenv <- function(path, verbose = TRUE, parsed = NULL) {
+lab_sys_setenv <- function(path = ".", verbose = TRUE, parsed = NULL) {
   path <- find_package_root(path)
-  if (is.null(parsed)) {
-    parsed <- read_r_xml(path)
-  }
+  parsed <- code_sources(path, parsed)
   if (length(parsed) == 0L) {
-    return(checktor_check_result(TRUE, character(0), "Sys.setenv reset check"))
+    return(pass_result(check_label("sys_setenv")))
   }
   xpath <- paste0(
     "//SYMBOL_FUNCTION_CALL[text() = 'Sys.setenv'][",
@@ -432,21 +376,15 @@ lab_sys_setenv <- function(path, verbose = TRUE, parsed = NULL) {
   # set_path()/set_envvar() are built, and it is the same base-R contract
   # option_changes already honours, just written across statements because
   # Sys.setenv() returns TRUE rather than the old value.
-  issues <- xpath_per_file(parsed, xpath, function(file, nodes) {
-    keep <- !vapply(nodes, enclosing_fn_returns_capture, logical(1))
-    nodes <- nodes[keep]
-    if (length(nodes) == 0L) {
-      return(character(0))
-    }
-    paste0(basename(file), ":", xml2::xml_attr(nodes, "line1"))
+  issues <- xpath_filter(parsed, xpath, function(n) {
+    !enclosing_fn_returns_capture(n)
   })
-  passed <- length(issues) == 0L
-  emit_issue_summary(
+  report_check(
     issues,
     verbose,
+    check_label("sys_setenv"),
     "{.code Sys.setenv()} calls appear to be reset",
     "{.code Sys.setenv()} without apparent reset",
-    "Treatment: Use {.code on.exit(Sys.unsetenv(...))} or {.code withr::local_envvar()}"
+    paste("Treatment:", treatments$sys_setenv$treatment)
   )
-  checktor_check_result(passed, issues, "Sys.setenv reset check")
 }

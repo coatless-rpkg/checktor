@@ -18,7 +18,7 @@ Defaults to reading it from \code{path}.}
 \code{\link[=checktor_check_result]{checktor_check_result()}} with \code{passed}, \code{issues}, \code{message}.
 }
 \description{
-Flags a missing \code{Authors@R}, and an unfilled \code{usethis} template such as \code{person("First", "Last", ...)}, which is a hard CRAN rejection that \verb{R CMD check} says nothing about.
+Flags a missing \code{Authors@R}, and an unfilled \code{usethis} or \code{package.skeleton()} template such as \code{person("First", "Last", ...)} or \code{person("Givenname", "Familyname", ...)}, which is a hard CRAN rejection that \verb{R CMD check} says nothing about.
 }
 \details{
 The field is evaluated without running any code it contains: only

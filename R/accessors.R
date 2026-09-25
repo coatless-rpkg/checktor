@@ -6,6 +6,51 @@
   nms[vapply(nms, function(nm) is.list(cat[[nm]]), logical(1))]
 }
 
+# The categories a checktor_results object holds, in report order, each named by
+# its short name ("code", "description", ...). A category missing from `x` is
+# left out.
+present_categories <- function(x) {
+  fields <- CATEGORY_FIELDS[CATEGORY_FIELDS %in% names(x)]
+  lapply(fields, function(cn) x[[cn]])
+}
+
+# Every check a checktor_results object holds, flattened in report order to
+# list(category = <short name>, name = <check name>, check = <result>). The one
+# walk over categories and checks, for anything that counts or selects checks
+# across a whole run.
+result_checks <- function(x) {
+  cats <- present_categories(x)
+  out <- list()
+  for (short in names(cats)) {
+    for (nm in .check_names(cats[[short]])) {
+      out[[length(out) + 1L]] <- list(
+        category = short,
+        name = nm,
+        check = cats[[short]][[nm]]
+      )
+    }
+  }
+  out
+}
+
+# The zero-row frame issues() returns when there is nothing to report, with the
+# results-level columns or, for a single category, without `category`.
+empty_issue_df <- function(with_category = FALSE) {
+  out <- data.frame(
+    check = character(0),
+    severity = character(0),
+    file = character(0),
+    line = integer(0),
+    location = character(0),
+    message = character(0),
+    stringsAsFactors = FALSE
+  )
+  if (with_category) {
+    out <- cbind(data.frame(category = character(0)), out)
+  }
+  out
+}
+
 # Pull the file and line out of a finding, whatever shape it carries. Checks
 # report locations three ways, and all of them are locations:
 #
@@ -64,15 +109,7 @@
   })
   parts <- Filter(Negate(is.null), parts)
   if (length(parts) == 0L) {
-    out <- data.frame(
-      check = character(0),
-      severity = character(0),
-      file = character(0),
-      line = integer(0),
-      location = character(0),
-      message = character(0),
-      stringsAsFactors = FALSE
-    )
+    out <- empty_issue_df()
   } else {
     out <- do.call(rbind, parts)
     rownames(out) <- NULL
@@ -139,37 +176,14 @@ issues.checktor_category_result <- function(x, ...) {
 #' @rdname issues
 #' @export
 issues.checktor_results <- function(x, ...) {
-  parts <- lapply(names(CATEGORY_FIELDS), function(short) {
-    cn <- CATEGORY_FIELDS[[short]]
-    if (!cn %in% names(x)) {
-      return(NULL)
-    }
-    df <- .category_issue_df(x[[cn]], category = short)
-    if (nrow(df) == 0L) {
-      return(NULL)
-    }
-    df[, c(
-      "category",
-      "check",
-      "severity",
-      "file",
-      "line",
-      "location",
-      "message"
-    )]
+  cats <- present_categories(x)
+  parts <- lapply(names(cats), function(short) {
+    df <- .category_issue_df(cats[[short]], category = short)
+    if (nrow(df) == 0L) NULL else df
   })
   parts <- Filter(Negate(is.null), parts)
   if (length(parts) == 0L) {
-    return(data.frame(
-      category = character(0),
-      check = character(0),
-      severity = character(0),
-      file = character(0),
-      line = integer(0),
-      location = character(0),
-      message = character(0),
-      stringsAsFactors = FALSE
-    ))
+    return(empty_issue_df(with_category = TRUE))
   }
   out <- do.call(rbind, parts)
   rownames(out) <- NULL
@@ -294,13 +308,10 @@ failed_checks.checktor_category_result <- function(x, ...) {
 #' @rdname predicates
 #' @export
 failed_checks.checktor_results <- function(x, ...) {
+  cats <- present_categories(x)
   out <- character(0)
-  for (short in names(CATEGORY_FIELDS)) {
-    cn <- CATEGORY_FIELDS[[short]]
-    if (!cn %in% names(x)) {
-      next
-    }
-    p <- x[[cn]]$passed
+  for (short in names(cats)) {
+    p <- cats[[short]]$passed
     failed <- names(p)[!p]
     if (length(failed)) out <- c(out, paste0(short, ".", failed))
   }
@@ -384,22 +395,11 @@ failed_checks.checktor_results <- function(x, ...) {
 #' @rdname tidy
 #' @exportS3Method generics::tidy
 tidy.checktor_results <- function(x, ...) {
-  parts <- lapply(names(CATEGORY_FIELDS), function(short) {
-    cn <- CATEGORY_FIELDS[[short]]
-    if (!cn %in% names(x)) {
-      return(NULL)
-    }
-    .category_tidy_df(x[[cn]], category = short)[, c(
-      "category",
-      "check",
-      "severity",
-      "passed",
-      "skipped",
-      "n_issues",
-      "message"
-    )]
+  cats <- present_categories(x)
+  parts <- lapply(names(cats), function(short) {
+    .category_tidy_df(cats[[short]], category = short)
   })
-  out <- do.call(rbind, Filter(Negate(is.null), parts))
+  out <- do.call(rbind, parts)
   rownames(out) <- NULL
   out
 }
@@ -454,15 +454,12 @@ summary.checktor_category_result <- function(object, ...) {
 #' @rdname checktor-summary
 #' @export
 summary.checktor_results <- function(object, ...) {
-  rows <- lapply(names(CATEGORY_FIELDS), function(short) {
-    cn <- CATEGORY_FIELDS[[short]]
-    if (!cn %in% names(object)) {
-      return(NULL)
-    }
-    s <- summary.checktor_category_result(object[[cn]])
+  cats <- present_categories(object)
+  rows <- lapply(names(cats), function(short) {
+    s <- summary.checktor_category_result(cats[[short]])
     cbind(category = short, s, stringsAsFactors = FALSE)
   })
-  out <- do.call(rbind, Filter(Negate(is.null), rows))
+  out <- do.call(rbind, rows)
   rownames(out) <- NULL
   out
 }

@@ -78,24 +78,24 @@ fields in its own DESCRIPTION.
 * Three checks left the default run because no authority supports them, and each
   stays exported for anyone who wants it. The CRAN rule behind
   `title_starts_with_article` applies to the `Description` and requires the word
-  "package" after the article, not to the `Title`. Writing R Extensions treats single
-  quotes as an inclusive list for non-English usage that a quoted function name fits,
-  which is what `description_function_quotes` ruled out. And `?person` says authors
-  who are natural persons hold copyright by default and need no `cph` role, which is
-  what `cph_role` asked for (#17, thanks @eddelbuettel).
+  "package" after the article, not to the `Title`. Writing R Extensions treats
+  single quotes as an inclusive list for non-English usage that a quoted function
+  name fits, which is what `description_function_quotes` ruled out. And `?person`
+  says authors who are natural persons hold copyright by default and need no `cph`
+  role, which is what `cph_role` asked for (#17, thanks @eddelbuettel).
 
 ## New checks
 
 * `detect_cores_robustness` catches a `detectCores()` result used without an `NA`
-  guard. The help says it returns an integer, or `NA` when the answer is unknown, and
-  `NA - 1` is `NA`, so the next comparison dies with `missing value where
+  guard. The help says it returns an integer, or `NA` when the answer is unknown,
+  and `NA - 1` is `NA`, so the next comparison dies with `missing value where
   TRUE/FALSE needed`. The fix is `parallelly::availableCores()`.
 
 * A family of checks mirrors CRAN's incoming filter, so you see those findings
   offline against your own sources before you submit.
 
-  - `date_format` catches a `Date` that is not ISO 8601 `yyyy-mm-dd`, is over a month
-    old, or lies in the future.
+  - `date_format` catches a `Date` that is not ISO 8601 `yyyy-mm-dd`, is over a
+    month old, or lies in the future.
   - `version_format` catches a `Version` component with a leading zero or a
     suspiciously large one, while leaving a calendar-year version alone.
   - `encoding_utf8` catches an `Encoding` other than exactly `UTF-8`. CRAN's
@@ -146,12 +146,14 @@ fields in its own DESCRIPTION.
   matches. See `?lab_hardcoded_credentials` for the full list.
 
 * `spelling` runs `utils::aspell()` over the `Title` and `Description` to mirror
-  CRAN's incoming spelling pass. It reads any `.aspell/` dictionary, `inst/WORDLIST`,
-  or `Config/checktor` vocabulary you already keep, and is reported as skipped
-  without a spell-check backend installed. Turn it off with
-  `options(checktor.spelling = FALSE)`. When it reports a word, `prescribe()` prints
-  a ready-to-paste `.aspell/` snippet, since `inst/WORDLIST` alone does not clear
-  CRAN's aspell NOTE but a `.aspell/` dictionary does.
+  CRAN's incoming spelling pass, with the same ignores (single-quoted names, `fn()`
+  calls, `<doi:...>` targets) and British and `en_stats` words. It reads any
+  `.aspell/` dictionary, `inst/WORDLIST`, or `Config/checktor` vocabulary you
+  already keep, and is reported as skipped when no spell-check backend is installed
+  or the one found fails to run. Turn it off with `options(checktor.spelling =
+  FALSE)`. When it reports a word, `prescribe()` prints a ready-to-paste `.aspell/`
+  snippet, since `inst/WORDLIST` alone does not clear CRAN's aspell NOTE but a
+  `.aspell/` dictionary does.
 
 * `url_liveness` fetches every URL in the DESCRIPTION, `.Rd` files and vignettes and
   reports the ones that return an error, a 404, or a redirect, which is what
@@ -180,8 +182,9 @@ fields in its own DESCRIPTION.
     encloses the call excuses it, `@examplesIf interactive()` included (#19, thanks
     @TanguyBarthelemy). A guard still counts when it is combined with `&&`, or with
     `||` against another guard, wrapped in `suppressWarnings()`, split by a comment
-    or kept in a variable assigned before it, and `interactive() && f()` guards
-    `f()` as an `if` would.
+    or kept in a variable assigned before it on every path, and
+    `interactive() && f()` guards `f()` as an `if` would. An assignment on the
+    right of `&&` or `||`, which may never run, is not such a path.
   - `example_installs` catches installing a package from an example, a vignette or
     a demo.
   - `example_writes` catches a write to anywhere but `tempdir()`, judged with the
@@ -195,8 +198,10 @@ fields in its own DESCRIPTION.
     and never put back. A change is put back when its old value is captured and
     later handed to the setter of the same kind in the same file, as in
     `old <- setwd(tempdir())` then `setwd(old)`. `par(no.readonly = TRUE)` is a
-    read, not a change, and an `on.exit()` outside a function or `local()` is no
-    restore: `R CMD check` never runs it, and knitr runs it straight away.
+    read, not a change, and an `on.exit()` outside a function or a call that
+    runs code in a frame of its own (`local()`, `with()`, `within()`, `eval()`,
+    `evalq()`) is no restore: `R CMD check` never runs it, and knitr runs it
+    straight away.
   - `example_internal_ns` catches `:::` in an example or vignette.
   - `example_tf_usage` catches `T` or `F` for `TRUE` or `FALSE` in an example, a
     vignette or a demo, judged by the same rule `tf_usage` applies to `R/`. Tests
@@ -304,16 +309,16 @@ fields in its own DESCRIPTION.
 * `register_check()` adds a check of your own to every `checktor()` run without
   editing checktor's source. Give it a name, a function returning a
   `checktor_check_result()`, a category and a severity tier, and it runs alongside
-  the built-ins, appears in `issues()` and `tidy()`, and counts toward the verdict at
-  its tier. `unregister_check()` and `registered_checks()` manage the registry. A
+  the built-ins, appears in `issues()` and `tidy()`, and counts toward the verdict
+  at its tier. `unregister_check()` and `registered_checks()` manage the registry. A
   check that cannot run returns `checktor_check_result()` with `skipped = TRUE` and
   a `skip_reason`, and is reported as skipped like a built-in one (#15).
 
 * The AST toolkit the built-in checks use is exported, so a registered check has the
   same tools: `read_r_xml()`, `xpath_lints()`, `xpath_per_file()`,
   `undesirable_function_check()`, `not_under_fn_with_call_xpath()`, and the `.Rd`
-  walkers `extract_rd_section()` and `collect_rd_text()`. The Writing Your Own Checks
-  vignette walks through building and registering one.
+  walkers `extract_rd_section()` and `collect_rd_text()`. The Writing Your Own
+  Checks vignette walks through building and registering one.
 
 ## Checks improved
 
@@ -337,8 +342,8 @@ reimplementing them.
 * `core_usage` inspects the worker count itself and understands the `parallel`,
   `snow`, `foreach`, `future`, `furrr`, `mirai`, `RcppParallel`, `data.table` and
   `BiocParallel` frameworks. It no longer keys off an `mc.cores` argument, which
-  belongs to `mclapply()` alone, so `detectCores()` and a compliant `makeCluster(2L)`
-  come out clean.
+  belongs to `mclapply()` alone, so `detectCores()` and a compliant
+  `makeCluster(2L)` come out clean.
 
 * `roxygen_usage` spots roxygen that never reached `NAMESPACE`, such as a function
   tagged `@export` that is not actually exported, which is the real cost of a
@@ -349,7 +354,8 @@ reimplementing them.
   `<YEAR>` or `<COPYRIGHT HOLDER>`, rather than a valid but non-current year.
 
 * `authors` catches an unfilled `usethis` template such as
-  `person("First", "Last", , "you@example.com", ...)`, which `R CMD check` passes
+  `person("First", "Last", , "you@example.com", ...)`, or the `Givenname` and
+  `yourfault@somewhere.net` of `package.skeleton()`, which `R CMD check` passes
   because the field is present but a reviewer sends back. It also validates the
   field's structure, including a person with no name or no role, an `Authors@R` that
   does not parse, and a missing maintainer. It accepts the calls R's own reader
@@ -369,7 +375,9 @@ reimplementing them.
 
 * `title_case` and `license` hand off to R's own `tools::toTitleCase()` and
   `tools::analyze_license()`, so they match R's behaviour. `license` also catches a
-  bare `MIT`, which needs `MIT + file LICENSE` pointing at a file that exists.
+  bare `MIT`, which needs `MIT + file LICENSE` pointing at a file that exists, and
+  a `LICENSE` holding the full MIT or BSD text rather than the `YEAR` /
+  `COPYRIGHT HOLDER` stub, which `R CMD check` NOTEs as invalid DCF.
   `value_tags` walks each `.Rd` with `tools::parse_Rd()` and exempts data, class,
   package and `\keyword{internal}` topics, so its verdict no longer depends on the R
   version.
@@ -384,9 +392,13 @@ reimplementing them.
   `if (curl::has_internet())`, `if (interactive())` or an `@examplesIf` asking one
   of them, combined with `&&` or with `||` against another guard. Only a call that
   makes a request is reported, and a request function handed to something that calls
-  it, as in `lapply(urls, download.file)`, still counts. Code in `\dontshow{}` is
-  now checked, since `R CMD check` runs it. See `?lab_network_operations` for every
-  guard it accepts.
+  it, as in `lapply(urls, download.file)`, still counts, as does one called through
+  parentheses, as in `(download.file)(u, f)`, or wrapped by `Vectorize()` or
+  `purrr::possibly()`. Code in `\dontshow{}` and `\dontdiff{}` is now checked,
+  since `R CMD check` runs it, even when the block sits against another one, as in
+  `\dontrun{f()}\dontdiff{g()}`, which used to stop the example parsing; the other
+  Rd example checks read such an example too. See `?lab_network_operations` for
+  every guard it accepts.
 
 * `suggested_in_examples` reads an example as parsed R and judges each use of a
   Suggested package by the guards that enclose it, so a package named in a comment
@@ -417,17 +429,17 @@ the code you wrote.
 * `NAMESPACE` is parsed with R's own `base::parseNamespaceFile()`, so a multi-line
   `export()` block, an `exportPattern()`, and a method under a quoted non-syntactic
   generic such as `S3method("[", foo)` all read correctly. An `=` assignment is read
-  as an assignment, and a classic `"print.foo" <- function(x)` definition, whose name
-  parses as a `STR_CONST`, is visible to every name-based exemption.
+  as an assignment, and a classic `"print.foo" <- function(x)` definition, whose
+  name parses as a `STR_CONST`, is visible to every name-based exemption.
 
 * An S4 `setMethod("show", ...)` is an output method where `cat()` is the required
   idiom, `app$cat(...)` is a method call rather than `base::cat`, and a verbosity
   flag named `messages` counts as a gate.
 
-* A `<<-` inside `local()`, `setRefClass()` or `R6Class()` binds in that scope rather
-  than `.GlobalEnv`, a call in a default argument is scoped to that argument rather
-  than the function body, and only the R chunks of a vignette are parsed, so its
-  prose stays prose. A chunk set not to run is skipped, whether its header says
+* A `<<-` inside `local()`, `setRefClass()` or `R6Class()` binds in that scope
+  rather than `.GlobalEnv`, a call in a default argument is scoped to that argument
+  rather than the function body, and only the R chunks of a vignette are parsed, so
+  its prose stays prose. A chunk set not to run is skipped, whether its header says
   `eval = FALSE` or a Quarto `#| eval: false` line does, and the header is read to
   its last brace, so a figure caption with braces of its own does not hide the
   option after it.
@@ -456,13 +468,13 @@ the code you wrote.
   `if (FALSE)` cannot reach the RNG, and `T` or `F` inside `quote()`, `expression()`
   or `substitute()` are language tokens rather than logicals.
 
-* `commented_examples` reports only an `\examples{}` block commented out entirely, so
-  a prose comment beside working code is left alone (#9, thanks @TanguyBarthelemy).
-  `example_structure` accepts a database, a prompt or a Shiny reactive context as a
-  reason for `\dontrun{}`, and a `path/to/...` placeholder the same way. An install
-  or a launcher call is not among them, since CRAN asks for `if (interactive())`
-  there rather than for `\dontrun{}`. `library_in_pkg` exempts code sent to a
-  parallel worker, whose search path starts empty.
+* `commented_examples` reports only an `\examples{}` block commented out entirely,
+  so a prose comment beside working code is left alone (#9, thanks
+  @TanguyBarthelemy). `example_structure` accepts a database, a prompt or a Shiny
+  reactive context as a reason for `\dontrun{}`, and a `path/to/...` placeholder the
+  same way. An install or a launcher call is not among them, since CRAN asks for `if
+  (interactive())` there rather than for `\dontrun{}`. `library_in_pkg` exempts code
+  sent to a parallel worker, whose search path starts empty.
 
 * `software_names` catches the R-package and software-product names CRAN asks to see
   quoted, along with `WebAssembly`, and recognises `WASM`, `webR` and `Shinylive`
@@ -479,10 +491,14 @@ the code you wrote.
   recognised software name rather than scare-quoted jargon, in the `Title` as well
   as the `Description`. It knows every name `software_names` and `language_names`
   ask to see quoted, including those a package adds, and reads a lower-case `"rust"`
-  or `"r"` as a word rather than `Rust` or `R`. `description_length` counts words,
+  or `"r"` as a word rather than `Rust` or `R`, or a quote glued to a word, as in
+  `"R"estrictions`, as a quotation. A Title Case `"Bugs"` in the `Title` is the
+  word, not `BUGS`. `description_length` counts words,
   `description_starts_with` gained its initial-capital rule, `acronyms` no longer
   reports `CMD`, `YAML` or `TOML`, and `urls` names the offending URL while skipping
-  fenced code and `\verb{}` spans.
+  fenced code and `\verb{}` spans. `urls` and `network_operations` read every
+  vignette source R builds, Sweave's `.Rnw` included, and nothing in a subfolder
+  R does not build, and a URL ends at the brace closing a LaTeX `\url{}`.
 
 ## Bug fixes
 
@@ -536,6 +552,12 @@ the code you wrote.
   treatment list, so a check could fail and `prescribe()` would say nothing
   (#4, thanks @january3). Its output no longer shows raw markup either.
 
+* `prescribe()` and `health_report()` take their treatments from one table, so a
+  check's remedy reads the same wherever it is printed. Every check now has one,
+  where `prescribe()` covered seven and `health_report()` three, and the text and
+  HTML reports carry it too. `prescribe()` lists what a check found above its
+  treatment.
+
 * `print_cat_usage` no longer reports `cat()` inside S3 `print.*` and `format.*`
   methods, where it is the required idiom and base R's own `print.default()` uses
   it (#6, thanks @jhelvy).
@@ -549,8 +571,8 @@ the code you wrote.
 * `acronyms` skips anything in quotes, single or double, straight or typographic, so
   a `'MATLAB'` or `'SPSS'` written the way `language_names` asks is no longer
   reported as an unexplained acronym, and neither is one inside a quoted article
-  title. It also ignores the letters inside a link, a `<doi:...>` or a function
-  call.
+  title, even beside an em dash, an ellipsis or a non-breaking space. It also
+  ignores the letters inside a link, a `<doi:...>` or a function call.
 
 * `readme_links` no longer reads `[[` subsetting in an R code block as a link
   (#13, thanks @TanguyBarthelemy).
@@ -589,22 +611,27 @@ the code you wrote.
   `network_examples/bad_network_example.Rd` is read by the Rd checks rather than
   landing in `R/`. Any other extension is an error.
 
+* `example_diagnose_scenario()` and `show_example_files()` report through `cli`,
+  like the rest of checktor, so the file `show_content` prints arrives as a message
+  rather than on standard output. It still prints exactly as written, braces and
+  all.
+
 * The `configure_doctor()` example puts back the options it sets. It relied on an
   `on.exit()` outside any function, which an example never runs at the right time,
   so running the example left them changed.
 
 ## Documentation and website
 
-* Two new vignettes explain where the rules come from (#8, thanks @TanguyBarthelemy).
-  *Where the Checks Come From* maps every check to the CRAN Repository Policy or
-  Writing R Extensions section it rests on, and to the CRAN Cookbook recipe where the
-  authority is a convention rather than a rule. *What R CMD check Checks* walks
-  through every step `R CMD check` performs, so the line between the standard checks
-  and checktor's is clear.
+* Two new vignettes explain where the rules come from (#8, thanks
+  @TanguyBarthelemy). *Where the Checks Come From* maps every check to the CRAN
+  Repository Policy or Writing R Extensions section it rests on, and to the CRAN
+  Cookbook recipe where the authority is a convention rather than a rule. *What R
+  CMD check Checks* walks through every step `R CMD check` performs, so the line
+  between the standard checks and checktor's is clear.
 
-* Every check's help page gained a *Source* section naming the rule behind it, a CRAN
-  policy clause, a Writing R Extensions section, a CRAN Cookbook recipe, or an honest
-  note that no rule applies, with a link wherever one exists.
+* Every check's help page gained a *Source* section naming the rule behind it, a
+  CRAN policy clause, a Writing R Extensions section, a CRAN Cookbook recipe, or an
+  honest note that no rule applies, with a link wherever one exists.
 
 * The original three vignettes gained figures. There is a coverage map of what
   `R CMD check`, `lintr` and `checktor` each catch, a view of the three data frames

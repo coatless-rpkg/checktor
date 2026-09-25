@@ -95,20 +95,9 @@ parse_one_r_file <- function(file) {
 #' parsed <- read_r_xml(pkg)
 #' xpath_lints(parsed, "//SYMBOL_FUNCTION_CALL[text() = 'set.seed']")
 xpath_lints <- function(parsed, xpath, label = NULL) {
-  hits <- character(0)
-  for (p in parsed) {
-    if (is.null(p$xml)) {
-      next
-    }
-    nodes <- xml2::xml_find_all(p$xml, xpath)
-    if (length(nodes) == 0L) {
-      next
-    }
-    lines <- xml2::xml_attr(nodes, "line1")
-    suffix <- if (is.null(label)) "" else paste0(" (", label, ")")
-    hits <- c(hits, paste0(basename(p$file), ":", lines, suffix))
-  }
-  hits
+  xpath_per_file(parsed, xpath, function(file, nodes) {
+    line_hits(file, nodes, if (is.null(label)) "" else paste0(" (", label, ")"))
+  })
 }
 
 #' Summarise XPath Matches per File
@@ -134,10 +123,7 @@ xpath_lints <- function(parsed, xpath, label = NULL) {
 #'                })
 xpath_per_file <- function(parsed, xpath, summarise) {
   hits <- character(0)
-  for (p in parsed) {
-    if (is.null(p$xml)) {
-      next
-    }
+  for (p in parsed_docs(parsed)) {
     nodes <- xml2::xml_find_all(p$xml, xpath)
     if (length(nodes) > 0L) {
       hits <- c(hits, summarise(p$file, nodes))
@@ -146,21 +132,85 @@ xpath_per_file <- function(parsed, xpath, summarise) {
   hits
 }
 
+# The files of a read_r_xml() list that parsed: those with a tree to query. A
+# file that failed to parse has `xml = NULL` and its error in `error`.
+parsed_docs <- function(parsed) {
+  Filter(function(p) !is.null(p$xml), parsed)
+}
+
+# The parsed R sources a code check reads: the orchestrator's shared parse when
+# it passed one, else a fresh read of `path`. A check returns early with
+# pass_result() when this is empty, so an empty R/ prints no success line.
+# `path` is already resolved: each check's first line is find_package_root().
+code_sources <- function(path, parsed = NULL) {
+  if (is.null(parsed)) read_r_xml(path) else parsed
+}
+
+# Keep the nodes `xpath` finds for which `keep(node)` is TRUE, and format each
+# file's survivors with `format(file, nodes)`: xpath_per_file() with a filter.
+xpath_filter <- function(parsed, xpath, keep, format = line_hits) {
+  xpath_per_file(parsed, xpath, function(file, nodes) {
+    nodes <- nodes[vapply(nodes, keep, logical(1))]
+    if (length(nodes) == 0L) character(0) else format(file, nodes)
+  })
+}
+
+# Issue strings for matched nodes: `"file.R:12"`, then `suffix`.
+line_hits <- function(file, nodes, suffix = "") {
+  paste0(basename(file), ":", xml2::xml_attr(nodes, "line1"), suffix)
+}
+
+# Issue strings for matched SYMBOL_FUNCTION_CALL nodes, naming the call:
+# `"file.R:12 (fn())"`, or `"file.R:12 (fn() <suffix>)"` with a suffix.
+fn_hits <- function(file, nodes, suffix = "") {
+  line_hits(file, nodes, paste0(" (", xml2::xml_text(nodes), "()", suffix, ")"))
+}
+
+# ---- XPath predicate builders ----
+#
+# `xp_text_in(c("a", "b"))` is `text() = 'a' or text() = 'b'`, a node whose text
+# is any of `x`. Wrap it in parentheses before joining it to another condition
+# with `and`.
+xp_text_in <- function(x) {
+  paste(sprintf("text() = '%s'", x), collapse = " or ")
+}
+
+# A STR_CONST holding any of `x`. Its text keeps its quotes, and either quote
+# style is R, so both are matched: `text() = '"a"' or text() = "'a'"`.
+xp_str_const_in <- function(x) {
+  paste(sprintf("text() = '\"%s\"' or text() = \"'%s'\"", x, x), collapse = " or ")
+}
+
+# A STR_CONST starting with any of `prefix`, in either quote style.
+xp_str_starts <- function(prefix) {
+  paste(
+    sprintf("starts-with(text(), '\"%s') or starts-with(text(), \"'%s\")", prefix, prefix),
+    collapse = " or "
+  )
+}
+
+# A call to any of `funs`, not as a member (`obj$fn()`), meeting every further
+# condition in `...`.
+xp_call <- function(funs, ...) {
+  sprintf(
+    "//SYMBOL_FUNCTION_CALL[%s]",
+    paste(c(sprintf("(%s)", xp_text_in(funs)), NOT_MEMBER_ACCESS, ...), collapse = " and ")
+  )
+}
+
 # Convert parse errors into pseudo-issues so they surface in reports instead
 # of being silently dropped. Returns a character vector of "file:line:col
 # (parse error: ...)".
 parse_error_issues <- function(parsed) {
-  out <- character(0)
-  for (p in parsed) {
-    if (is.null(p$error)) {
-      next
-    }
-    out <- c(
-      out,
+  errs <- Filter(function(p) !is.null(p$error), parsed)
+  vapply(
+    errs,
+    function(p) {
       paste0(basename(p$file), ": parse error: ", conditionMessage(p$error))
-    )
-  }
-  out
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
 }
 
 # `obj$cat(x)` and `self$print(y)` are METHOD CALLS on an object. R's parser still
@@ -211,26 +261,12 @@ undesirable_function_check <- function(parsed, funs, label = TRUE) {
   if (length(funs) == 0L) {
     return(character(0))
   }
-  predicate <- paste(sprintf("text() = '%s'", funs), collapse = " or ")
-  xpath <- sprintf(
-    "//SYMBOL_FUNCTION_CALL[(%s) and %s]",
-    predicate,
-    NOT_MEMBER_ACCESS
-  )
+  xpath <- xp_call(funs)
   if (!isTRUE(label)) {
     return(xpath_lints(parsed, xpath))
   }
   # Per-file: include the matched function name in the issue string.
-  xpath_per_file(parsed, xpath, function(file, nodes) {
-    paste0(
-      basename(file),
-      ":",
-      xml2::xml_attr(nodes, "line1"),
-      " (",
-      xml2::xml_text(nodes),
-      "())"
-    )
-  })
+  xpath_per_file(parsed, xpath, fn_hits)
 }
 
 #' XPath Predicate: Not Guarded by a Sibling Call
@@ -256,10 +292,9 @@ undesirable_function_check <- function(parsed, funs, label = TRUE) {
 #' predicate <- not_under_fn_with_call_xpath(c("on.exit", "local_options"))
 #' paste0("//SYMBOL_FUNCTION_CALL[text() = 'options'][", predicate, "]")
 not_under_fn_with_call_xpath <- function(funs) {
-  predicate <- paste(sprintf("text() = '%s'", funs), collapse = " or ")
   sprintf(
     "not(ancestor::expr[FUNCTION][1]//SYMBOL_FUNCTION_CALL[%s])",
-    predicate
+    xp_text_in(funs)
   )
 }
 
@@ -273,13 +308,9 @@ on_exit_handler_names <- function(parsed) {
     "//SYMBOL_FUNCTION_CALL[text() = 'on.exit']",
     "/parent::expr/parent::expr//SYMBOL_FUNCTION_CALL"
   )
-  names <- character(0)
-  for (p in parsed) {
-    if (is.null(p$xml)) {
-      next
-    }
-    names <- c(names, xml2::xml_text(xml2::xml_find_all(p$xml, xpath)))
-  }
+  names <- xpath_per_file(parsed, xpath, function(file, nodes) {
+    xml2::xml_text(nodes)
+  })
   setdiff(unique(names), "on.exit")
 }
 
@@ -290,10 +321,9 @@ not_on_exit_handler_xpath <- function(names) {
   if (length(names) == 0L) {
     return("true()")
   }
-  pred <- paste(sprintf("text() = '%s'", names), collapse = " or ")
   sprintf(
     "not(ancestor::expr[FUNCTION][1]/parent::*/expr[1]/SYMBOL[%s])",
-    pred
+    xp_text_in(names)
   )
 }
 
@@ -343,21 +373,13 @@ superassign_target <- function(op) {
 # Every name bound at package top level: `nm <- ...` at the file's top level.
 # A `<<-` to one of these writes into the package namespace, not .GlobalEnv.
 package_level_names <- function(parsed) {
-  out <- character(0)
-  for (p in parsed) {
-    if (!is.null(p$error) || is.null(p$xml)) {
-      next
-    }
-    syms <- xml2::xml_find_all(
-      p$xml,
-      sprintf(
-        "/exprlist/%s[LEFT_ASSIGN[text() = '<-'] or EQ_ASSIGN]/expr[1]/SYMBOL",
-        ASSIGN_NODE
-      )
-    )
-    out <- c(out, xml2::xml_text(syms))
-  }
-  unique(out)
+  xpath <- sprintf(
+    "/exprlist/%s[LEFT_ASSIGN[text() = '<-'] or EQ_ASSIGN]/expr[1]/SYMBOL",
+    ASSIGN_NODE
+  )
+  unique(xpath_per_file(parsed, xpath, function(file, nodes) {
+    xml2::xml_text(nodes)
+  }))
 }
 
 # TRUE when `target` is already bound somewhere in an enclosing function: as a
@@ -448,7 +470,7 @@ assign_target_of <- function(expr) {
     return(NA_character_)
   }
   # A quoted name arrives with its quotes attached.
-  gsub("^['\"`]|['\"`]$", "", xml2::xml_text(target))
+  unquote_name(xml2::xml_text(target))
 }
 
 # Is `op` inside a function whose ENCLOSING ENVIRONMENT we cannot see?
@@ -511,12 +533,8 @@ in_container_assigned_function <- function(op) {
 # not cry wolf, and a function that both leaks and returns an unrelated capture is
 # itself poor code.
 enclosing_fn_returns_capture <- function(node) {
-  fn <- xml2::xml_find_first(node, "ancestor::expr[FUNCTION][1]")
-  if (inherits(fn, "xml_missing")) {
-    return(FALSE)
-  }
-  body <- xml2::xml_find_first(fn, "./expr[last()]")
-  if (inherits(body, "xml_missing")) {
+  body <- enclosing_function_body(node)
+  if (is.null(body)) {
     return(FALSE)
   }
 
@@ -531,16 +549,28 @@ enclosing_fn_returns_capture <- function(node) {
   }
 
   ret <- returned_symbol(last)
-  if (is.na(ret)) {
-    return(FALSE)
-  }
+  !is.na(ret) && ret %in% body_assign_targets(body)
+}
 
-  targets <- character(0)
-  for (stmt in xml2::xml_find_all(body, sprintf("./%s", ASSIGN_NODE))) {
-    nm <- assign_target_of(stmt)
-    if (!is.na(nm)) targets <- c(targets, nm)
+# The body of `node`'s innermost enclosing function, or NULL at top level. A
+# function expr is FUNCTION ( formals ) BODY, so the body is its last expr.
+enclosing_function_body <- function(node) {
+  fn <- xml2::xml_find_first(node, "ancestor::expr[FUNCTION][1]")
+  if (inherits(fn, "xml_missing")) {
+    return(NULL)
   }
-  ret %in% targets
+  body <- xml2::xml_find_first(fn, "./expr[last()]")
+  if (inherits(body, "xml_missing")) NULL else body
+}
+
+# The names a braced body's own statements assign to, one per assignment.
+body_assign_targets <- function(body) {
+  targets <- vapply(
+    xml2::xml_find_all(body, sprintf("./%s", ASSIGN_NODE)),
+    assign_target_of,
+    character(1)
+  )
+  targets[!is.na(targets)]
 }
 
 # The bare symbol an expression evaluates to, unwrapping invisible()/return(), or

@@ -12,13 +12,9 @@
 #' than a rule, which is why this sits at `opinion` tier. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
-#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
-#'   Defaults to reading it from `path`.
+#' @inheritParams lab_description_fields
 #'
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @seealso [checktor()], which runs this and every other check.
+#' @inherit lab_description_fields return seealso
 #' @export
 #' @examples
 #' pkg <- example_diagnose_scenario("description_examples/description_length_bad.txt",
@@ -32,15 +28,16 @@ lab_description_length <- function(
 ) {
   path <- find_package_root(path)
   desc <- resolve_description(path, desc)
-  text <- desc[["Description"]]
-  if (is.null(text) || !nzchar(text)) {
+  text <- desc_value(desc, "Description")
+  if (is.null(text)) {
     if (verbose) {
       cli::cli_alert_warning("No Description field found")
     }
+    # Fails with nothing to list, so it builds the result itself.
     return(checktor_check_result(
       FALSE,
       character(0),
-      "Description length check"
+      check_label("description_length")
     ))
   }
 
@@ -72,15 +69,15 @@ lab_description_length <- function(
       cli::cli_alert_warning(
         "Description may be too short: {.val {word_count}} words"
       )
-      cli::cli_text(
-        "{.emph Treatment: Say what the package does, in a sentence or two}"
-      )
+      cli::cli_text(paste0(
+        "{.emph Treatment: ", treatments$description_length$treatment, "}"
+      ))
     }
   }
   checktor_check_result(
     passed,
     issues,
-    "Description length check",
+    check_label("description_length"),
     sentences = sentences,
     words = word_count
   )
@@ -98,13 +95,9 @@ lab_description_length <- function(
 #' default. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
-#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
-#'   Defaults to reading it from `path`.
+#' @inheritParams lab_description_fields
 #'
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @seealso [checktor()], which runs this and every other check.
+#' @inherit lab_description_fields return seealso
 #' @export
 #' @examples
 #' pkg <- example_diagnose_scenario("description_examples/description_function_quotes_bad.txt",
@@ -122,8 +115,8 @@ lab_description_function_quotes <- function(
   pat <- "'\\s*[A-Za-z.][A-Za-z0-9._]*(?:::[A-Za-z0-9._]+)?\\s*\\([^')]*\\)\\s*'"
   issues <- character(0)
   for (field in c("Title", "Description")) {
-    text <- desc[[field]]
-    if (is.null(text) || !nzchar(text)) {
+    text <- desc_value(desc, field)
+    if (is.null(text)) {
       next
     }
     hits <- regmatches(text, gregexpr(pat, text, perl = TRUE))[[1L]]
@@ -134,16 +127,18 @@ lab_description_function_quotes <- function(
       )
     }
   }
-  passed <- length(issues) == 0L
-  emit_issue_summary(
+  report_check(
     issues,
     verbose,
+    check_label("description_function_quotes"),
     "No single-quoted function names in Title/Description",
     "Function names are single-quoted (reserve quotes for software names)",
-    "Treatment: Drop the single quotes around function names like 'fn()'",
+    treatment = paste(
+      "Treatment:",
+      treatments$description_function_quotes$treatment
+    ),
     level = "warning"
   )
-  checktor_check_result(passed, issues, "Description function-quotes check")
 }
 
 # What the Description must not start with. R's own CRAN-incoming check uses a
@@ -161,13 +156,9 @@ lab_description_function_quotes <- function(
 #' flags it. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
-#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
-#'   Defaults to reading it from `path`.
+#' @inheritParams lab_description_fields
 #'
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @seealso [checktor()], which runs this and every other check.
+#' @inherit lab_description_fields return seealso
 #' @export
 #' @examples
 #' pkg <- example_diagnose_scenario("description_examples/description_starts_with_bad.txt",
@@ -181,14 +172,10 @@ lab_description_starts_with <- function(
 ) {
   path <- find_package_root(path)
   desc <- resolve_description(path, desc)
-  text <- desc[["Description"]]
-  pkg <- dcf_field(desc, "Package")
-  if (is.null(text) || !nzchar(text)) {
-    return(checktor_check_result(
-      TRUE,
-      character(0),
-      "Description opening check"
-    ))
+  text <- desc_value(desc, "Description")
+  pkg <- desc_value(desc, "Package")
+  if (is.null(text)) {
+    return(pass_result(check_label("description_starts_with")))
   }
   flat <- trimws(gsub("\\s+", " ", text))
 
@@ -209,9 +196,7 @@ lab_description_starts_with <- function(
       )
     )
   }
-  if (
-    !is.null(pkg) && nzchar(pkg) && grepl(paste0("^['\"]?", pkg, "\\b"), flat)
-  ) {
+  if (!is.null(pkg) && grepl(paste0("^['\"]?", pkg, "\\b"), flat)) {
     issues <- c(issues, "Description should not start with the package name")
   }
   # R's descr_bad_initial rule: the Description must begin with a capital letter.
@@ -219,18 +204,17 @@ lab_description_starts_with <- function(
     issues <- c(issues, "Description should start with a capital letter")
   }
 
-  emit_issue_summary(
+  report_check(
     issues,
     verbose,
+    check_label("description_starts_with"),
     "Description opening looks fine",
     "Description opening needs work",
-    "Treatment: Start with a capital letter and say what the package does",
+    treatment = paste(
+      "Treatment:",
+      treatments$description_starts_with$treatment
+    ),
     level = "warning"
-  )
-  checktor_check_result(
-    length(issues) == 0L,
-    issues,
-    "Description opening check"
   )
 }
 
@@ -257,8 +241,7 @@ lab_description_starts_with <- function(
 #' `opinion` tier. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
+#' @inheritParams lab_description_fields
 #' @param desc Present for signature parity with the other DESCRIPTION checks;
 #'   spelling reads the `DESCRIPTION` file directly and ignores it.
 #'
@@ -280,7 +263,7 @@ lab_spelling <- function(path = ".", verbose = TRUE, desc = NULL) {
   # options(checktor.spelling = FALSE); it stays on by default.
   if (!isTRUE(getOption("checktor.spelling", TRUE))) {
     return(checktor_skipped_result(
-      "Spelling check",
+      check_label("spelling"),
       "turned off with options(checktor.spelling = FALSE)"
     ))
   }
@@ -292,36 +275,75 @@ lab_spelling <- function(path = ".", verbose = TRUE, desc = NULL) {
   # reporting a pass, exactly as CRAN's incoming check skips spelling without one.
   if (!nzchar(program)) {
     return(checktor_skipped_result(
-      "Spelling check",
+      check_label("spelling"),
       "no aspell or hunspell backend installed"
     ))
   }
   if (!file.exists(desc_file)) {
-    return(checktor_check_result(TRUE, character(0), "Spelling check"))
+    return(pass_result(check_label("spelling")))
   }
 
-  flagged <- tryCatch(
-    utils::aspell(desc_file, filter = "dcf", program = program),
-    error = function(e) NULL
-  )
-  words <- if (is.null(flagged) || nrow(flagged) == 0L) {
+  # CRAN's incoming check leaves single-quoted names ('ggplot2'), function calls
+  # (fn(), pkg::fn()) and <doi:...>/<https://...> targets out of the spell check,
+  # and adds British spellings and R's en_stats word list. Without the same
+  # ignores, 'ggplot2' came back as a misspelled "ggplot".
+  filter <- list("dcf", ignore = SPELLING_IGNORE)
+  flagged <- NULL
+  if (identical(basename(program), "aspell")) {
+    flagged <- tryCatch(
+      utils::aspell(
+        desc_file,
+        filter = filter,
+        control = c("--master=en_US", "--add-extra-dicts=en_GB"),
+        program = program,
+        dictionaries = "en_stats"
+      ),
+      error = function(e) NULL
+    )
+  }
+  # hunspell, or an aspell without the en_US/en_GB dictionaries: the backend's
+  # default dictionary, still with CRAN's ignores.
+  if (is.null(flagged)) {
+    flagged <- tryCatch(
+      utils::aspell(desc_file, filter = filter, program = program),
+      error = function(e) NULL
+    )
+  }
+  if (is.null(flagged)) {
+    return(checktor_skipped_result(
+      check_label("spelling"),
+      paste0("the ", basename(program), " backend failed to run")
+    ))
+  }
+  words <- if (nrow(flagged) == 0L) {
     character(0)
   } else {
     unique(as.character(flagged$Original))
   }
   issues <- sort(setdiff(words, spelling_accepted_words(path)))
 
-  passed <- length(issues) == 0L
-  emit_issue_summary(
+  report_check(
     issues,
     verbose,
+    check_label("spelling"),
     "No possibly-misspelled words in {.file DESCRIPTION}",
     "Possibly misspelled words in {.file DESCRIPTION}",
-    "Treatment: add correct terms to a .aspell dictionary; run prescribe() for the snippet",
+    treatment = paste("Treatment:", treatments$spelling$treatment),
     level = "warning"
   )
-  checktor_check_result(passed, issues, "Spelling check")
 }
+
+# The text CRAN's incoming check keeps out of its DESCRIPTION spell check, as in
+# tools:::.check_package_CRAN_incoming(): single-quoted spans, function calls,
+# and the targets of <doi:>, <arXiv:> and <https://> links.
+SPELLING_IGNORE <- list(
+  c(
+    "(?<=[ \t[:punct:]])'[^']*'(?=[ \t[:punct:]])",
+    "(?<=[ \t[:punct:]])([[:alnum:]]+::)?[[:alnum:]_.]*\\(\\)(?=[ \t[:punct:]])",
+    "(?<=[<])(https?://|DOI:|doi:|arXiv:)[^>]+(?=[>])"
+  ),
+  perl = TRUE
+)
 
 # Words a package has already declared acceptable, gathered from every mechanism
 # a maintainer might use: an aspell `.aspell/*.rds` dictionary, the spelling

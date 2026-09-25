@@ -4,7 +4,7 @@
 \alias{lab_warn_option}
 \title{Diagnose Changes to options(warn=)}
 \usage{
-lab_warn_option(path, verbose = TRUE, parsed = NULL)
+lab_warn_option(path = ".", verbose = TRUE, parsed = NULL)
 }
 \arguments{
 \item{path}{Character. Path to the package directory. Default: \code{"."}.}

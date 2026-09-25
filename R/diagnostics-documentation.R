@@ -32,19 +32,8 @@
 #' issues(doc_results)
 diagnose_documentation_issues <- function(path = ".", verbose = TRUE) {
   path <- find_package_root(path)
-  # Share each parse among this panel's checks; see R/cache.R.
-  local_run_cache()
-  if (verbose) {
-    cli::cli_h2("Documentation Health Check")
-  }
-  run_checks(
-    c(
-      builtin_checks_for("documentation"),
-      registered_checks_for("documentation")
-    ),
-    path,
-    verbose
-  )
+  begin_category("documentation", path, verbose)
+  run_category("documentation", path, verbose)
 }
 
 # Heuristics for "Rd files we should NOT require to have \value{}".
@@ -56,19 +45,37 @@ is_non_function_rd_obj <- function(rd) {
     if (dt %in% c("data", "class", "package", "methods")) return(TRUE)
   }
   # Package-level: any \alias ending in -package.
-  for (sec in rd) {
-    if (identical(attr(sec, "Rd_tag"), "\\alias")) {
-      if (grepl("-package$", trimws(collect_rd_text(sec)))) return(TRUE)
-    }
+  if (any(grepl("-package$", rd_aliases(rd)))) {
+    return(TRUE)
   }
   # Re-export pages
-  for (sec in rd) {
-    if (identical(attr(sec, "Rd_tag"), "\\name")) {
-      nm <- trimws(collect_rd_text(sec))
-      if (nm == "reexports") return(TRUE)
-    }
+  "reexports" %in% rd_section_texts(rd, "\\name")
+}
+
+# Keywords that exempt a topic from needing \value{}: internal pages, and the
+# graphics topics R's own checks exempt.
+VALUE_EXEMPT_KEYWORDS <- c("internal", "aplot", "hplot", "device", "dynamic")
+
+# Whether the help page `rd_file` needs a \value{} and lacks one, for
+# lab_value_tags(). A page that does not parse needs nothing.
+rd_needs_value <- function(rd_file) {
+  rd <- read_rd_quietly(rd_file)
+  if (is.null(rd)) {
+    return(FALSE)
   }
-  FALSE
+  tags <- rd_tags(rd)
+  doctype <- tolower(trimws(
+    collect_rd_text(extract_rd_section(rd, "\\docType"))
+  ))
+  if (doctype %in% c("data", "class", "package")) {
+    return(FALSE)
+  }
+  keywords <- tolower(rd_section_texts(rd, "\\keyword"))
+  if (any(keywords %in% VALUE_EXEMPT_KEYWORDS)) {
+    return(FALSE)
+  }
+  documents_function <- any(tags %in% c("\\usage", "\\arguments"))
+  documents_function && !("\\value" %in% tags)
 }
 
 #' Diagnose Missing Value Tags in Documentation
@@ -97,14 +104,14 @@ is_non_function_rd_obj <- function(rd) {
 #'                                  show_content = FALSE)
 #' lab_value_tags(pkg, verbose = FALSE)$issues
 #' unlink(pkg, recursive = TRUE)
-lab_value_tags <- function(path, verbose = TRUE) {
+lab_value_tags <- function(path = ".", verbose = TRUE) {
   path <- find_package_root(path)
   rd_files <- list_rd_files(path)
   if (length(rd_files) == 0L) {
     if (verbose) {
       cli::cli_alert_info("No .Rd files found")
     }
-    return(checktor_check_result(TRUE, character(0), "Value tags check"))
+    return(pass_result(check_label("value_tags")))
   }
 
   # Walk each .Rd with tools::parse_Rd() rather than tools::checkRdContents(),
@@ -114,836 +121,17 @@ lab_value_tags <- function(path, verbose = TRUE) {
   # section and is not a data, class or package topic, nor a \keyword{internal}
   # or graphics topic. R CMD check does NOT surface missing \value as a NOTE, so
   # this stays an extra-CRAN check.
-  skip_keywords <- c("internal", "aplot", "hplot", "device", "dynamic")
-  rd_tags <- function(rd) {
-    vapply(
-      rd,
-      function(x) {
-        tag <- attr(x, "Rd_tag")
-        if (is.null(tag)) "" else tag
-      },
-      character(1)
-    )
-  }
-  needs_value <- function(rd_file) {
-    rd <- tryCatch(read_rd(rd_file), error = function(e) NULL)
-    if (is.null(rd)) {
-      return(FALSE)
-    }
-    tags <- rd_tags(rd)
-    doctype <- tolower(trimws(
-      collect_rd_text(extract_rd_section(rd, "\\docType"))
-    ))
-    if (doctype %in% c("data", "class", "package")) {
-      return(FALSE)
-    }
-    keywords <- tolower(trimws(vapply(
-      rd[tags == "\\keyword"],
-      function(k) collect_rd_text(k),
-      character(1)
-    )))
-    if (any(keywords %in% skip_keywords)) {
-      return(FALSE)
-    }
-    documents_function <- any(tags %in% c("\\usage", "\\arguments"))
-    documents_function && !("\\value" %in% tags)
-  }
-
-  hit <- vapply(rd_files, needs_value, logical(1))
+  hit <- vapply(rd_files, rd_needs_value, logical(1))
   missing_value <- sort(basename(rd_files[hit]))
 
-  passed <- length(missing_value) == 0L
-  emit_issue_summary(
+  report_check(
     missing_value,
     verbose,
+    check_label("value_tags"),
     "All function documentation has {.code \\value} tags",
-    "Missing {.code \\value} tags"
-  )
-  checktor_check_result(
-    passed,
-    missing_value,
-    "Value tags check",
+    "Missing {.code \\value} tags",
     missing = missing_value
   )
-}
-
-#' Diagnose Example Structure
-#'
-#' Walks `\examples{}` sections via [tools::parse_Rd()] and flags
-#' `\dontrun{}` subtrees that don't appear to have a justifying reason
-#' (interactive, network, credentials, long-running, etc.).
-#'
-#' @inheritParams lab_value_tags
-#' @section Source:
-#' The CRAN Cookbook covers this under
-#' [Structuring of Examples](https://contributor.r-project.org/cran-cookbook/general_issues.html#structuring-of-examples).
-#' `\dontrun{}` should wrap only code that genuinely cannot run inside a check, a
-#' convention rather than a rule, which is why this sits at `opinion` tier. See
-#' `vignette("check-sources", package = "checktor")` for how every check maps to its
-#' source.
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @export
-#' @examples
-#' pkg <- example_diagnose_scenario("documentation_examples/example_structure_bad.Rd",
-#'                                  show_content = FALSE)
-#' lab_example_structure(pkg, verbose = FALSE)$issues
-#' unlink(pkg, recursive = TRUE)
-lab_example_structure <- function(path, verbose = TRUE) {
-  path <- find_package_root(path)
-  rd_files <- list_rd_files(path)
-  if (length(rd_files) == 0L) {
-    return(checktor_check_result(TRUE, character(0), "Example structure check"))
-  }
-
-  # What makes \dontrun{} legitimate is code that CANNOT run in a check: it needs
-  # a network, credentials, a person at the keyboard, a database, a running app,
-  # or more time than CRAN allows.
-  #
-  # The reactive-context markers matter as much as the rest. Some examples
-  # define `server <- function(input, output, session)`, which is
-  # meaningless outside a running Shiny app, but the word "shiny" never appears
-  # in them -- so a literal search for it reported three correct \dontrun{} blocks
-  # as unnecessary.
-  justify_re <- paste(
-    # needs a person
-    "interactive",
-    "readline",
-    "menu\\(",
-    "askYesNo",
-    # needs credentials or a network
-    "API",
-    "password",
-    "token",
-    "key",
-    "secret",
-    "credentials?",
-    "auth",
-    "download\\.file",
-    "httr2?::",
-    "curl",
-    "network",
-    "http[s]?://",
-    # needs a database
-    "dbConnect",
-    "DBI::",
-    "RPostgres",
-    "RSQLite",
-    "dbWriteTable",
-    # needs a running app / reactive context
-    "shiny",
-    "shinyApp",
-    "runApp",
-    "server\\s*<-\\s*function",
-    "\\binput\\$",
-    "\\boutput\\$",
-    "\\bsession\\b",
-    "observeEvent",
-    "reactive",
-    # needs more time than a check allows
-    "long.running",
-    "long.time",
-    "Sys.sleep",
-    # runs a system command
-    "system2?\\(",
-    # a placeholder path the example cannot actually open
-    "path/to",
-    "your[-_/ ]",
-    sep = "|"
-  )
-
-  issues <- character(0)
-  for (file in rd_files) {
-    rd <- tryCatch(read_rd(file), error = function(e) NULL)
-    if (is.null(rd)) {
-      next
-    }
-    examples <- extract_rd_section(rd, "\\examples")
-    if (is.null(examples)) {
-      next
-    }
-    if (!contains_dontrun(examples)) {
-      next
-    }
-    text <- collect_rd_text(examples)
-    if (!grepl(justify_re, text, ignore.case = TRUE, perl = TRUE)) {
-      issues <- c(
-        issues,
-        paste0(basename(file), ": potential unnecessary \\dontrun{}")
-      )
-    }
-  }
-
-  passed <- length(issues) == 0L
-  emit_issue_summary(
-    issues,
-    verbose,
-    "Example structure appears appropriate",
-    "Potential example structure issues",
-    level = "warning"
-  )
-  checktor_check_result(passed, issues, "Example structure check")
-}
-
-# Recursively true if any subtree carries Rd_tag `tag`.
-contains_rd_tag <- function(node, tag) {
-  if (identical(attr(node, "Rd_tag"), tag)) {
-    return(TRUE)
-  }
-  if (is.list(node)) {
-    any(vapply(node, contains_rd_tag, logical(1), tag = tag, USE.NAMES = FALSE))
-  } else {
-    FALSE
-  }
-}
-
-contains_dontrun <- function(node) contains_rd_tag(node, "\\dontrun")
-
-# Flags commented-out code lines inside \examples{}. A "commented-out call"
-# is heuristically a line that starts with `#`, has no other code before it,
-# and contains a `(` (the giveaway that it's a call rather than prose).
-#' Diagnose Examples That Run Nothing
-#'
-#' Flags an `\examples{}` block whose only content is commented out, so it demonstrates nothing. A comment beside live code is illustration and is not flagged.
-#'
-#' @section Source:
-#' No formal rule. An `\examples{}` block that is entirely commented out
-#' demonstrates nothing, a convention which is why this sits at `opinion` tier. See
-#' `vignette("check-sources", package = "checktor")` for how every check maps to its
-#' source.
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
-#'
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @seealso [checktor()], which runs this and every other check.
-#' @export
-#' @examples
-#' pkg <- example_diagnose_scenario("documentation_examples/commented_examples_bad.Rd",
-#'                                  show_content = FALSE)
-#' lab_commented_examples(pkg, verbose = FALSE)$issues
-#' unlink(pkg, recursive = TRUE)
-lab_commented_examples <- function(path, verbose = TRUE) {
-  path <- find_package_root(path)
-  rd_files <- list_rd_files(path)
-  if (length(rd_files) == 0L) {
-    return(checktor_check_result(
-      TRUE,
-      character(0),
-      "Commented-out examples check"
-    ))
-  }
-
-  issues <- character(0)
-  for (file in rd_files) {
-    rd <- tryCatch(read_rd(file), error = function(e) NULL)
-    if (is.null(rd)) {
-      next
-    }
-    examples <- extract_rd_section(rd, "\\examples")
-    if (is.null(examples)) {
-      next
-    }
-    text <- collect_rd_text(examples)
-    lines <- strsplit(text, "\n", fixed = TRUE)[[1L]]
-
-    has_commented <- any(vapply(lines, is_commented_out_code, logical(1)))
-    if (!has_commented) {
-      next
-    }
-
-    # The defect is an example that DEMONSTRATES NOTHING because the code that
-    # would run has been commented out. A comment sitting alongside live code is
-    # a different thing entirely: some examples comment out server and .qmd
-    # snippets that belong in the user's OWN files, then call a setup function
-    # for real. That is illustration, not a disabled example,
-    # and reporting it was reporting the documentation for doing its job.
-    #
-    # So: only flag when the block has no runnable code at all. \dontrun{} is
-    # skipped, since its contents are not meant to run either.
-    runnable <- collect_rd_text(examples, skip = c("\\dontrun", "\\donttest"))
-    if (
-      !is.null(parse_text_xml(runnable)) &&
-        length(xml2::xml_find_all(parse_text_xml(runnable), "//expr")) > 0L
-    ) {
-      next
-    }
-
-    issues <- c(
-      issues,
-      paste0(
-        basename(file),
-        ": \\examples{} contains only commented-out code, so it runs nothing"
-      )
-    )
-  }
-
-  passed <- length(issues) == 0L
-  emit_issue_summary(
-    issues,
-    verbose,
-    "Every {.code \\examples{{}}} block runs something",
-    "{.code \\examples{{}}} blocks that run nothing",
-    "Treatment: Uncomment the demonstration, or remove the empty example",
-    level = "warning"
-  )
-  checktor_check_result(passed, issues, "Commented-out examples check")
-}
-
-# Everything a package exports, read with R's OWN NAMESPACE parser.
-#
-# This used to be two hand-rolled regexes over the file, LINE BY LINE, and they
-# were catastrophically wrong. A multi-line block, which is the form roxygen2 and
-# most humans write:
-#
-#     export(AES,
-#            digest,
-#            ...)
-#
-# lost every name after the first line. Run against the `digest` package the old
-# reader returned exactly ONE entry, the string "AES," (trailing comma included),
-# where the truth is nine exports. So `digest::digest()`, the package's flagship
-# function, was reported as UNEXPORTED. It also ignored exportPattern() entirely.
-#
-# That single defect silently poisoned every check that asks "is this exported?":
-# unexported_example_ns, missing_examples, and roxygen_usage. Across 45 CRAN
-# packages it accounted for 121 false findings.
-#
-# base::parseNamespaceFile() is the parser R itself uses to load a namespace. It
-# wants (package, lib) and reads <lib>/<package>/NAMESPACE, which is exactly the
-# shape of a source tree.
-#
-# Returns list(names, patterns), or NULL when the NAMESPACE cannot be parsed. NULL
-# means "cannot tell", and every caller must then SKIP rather than guess: a check
-# that cannot see the exports must not accuse anything of being unexported.
-package_exports <- function(path) {
-  full <- normalizePath(path, winslash = "/", mustWork = FALSE)
-  if (!file.exists(file.path(full, "NAMESPACE"))) {
-    return(NULL)
-  }
-
-  ns <- tryCatch(
-    parseNamespaceFile(basename(full), dirname(full)),
-    error = function(e) NULL
-  )
-  if (is.null(ns)) {
-    return(NULL)
-  }
-
-  names <- as.character(ns$exports)
-
-  # S3method(generic, class) registers `generic.class`. The optional third column
-  # names a differently-named function backing the method.
-  s3 <- ns$S3methods
-  if (!is.null(s3) && nrow(s3) > 0L) {
-    names <- c(names, paste(s3[, 1L], s3[, 2L], sep = "."))
-    if (ncol(s3) >= 3L) {
-      backing <- s3[, 3L]
-      names <- c(names, backing[!is.na(backing)])
-    }
-  }
-
-  # S4.
-  names <- c(
-    names,
-    as.character(ns$exportClasses),
-    as.character(ns$exportMethods)
-  )
-
-  list(names = unique(names), patterns = as.character(ns$exportPatterns))
-}
-
-# Is `nm` exported, given the result of package_exports()? exportPattern() takes
-# regexes, so a name can be exported without ever being named.
-name_is_exported <- function(nm, ex) {
-  if (is.null(ex)) {
-    return(TRUE)
-  } # cannot tell: assume exported, never accuse
-  if (nm %in% ex$names) {
-    return(TRUE)
-  }
-  for (pat in ex$patterns) {
-    if (grepl(pat, nm)) return(TRUE)
-  }
-  FALSE
-}
-
-
-# Returns the primary topic name (first \name{...}) of an Rd object, or NA.
-rd_primary_name <- function(rd) {
-  for (sec in rd) {
-    if (identical(attr(sec, "Rd_tag"), "\\name")) {
-      return(trimws(collect_rd_text(sec)))
-    }
-  }
-  NA_character_
-}
-
-# Returns all \alias{} values from an Rd object.
-rd_aliases <- function(rd) {
-  out <- character(0)
-  for (sec in rd) {
-    if (identical(attr(sec, "Rd_tag"), "\\alias")) {
-      out <- c(out, trimws(collect_rd_text(sec)))
-    }
-  }
-  out
-}
-
-# The signs that an example's \dontrun{} code is only slow: a Sys.sleep() or a
-# comment calling it long-running.
-SLOW_EXAMPLE_RE <- "Sys\\.sleep\\b|long.running|long.time"
-
-# Whether the slow code in an example's \dontrun{} blocks uses a Suggested package
-# without a guard, which it could not keep doing once moved to \donttest{}. Each
-# block is judged on its own, so a block that needs a package does not hold back
-# the advice for another block that is only slow. The slow blocks are those whose
-# own code shows a sign of it; when the sign sits outside every block, such as a
-# comment before one, any block may be the slow one.
-dontrun_needs_suggests <- function(examples, suggests) {
-  if (length(suggests) == 0L) {
-    return(FALSE)
-  }
-  xml <- rd_example_xml(examples)
-  if (is.null(xml)) {
-    return(FALSE)
-  }
-  marker <- sprintf(
-    "expr[1]/SYMBOL_FUNCTION_CALL[text() = '%s']",
-    HIDDEN_EXAMPLE_MARKERS[["\\dontrun"]]
-  )
-  blocks <- xml2::xml_find_all(
-    xml,
-    sprintf("//expr[%s][not(ancestor::expr[%s])]", marker, marker)
-  )
-  slow <- grepl(
-    SLOW_EXAMPLE_RE,
-    xml2::xml_text(blocks),
-    ignore.case = TRUE,
-    perl = TRUE
-  )
-  if (any(slow)) {
-    blocks <- blocks[slow]
-  }
-  length(blocks) > 0L && all(vapply(
-    blocks,
-    function(block) {
-      inside <- function(use) {
-        ancestors <- xml2::xml_find_all(use, "ancestor::expr")
-        any(vapply(ancestors, identical, logical(1), block))
-      }
-      length(unguarded_suggests(xml, suggests, inside)) > 0L
-    },
-    logical(1)
-  ))
-}
-
-# Suggest \donttest{} for code that is only slow, not impossible to run.
-# Heuristic: an \examples block contains \dontrun{} AND the only "justifying"
-# pattern is Sys.sleep() or a "long.running"/"long.time" comment - in that
-# case \donttest{} would be the correct macro.
-#' Diagnose dontrun Where donttest Belongs
-#'
-#' Flags `\dontrun{}` around code that is merely slow. `\donttest{}` is the right wrapper, since it still runs under `--run-donttest`.
-#'
-#' A slow block that uses a Suggested package without a guard is left alone:
-#' `R CMD check --as-cran` runs `\donttest{}` code, so after the move
-#' [lab_suggested_in_examples()] would report it. Each `\dontrun{}` block is
-#' judged on its own, so such a block does not hold back the advice for another
-#' that is only slow.
-#'
-#' @section Source:
-#' The CRAN Cookbook covers the distinction under
-#' [Structuring of Examples](https://contributor.r-project.org/cran-cookbook/general_issues.html#structuring-of-examples),
-#' where `\donttest{}` is the wrapper for an example that merely runs long. Nothing
-#' enforces the choice, which is why this sits at `opinion` tier. See
-#' `vignette("check-sources", package = "checktor")` for how every check maps to its
-#' source.
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
-#'
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @seealso [checktor()], which runs this and every other check.
-#' @export
-#' @examples
-#' pkg <- example_diagnose_scenario("documentation_examples/donttest_vs_dontrun_bad.Rd",
-#'                                  show_content = FALSE)
-#' lab_donttest_vs_dontrun(pkg, verbose = FALSE)$issues
-#' unlink(pkg, recursive = TRUE)
-lab_donttest_vs_dontrun <- function(path, verbose = TRUE) {
-  path <- find_package_root(path)
-  rd_files <- list_rd_files(path)
-  if (length(rd_files) == 0L) {
-    return(checktor_check_result(
-      TRUE,
-      character(0),
-      "donttest vs dontrun check"
-    ))
-  }
-  suggests <- suggested_packages(path)
-
-  issues <- character(0)
-  for (file in rd_files) {
-    rd <- tryCatch(read_rd(file), error = function(e) NULL)
-    if (is.null(rd)) {
-      next
-    }
-    examples <- extract_rd_section(rd, "\\examples")
-    if (is.null(examples)) {
-      next
-    }
-    if (!contains_dontrun(examples)) {
-      next
-    }
-    text <- collect_rd_text(examples)
-    only_slow <- grepl(
-      SLOW_EXAMPLE_RE,
-      text,
-      ignore.case = TRUE,
-      perl = TRUE
-    ) &&
-      !grepl(
-        "interactive|API|password|token|key|secret|credentials?|auth|download\\.file|httr2?::|curl",
-        text,
-        ignore.case = TRUE,
-        perl = TRUE
-      )
-    # R CMD check --as-cran runs \donttest{}, so moving a block that needs a
-    # Suggested package would trade this advice for a suggested_in_examples
-    # finding.
-    if (only_slow && !dontrun_needs_suggests(examples, suggests)) {
-      issues <- c(
-        issues,
-        paste0(
-          basename(file),
-          ": uses \\dontrun{} for slow code; ",
-          "prefer \\donttest{}"
-        )
-      )
-    }
-  }
-
-  passed <- length(issues) == 0L
-  emit_issue_summary(
-    issues,
-    verbose,
-    "{.code \\dontrun{{}}} use is appropriate",
-    "Some {.code \\dontrun{{}}} blocks should be {.code \\donttest{{}}}",
-    "Treatment: Slow-only code belongs in {.code \\donttest{{}}}",
-    level = "warning"
-  )
-  checktor_check_result(passed, issues, "donttest vs dontrun check")
-}
-
-#' Diagnose Exported Functions Missing Examples
-#'
-#' CRAN expects exported functions to carry a runnable `\examples{}` section.
-#' Walks `.Rd` files via [tools::parse_Rd()] and reports exported function
-#' topics that lack one. Data, class, methods, package-level, and re-export
-#' topics are skipped, and only topics whose name appears in NAMESPACE
-#' `export()` are considered (so internal helpers and S3 methods aren't
-#' required to have examples). A function that exists only for its side effect
-#' may be reported here even though it is fine, so use your judgement.
-#'
-#' @inheritParams lab_value_tags
-#' @section Source:
-#' The CRAN Cookbook covers examples under
-#' [Structuring of Examples](https://contributor.r-project.org/cran-cookbook/general_issues.html#structuring-of-examples).
-#' Exported functions are expected to carry an `\examples{}` block, a convention
-#' rather than a rule, which is why this sits at `opinion` tier. See
-#' `vignette("check-sources", package = "checktor")` for how every check maps to its
-#' source.
-#' @return [checktor_check_result()] with `passed`, `issues`, `missing`,
-#'   `message`.
-#' @export
-#' @examples
-#' pkg <- example_diagnose_scenario("documentation_examples/missing_examples_bad.Rd",
-#'                                  show_content = FALSE)
-#' writeLines("export(undocumented_fn)", file.path(pkg, "NAMESPACE"))
-#' lab_missing_examples(pkg, verbose = FALSE)$issues
-#' unlink(pkg, recursive = TRUE)
-lab_missing_examples <- function(path, verbose = TRUE) {
-  path <- find_package_root(path)
-  rd_files <- list_rd_files(path)
-  if (length(rd_files) == 0L) {
-    return(checktor_check_result(TRUE, character(0), "Missing examples check"))
-  }
-
-  ex <- package_exports(path)
-  if (is.null(ex) || length(ex$names) == 0L) {
-    # NAMESPACE missing or unparseable: we cannot tell what is exported, so we
-    # must not enforce. Guessing here is how a check starts accusing a package's
-    # flagship function of not existing.
-    return(checktor_check_result(TRUE, character(0), "Missing examples check"))
-  }
-
-  missing <- character(0)
-  for (file in rd_files) {
-    rd <- tryCatch(read_rd(file), error = function(e) NULL)
-    if (is.null(rd)) {
-      next
-    }
-    if (is_non_function_rd_obj(rd)) {
-      next
-    }
-    # \keyword{internal} pages are deprecated shims and other non-API topics that
-    # are deliberately hidden from the index. R's own checkRdContents exempts them
-    # from its Rd-content checks on the strength of the keyword alone, so requiring
-    # a runnable example of them is not a rule anyone enforces.
-    if (rd_is_internal(rd)) {
-      next
-    }
-    names <- c(rd_primary_name(rd), rd_aliases(rd))
-    names <- names[!is.na(names) & nzchar(names)]
-    # Only exported function topics. exportPattern() means a name can be exported
-    # without ever being listed, so ask name_is_exported() rather than %in%.
-    if (!any(vapply(names, name_is_exported, logical(1), ex = ex))) {
-      next
-    }
-    if (is.null(extract_rd_section(rd, "\\examples"))) {
-      missing <- c(missing, basename(file))
-    }
-  }
-
-  passed <- length(missing) == 0L
-  emit_issue_summary(
-    missing,
-    verbose,
-    "Exported functions include {.code \\examples}",
-    "Exported functions missing {.code \\examples}",
-    "Treatment: Add a runnable {.code @examples} (side-effect-only functions may be exempt)",
-    level = "warning"
-  )
-  checktor_check_result(
-    passed,
-    missing,
-    "Missing examples check",
-    missing = missing
-  )
-}
-
-# Split a DESCRIPTION dependency field (Suggests/Imports/...) into bare package
-# names, dropping version constraints and the special "R" entry.
-parse_package_list <- function(field) {
-  if (is.null(field) || !nzchar(field)) {
-    return(character(0))
-  }
-  parts <- strsplit(field, ",", fixed = TRUE)[[1L]]
-  parts <- trimws(sub("\\(.*\\)", "", parts))
-  parts <- parts[nzchar(parts)]
-  setdiff(parts, "R")
-}
-
-# Functions an example calls to ask whether a package is installed. cli's examples
-# ask through its own has_packages(), so it is read the same way.
-SUGGESTS_GUARDS <- c("requireNamespace", "require", "is_installed", "has_packages")
-
-# R's base packages, which every R installation has. This is the list
-# tools:::.get_standard_package_names()$base gives, written out because that
-# function is internal.
-BASE_PACKAGES <- c(
-  "base", "tools", "utils", "grDevices", "graphics", "stats", "datasets",
-  "methods", "grid", "splines", "stats4", "tcltk", "compiler", "parallel"
-)
-
-# R's recommended packages, which ship with R. CRAN's checks hide one only when
-# the DESCRIPTION does not declare it (_R_CHECK_NO_RECOMMENDED_), so a recommended
-# package in Suggests is there whenever the examples run. This is the list
-# tools:::.get_standard_package_names()$recommended gives, written out because the
-# installed set varies from machine to machine.
-RECOMMENDED_PACKAGES <- c(
-  "MASS", "lattice", "Matrix", "nlme", "survival", "boot", "cluster",
-  "codetools", "foreign", "KernSmooth", "rpart", "class", "nnet", "spatial",
-  "mgcv"
-)
-
-# The packages a DESCRIPTION suggests that a check machine may lack: its Suggests,
-# less the base and recommended packages. character(0) when there is none or the
-# DESCRIPTION cannot be read.
-suggested_packages <- function(path) {
-  desc_file <- file.path(path, "DESCRIPTION")
-  if (!file.exists(desc_file)) {
-    return(character(0))
-  }
-  desc <- tryCatch(read_description(desc_file), error = function(e) NULL)
-  if (is.null(desc)) {
-    return(character(0))
-  }
-  setdiff(
-    parse_package_list(desc[["Suggests"]]),
-    c(BASE_PACKAGES, RECOMMENDED_PACKAGES)
-  )
-}
-
-# A guard for guarded_by(): whether a term asks if `pkg` is installed, naming it as
-# a string or, as require() also allows, as a bare name. A guard for any other
-# package is no guard for this one. A literal FALSE is the branch that never runs,
-# and a term that is false under R CMD check, such as `interactive()`, is a branch
-# CRAN's noSuggests check never runs either.
-suggests_guard <- function(pkg) {
-  function(node) {
-    if (is_false_constant(node) || is_check_off_guard(node)) {
-      return(TRUE)
-    }
-    parts <- call_parts(node)
-    if (is.null(parts) || !parts$fn %in% SUGGESTS_GUARDS) {
-      return(FALSE)
-    }
-    named <- arg_strings(parts$args)
-    if (parts$fn == "require" && length(parts$args) > 0L) {
-      named <- c(named, xml2::xml_text(xml2::xml_find_all(parts$args[[1L]], "SYMBOL")))
-    }
-    pkg %in% named
-  }
-}
-
-# The package a library() or require() call attaches, when its first argument
-# names one outright, or NA.
-attached_package <- function(fn) {
-  first <- xml2::xml_find_first(
-    fn,
-    "parent::expr/following-sibling::expr[1]/*[self::SYMBOL or self::STR_CONST]"
-  )
-  if (inherits(first, "xml_missing")) NA_character_ else unquote_name(xml2::xml_text(first))
-}
-
-# The packages from `suggests` that parsed example code uses without a guard
-# naming them, in the order `suggests` lists them. A use is `pkg::`, `pkg:::`,
-# library() or require(); Writing R Extensions sanctions
-# `if (require("pkgB", quietly = TRUE))`, so a require() an `if` tests is the guard
-# rather than a use. `judged(use)` picks the uses that count.
-unguarded_suggests <- function(xml, suggests, judged = function(use) TRUE) {
-  qualified <- xml2::xml_find_all(xml, "//SYMBOL_PACKAGE")
-  attaches <- xml2::xml_find_all(
-    xml,
-    paste0(
-      "//SYMBOL_FUNCTION_CALL[text() = 'library' or text() = 'require'][",
-      NOT_MEMBER_ACCESS,
-      "]"
-    )
-  )
-  attaches <- attaches[!vapply(attaches, in_if_condition, logical(1))]
-  uses <- c(as.list(qualified), as.list(attaches))
-  used <- c(
-    xml2::xml_text(qualified),
-    vapply(attaches, attached_package, character(1))
-  )
-  out <- character(0)
-  for (pkg in intersect(suggests, used)) {
-    guard <- suggests_guard(pkg)
-    unguarded <- vapply(
-      uses[used %in% pkg],
-      function(use) judged(use) && !guarded_by(use, guard),
-      logical(1)
-    )
-    if (any(unguarded)) {
-      out <- c(out, pkg)
-    }
-  }
-  out
-}
-
-#' Diagnose Suggested Packages Used in Examples Without a Guard
-#'
-#' Under CRAN's `noSuggests` check a package must work without its Suggested
-#' packages installed. This flags an example that needs a Suggested package, through
-#' `pkg::`, `library()` or `require()`, in code that runs without a guard naming
-#' that package: an enclosing `if (requireNamespace("pkg", quietly = TRUE))` or
-#' `if (require("pkg"))`, including roxygen's `@examplesIf` with one of them.
-#' `rlang::is_installed("pkg")` counts too, but it needs rlang, so it is a use of
-#' rlang when rlang is only suggested.
-#'
-#' The example is read as parsed R, so a package named in a comment or a string is
-#' not a use, and a guard in a comment, a guard for another package, or one that
-#' does not enclose the use excuses nothing. Usage inside `\dontrun{}` is not
-#' flagged, since it never runs. Usage inside `\donttest{}` is, since
-#' `R CMD check --as-cran` runs it. A condition that is false under R CMD check
-#' keeps the use out of the check as surely as `\dontrun{}` does, so
-#' `interactive()`, `identical(Sys.getenv("IN_PKGDOWN"), "true")`,
-#' `nzchar(Sys.getenv("IN_PKGDOWN"))` and a test that `NOT_CRAN` is `"true"` excuse
-#' it too. A bare `as.logical(Sys.getenv("NOT_CRAN"))` does not: it is `NA` there,
-#' and `if (NA)` stops the example with an error. R's base packages, such as
-#' parallel and tools, and its recommended packages, such as MASS, Matrix and
-#' survival, ship with R and are never flagged.
-#'
-#' @inheritParams lab_value_tags
-#' @section Source:
-#' [Writing R Extensions](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Suggested-packages),
-#' under "Suggested packages", asks that a package from `Suggests` used in
-#' an example be guarded so the example still runs without it. See
-#' `vignette("check-sources", package = "checktor")` for how every check maps to its
-#' source.
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @export
-#' @examples
-#' pkg <- example_diagnose_scenario("documentation_examples/suggested_in_examples_bad.Rd",
-#'                                  show_content = FALSE)
-#' cat("Suggests: somesuggest\n",
-#'     file = file.path(pkg, "DESCRIPTION"), append = TRUE)
-#' lab_suggested_in_examples(pkg, verbose = FALSE)$issues
-#' unlink(pkg, recursive = TRUE)
-lab_suggested_in_examples <- function(path, verbose = TRUE) {
-  path <- find_package_root(path)
-  rd_files <- list_rd_files(path)
-  suggests <- suggested_packages(path)
-  if (length(rd_files) == 0L || length(suggests) == 0L) {
-    return(checktor_check_result(
-      TRUE,
-      character(0),
-      "Suggested-package examples check"
-    ))
-  }
-
-  # The example text used to be grepped, so a package named in a comment was a use,
-  # `library(dplyrExtra)` was a use of dplyr, a guard written anywhere in the file,
-  # even in a comment, excused every use, and the word examplesIf excused them all
-  # whatever the @examplesIf asked. Read the parse tree and judge each use by the
-  # guards that enclose it.
-  #
-  # The rule serves CRAN's noSuggests check, which is R CMD check, so a use
-  # behind a condition that is false there, such as `interactive()`, is never
-  # reached by it and is excused like one behind requireNamespace().
-  issues <- character(0)
-  for (file in rd_files) {
-    rd <- tryCatch(read_rd(file), error = function(e) NULL)
-    if (is.null(rd)) {
-      next
-    }
-    examples <- extract_rd_section(rd, "\\examples")
-    if (is.null(examples)) {
-      next
-    }
-    xml <- rd_example_xml(examples)
-    if (is.null(xml)) {
-      next
-    }
-    missing <- unguarded_suggests(
-      xml,
-      suggests,
-      function(use) !in_hidden_block(use, "\\dontrun")
-    )
-    if (length(missing) > 0L) {
-      # One report per file is enough.
-      issues <- c(
-        issues,
-        paste0(
-          basename(file),
-          ": uses Suggested package '",
-          missing[[1L]],
-          "' in \\examples without a guard"
-        )
-      )
-    }
-  }
-
-  passed <- length(issues) == 0L
-  emit_issue_summary(
-    issues,
-    verbose,
-    "Examples guard Suggested-package usage",
-    "Examples use Suggested packages without a guard",
-    "Treatment: Guard the use with {.code if (requireNamespace(\"pkg\", quietly = TRUE))}, or with {.code @examplesIf requireNamespace(\"pkg\", quietly = TRUE)}",
-    level = "warning"
-  )
-  checktor_check_result(passed, issues, "Suggested-package examples check")
 }
 
 #' Diagnose Stale Generated Documentation
@@ -990,22 +178,18 @@ lab_suggested_in_examples <- function(path, verbose = TRUE) {
 #'            file.path(pkg, "NAMESPACE"))
 #' lab_roxygen_usage(pkg, verbose = FALSE)$issues
 #' unlink(pkg, recursive = TRUE)
-lab_roxygen_usage <- function(path, verbose = TRUE) {
+lab_roxygen_usage <- function(path = ".", verbose = TRUE) {
   path <- find_package_root(path)
-  pass <- function() {
-    checktor_check_result(TRUE, character(0), "Roxygen freshness check")
-  }
-
   r_files <- list_r_files(path)
   if (length(r_files) == 0L) {
-    return(pass())
+    return(pass_result(check_label("roxygen_usage")))
   }
 
   # Only meaningful for a roxygen-managed package. A hand-written NAMESPACE is
   # nobody's business but its author's.
   ns_lines <- safe_read_lines(file.path(path, "NAMESPACE"))
   if (!any(grepl("Generated by roxygen2", ns_lines, fixed = TRUE))) {
-    return(pass())
+    return(pass_result(check_label("roxygen_usage")))
   }
 
   issues <- character(0)
@@ -1015,7 +199,7 @@ lab_roxygen_usage <- function(path, verbose = TRUE) {
   if (length(declared) > 0L) {
     ex <- package_exports(path)
     if (is.null(ex)) {
-      return(pass())
+      return(pass_result(check_label("roxygen_usage")))
     } # cannot read NAMESPACE: cannot judge drift
     hit <- vapply(names(declared), name_is_exported, logical(1), ex = ex)
     missing <- declared[!hit]
@@ -1070,202 +254,13 @@ lab_roxygen_usage <- function(path, verbose = TRUE) {
     }
   }
 
-  emit_issue_summary(
+  report_check(
     issues,
     verbose,
+    check_label("roxygen_usage"),
     "Generated documentation is up to date",
     "Generated documentation is out of sync with roxygen",
-    "Treatment: Run devtools::document() to regenerate man/ and NAMESPACE",
+    treatment = paste("Treatment:", treatments$roxygen_usage$treatment),
     level = "warning"
-  )
-  checktor_check_result(length(issues) == 0L, issues, "Roxygen freshness check")
-}
-
-# Names carrying an `@export` tag in a roxygen block, as a named character
-# vector: names are the object names, values the file each was found in.
-#
-# This runs on the parse tree, not the source text. `COMMENT` is a real token in
-# getParseData(), so roxygen blocks are located structurally, and the exported
-# object is the target of the first top-level expression that FOLLOWS the block,
-# read off the tree by assign_target_of(). That is what buys us `add <-` split
-# across two lines, `x = 1`, and backticked or quoted names, none of which a
-# "regex the next line" approach survives.
-#
-# Matching `@export` within the comment's own text IS a regex, and correctly so:
-# roxygen tags have no finer tokenization than the COMMENT they sit in. The rule
-# the AST rewrite enforces is "do not regex the raw source", not "never regex".
-#
-# Anything that does not resolve to a plain assigned name (S4 setMethod, the
-# `"_PACKAGE"` sentinel) is skipped rather than guessed at: a false "you forgot
-# to document()" is worse than a miss.
-roxygen_exported_names <- function(parsed) {
-  out <- character(0)
-  for (entry in parsed) {
-    if (is.null(entry$xml)) {
-      next
-    }
-    file <- basename(entry$file)
-
-    # A top-level `<-` is an `expr`, but a top-level `=` is wrapped in
-    # `expr_or_assign_or_help` (`equal_assign` on older R), so matching only
-    # `expr` would silently skip every `name = function(...)` in the package.
-    top <- xml2::xml_find_all(
-      entry$xml,
-      "/exprlist/*[self::expr or self::expr_or_assign_or_help or self::equal_assign]"
-    )
-    if (length(top) == 0L) {
-      next
-    }
-    top_line <- as.integer(xml2::xml_attr(top, "line1"))
-
-    comments <- xml2::xml_find_all(entry$xml, "//COMMENT")
-    for (cmt in comments) {
-      text <- xml2::xml_text(cmt)
-      # `@export` exactly. The negative lookahead is load-bearing: without it
-      # `@exportS3Method` matches too.
-      if (!grepl("^\\s*#'\\s*@export(?![A-Za-z0-9_])", text, perl = TRUE)) {
-        next
-      }
-
-      # `@export` may name its objects outright, and may name SEVERAL:
-      # jsonlite writes `#' @export fromJSON toJSON`. Storing that whole string as
-      # one name invented a function called "fromJSON toJSON" and then reported it
-      # as missing from NAMESPACE.
-      explicit <- trimws(sub("^\\s*#'\\s*@export\\s*", "", text, perl = TRUE))
-      if (nzchar(explicit)) {
-        for (nm in strsplit(explicit, "[,[:space:]]+")[[1L]]) {
-          if (nzchar(nm)) out[[nm]] <- file
-        }
-        next
-      }
-
-      # The object being exported is the target of the first top-level
-      # expression starting after this comment line.
-      line <- as.integer(xml2::xml_attr(cmt, "line2"))
-      nxt <- which(top_line > line)
-      if (length(nxt) == 0L) {
-        next
-      }
-      name <- assign_target_of(top[[nxt[[1L]]]])
-      if (!is.na(name)) out[[name]] <- file
-    }
-  }
-  out
-}
-
-#' Diagnose Bare Calls to Unexported Functions in Examples
-#'
-#' Flags an `\examples{}` block that calls its own topic bare when that topic is
-#' not exported. Examples run with only the package's exports attached, so the
-#' call fails.
-#'
-#' `R CMD check` does catch this, but only by RUNNING the examples, which is late
-#' and slow, and it is skipped entirely when examples are wrapped in `\dontrun{}`
-#' or when you check with `--no-examples`. This finds it statically in a second.
-#'
-#' @section Source:
-#' No formal rule. An example that reaches for an unexported object will
-#' error when it runs, which is why this sits at `robustness` tier. See
-#' `vignette("check-sources", package = "checktor")` for how every check maps to its
-#' source.
-#' @param path Character. Path to package directory
-#' @param verbose Logical. Print diagnostic messages
-#'
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @export
-#' @examples
-#' pkg <- example_diagnose_scenario("documentation_examples/unexported_example_ns_bad.Rd",
-#'                                  show_content = FALSE)
-#' # The package exports something, but not internal_values()
-#' writeLines("export(public_values)", file.path(pkg, "NAMESPACE"))
-#' lab_unexported_example_ns(pkg, verbose = FALSE)$issues
-#' unlink(pkg, recursive = TRUE)
-lab_unexported_example_ns <- function(path, verbose = TRUE) {
-  path <- find_package_root(path)
-  rd_files <- list_rd_files(path)
-  if (length(rd_files) == 0L) {
-    return(checktor_check_result(
-      TRUE,
-      character(0),
-      "Unexported example-namespace check"
-    ))
-  }
-
-  ex <- package_exports(path)
-  if (is.null(ex) || length(ex$names) == 0L) {
-    return(checktor_check_result(
-      TRUE,
-      character(0),
-      "Unexported example-namespace check"
-    ))
-  }
-
-  issues <- character(0)
-  for (file in rd_files) {
-    rd <- tryCatch(read_rd(file), error = function(e) NULL)
-    if (is.null(rd)) {
-      next
-    }
-    names <- c(rd_primary_name(rd), rd_aliases(rd))
-    names <- names[!is.na(names) & nzchar(names)]
-    if (length(names) == 0L) {
-      next
-    }
-    if (any(vapply(names, name_is_exported, logical(1), ex = ex))) {
-      next
-    }
-    examples <- extract_rd_section(rd, "\\examples")
-    if (is.null(examples)) {
-      next
-    }
-    # \dontrun{} is not executed, so a bare call in there cannot fail. R CMD check
-    # would not run it either.
-    text <- collect_rd_text(examples, skip = "\\dontrun")
-
-    # Parse the example code rather than grepping it. A comment reading
-    # `# call helper(1) yourself`, or the string "helper(", is not a call, and
-    # only the parse tree knows that. `pkg:::helper()` still produces a
-    # SYMBOL_FUNCTION_CALL, so the `:::` is detected as a preceding NS_GET_INT
-    # sibling rather than by looking for a colon in the text.
-    xml <- parse_text_xml(text)
-    if (is.null(xml)) {
-      next
-    } # example does not parse; not our check to report
-
-    for (nm in names) {
-      bare <- xml2::xml_find_all(
-        xml,
-        sprintf(
-          "//SYMBOL_FUNCTION_CALL[text() = '%s' and not(preceding-sibling::NS_GET) and not(preceding-sibling::NS_GET_INT)]",
-          nm
-        )
-      )
-      if (length(bare) > 0L) {
-        issues <- c(
-          issues,
-          paste0(
-            basename(file),
-            ": example calls unexported '",
-            nm,
-            "()', so it fails when the example runs"
-          )
-        )
-        break
-      }
-    }
-  }
-
-  emit_issue_summary(
-    issues,
-    verbose,
-    "Every documented example calls an object it can reach",
-    "An example calls an object the package does not export",
-    "Treatment: Export the object, or keep the topic internal with {.code @noRd} and drop the runnable example. Reaching for it with {.code :::} is what CRAN asks you to remove.",
-    level = "warning"
-  )
-  checktor_check_result(
-    length(issues) == 0L,
-    issues,
-    "Unexported example-namespace check"
   )
 }

@@ -13,11 +13,8 @@ checktor_config <- function(path) {
 
   empty$disable <- as.character(getOption("checktor.disable"))
 
-  desc_file <- file.path(path, "DESCRIPTION")
-  if (!file.exists(desc_file)) {
-    return(empty)
-  }
-  dcf <- tryCatch(read_dcf_quietly(desc_file), error = function(e) NULL)
+  # Read once per run: every category's run_checks() asks for the config.
+  dcf <- description_dcf(path)
   if (is.null(dcf) || nrow(dcf) == 0L) {
     return(empty)
   }

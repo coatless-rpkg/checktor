@@ -57,7 +57,7 @@ REFERENCES_FILES <- c("REFERENCES.rds", "REFERENCES.R", "REFERENCES.bib")
 #' unlink(pkg, recursive = TRUE)
 lab_rd_bibliography <- function(path = ".", verbose = TRUE) {
   path <- find_package_root(path)
-  label <- "Rd bibliography check"
+  label <- check_label("rd_bibliography")
   uses <- rd_bibliography_uses(path)
 
   issues <- character(0)
@@ -105,15 +105,14 @@ lab_rd_bibliography <- function(path = ".", verbose = TRUE) {
     }
   }
 
-  passed <- length(issues) == 0L
-  emit_issue_summary(
+  report_check(
     issues,
     verbose,
+    label,
     "Every citation is in the bibliography and listed",
     "Citations R cannot find or does not list",
-    "Treatment: Add the entry to inst/REFERENCES.bib or .R, and list what you cite with {.code \\bibshow{{*}}}"
+    treatment = paste("Treatment:", treatments$rd_bibliography$treatment)
   )
-  checktor_check_result(passed, issues, label)
 }
 
 #' Diagnose a Bibliography R Cannot Read or Install
@@ -153,7 +152,7 @@ lab_rd_bibliography <- function(path = ".", verbose = TRUE) {
 #' unlink(pkg, recursive = TRUE)
 lab_rd_bibliography_files <- function(path = ".", verbose = TRUE) {
   path <- find_package_root(path)
-  label <- "Rd bibliography files check"
+  label <- check_label("rd_bibliography_files")
   refs <- references_file(path)
   issues <- character(0)
   # Rdpack keeps inst/REFERENCES.bib as well, read with its own tools, so the
@@ -181,15 +180,14 @@ lab_rd_bibliography_files <- function(path = ".", verbose = TRUE) {
     }
   }
 
-  passed <- length(issues) == 0L
-  emit_issue_summary(
+  report_check(
     issues,
     verbose,
+    label,
     "The bibliography can be read and is installed",
     "The bibliography cannot be read everywhere, or is not installed",
-    "Treatment: Keep it as {.file inst/REFERENCES.bib} with {.pkg bibtex} in Suggests, or as {.file inst/REFERENCES.R}"
+    treatment = paste("Treatment:", treatments$rd_bibliography_files$treatment)
   )
-  checktor_check_result(passed, issues, label)
 }
 
 # Each use of a citing or listing macro in the package's .Rd files, as
@@ -433,8 +431,7 @@ installed_package_dir <- function(name) {
 
 # The packages a DESCRIPTION depends on, imports or suggests.
 declared_dependencies <- function(path) {
-  desc_file <- file.path(path, "DESCRIPTION")
-  desc <- tryCatch(read_description(desc_file), error = function(e) NULL)
+  desc <- description_or_null(path)
   if (is.null(desc)) {
     return(character(0))
   }

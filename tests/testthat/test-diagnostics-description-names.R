@@ -681,6 +681,21 @@ test_that("lab_description_quoted_quotes(): ignores scare-quoted English", {
   expect_true(lab_description_quoted_quotes(pkg, verbose = FALSE)$passed)
 })
 
+test_that("lab_description_quoted_quotes(): ignores quotes glued to a word", {
+  # pdglasso on CRAN marks the letters behind RCON this way; "R" is not R.
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    description = paste0(
+      "Fits models with equality \"R\"estrictions on \"CON\"centration ",
+      "values, and wraps \"Python\" code."
+    )
+  )
+  res <- lab_description_quoted_quotes(pkg, verbose = FALSE)
+  expect_length(res$issues, 1L)
+  expect_match(res$issues, "\"Python\"", fixed = TRUE)
+})
+
 test_that("lab_description_quoted_quotes(): accepts single-quoted names", {
   pkg <- make_temp_dir()
   write_pkg(
@@ -808,6 +823,30 @@ test_that("lab_description_quoted_quotes(): a lower-case word is not the name it
     res <- lab_description_quoted_quotes(make_temp_dir(), verbose = FALSE, desc = d)
     expect_length(res$issues, 1L)
   }
+})
+
+test_that("lab_description_quoted_quotes(): a Title Case word in the Title is not an all-caps name", {
+  # Title Case capitalises every word, so "Bugs" in a Title is the English word,
+  # written as the Title writes every word, and not the BUGS software.
+  for (t in c("Detecting \"Bugs\" in Survey Data", "An \"Sas\" Style of Plot")) {
+    res <- lab_description_quoted_quotes(make_temp_dir(),
+      verbose = FALSE,
+      desc = c(Title = t)
+    )
+    expect_identical(res$issues, character(0), info = t)
+  }
+
+  # The name as it is written still counts in the Title, and so does the Title
+  # Case of a lower-case name ("Shiny" is shiny) ...
+  for (q in c("BUGS", "Python", "Stata", "Shiny")) {
+    d <- c(Title = paste0("Tools for \"", q, "\" Users"))
+    res <- lab_description_quoted_quotes(make_temp_dir(), verbose = FALSE, desc = d)
+    expect_length(res$issues, 1L)
+  }
+  # ... and a capitalised word in the Description is still read as the name.
+  d <- c(Description = "Fits models with \"Bugs\" for the user.")
+  res <- lab_description_quoted_quotes(make_temp_dir(), verbose = FALSE, desc = d)
+  expect_length(res$issues, 1L)
 })
 
 test_that("lab_description_quoted_quotes(): reads a desc from read.dcf(), a one-row matrix", {
@@ -1017,6 +1056,29 @@ test_that("lab_acronyms(): skips a name in typographic double quotes", {
     ))
   )
   expect_identical(res$issues, "GWAS")
+})
+
+test_that("lab_acronyms(): a curly quote opens and closes beside typographic punctuation", {
+  # Text that curls its quotes tends to use typographic punctuation too: an em
+  # dash, an ellipsis, guillemets or a non-breaking space are blanks and
+  # punctuation as surely as their ASCII forms, so each quotation is skipped.
+  for (d in c(
+    "Fits ‘GLMM’—and GWAS data.",
+    "Fits data—‘GLMM’ for GWAS.",
+    "Fits “GLMM”—and GWAS data.",
+    "Fits data—“GLMM” for GWAS.",
+    "Fits ‘GLMM’ models of GWAS data.",
+    "Fits ‘GLMM’… and GWAS data.",
+    "Fits «‘GLMM’» models of GWAS data."
+  )) {
+    res <- lab_acronyms(make_temp_dir(), verbose = FALSE, desc = c(Description = d))
+    expect_identical(res$issues, "GWAS", info = d)
+  }
+
+  # A letter is still no opening, whatever script it is in.
+  d <- "Fits é‘GLMM’ models of GWAS data."
+  res <- lab_acronyms(make_temp_dir(), verbose = FALSE, desc = c(Description = d))
+  expect_identical(res$issues, c("GLMM", "GWAS"))
 })
 
 test_that("lab_acronyms(): an elided year opens no quotation", {

@@ -70,6 +70,49 @@ test_that("health_report(): writes the file it is given", {
   expect_match(paste(readLines(out), collapse = "\n"), "Browser")
 })
 
+test_that("health_report(): gives prescribe()'s treatment in every format", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, r_code = "bad <- function() T", news = FALSE)
+  r <- checktor(pkg, verbose = FALSE, progress = FALSE)
+  rx_out <- paste(cli::cli_fmt(prescribe(r)), collapse = " ")
+  for (chk in c("tf_usage", "news_file")) {
+    rx <- treatments[[chk]]
+    for (fmt in c("markdown", "text")) {
+      txt <- paste(health_report(r, format = fmt), collapse = "\n")
+      expect_match(txt, treatment_markdown(rx$treatment), fixed = TRUE, info = fmt)
+    }
+    html <- paste(health_report(r, format = "html"), collapse = "\n")
+    expect_match(html, treatment_html(rx$treatment), fixed = TRUE)
+    # The words prescribe() prints, less the quotes cli puts around code.
+    unquote <- function(x) gsub("\\s+", " ", gsub("[`']", "", x))
+    expect_match(
+      unquote(rx_out),
+      unquote(treatment_markdown(rx$treatment)),
+      fixed = TRUE
+    )
+  }
+})
+
+test_that("health_report(): the treatment section of each format", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, r_code = "bad <- function() T")
+  r <- checktor(pkg, verbose = FALSE, progress = FALSE)
+  # From the finding to the list of checks that did not run: the header names
+  # the temporary package and the time of the run, and which checks sit out
+  # depends on the machine.
+  body <- function(fmt) {
+    out <- health_report(r, format = fmt)
+    from <- grep("Tf usage", out, fixed = TRUE)[1]
+    to <- grep("did not run", out, fixed = TRUE)[1] - 1L
+    out[seq(from, to)]
+  }
+  expect_snapshot({
+    writeLines(body("markdown"))
+    writeLines(body("text"))
+    writeLines(body("html"))
+  })
+})
+
 # Test report_findings() ----
 
 test_that("report_findings(): walks every category checktor() runs", {
@@ -92,6 +135,25 @@ test_that("report_findings(): one entry per failing check, in category order", {
   expect_false(anyDuplicated(checks) > 0L)
   cats <- unique(vapply(found, function(f) f$category, character(1)))
   expect_equal(cats, intersect(CATEGORY_FIELDS, cats))
+})
+
+test_that("report_findings(): a check prescribe() treats is the one each report lists", {
+  r <- checktor(policy_pkg(), verbose = FALSE, progress = FALSE)
+  expect_identical(
+    vapply(failed_results(r), function(f) f$name, character(1)),
+    vapply(report_findings(r), function(f) f$check, character(1))
+  )
+})
+
+# Test truncate_issues() ----
+
+test_that("truncate_issues(): keeps the first n findings and counts the rest", {
+  expect_identical(
+    truncate_issues(letters[1:7], 5L),
+    list(shown = letters[1:5], extra = 2L)
+  )
+  expect_identical(truncate_issues("a", 5L)$extra, -4L)
+  expect_identical(truncate_issues(character(0), 5L)$shown, character(0))
 })
 
 # Test validate_package_directory() ----

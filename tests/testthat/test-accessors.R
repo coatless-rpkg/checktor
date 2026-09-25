@@ -287,3 +287,33 @@ test_that("summary(): check counts agree with tidy for early returns", {
   expect_equal(s$checks, tcounts)
   expect_equal(n_failed_checks(r$code_issues), 0L)
 })
+
+# Test result_checks() ----
+
+test_that("result_checks(): flattens every check in report order", {
+  results <- list(
+    policy_issues = .mk_cat(list(browser_calls = .mk_check(TRUE, character(0)))),
+    code_issues = .mk_cat(list(
+      tf_usage = .mk_check(FALSE, "a.R:1"),
+      seed_setting = .mk_check(TRUE, character(0))
+    )),
+    metadata = list(total_issues = 1L)
+  )
+  flat <- result_checks(results)
+  expect_identical(
+    vapply(flat, `[[`, character(1), "category"),
+    c("code", "code", "policy")
+  )
+  expect_identical(
+    vapply(flat, `[[`, character(1), "name"),
+    c("tf_usage", "seed_setting", "browser_calls")
+  )
+  expect_identical(flat[[1]]$check, results$code_issues$tf_usage)
+  # A category that ended early carries no checks.
+  early <- structure(
+    list(passed = TRUE, message = "No R directory found"),
+    class = "checktor_category_result"
+  )
+  expect_length(result_checks(list(code_issues = early)), 0L)
+  expect_named(present_categories(results), c("code", "policy"))
+})

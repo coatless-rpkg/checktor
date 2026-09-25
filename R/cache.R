@@ -79,3 +79,41 @@ read_rd <- function(file) {
 parse_rd_file <- function(file) {
   tools::parse_Rd(file)
 }
+
+# The package's DESCRIPTION as read.dcf() returns it, read once per run, or NULL
+# when the file is missing or R cannot read it. This is the raw record matrix:
+# unlike read_description() it does not refuse a file with a blank line, so a
+# reader that only wants a field or two sees what read.dcf() sees.
+description_dcf <- function(path) {
+  run_cached(paste0("dcf:", path), function() {
+    desc_file <- file.path(path, "DESCRIPTION")
+    if (!file.exists(desc_file)) {
+      return(NULL)
+    }
+    tryCatch(read_dcf_quietly(desc_file), error = function(e) NULL)
+  })
+}
+
+# One field of the package's DESCRIPTION, as a string, or NA when the file is
+# missing, unreadable or has no such field. Read through description_dcf(), so
+# every field a run asks for costs one read of the file between them.
+description_value <- function(path, field) {
+  dcf <- description_dcf(path)
+  if (is.null(dcf) || nrow(dcf) == 0L || !field %in% colnames(dcf)) {
+    return(NA_character_)
+  }
+  unname(dcf[1L, field])
+}
+
+# The package's DESCRIPTION as read_description() returns it, a named list of
+# fields, read once per run; NULL when it is missing or read_description() refuses
+# it. For a helper that reads a field or two for context and has nothing to report
+# when the file is bad, since lab_description_file() reports that.
+description_or_null <- function(path) {
+  run_cached(paste0("description:", path), function() {
+    tryCatch(
+      read_description(file.path(path, "DESCRIPTION")),
+      error = function(e) NULL
+    )
+  })
+}

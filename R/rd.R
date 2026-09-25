@@ -110,11 +110,80 @@ is_commented_out_code <- function(ln) {
 # undocumented-argument checks for them), keying off the keyword alone and never
 # reading NAMESPACE. It is not merely an index-hiding device.
 rd_is_internal <- function(rd) {
-  for (sec in rd) {
-    if (!identical(attr(sec, "Rd_tag"), "\\keyword")) {
-      next
-    }
-    if (identical(trimws(collect_rd_text(sec)), "internal")) return(TRUE)
+  "internal" %in% rd_section_texts(rd, "\\keyword")
+}
+
+# Recursively true if any subtree carries Rd_tag `tag`.
+contains_rd_tag <- function(node, tag) {
+  if (identical(attr(node, "Rd_tag"), tag)) {
+    return(TRUE)
   }
-  FALSE
+  if (is.list(node)) {
+    any(vapply(node, contains_rd_tag, logical(1), tag = tag, USE.NAMES = FALSE))
+  } else {
+    FALSE
+  }
+}
+
+contains_dontrun <- function(node) contains_rd_tag(node, "\\dontrun")
+
+# Returns the primary topic name (first \name{...}) of an Rd object, or NA.
+rd_primary_name <- function(rd) {
+  c(rd_section_texts(rd, "\\name"), NA_character_)[[1L]]
+}
+
+# Returns all \alias{} values from an Rd object.
+rd_aliases <- function(rd) {
+  rd_section_texts(rd, "\\alias")
+}
+
+# Every top-level node of a parsed .Rd whose `Rd_tag` is `tag`, in page order.
+# extract_rd_section() returns only the first, and a page may carry several
+# \alias{} or \keyword{} sections.
+rd_sections <- function(rd, tag) {
+  keep <- vapply(rd, function(sec) identical(attr(sec, "Rd_tag"), tag), logical(1))
+  unclass(rd)[keep]
+}
+
+# The text of each section rd_sections() finds, trimmed.
+rd_section_texts <- function(rd, tag) {
+  vapply(
+    rd_sections(rd, tag),
+    function(sec) trimws(collect_rd_text(sec)),
+    character(1),
+    USE.NAMES = FALSE
+  )
+}
+
+# The `Rd_tag` of each top-level node of a parsed .Rd, "" for an untagged one.
+rd_tags <- function(rd) {
+  vapply(
+    rd,
+    function(x) {
+      tag <- attr(x, "Rd_tag")
+      if (is.null(tag)) "" else tag
+    },
+    character(1)
+  )
+}
+
+# tools::parse_Rd() on one help page, through the run cache, or NULL when the
+# page does not parse. A check that walks the help pages passes over one it
+# cannot read rather than failing on it.
+read_rd_quietly <- function(file) {
+  tryCatch(read_rd(file), error = function(e) NULL)
+}
+
+# The help pages among `files` that parse and have an \examples section, as a
+# list of list(file, rd, examples) in file order, `examples` being that section.
+rd_examples <- function(path, files = list_rd_files(path)) {
+  out <- list()
+  for (file in files) {
+    rd <- read_rd_quietly(file)
+    examples <- if (!is.null(rd)) extract_rd_section(rd, "\\examples")
+    if (!is.null(examples)) {
+      out[[length(out) + 1L]] <- list(file = file, rd = rd, examples = examples)
+    }
+  }
+  out
 }

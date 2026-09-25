@@ -122,7 +122,7 @@ piped_value <- function(call) {
     call,
     sprintf(
       "preceding-sibling::*[1][self::PIPE or self::SPECIAL[%s]]",
-      paste(sprintf("text() = '%s'", MAGRITTR_PIPES), collapse = " or ")
+      xp_text_in(MAGRITTR_PIPES)
     )
   )
   if (inherits(op, "xml_missing")) {
@@ -172,7 +172,7 @@ write_destination <- function(node) {
     call,
     sprintf(
       "./SYMBOL_SUB[%s]/following-sibling::expr[1]",
-      paste(sprintf("text() = '%s'", DEST_ARG_NAMES), collapse = " or ")
+      xp_text_in(DEST_ARG_NAMES)
     )
   )
   if (!inherits(named, "xml_missing")) {
@@ -297,11 +297,6 @@ formals_with_default <- function(node, pred) {
 formals_with_unsafe_default <- function(node) {
   formals_with_default(
     node,
-    paste0(
-      "STR_CONST[",
-      "  starts-with(text(), '\"~') or starts-with(text(), \"'~\")",
-      "  or starts-with(text(), '\"/') or starts-with(text(), \"'/\")",
-      "]"
-    )
+    sprintf("STR_CONST[%s]", xp_str_starts(c("~", "/")))
   )
 }

@@ -4,7 +4,7 @@
 \alias{lab_network_operations}
 \title{Diagnose Unguarded Network Access}
 \usage{
-lab_network_operations(path, verbose = TRUE)
+lab_network_operations(path = ".", verbose = TRUE)
 }
 \arguments{
 \item{path}{Character. Path to the package directory. Default: \code{"."}.}
@@ -28,7 +28,10 @@ excuses it, and a guard kept in a variable counts only when it is assigned in
 the same function and on every path to the test. A request function handed to
 something that calls it, as in \code{lapply(urls, download.file)},
 \code{purrr::map(reqs, httr2::req_perform)}, \code{do.call(httr::GET, args)} or
-\code{do.call("download.file", args)}, is a request too. Named anywhere else, as in
+\code{do.call("download.file", args)}, is a request too, and so is one called
+through parentheses, as in \code{(download.file)(u, f)}, or wrapped by
+\code{Vectorize()}, \code{memoise()} or an adverb such as \code{purrr::possibly()}, which
+return a function that calls it. Named anywhere else, as in
 \code{args(download.file)} or a mock that redefines it, it is not. Neither is a
 helper from a network package that only builds a request, such as
 \code{curl::form_file()}.

@@ -150,3 +150,37 @@ test_that("run_cached(): outside a run computes every time", {
   expect_identical(run_cached("k", count), 1L)
   expect_identical(run_cached("k", count), 2L)
 })
+
+# Test description_value() ----
+
+test_that("description_value(): reads one field, NA when it cannot", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, package = "mypkg")
+  expect_identical(description_value(pkg, "Package"), "mypkg")
+  expect_identical(description_value(pkg, "Nope"), NA_character_)
+  bare <- make_temp_dir()
+  dir.create(bare, showWarnings = FALSE, recursive = TRUE)
+  expect_identical(description_value(bare, "Package"), NA_character_)
+  # A blank line splits the record; read.dcf() still reads the first one.
+  writeLines(
+    c("Package: split", "", "Title: After"),
+    file.path(bare, "DESCRIPTION")
+  )
+  expect_identical(description_value(bare, "Package"), "split")
+})
+
+# Test description_or_null() ----
+
+test_that("description_or_null(): the fields as a list, NULL on a bad file", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, package = "mypkg")
+  expect_identical(description_or_null(pkg)[["Package"]], "mypkg")
+  bad <- make_temp_dir()
+  dir.create(bad, showWarnings = FALSE, recursive = TRUE)
+  expect_null(description_or_null(bad))
+  writeLines(
+    c("Package: split", "", "Title: After"),
+    file.path(bad, "DESCRIPTION")
+  )
+  expect_null(description_or_null(bad))
+})

@@ -18,7 +18,7 @@ Defaults to reading it from \code{path}.}
 \code{\link[=checktor_check_result]{checktor_check_result()}} with \code{passed}, \code{issues}, \code{message}.
 }
 \description{
-Flags a \code{License} that \code{\link[tools:analyze_license]{tools::analyze_license()}} cannot standardize, and a \verb{+ file LICENSE} pointing at a file that does not exist.
+Flags a \code{License} that \code{\link[tools:analyze_license]{tools::analyze_license()}} cannot standardize, and a \verb{+ file LICENSE} pointing at a file that does not exist. For MIT and the BSD licenses it also reads that file as \verb{R CMD check} does: it must be the stub of \code{YEAR} and \verb{COPYRIGHT HOLDER} fields (and \code{ORGANIZATION} for BSD 3-clause), so the full license text in its place is reported, as R's "License stub is invalid DCF" NOTE.
 }
 \section{Source}{
 

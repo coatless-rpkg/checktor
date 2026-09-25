@@ -80,8 +80,8 @@ has_bare_name <- function(blanked, name) {
 bare_name_issues <- function(desc, names, finding) {
   issues <- character(0)
   for (field in c("Title", "Description")) {
-    text <- dcf_field(desc, field)
-    if (is.null(text) || is.na(text) || !nzchar(text)) {
+    text <- desc_value(desc, field)
+    if (is.null(text)) {
       next
     }
     unquoted <- blank_ignored_spans(text)
@@ -112,13 +112,9 @@ bare_name_issues <- function(desc, names, finding) {
 #' external software in single quotes". See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
-#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
-#'   Defaults to reading it from `path`.
+#' @inheritParams lab_description_fields
 #'
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @seealso [checktor()], which runs this and every other check.
+#' @inherit lab_description_fields return seealso
 #' @export
 #' @examples
 #' pkg <- example_diagnose_scenario("description_examples/software_names_bad.txt",
@@ -156,15 +152,14 @@ lab_software_names <- function(
   )
   issues <- bare_name_issues(desc, software_names, "should be in single quotes")
 
-  passed <- length(issues) == 0
-  emit_issue_summary(
+  report_check(
     issues,
     verbose,
+    check_label("software_names"),
     "Software names appear properly formatted",
     "Potential software name formatting issues",
     level = "warning"
   )
-  checktor_check_result(passed, issues, "Software names check")
 }
 
 #' Diagnose Programming-Language Names in DESCRIPTION
@@ -202,12 +197,9 @@ lab_software_names <- function(
 #' checktor applies the same to programming-language and markup names. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
-#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
-#'   Defaults to reading it from `path`.
+#' @inheritParams lab_description_fields
 #'
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
+#' @inherit lab_description_fields return
 #' @seealso [checktor()], [lab_software_names()], [lab_format_names()].
 #' @export
 #' @examples
@@ -236,15 +228,14 @@ lab_language_names <- function(path = ".", verbose = TRUE, desc = NULL) {
   # longer excuses a bare Python elsewhere in the field.
   issues <- bare_name_issues(desc, language_names, "should be in single quotes")
 
-  passed <- length(issues) == 0
-  emit_issue_summary(
+  report_check(
     issues,
     verbose,
+    check_label("language_names"),
     "Programming-language names appear properly formatted",
     "Potential programming-language name formatting issues",
     level = "warning"
   )
-  checktor_check_result(passed, issues, "Language names check")
 }
 
 #' Diagnose Bare Format and Markup Names in DESCRIPTION
@@ -273,12 +264,9 @@ lab_language_names <- function(path = ".", verbose = TRUE, desc = NULL) {
 #' this is a matter of style and sits at `opinion` tier. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to
 #' its source.
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
-#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
-#'   Defaults to reading it from `path`.
+#' @inheritParams lab_description_fields
 #'
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
+#' @inherit lab_description_fields return
 #' @seealso [checktor()], [lab_language_names()].
 #' @export
 #' @examples
@@ -300,16 +288,15 @@ lab_format_names <- function(path = ".", verbose = TRUE, desc = NULL) {
   )
   issues <- bare_name_issues(desc, format_names, "is not in single quotes")
 
-  passed <- length(issues) == 0L
-  emit_issue_summary(
+  report_check(
     issues,
     verbose,
+    check_label("format_names"),
     "Format and markup names are single-quoted",
     "Format and markup names written without single quotes",
-    "Treatment: Optional. CRAN accepts these names bare; quote them only to keep the quoting consistent throughout the Title and Description",
+    treatment = paste("Treatment:", treatments$format_names$treatment),
     level = "warning"
   )
-  checktor_check_result(passed, issues, "Format names check")
 }
 
 #' Diagnose Unexplained Acronyms in DESCRIPTION
@@ -329,13 +316,9 @@ lab_format_names <- function(path = ".", verbose = TRUE, desc = NULL) {
 #' which is why this sits at `opinion` tier. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
-#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
-#'   Defaults to reading it from `path`.
+#' @inheritParams lab_description_fields
 #'
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @seealso [checktor()], which runs this and every other check.
+#' @inherit lab_description_fields return seealso
 #' @export
 #' @examples
 #' pkg <- example_diagnose_scenario("description_examples/acronyms_bad.txt",
@@ -349,9 +332,9 @@ lab_acronyms <- function(
 ) {
   path <- find_package_root(path)
   desc <- resolve_description(path, desc)
-  text <- desc[["Description"]]
-  if (is.null(text) || is.na(text) || !nzchar(text)) {
-    return(checktor_check_result(TRUE, character(0), "Acronyms check"))
+  text <- desc_value(desc, "Description")
+  if (is.null(text)) {
+    return(pass_result(check_label("acronyms")))
   }
 
   # Candidates come from the prose a reader sees unquoted, with the same spans
@@ -369,12 +352,21 @@ lab_acronyms <- function(
   # quote, takes a plural or possessive s, so the apostrophe in package\u2019s
   # closes nothing. Word processors may curl one side only, so a straight quote
   # can close a curly one (\u2018CFO').
+  #
+  # Blank and punctuation are read in Unicode, since text that curls its quotes
+  # tends to curl the rest: an em dash, an ellipsis, a guillemet or a
+  # non-breaking space beside a curly quote is as much a boundary as a comma or a
+  # space. `[:punct:]` alone is ASCII under PCRE, so \u2018GLMM\u2019\u2014and
+  # was read as an unquoted GLMM.
+  edge <- "[\\s\\p{P}\\p{S}\\p{Z}]"
   typographic <- c(
     single = paste0(
-      "(?<=[ \t[:punct:]])\u2018(?![0-9]{2}s?(?![[:alnum:]]))",
-      "[^\u2018\u2019]*?['\u2019](?=[ \t[:punct:]]|s(?![[:alnum:]]))"
+      "(?<=", edge, ")\u2018(?![0-9]{2}s?(?![[:alnum:]]))",
+      "[^\u2018\u2019]*?['\u2019](?=", edge, "|s(?![[:alnum:]]))"
     ),
-    double = "(?<=[ \t[:punct:]])\u201c[^\u201c\u201d]*?[\"\u201d](?=[ \t[:punct:]])"
+    double = paste0(
+      "(?<=", edge, ")\u201c[^\u201c\u201d]*?[\"\u201d](?=", edge, ")"
+    )
   )
   prose <- blank_ignored_spans(text)
   for (re in typographic) {
@@ -428,16 +420,18 @@ lab_acronyms <- function(
       cli::cli_alert_warning(
         "Potential unexplained acronyms: {.val {paste(unexplained, collapse = ', ')}}"
       )
-      cli::cli_text("{.emph Treatment: Consider explaining these acronyms}")
+      cli::cli_text(paste0(
+        "{.emph Treatment: ", treatments$acronyms$treatment, "}"
+      ))
     }
   }
-  checktor_check_result(passed, unexplained, "Acronyms check")
+  checktor_check_result(passed, unexplained, check_label("acronyms"))
 }
 
 # Double quotes in the Title and Description should only enclose quotations.
 #' Diagnose Double-Quoted Software Names
 #'
-#' Flags a software name in double quotes in `Title` or `Description`. Writing R Extensions reserves double quotes for quotations and requires single quotes for software names, so scare-quoted jargon is left alone. A lower-case span matches only a name written in lower case, such as `shiny`, so an English `"rust"` or a parameter `"r"` is not read as `Rust` or `R`.
+#' Flags a software name in double quotes in `Title` or `Description`. Writing R Extensions reserves double quotes for quotations and requires single quotes for software names, so scare-quoted jargon is left alone. A lower-case span matches only a name written in lower case, such as `shiny`, so an English `"rust"` or a parameter `"r"` is not read as `Rust` or `R`. In the `Title`, where Title Case capitalises every word, a capitalised `"Bugs"` is likewise the word and not `BUGS`.
 #'
 #' The names are those [lab_software_names()] and [lab_language_names()] ask to
 #' see in single quotes, and a few more. Format names such as `JSON` or `HTML`,
@@ -450,13 +444,9 @@ lab_acronyms <- function(
 #' titles and similar; software names take single quotes. See
 #' `vignette("check-sources", package = "checktor")` for how every check maps to its
 #' source.
-#' @param path Character. Path to the package directory. Default: `"."`.
-#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
-#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
-#'   Defaults to reading it from `path`.
+#' @inheritParams lab_description_fields
 #'
-#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
-#' @seealso [checktor()], which runs this and every other check.
+#' @inherit lab_description_fields return seealso
 #' @export
 #' @examples
 #' pkg <- example_diagnose_scenario("description_examples/description_quoted_quotes_bad.txt",
@@ -475,18 +465,19 @@ lab_description_quoted_quotes <- function(
   # in the Title is reported here or nowhere.
   quoted <- list()
   for (field in c("Title", "Description")) {
-    text <- desc[[field]]
-    if (is.null(text) || is.na(text) || !nzchar(text)) {
+    text <- desc_value(desc, field)
+    if (is.null(text)) {
       next
     }
-    quoted[[field]] <- regmatches(text, gregexpr("\"[^\"]*\"", text))[[1]]
+    # A quote glued to a letter is not a quotation: pdglasso's "R"estrictions on
+    # "CON"centration marks the letters behind an acronym, not the software R.
+    quoted[[field]] <- regmatches(
+      text,
+      gregexpr("(?<![[:alnum:]])\"[^\"]*\"(?![[:alnum:]])", text, perl = TRUE)
+    )[[1]]
   }
   if (length(unlist(quoted)) == 0L) {
-    return(checktor_check_result(
-      TRUE,
-      character(0),
-      "Description double-quotes check"
-    ))
+    return(pass_result(check_label("description_quoted_quotes")))
   }
   # Writing R Extensions, verbatim: "double quotes should be used for quotations
   # (including titles of books and articles), and single quotes for non-English
@@ -506,7 +497,7 @@ lab_description_quoted_quotes <- function(
   for (field in names(quoted)) {
     for (q in quoted[[field]]) {
       body <- trimws(gsub("^\"|\"$", "", q))
-      if (is_software_name(body, extra_names)) {
+      if (is_software_name(body, extra_names, title = field == "Title")) {
         issues <- c(
           issues,
           paste0(
@@ -521,16 +512,18 @@ lab_description_quoted_quotes <- function(
       }
     }
   }
-  passed <- length(issues) == 0L
-  emit_issue_summary(
+  report_check(
     issues,
     verbose,
+    check_label("description_quoted_quotes"),
     "Title and Description double-quote usage looks OK",
     "Title or Description double-quotes a software name",
-    "Treatment: Use single quotes for software and package names",
+    treatment = paste(
+      "Treatment:",
+      treatments$description_quoted_quotes$treatment
+    ),
     level = "warning"
   )
-  checktor_check_result(passed, issues, "Description double-quotes check")
 }
 
 # Case is ignored, so "Matlab" is MATLAB and "Shiny" is shiny, except in one
@@ -538,13 +531,25 @@ lab_description_quoted_quotes <- function(
 # or a symbol unless the name itself is written in lower case. An English "rust",
 # BFF's hyperparameter "r" and R2WinBUGS's class "bugs" are not Rust, R and BUGS,
 # and at policy tier reading them as such was a false finding.
-is_software_name <- function(x, extra = character(0)) {
+#
+# In the Title, Title Case capitalises every word, so a capitalised word there
+# ("Bugs") is the Title form of a lower-case one: it is the name only when the
+# name is written that way (Python) or in lower case (Shiny), not BUGS.
+is_software_name <- function(x, extra = character(0), title = FALSE) {
   if (!nzchar(x)) {
     return(FALSE)
   }
   names <- c(SOFTWARE_NAMES, extra)
-  if (identical(x, tolower(x))) {
+  lower <- tolower(x)
+  if (identical(x, lower)) {
     names <- names[names == tolower(names)]
+  } else if (title && identical(x, title_case_word(lower))) {
+    names <- names[names == x | names == tolower(names)]
   }
-  any(tolower(x) == tolower(names))
+  any(lower == tolower(names))
+}
+
+# "bugs" -> "Bugs".
+title_case_word <- function(x) {
+  paste0(toupper(substr(x, 1L, 1L)), substring(x, 2L))
 }

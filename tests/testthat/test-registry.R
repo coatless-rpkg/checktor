@@ -25,8 +25,8 @@ test_that("BUILTIN_CHECKS: CHECK_SEVERITY and CHECK_WHEN come from the table", {
 
 test_that("BUILTIN_CHECKS: a check that reads the parsed DESCRIPTION can be skipped", {
   # When R cannot read DESCRIPTION every check that reads the fields is reported
-  # skipped under its skip_message. One without a message would instead run on
-  # a NULL `desc`, so every description check that takes `desc` needs one.
+  # skipped under its label. One not marked `reads_desc` would instead run on a
+  # NULL `desc`, so every description check that takes `desc` needs the mark.
   # description_file takes `desc` for a uniform signature but re-reads the file.
   desc_rows <- BUILTIN_CHECKS[
     BUILTIN_CHECKS$category == "description" &
@@ -41,7 +41,28 @@ test_that("BUILTIN_CHECKS: a check that reads the parsed DESCRIPTION can be skip
   expect_setequal(names(DESCRIPTION_FIELD_CHECKS), needs_message)
   # Only description checks carry one.
   others <- BUILTIN_CHECKS$category != "description"
-  expect_true(all(is.na(BUILTIN_CHECKS$skip_message[others])))
+  expect_false(any(BUILTIN_CHECKS$reads_desc[others]))
+})
+
+test_that("BUILTIN_CHECKS: every check reports under its label", {
+  expect_identical(anyDuplicated(BUILTIN_CHECKS$label), 0L)
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  for (nm in BUILTIN_CHECKS$name) {
+    res <- get(paste0("lab_", nm))(pkg, verbose = FALSE)
+    expect_identical(res$message, check_label(nm), info = nm)
+  }
+})
+
+# Test check_label() ----
+
+test_that("check_label(): names a built-in check, and refuses an unknown one", {
+  expect_identical(check_label("tf_usage"), "T/F usage check")
+  expect_identical(
+    check_label(c("urls", "spelling")),
+    c("URLs check", "Spelling check")
+  )
+  expect_error(check_label("no_such_check"), "no_such_check")
 })
 
 # Test CATEGORY_FIELDS ----
@@ -90,4 +111,50 @@ test_that("builtin_checks_for(): passes a shared parse only to a check that take
   expect_identical(seen, "the parse")
   general <- builtin_checks_for("general", parsed = "not wanted")
   expect_true(general$package_size(".", FALSE)$passed)
+})
+
+# Test run_category() ----
+
+test_that("run_category(): runs what the category's orchestrator runs", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  expect_identical(
+    run_category("general", pkg, FALSE),
+    diagnose_general_issues(pkg, verbose = FALSE)
+  )
+  expect_identical(
+    run_category("code", pkg, FALSE, parsed = read_r_xml(pkg)),
+    diagnose_code_issues(pkg, verbose = FALSE)
+  )
+})
+
+test_that("begin_category(): prints the heading each orchestrator prints", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  for (category in CHECK_CATEGORIES) {
+    heading <- cli::cli_fmt(begin_category(category, pkg, TRUE))
+    full <- cli::cli_fmt(match.fun(CATEGORY_ORCHESTRATORS[[category]])(pkg))
+    expect_identical(
+      full[nzchar(full)][1L],
+      heading[nzchar(heading)],
+      info = category
+    )
+  }
+})
+
+test_that("begin_category(): turns the run cache on until its caller exits", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  during <- NULL
+  orchestrator <- function() {
+    root <- begin_category("general", file.path(pkg, "R"), FALSE)
+    during <<- isTRUE(.run_cache$active)
+    root
+  }
+  expect_identical(
+    normalizePath(orchestrator()),
+    normalizePath(pkg)
+  )
+  expect_true(during)
+  expect_false(isTRUE(.run_cache$active))
 })

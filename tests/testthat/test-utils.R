@@ -479,3 +479,42 @@ test_that("emit_issue_summary(): prints issue text literally, never evaluating i
     fixed = TRUE
   )
 })
+
+# Test report_check() ----
+
+test_that("report_check(): passes exactly when there are no issues", {
+  ok <- report_check(character(0), FALSE, "X check", "fine", "bad")
+  expect_s3_class(ok, "checktor_check_result")
+  expect_true(ok$passed)
+  expect_identical(ok$message, "X check")
+  bad <- report_check("a.R:1", FALSE, "X check", "fine", "bad", extra = 3L)
+  expect_false(bad$passed)
+  expect_identical(bad$issues, "a.R:1")
+  expect_identical(bad$extra, 3L)
+})
+
+test_that("report_check(): prints what emit_issue_summary() prints", {
+  issues <- paste0("a.R:", 1:7)
+  expected <- cli::cli_fmt(emit_issue_summary(
+    issues, TRUE, "fine", "bad", "Treatment: fix it",
+    max_show = 3L, level = "warning"
+  ))
+  got <- cli::cli_fmt(report_check(
+    issues, TRUE, "X check", "fine", "bad",
+    treatment = "Treatment: fix it", level = "warning", max_show = 3L
+  ))
+  expect_identical(got, expected)
+  expect_identical(
+    cli::cli_fmt(report_check(character(0), TRUE, "X check", "fine", "bad")),
+    cli::cli_fmt(emit_issue_summary(character(0), TRUE, "fine", "bad"))
+  )
+})
+
+# Test pass_result() ----
+
+test_that("pass_result(): a passing result with no issues", {
+  expect_identical(
+    pass_result("X check"),
+    checktor_check_result(TRUE, character(0), "X check")
+  )
+})

@@ -4,7 +4,7 @@
 \alias{lab_detect_cores_robustness}
 \title{Diagnose Unguarded \code{detectCores()}}
 \usage{
-lab_detect_cores_robustness(path, verbose = TRUE, parsed = NULL)
+lab_detect_cores_robustness(path = ".", verbose = TRUE, parsed = NULL)
 }
 \arguments{
 \item{path}{Character. Path to package directory.}

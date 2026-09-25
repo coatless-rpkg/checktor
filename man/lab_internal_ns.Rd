@@ -4,7 +4,7 @@
 \alias{lab_internal_ns}
 \title{Diagnose \code{:::} in Package Code}
 \usage{
-lab_internal_ns(path, verbose = TRUE, parsed = NULL)
+lab_internal_ns(path = ".", verbose = TRUE, parsed = NULL)
 }
 \arguments{
 \item{path}{Character. Path to package directory.}

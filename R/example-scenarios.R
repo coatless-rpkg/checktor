@@ -97,7 +97,7 @@ example_diagnose_scenario <- function(
       !is.character(example_path) ||
       length(example_path) != 1
   ) {
-    stop("example_path must be a single character string")
+    cli::cli_abort("{.arg example_path} must be a single character string.")
   }
 
   # A file no package keeps has nowhere to go, whether or not it ships.
@@ -117,7 +117,7 @@ example_diagnose_scenario <- function(
   example_file <- system.file("diagnose", example_path, package = "checktor")
 
   if (!file.exists(example_file)) {
-    warning("Example file not found: ", example_path)
+    cli::cli_warn("Example file not found: {example_path}")
     return(NULL)
   }
 
@@ -156,12 +156,13 @@ example_diagnose_scenario <- function(
   )
 
   # Show file content if requested
+  # The file is printed with cli_verbatim(), which applies no glue, so a brace
+  # in a scenario (a function body, an Rd macro) prints as written.
   if (show_content) {
-    cat("=== Example file:", basename(example_file), "===\n")
+    cli::cli_rule(left = "Example file: {basename(example_file)}")
     if (file.exists(target_file)) {
-      content <- readLines(target_file)
-      cat(content, sep = "\n")
-      cat("\n=== End of example ===\n\n")
+      cli::cli_verbatim(safe_read_lines(target_file))
+      cli::cli_rule(left = "End of example")
     }
   }
 
@@ -292,7 +293,9 @@ show_example_files <- function(category = "all", pattern = NULL) {
   base_path <- system.file("diagnose", package = "checktor")
 
   if (!dir.exists(base_path)) {
-    message("No example files found. Package may not be properly installed.")
+    cli::cli_inform(
+      "No example files found. Package may not be properly installed."
+    )
     return(character(0))
   }
 

@@ -4,7 +4,7 @@
 \alias{lab_sys_setenv}
 \title{Diagnose Unrestored Environment Variables}
 \usage{
-lab_sys_setenv(path, verbose = TRUE, parsed = NULL)
+lab_sys_setenv(path = ".", verbose = TRUE, parsed = NULL)
 }
 \arguments{
 \item{path}{Character. Path to the package directory. Default: \code{"."}.}

@@ -4,7 +4,7 @@
 \alias{lab_browser_calls}
 \title{Diagnose Leftover browser() Calls}
 \usage{
-lab_browser_calls(path, verbose = TRUE, parsed = NULL)
+lab_browser_calls(path = ".", verbose = TRUE, parsed = NULL)
 }
 \arguments{
 \item{path}{Character. Path to the package directory. Default: \code{"."}.}

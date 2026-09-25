@@ -4,7 +4,7 @@
 \alias{lab_roxygen_usage}
 \title{Diagnose Stale Generated Documentation}
 \usage{
-lab_roxygen_usage(path, verbose = TRUE)
+lab_roxygen_usage(path = ".", verbose = TRUE)
 }
 \arguments{
 \item{path}{Character. Path to package directory}

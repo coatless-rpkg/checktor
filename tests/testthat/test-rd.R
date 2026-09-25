@@ -64,3 +64,42 @@ test_that("is_commented_out_code(): separates prose from commented-out calls", {
   expect_false(any(vapply(prose, is_commented_out_code, logical(1))))
   expect_true(all(vapply(code, is_commented_out_code, logical(1))))
 })
+
+# Test rd_sections() ----
+
+test_that("rd_sections(): returns every section with the tag, in page order", {
+  rd_file <- withr::local_tempfile(fileext = ".Rd")
+  writeLines(
+    c(
+      "\\name{x}",
+      "\\alias{x}",
+      "\\alias{ y }",
+      "\\title{Title}",
+      "\\keyword{internal}"
+    ),
+    rd_file
+  )
+  rd <- tools::parse_Rd(rd_file)
+  expect_length(rd_sections(rd, "\\alias"), 2L)
+  expect_identical(rd_section_texts(rd, "\\alias"), c("x", "y"))
+  expect_identical(rd_section_texts(rd, "\\value"), character(0))
+  expect_identical(rd_primary_name(rd), "x")
+  expect_true(rd_is_internal(rd))
+})
+
+# Test rd_examples() ----
+
+test_that("rd_examples(): skips a page that does not parse or has no examples", {
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    rd_files = list(
+      "a.Rd" = c("\\name{a}", "\\title{A}", "\\examples{", "a()", "}"),
+      "b.Rd" = c("\\name{b}", "\\title{B}", "\\value{x}"),
+      "c.Rd" = c("\\name{c}", "\\title{C", "\\examples{", "c()", "}")
+    )
+  )
+  pages <- suppressWarnings(rd_examples(pkg))
+  expect_identical(basename(vapply(pages, `[[`, character(1), "file")), "a.Rd")
+  expect_match(collect_rd_text(pages[[1L]]$examples), "a()", fixed = TRUE)
+})

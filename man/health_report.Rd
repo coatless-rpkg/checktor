@@ -22,7 +22,8 @@ call from printing it.
 }
 \description{
 Creates a report of every failing check, whatever its severity
-tier, with treatment instructions for the checks that have them.
+tier, with the treatment \code{\link[=prescribe]{prescribe()}} gives for it. Every format carries
+the same treatment text.
 }
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",

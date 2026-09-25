@@ -4,7 +4,7 @@
 \alias{lab_hardcoded_credentials}
 \title{Diagnose Hardcoded Credentials in Package Code}
 \usage{
-lab_hardcoded_credentials(path, verbose = TRUE, parsed = NULL)
+lab_hardcoded_credentials(path = ".", verbose = TRUE, parsed = NULL)
 }
 \arguments{
 \item{path}{Character. Path to package directory.}
