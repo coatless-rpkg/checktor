@@ -228,6 +228,38 @@ lab_internal_ns <- function(path, verbose = TRUE, parsed = NULL) {
   checktor_check_result(passed, issues, "Internal namespace check")
 }
 
+# A bare `T` or `F` read as the logical. lab_tf_usage() runs it over R/ and
+# lab_example_tf_usage() over examples, vignettes and demos, so the two judge a
+# `T` the same way wherever it is.
+#
+# `T` and `F` in a NON-EVALUATED language context are language tokens, not
+# logicals. EL builds plotmath labels with
+# `substitute(expression(F[a] - F[b]), ...)`, where F is the cumulative
+# distribution function and has nothing to do with FALSE. quote(), bquote(),
+# expression() and substitute() all construct language rather than evaluate it.
+#
+# There is NO guard here for `f(T = 1)`, and there must not be. An argument NAME
+# parses as SYMBOL_SUB, not SYMBOL, so `//SYMBOL` never matches it in the first
+# place. The guard that used to sit here, excluding a SYMBOL whose parent expr
+# follows an EQ_SUB, therefore protected nothing and suppressed the argument
+# VALUE instead: `mean(x, na.rm = T)`, which is the single most common bare `T`
+# in R, was silently unreportable.
+TF_XPATH <- sprintf(
+  paste0(
+    "//SYMBOL[(text() = 'T' or text() = 'F')",
+    "  and not(parent::expr[OP-DOLLAR or OP-AT])",
+    "  and not(ancestor::expr[expr[1]/SYMBOL_FUNCTION_CALL[%s]])",
+    "]"
+  ),
+  paste(
+    sprintf(
+      "text() = '%s'",
+      c("quote", "bquote", "expression", "substitute", "Quote")
+    ),
+    collapse = " or "
+  )
+)
+
 #' Diagnose `T`/`F` Usage in R Code
 #'
 #' Flags bare `T` / `F` symbols that should be `TRUE` / `FALSE`. Operates on
@@ -264,34 +296,7 @@ lab_tf_usage <- function(path, verbose = TRUE, parsed = NULL) {
     return(checktor_check_result(TRUE, character(0), "T/F usage check"))
   }
 
-  # `T` and `F` in a NON-EVALUATED language context are language tokens, not
-  # logicals. EL builds plotmath labels with
-  # `substitute(expression(F[a] - F[b]), ...)`, where F is the cumulative
-  # distribution function and has nothing to do with FALSE. quote(), bquote(),
-  # expression() and substitute() all construct language rather than evaluate it.
-  quoting <- paste(
-    sprintf(
-      "text() = '%s'",
-      c("quote", "bquote", "expression", "substitute", "Quote")
-    ),
-    collapse = " or "
-  )
-  # There is NO guard here for `f(T = 1)`, and there must not be. An argument NAME
-  # parses as SYMBOL_SUB, not SYMBOL, so `//SYMBOL` never matches it in the first
-  # place. The guard that used to sit here, excluding a SYMBOL whose parent expr
-  # follows an EQ_SUB, therefore protected nothing and suppressed the argument
-  # VALUE instead: `mean(x, na.rm = T)`, which is the single most common bare `T`
-  # in R, was silently unreportable.
-  xpath <- sprintf(
-    paste0(
-      "//SYMBOL[(text() = 'T' or text() = 'F')",
-      "  and not(parent::expr[OP-DOLLAR or OP-AT])",
-      "  and not(ancestor::expr[expr[1]/SYMBOL_FUNCTION_CALL[%s]])",
-      "]"
-    ),
-    quoting
-  )
-  issues <- c(xpath_lints(parsed, xpath), parse_error_issues(parsed))
+  issues <- c(xpath_lints(parsed, TF_XPATH), parse_error_issues(parsed))
 
   passed <- length(issues) == 0L
   emit_issue_summary(

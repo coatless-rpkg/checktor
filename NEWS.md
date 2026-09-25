@@ -98,8 +98,9 @@ fields in its own DESCRIPTION.
     old, or lies in the future.
   - `version_format` catches a `Version` component with a leading zero or a
     suspiciously large one, while leaving a calendar-year version alone.
-  - `encoding_utf8` catches an `Encoding` outside the portable `UTF-8`, `latin1` and
-    `latin2`.
+  - `encoding_utf8` catches an `Encoding` other than exactly `UTF-8`. CRAN's
+    incoming check calls `latin1` and `latin2` deprecated, and a lower-case
+    `utf-8` draws the same NOTE.
   - `identifier_format` validates the ORCID and ROR identifiers in `Authors@R`, and
     is reported as skipped when `Authors@R` cannot be read.
 
@@ -112,6 +113,30 @@ fields in its own DESCRIPTION.
   for a blank line it judged the package on the fields above it alone. It is now a
   policy finding, the checks that read the fields, registered ones included, are
   reported as skipped, and `prescribe()` shows how to fix it.
+
+* `description_fields` catches a `DESCRIPTION` field R does not know, which CRAN's
+  incoming check NOTEs. The usual one is `Remotes`, which CRAN ignores since it
+  installs dependencies from CRAN and Bioconductor alone. A typo such as
+  `Bugreports`, `Import` or `Suggest` is silently ignored by R, so the finding
+  names the field that was meant. `Config/` fields, `RoxygenNote` and the other
+  forms R allows pass.
+
+* `description_placeholders` catches a `Title`, `Description`, `Author` or
+  `Maintainer` still holding the text a `usethis` or `package.skeleton()`
+  template wrote, such as "What the Package Does (One Line, Title Case)", with the
+  tests CRAN's incoming check uses.
+
+* `title_package_name` catches a `Title` that is just the package name or opens
+  with it and a colon, as in `toypkg: Fit Simple Models`, which Writing R
+  Extensions asks you not to do and CRAN's incoming check NOTEs. A `Title` that
+  opens with a name that is an ordinary word, as in "Survival Analysis", is left
+  alone, since CRAN accepts it routinely.
+
+* `license_file_unneeded` catches `+ file LICENSE` on a standard license such as
+  `GPL-3`, `LGPL-3` or Apache, which the CRAN Cookbook asks you to drop along with
+  the file, since "these are part of R". MIT and BSD, whose templates need the
+  file, are left alone. A `LICENSE` that adds attribution requirements is the
+  exception CRAN allows, and `Config/checktor/allow` records it.
 
 * `hardcoded_credentials` scans string literals in `R/` for a leaked secret, knowing
   the tokens and keys used by providers such as GitHub, AWS, Google, OpenAI,
@@ -173,6 +198,15 @@ fields in its own DESCRIPTION.
     read, not a change, and an `on.exit()` outside a function or `local()` is no
     restore: `R CMD check` never runs it, and knitr runs it straight away.
   - `example_internal_ns` catches `:::` in an example or vignette.
+  - `example_tf_usage` catches `T` or `F` for `TRUE` or `FALSE` in an example, a
+    vignette or a demo, judged by the same rule `tf_usage` applies to `R/`. Tests
+    are read only with `tests = TRUE`, since CRAN rarely reads them.
+  - `example_unparseable` catches an `\examples{}` section that is not valid R,
+    `\dontrun{}` included, and names the line the parser stopped on. `R CMD check`
+    writes `\dontrun{}` code out as comments and never parses it, while reviewers
+    run it and send back "Unexecutable code in man/...". It is a robustness finding
+    rather than policy, since Writing R Extensions lets `\dontrun{}` hold text that
+    is not R.
 
   `internal_ns` covers the same rule in `R/`, where a `:::` call reaches an object
   another author is free to change in routine maintenance. `unexported_example_ns`
@@ -186,6 +220,16 @@ fields in its own DESCRIPTION.
   `#ifdef` is read for every platform. Sweave (`.Rnw`) vignettes are read alongside
   R Markdown and Quarto, and the line a finding gives is its line in the `.Rd` file
   or vignette.
+
+* `rd_bibliography` reads the `\bibcitet{}`, `\bibcitep{}` and `\bibshow{}` macros R
+  4.6.0 added to `.Rd` files and reports what `R CMD check` would: a key no
+  bibliography holds, which R drops from the page, a key cited but never listed, and
+  a `REFERENCES` file left at the top level. Keys are looked up as R does, in the
+  package's `REFERENCES.rds`, `.R` or `.bib`, in R's own bibliography, and for
+  `pkg::key` in an installed dependency, without running `REFERENCES.R`.
+  `rd_bibliography_files`, at robustness tier, reports a `REFERENCES.bib` without
+  `bibtex` in `Suggests` and a bibliography that is not installed because it is
+  outside `inst/` or excluded by `.Rbuildignore`.
 
 * `language_names` catches a bare programming-language or statistical-computing name
   in the `Title` or `Description` that CRAN asks to see single-quoted, covering
@@ -207,6 +251,20 @@ fields in its own DESCRIPTION.
   against a clean bill of health, and one in double quotes is not a
   `description_quoted_quotes` finding either (#16, thanks @TroyHernandez).
   `Config/checktor/format_names` extends its list.
+
+* `code_exercised` catches a package that exports code but ships no examples, no
+  tests and no vignettes, which CRAN's incoming check WARNs about as "No examples,
+  no tests, no vignettes". `devtools::check()` leaves that check off, so the WARNING
+  usually surfaces only at submission. It counts what `R CMD check` runs: a
+  `tests/testthat/` folder without `tests/testthat.R` is not a test, and files
+  `.Rbuildignore` excludes do not count.
+
+* `citation_file` reads `inst/CITATION` for the calls CRAN's incoming check NOTEs:
+  the old-style `citEntry()`, `personList()` and `as.personList()`, and
+  `packageDescription()`, `library()` or `require()`, which assume the package is
+  installed when R already hands the file its DESCRIPTION as `meta`. R's own
+  `if (!exists("meta") || is.null(meta))` fallback is exempt. The file is parsed,
+  never run, and one that does not parse is reported with its line.
 
 ## Configuration and extension
 
@@ -299,6 +357,15 @@ reimplementing them.
   other call, a namespaced `utils::person()` among them, since `R CMD build` refuses
   it as a malformed `Authors@R` field. A person combined with a list in `c()`, from
   which R cannot read the authors, is reported as well.
+
+* `references` applies the rules of CRAN's incoming check to the `Description`,
+  which `devtools::check()` turns off. It catches a URL outside angle brackets, a
+  DOI written as a `https://doi.org/` link or a bare `doi:`, a publisher link that
+  embeds a DOI, and an arXiv id or link where CRAN now asks for the arXiv DOI
+  `<doi:10.48550/arXiv.ID>`. It used to accept `<arXiv:...>` as correct. Each rule
+  is one finding quoting the references that break it, and an arXiv finding gives
+  the DOI to write. A space after `doi:` is no longer reported, since R does not
+  NOTE it and CRAN's page links it all the same.
 
 * `title_case` and `license` hand off to R's own `tools::toTitleCase()` and
   `tools::analyze_license()`, so they match R's behaviour. `license` also catches a

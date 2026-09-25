@@ -29,6 +29,10 @@ fetch every URL, but only with a network and only under \code{--as-cran}; this
 is the fast local pass.
 \item Presence of a \code{NEWS} file documenting user-facing changes.
 \item Relative links in the \code{README} that would break on CRAN.
+\item A package that exports code but has no examples, no tests and no
+vignettes to exercise it.
+\item An \code{inst/CITATION} that uses the old-style \code{citEntry()} or \code{personList()},
+or calls \code{packageDescription()}, \code{library()} or \code{require()}.
 }
 
 \code{\link[=lab_cran_comments_file]{lab_cran_comments_file()}} is intentionally not part of this default

@@ -1698,6 +1698,96 @@ test_that("lab_license(): flags a missing referenced LICENSE file", {
   expect_match(res$issues, "LICENSE", all = FALSE)
 })
 
+# Test lab_license_file_unneeded() ----
+
+test_that("lab_license_file_unneeded(): flags a file pointer on a standard license", {
+  for (lic in c(
+    "GPL-3 + file LICENSE",
+    "GPL (>= 2) + file LICENSE",
+    "LGPL-3 + file LICENCE",
+    "AGPL-3 + file LICENSE",
+    "Apache License 2.0 + file LICENSE",
+    "CC0 + file LICENSE"
+  )) {
+    res <- lab_license_file_unneeded(
+      make_temp_dir(),
+      verbose = FALSE,
+      desc = list(License = lic)
+    )
+    expect_false(res$passed, info = lic)
+    expect_length(res$issues, 1L)
+    expect_true(startsWith(res$issues, paste0(lic, ": ")), info = lic)
+  }
+  res <- lab_license_file_unneeded(
+    make_temp_dir(),
+    verbose = FALSE,
+    desc = list(License = "GPL-3 + file LICENSE")
+  )
+  expect_identical(
+    res$issues,
+    paste0(
+      "GPL-3 + file LICENSE: GPL-3 is a standard license R knows, so CRAN ",
+      "needs neither '+ file LICENSE' nor the file"
+    )
+  )
+})
+
+test_that("lab_license_file_unneeded(): leaves a template license and a plain one alone", {
+  for (lic in c(
+    "MIT + file LICENSE",
+    "BSD_3_clause + file LICENSE",
+    "BSD_2_clause + file LICENCE",
+    "GPL-3",
+    "GPL (>= 2)",
+    "file LICENSE",
+    "GPL-2 | MIT + file LICENSE",
+    "Do whatever you like"
+  )) {
+    expect_true(
+      lab_license_file_unneeded(
+        make_temp_dir(),
+        verbose = FALSE,
+        desc = list(License = lic)
+      )$passed,
+      info = lic
+    )
+  }
+  expect_true(
+    lab_license_file_unneeded(make_temp_dir(), verbose = FALSE, desc = list(Package = "x"))$passed
+  )
+})
+
+test_that("lab_license_file_unneeded(): judges each alternative of a dual license", {
+  res <- lab_license_file_unneeded(
+    make_temp_dir(),
+    verbose = FALSE,
+    desc = list(License = "GPL-3 + file LICENSE | MIT + file LICENSE")
+  )
+  expect_length(res$issues, 1L)
+  expect_match(res$issues, "^GPL-3 \\+ file LICENSE: ")
+})
+
+test_that("lab_license_file_unneeded(): runs with the DESCRIPTION panel at policy tier", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, license = "GPL-3 + file LICENSE")
+  writeLines("Some extra terms.", file.path(pkg, "LICENSE"))
+  res <- diagnose_description_issues(pkg, verbose = FALSE)
+  expect_false(res$license_file_unneeded$passed)
+  expect_true(res$license$passed)
+  expect_identical(check_severity("license_file_unneeded"), "policy")
+})
+
+test_that("lab_license_file_unneeded(): prints the Cookbook's fix", {
+  out <- paste(
+    cli::cli_fmt(lab_license_file_unneeded(
+      make_temp_dir(),
+      desc = list(License = "GPL-3 + file LICENSE")
+    )),
+    collapse = " "
+  )
+  expect_match(out, "part of R", fixed = TRUE)
+})
+
 # Test lab_description_starts_with() ----
 
 test_that("lab_description_starts_with(): flags CRAN's forbidden openers", {
@@ -1763,6 +1853,148 @@ test_that("lab_license_year(): passes when there is no LICENSE file", {
   expect_true(lab_license_year(pkg, verbose = FALSE)$passed)
 })
 
+# Test lab_references() ----
+
+test_that("lab_references(): passes the forms CRAN asks for", {
+  d <- list(Description = paste(
+    "Implements the method of Smith (2020) <doi:10.1000/xyz123>, described at",
+    "<https://example.org/method>, and the preprint",
+    "<doi:10.48550/arXiv.1509.03700>."
+  ))
+  res <- lab_references(make_temp_dir(), verbose = FALSE, desc = d)
+  expect_true(res$passed)
+  expect_identical(res$issues, character(0))
+  expect_true(
+    lab_references(make_temp_dir(), verbose = FALSE, desc = list(Package = "x"))$passed
+  )
+})
+
+test_that("lab_references(): flags a URL outside angle brackets, once for all of them", {
+  d <- list(Description = paste(
+    "See https://example.org/a for the method and (https://example.org/b)",
+    "for the data."
+  ))
+  res <- lab_references(make_temp_dir(), verbose = FALSE, desc = d)
+  expect_false(res$passed)
+  expect_identical(
+    res$issues,
+    paste0(
+      "URL not enclosed in angle brackets (<...>): ",
+      "https://example.org/a, (https://example.org/b)"
+    )
+  )
+})
+
+test_that("lab_references(): flags each DOI form CRAN rejects", {
+  bad <- c(
+    "a doi.org link <https://doi.org/10.1000/xyz123>." = "<https://doi.org/10.1000/xyz123>",
+    "a bare doi:10.1000/xyz123 here." = "doi:10.1000/xyz123",
+    "a colonless <doi10.1000/xyz123>." = "<doi10.1000/xyz123>",
+    "a bare prefix <10.1000/xyz123>." = "<10.1000/xyz123>"
+  )
+  for (text in names(bad)) {
+    d <- list(Description = paste("The method follows", text))
+    res <- lab_references(make_temp_dir(), verbose = FALSE, desc = d)
+    expect_identical(
+      res$issues,
+      paste0("DOI not written as <doi:prefix/suffix>: ", bad[[text]]),
+      info = text
+    )
+  }
+})
+
+test_that("lab_references(): asks for DOI markup in place of a publisher link", {
+  d <- list(Description = paste(
+    "The method follows <https://onlinelibrary.wiley.com/doi/10.1002/sim.1234>."
+  ))
+  res <- lab_references(make_temp_dir(), verbose = FALSE, desc = d)
+  expect_identical(
+    res$issues,
+    paste0(
+      "Publisher link to a DOI, which CRAN asks to see as <doi:prefix/suffix>: ",
+      "<https://onlinelibrary.wiley.com/doi/10.1002/sim.1234>"
+    )
+  )
+  # R reports the publisher link only when no DOI is already malformed, since
+  # the fix for the malformed one comes first.
+  d$Description <- paste(d$Description, "See also doi:10.1000/xyz.")
+  res <- lab_references(make_temp_dir(), verbose = FALSE, desc = d)
+  expect_length(res$issues, 1L)
+  expect_match(res$issues, "^DOI not written as")
+})
+
+test_that("lab_references(): asks for an arXiv DOI in place of an arXiv id or link", {
+  d <- list(Description = paste(
+    "Colour maps from Kovesi (2015) <arXiv:1509.03700> and",
+    "<https://arxiv.org/abs/2101.00001v2>."
+  ))
+  res <- lab_references(make_temp_dir(), verbose = FALSE, desc = d)
+  expect_identical(
+    res$issues,
+    paste0(
+      "arXiv reference, which CRAN asks to see as its arXiv DOI: ",
+      "<arXiv:1509.03700> (write <doi:10.48550/arXiv.1509.03700>), ",
+      "<https://arxiv.org/abs/2101.00001v2> ",
+      "(write <doi:10.48550/arXiv.2101.00001>)"
+    )
+  )
+})
+
+test_that("lab_references(): flags an unclosed reference, not a space after the colon", {
+  # R does not NOTE the space, and CRAN's page links <doi: 10.1000/xyz> anyway.
+  d <- list(Description = "The method <doi: 10.1000/xyz123> is fast.")
+  expect_true(lab_references(make_temp_dir(), verbose = FALSE, desc = d)$passed)
+
+  d <- list(Description = "The method <doi:10.1000/xyz123 is fast.")
+  res <- lab_references(make_temp_dir(), verbose = FALSE, desc = d)
+  expect_identical(res$issues, "Reference with no closing '>': <doi:10.1000/xyz123")
+  # A SICI DOI carries angle brackets of its own, and is closed all the same.
+  d <- list(Description = paste(
+    "Following <doi:10.1002/(SICI)1097-0258(19980430)17:8<857::AID-SIM777>3.0.CO;2-E>."
+  ))
+  expect_true(lab_references(make_temp_dir(), verbose = FALSE, desc = d)$passed)
+})
+
+test_that("lab_references(): reads a reference wrapped across lines", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, description = paste(
+    "Implements the estimator of Smith and Jones, see",
+    "    https://example.org/estimator for the details of the method.",
+    sep = "\n"
+  ))
+  res <- lab_references(pkg, verbose = FALSE)
+  expect_match(res$issues, "https://example.org/estimator", fixed = TRUE)
+})
+
+test_that("lab_references(): prints each finding with the fix", {
+  d <- list(Description = "See https://example.org/a for the method.")
+  out <- paste(
+    cli::cli_fmt(lab_references(make_temp_dir(), desc = d)),
+    collapse = " "
+  )
+  expect_match(out, "https://example.org/a", fixed = TRUE)
+  expect_match(out, "Treatment", fixed = TRUE)
+})
+
+test_that("lab_references(): uses the patterns R's incoming check uses", {
+  # The rules are copied from tools:::.check_package_CRAN_incoming rather than
+  # called through `:::`, so this holds the copy to R's source. A change in R
+  # fails here first.
+  skip_if(getRversion() < "4.6.0", "the arXiv rule arrived in R 4.6.0")
+  strings <- character(0)
+  walk <- function(e) {
+    if (is.character(e)) {
+      strings <<- c(strings, e)
+    } else if (is.call(e) || is.pairlist(e) || is.expression(e)) {
+      for (x in as.list(e)) if (!missing(x)) walk(x)
+    }
+  }
+  walk(body(tools:::.check_package_CRAN_incoming))
+  for (rule in DESCRIPTION_REFERENCE_RULES) {
+    expect_true(all(rule$r_patterns %in% strings), info = rule$label)
+  }
+})
+
 # Test lab_date_format() ----
 
 test_that("lab_date_format(): passes when Date is absent, the preferred case", {
@@ -1803,28 +2035,30 @@ test_that("lab_date_format(): flags a future Date", {
 
 # Test lab_encoding_utf8() ----
 
-test_that("lab_encoding_utf8(): accepts UTF-8, latin1, latin2 or none", {
-  for (enc in c("UTF-8", "utf-8", "latin1", "latin2")) {
-    expect_true(
-      lab_encoding_utf8(make_temp_dir(),
-        verbose = FALSE,
-        desc = list(Encoding = enc)
-      )$passed,
-      info = enc
-    )
-  }
+test_that("lab_encoding_utf8(): accepts UTF-8 or none", {
+  expect_true(
+    lab_encoding_utf8(make_temp_dir(), verbose = FALSE, desc = list(Encoding = "UTF-8"))$passed
+  )
   expect_true(
     lab_encoding_utf8(make_temp_dir(), verbose = FALSE, desc = list(Package = "x"))$passed
   )
 })
 
-test_that("lab_encoding_utf8(): flags a non-portable Encoding", {
-  res <- lab_encoding_utf8(make_temp_dir(),
-    verbose = FALSE,
-    desc = list(Encoding = "KOI8-R")
-  )
-  expect_false(res$passed)
-  expect_true(any(grepl("portable", res$issues)))
+test_that("lab_encoding_utf8(): flags any other Encoding, as CRAN incoming does", {
+  # R's incoming check compares with "UTF-8" exactly, so latin1, latin2 and
+  # even a lower-case utf-8 draw its "Package encoding ... is deprecated" NOTE.
+  for (enc in c("latin1", "latin2", "utf-8", "KOI8-R")) {
+    res <- lab_encoding_utf8(make_temp_dir(), verbose = FALSE, desc = list(Encoding = enc))
+    expect_false(res$passed, info = enc)
+    expect_identical(
+      res$issues,
+      paste0(
+        "Encoding is \"", enc, "\"; CRAN's incoming check says package ",
+        "encoding '", enc, "' is deprecated and asks for UTF-8"
+      ),
+      info = enc
+    )
+  }
 })
 
 # Test lab_version_format() ----
@@ -2118,6 +2352,74 @@ test_that("spelling_accepted_words(): is empty when there is no whitelist", {
   expect_equal(spelling_accepted_words(pkg), character(0))
 })
 
+# Test lab_title_package_name() ----
+
+test_that("lab_title_package_name(): flags a Title that is the package name", {
+  for (title in c("toypkg", "Toypkg", " TOYPKG ")) {
+    res <- lab_title_package_name(
+      make_temp_dir(),
+      verbose = FALSE,
+      desc = list(Package = "toypkg", Title = title)
+    )
+    expect_identical(
+      res$issues,
+      "Title is just the package name: provide a real title",
+      info = title
+    )
+  }
+})
+
+test_that("lab_title_package_name(): flags a Title that opens with the name and a colon", {
+  for (title in c("toypkg: Fit Simple Models", "Toypkg : Fit Simple Models")) {
+    res <- lab_title_package_name(
+      make_temp_dir(),
+      verbose = FALSE,
+      desc = list(Package = "toypkg", Title = title)
+    )
+    expect_identical(
+      res$issues,
+      paste0(
+        "Title starts with the package name: ", trimws(title),
+        " (R drops this NOTE for an update whose Title is unchanged)"
+      ),
+      info = title
+    )
+  }
+})
+
+test_that("lab_title_package_name(): leaves a name that is an ordinary word alone", {
+  # CRAN accepts these routinely: survival's Title is "Survival Analysis".
+  cases <- list(
+    c("survival", "Survival Analysis"),
+    c("bibtex", "Bibtex Parser"),
+    c("toypkg", "Fit Simple Models with toypkg"),
+    c("toypkg", "toypkgs: Something Else"),
+    # The dot in a name is a dot, not any character.
+    c("a.b", "aXb: A Title")
+  )
+  for (x in cases) {
+    expect_true(
+      lab_title_package_name(
+        make_temp_dir(),
+        verbose = FALSE,
+        desc = list(Package = x[1], Title = x[2])
+      )$passed,
+      info = x[2]
+    )
+  }
+  expect_true(
+    lab_title_package_name(make_temp_dir(), verbose = FALSE, desc = list(Package = "x"))$passed
+  )
+})
+
+test_that("lab_title_package_name(): runs with the DESCRIPTION panel at policy tier", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, package = "toypkg", title = "toypkg: Fit Simple Models")
+  res <- diagnose_description_issues(pkg, verbose = FALSE)
+  expect_false(res$title_package_name$passed)
+  expect_identical(check_severity("title_package_name"), "policy")
+})
+
 # Test lab_title_starts_with_article() ----
 
 test_that("lab_title_starts_with_article(): is NOT part of a default run", {
@@ -2326,6 +2628,132 @@ test_that("lab_cph_role(): does not ask a natural person to add cph", {
   expect_match(out, "If an organisation owns the copyright", fixed = TRUE)
   expect_match(out, "natural persons hold copyright already", fixed = TRUE)
   expect_snapshot(res <- lab_cph_role(pkg))
+})
+
+# Test lab_description_fields() ----
+
+test_that("lab_description_fields(): accepts R's fields and the forms it allows", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, extra = c(
+    "URL: https://example.org",
+    "BugReports: https://example.org/issues",
+    "Imports: stats",
+    "Suggests: testthat (>= 3.0.0)",
+    "VignetteBuilder: knitr",
+    "Additional_repositories: https://example.org/drat",
+    "Roxygen: list(markdown = TRUE)",
+    "RoxygenNote: 7.3.2",
+    "Config/testthat/edition: 3",
+    "Config/Needs/website: pkgdown",
+    "X-CRAN-Comment: Orphaned.",
+    "VCS/git: https://example.org/repo.git",
+    "Language: en-GB",
+    "biocViews: Software"
+  ))
+  res <- lab_description_fields(pkg, verbose = FALSE)
+  expect_true(res$passed)
+  expect_identical(res$issues, character(0))
+})
+
+test_that("lab_description_fields(): flags Remotes, which CRAN does not know", {
+  d <- list(Package = "x", Remotes = "user/otherpkg")
+  res <- lab_description_fields(make_temp_dir(), verbose = FALSE, desc = d)
+  expect_false(res$passed)
+  expect_identical(
+    res$issues,
+    paste0(
+      "Remotes: not a DESCRIPTION field R knows; CRAN installs dependencies ",
+      "from CRAN and Bioconductor only, so remove it before submitting"
+    )
+  )
+})
+
+test_that("lab_description_fields(): names the field a typo was meant to be", {
+  d <- list(
+    Package = "x", Bugreports = "https://example.org/issues",
+    Import = "stats", Suggest = "testthat", URLs = "https://example.org"
+  )
+  res <- lab_description_fields(make_temp_dir(), verbose = FALSE, desc = d)
+  expect_identical(
+    res$issues,
+    c(
+      "Bugreports: not a DESCRIPTION field R knows; did you mean BugReports?",
+      "Import: not a DESCRIPTION field R knows; did you mean Imports?",
+      "Suggest: not a DESCRIPTION field R knows; did you mean Suggests?",
+      "URLs: not a DESCRIPTION field R knows; did you mean URL?"
+    )
+  )
+  res <- lab_description_fields(
+    make_temp_dir(),
+    verbose = FALSE,
+    desc = list(Package = "x", Frobnicate = "yes")
+  )
+  expect_identical(res$issues, "Frobnicate: not a DESCRIPTION field R knows")
+})
+
+test_that("lab_description_fields(): knows every field R's incoming check knows", {
+  # The list is copied from tools:::.get_standard_DESCRIPTION_fields() rather
+  # than called through `:::`, so this holds the copy to R.
+  expect_setequal(
+    STANDARD_DESCRIPTION_FIELDS,
+    tools:::.get_standard_DESCRIPTION_fields()
+  )
+})
+
+test_that("lab_description_fields(): runs with the DESCRIPTION panel at policy tier", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, extra = "Remotes: user/otherpkg")
+  res <- diagnose_description_issues(pkg, verbose = FALSE)
+  expect_false(res$description_fields$passed)
+  expect_identical(check_severity("description_fields"), "policy")
+})
+
+# Test lab_description_placeholders() ----
+
+test_that("lab_description_placeholders(): flags the usethis template", {
+  d <- list(
+    Title = "What the Package Does (One Line, Title Case)",
+    Description = "What the package does (one paragraph)."
+  )
+  res <- lab_description_placeholders(make_temp_dir(), verbose = FALSE, desc = d)
+  expect_false(res$passed)
+  expect_identical(
+    res$issues,
+    c(
+      "Title is template text: What the Package Does (One Line, Title Case)",
+      "Description is template text: What the package does (one paragraph)."
+    )
+  )
+})
+
+test_that("lab_description_placeholders(): flags the package.skeleton() template", {
+  d <- list(
+    Title = "What the Package Does (Short Line)",
+    Description = "More about what it does (maybe more than one line).",
+    Author = "Who wrote it",
+    Maintainer = "Who to complain to <yourfault@somewhere.net>"
+  )
+  res <- lab_description_placeholders(make_temp_dir(), verbose = FALSE, desc = d)
+  expect_identical(
+    sub(":.*", "", res$issues),
+    c(
+      "Title is template text", "Description is template text",
+      "Author is template text", "Maintainer is template text"
+    )
+  )
+  d <- list(Maintainer = "The package maintainer <m@example.org>")
+  expect_false(
+    lab_description_placeholders(make_temp_dir(), verbose = FALSE, desc = d)$passed
+  )
+})
+
+test_that("lab_description_placeholders(): passes a filled-in DESCRIPTION", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  expect_true(lab_description_placeholders(pkg, verbose = FALSE)$passed)
+  res <- diagnose_description_issues(pkg, verbose = FALSE)
+  expect_true(res$description_placeholders$passed)
+  expect_identical(check_severity("description_placeholders"), "policy")
 })
 
 # Test lab_description_file() ----

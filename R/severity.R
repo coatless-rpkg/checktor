@@ -47,6 +47,8 @@ CHECK_SEVERITY <- c(
 
   # ---- description ----
   description_file = "policy", # R CMD build and INSTALL stop on a file R cannot read
+  description_fields = "policy", # CRAN incoming NOTE on unknown fields, Remotes
+  description_placeholders = "policy", # CRAN incoming NOTE on template text
   software_names = "policy", # WRE: single-quote other software
   language_names = "policy", # WRE: single-quote programming languages (own kind of policy)
   format_names = "opinion", # JSON, HTML, SQL: most accepted packages write them bare
@@ -57,8 +59,10 @@ CHECK_SEVERITY <- c(
   version_format = "policy", # CRAN incoming NOTE on Version components
   spelling = "opinion", # aspell NOTE; needs a backend, noisy
   license = "policy", # an invalid license is a rejection
+  license_file_unneeded = "policy", # Cookbook: R ships the GPL text itself
   title_case = "policy", # CRAN incoming NOTE
   title_length = "opinion", # 65 chars is a convention
+  title_package_name = "policy", # WRE: do not repeat the package name
   title_starts_with_article = "opinion", # fabricated rule; not in a run
   title_redundant_phrases = "opinion",
   description_function_quotes = "opinion", # invented rule; not in a run
@@ -79,12 +83,16 @@ CHECK_SEVERITY <- c(
   donttest_vs_dontrun = "opinion",
   unexported_example_ns = "robustness", # the example will error when run
   suggested_in_examples = "policy", # WRE: Suggests must be used conditionally
+  rd_bibliography = "policy", # R CMD check WARNs on a key it cannot find
+  rd_bibliography_files = "robustness", # a .bib needs bibtex; only inst/ installs
   # Rules CRAN sends packages back for, in the code outside R/.
   example_interactive = "policy", # asks for if(interactive()) over \dontrun{}
   example_installs = "policy", # no installing from an example or vignette
   example_writes = "policy", # no writing outside tempdir() from an example
   example_state = "policy", # restore options/par/wd changed in an example
   example_internal_ns = "policy", # ::: reaches an unexported object
+  example_tf_usage = "robustness", # T/F can be rebound, as in R/
+  example_unparseable = "robustness", # reviewers send "Unexecutable code", but WRE lets \dontrun{} hold non-R
 
   # ---- general ----
   package_size = "policy", # CRAN's size limit
@@ -102,6 +110,8 @@ CHECK_SEVERITY <- c(
   news_file = "opinion",
   cran_comments_file = "opinion", # a submission convention, not a CRAN requirement
   readme_links = "robustness", # a link that breaks in the built tarball
+  code_exercised = "policy", # CRAN incoming WARNING: no examples, tests or vignettes
+  citation_file = "policy", # CRAN incoming NOTE; WRE: no packageDescription()
 
   # ---- policy ----
   browser_calls = "policy",

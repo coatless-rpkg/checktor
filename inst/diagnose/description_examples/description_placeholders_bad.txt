@@ -1,0 +1,7 @@
+Package: templateexample
+Title: What the Package Does (One Line, Title Case)
+Version: 0.1.0
+Authors@R: person("Jane", "Roe", email = "jane@example.com", role = c("aut", "cre"))
+Description: What the package does (one paragraph).
+License: GPL-3
+Encoding: UTF-8

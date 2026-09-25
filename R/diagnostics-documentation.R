@@ -46,10 +46,14 @@ diagnose_documentation_issues <- function(path = ".", verbose = TRUE) {
         donttest_vs_dontrun = lab_donttest_vs_dontrun,
         unexported_example_ns = lab_unexported_example_ns,
         suggested_in_examples = lab_suggested_in_examples,
+        rd_bibliography = lab_rd_bibliography,
+        rd_bibliography_files = lab_rd_bibliography_files,
         example_interactive = lab_example_interactive,
         example_installs = lab_example_installs,
         example_writes = lab_example_writes,
         example_state = lab_example_state,
+        example_tf_usage = lab_example_tf_usage,
+        example_unparseable = lab_example_unparseable,
         example_internal_ns = lab_example_internal_ns
       ),
       registered_checks_for("documentation")

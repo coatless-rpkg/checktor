@@ -150,6 +150,132 @@ lab_example_writes <- function(path = ".", verbose = TRUE) {
   checktor_check_result(passed, issues, "Example writes check")
 }
 
+#' Diagnose Examples That Are Not Valid R
+#'
+#' Flags an `\examples{}` section whose code does not parse as R, reporting the
+#' `.Rd` file and the line the parser stopped on. The code inside `\dontrun{}` is
+#' read too. `R CMD check` writes it out as comments and never parses it, so a
+#' missing bracket or a `<your key>` placeholder there passes every check.
+#'
+#' @section Source:
+#' A rejection CRAN reviewers send verbatim: "Warning: Unexecutable code in
+#' man/make.trait.model.Rd". [Writing R Extensions](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Documenting-functions),
+#' under "Documenting functions", says example code outside `\dontrun{}` "must be
+#' executable", and that the text inside it "need not be valid R code". Reviewers
+#' run the examples with `\dontrun{}` included all the same, so a placeholder
+#' belongs in a string or a variable, as in `key <- "<your key>"`. An example that
+#' is deliberately not R, such as C++ source shown for reading, can be turned off
+#' with `Config/checktor/disable`. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
+#' @param path Character. Path to the package directory. Default: `"."`.
+#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
+#'
+#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
+#' @seealso [checktor()], [lab_example_structure()].
+#' @export
+#' @examples
+#' pkg <- example_diagnose_scenario(
+#'   "documentation_examples/example_unparseable_bad.Rd", show_content = FALSE)
+#' issues(lab_example_unparseable(pkg, verbose = FALSE))
+lab_example_unparseable <- function(path = ".", verbose = TRUE) {
+  path <- find_package_root(path)
+  issues <- character(0)
+  for (file in list_rd_files(path)) {
+    rd <- tryCatch(tools::parse_Rd(file), error = function(e) NULL)
+    section <- if (!is.null(rd)) extract_rd_section(rd, "\\examples")
+    if (is.null(section)) {
+      next
+    }
+    src <- rd_example_source(section)
+    err <- tryCatch(
+      {
+        parse(text = src$code, keep.source = FALSE)
+        NULL
+      },
+      error = conditionMessage
+    )
+    if (is.null(err)) {
+      next
+    }
+    issues <- c(issues, unparseable_issue(err, src, basename(file)))
+  }
+
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues,
+    verbose,
+    "Every example parses as R",
+    "Examples that do not parse as R, {.code \\dontrun{{}}} included",
+    "Treatment: Fix the syntax, or put a placeholder in a string, as in {.code key <- \"<your key>\"}"
+  )
+  checktor_check_result(passed, issues, "Example parse check")
+}
+
+# "example f.Rd:12 (unexpected symbol)" from a parse error in code that
+# rd_example_source() gave. The parser gives `<text>:line:col: message` and then
+# the offending lines; the position is on the code's lines, which `src$lines`
+# maps to the .Rd file's. An unfinished example ends past its last line of
+# code, so the line is held to the last one with code on it.
+unparseable_issue <- function(err, src, file) {
+  first <- strsplit(err, "\n", fixed = TRUE)[[1L]][[1L]]
+  at <- suppressWarnings(
+    as.integer(sub("^<text>:([0-9]+):[0-9]+: .*$", "\\1", first))
+  )
+  what <- sub("^<text>:[0-9]+:[0-9]+: ", "", first)
+  if (is.na(at)) {
+    return(paste0("example ", file, " (", what, ")"))
+  }
+  code <- strsplit(src$code, "\n", fixed = TRUE)[[1L]]
+  last <- max(c(1L, which(nzchar(trimws(code)))))
+  line <- src$lines[min(at, last, length(src$lines))]
+  paste0("example ", file, ":", line, " (", what, ")")
+}
+
+#' Diagnose `T`/`F` Usage in Examples, Vignettes and Demos
+#'
+#' Flags a bare `T` or `F` in an example, a vignette chunk that runs, or a demo,
+#' judged exactly as [lab_tf_usage()] judges `R/`: a `T` in a string, a comment,
+#' an argument name, `x$T` or language built by `quote()` is not reported.
+#'
+#' @section Source:
+#' The CRAN Cookbook recipe
+#' [T/F Instead of TRUE/FALSE](https://contributor.r-project.org/cran-cookbook/code_issues.html#tf-instead-of-truefalse)
+#' says `T` and `F` "should not be used as variable names in your code, examples,
+#' tests or vignettes", and the reviewer's letter names the `.Rd` file: "'T' and
+#' 'F' instead of TRUE and FALSE: man/quiet.Rd: quiet(x, be_quiet = T)". No rule
+#' makes it binding, so it sits at `robustness` tier like [lab_tf_usage()]. Tests
+#' are left out unless `tests = TRUE`, since CRAN rarely reads them. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to its
+#' source.
+#' @param path Character. Path to the package directory. Default: `"."`.
+#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
+#' @param tests Logical. Read `tests/` as well. Default: `FALSE`.
+#'
+#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
+#' @seealso [checktor()], [lab_tf_usage()] for the same rule in `R/`.
+#' @export
+#' @examples
+#' pkg <- example_diagnose_scenario("documentation_examples/example_tf_usage_bad.Rd",
+#'                                  show_content = FALSE)
+#' issues(lab_example_tf_usage(pkg, verbose = FALSE))
+lab_example_tf_usage <- function(path = ".", verbose = TRUE, tests = FALSE) {
+  path <- find_package_root(path)
+  kinds <- c("example", "vignette", "demo", if (isTRUE(tests)) "test")
+  parsed <- read_example_xml(path, kinds = kinds)
+  issues <- example_lints(parsed, TF_XPATH)
+
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues,
+    verbose,
+    "No {.code T}/{.code F} usage in examples, vignettes or demos",
+    "Found {.code T}/{.code F} usage in examples, vignettes or demos",
+    "Treatment: Write {.code TRUE} and {.code FALSE} in full"
+  )
+  checktor_check_result(passed, issues, "Example T/F usage check")
+}
+
 #' Diagnose Session State Left Changed by Examples
 #'
 #' Flags an example, vignette or demo that changes `options()`, `par()` or the

@@ -43,6 +43,10 @@ diagnose_description_issues <- function(path = ".", verbose = TRUE) {
     # Whether R can read the file at all. It re-reads the file rather than taking
     # `desc`, because the question is about the file, not about the fields.
     description_file = function(p, v) lab_description_file(p, v),
+    description_fields = function(p, v) lab_description_fields(p, v, desc),
+    description_placeholders = function(p, v) {
+      lab_description_placeholders(p, v, desc)
+    },
     software_names = function(p, v) {
       lab_software_names(p, v, desc)
     },
@@ -52,8 +56,12 @@ diagnose_description_issues <- function(path = ".", verbose = TRUE) {
     # no rule it enforces (#16). It stays available on request.
     acronyms = function(p, v) lab_acronyms(p, v, desc),
     license = function(p, v) lab_license(p, v, desc),
+    license_file_unneeded = function(p, v) {
+      lab_license_file_unneeded(p, v, desc)
+    },
     title_case = function(p, v) lab_title_case(p, v, desc),
     title_length = function(p, v) lab_title_length(p, v, desc),
+    title_package_name = function(p, v) lab_title_package_name(p, v, desc),
     # `title_starts_with_article` is deliberately NOT here. It is a mis-transplant
     # of CRAN's real rule, whose source is
     #     if (grepl("^(The|This|A|In this|In the) package", descr)) ...
@@ -123,12 +131,16 @@ diagnose_description_issues <- function(path = ".", verbose = TRUE) {
 # messages, so they print as they would have. A test holds them to the messages
 # the checks themselves return.
 DESCRIPTION_FIELD_CHECKS <- c(
+  description_fields = "DESCRIPTION fields check",
+  description_placeholders = "DESCRIPTION placeholders check",
   software_names = "Software names check",
   language_names = "Language names check",
   acronyms = "Acronyms check",
   license = "License check",
+  license_file_unneeded = "License file pointer check",
   title_case = "Title case check",
   title_length = "Title length check",
+  title_package_name = "Title package-name check",
   title_redundant_phrases = "Title redundant-phrases check",
   authors = "Authors@R field check",
   identifier_format = "Author identifier check",
@@ -231,6 +243,191 @@ lab_description_file <- function(path = ".", verbose = TRUE, desc = NULL) {
     "Treatment: Make DESCRIPTION a file R can open, with every line a 'Field: value' pair or a continuation indented by a space or tab, and no blank line between fields"
   )
   checktor_check_result(passed, issues, "DESCRIPTION file check")
+}
+
+# The DESCRIPTION fields R knows, copied from
+# tools:::.get_standard_DESCRIPTION_fields() (R 4.6.1) rather than called
+# through `:::`. A test holds the copy to R.
+STANDARD_DESCRIPTION_FIELDS <- c(
+  "Package", "Version", "Priority", "Depends", "Imports", "LinkingTo",
+  "Suggests", "Enhances", "License", "License_is_FOSS",
+  "License_restricts_use", "OS_type", "Archs", "MD5sum",
+  "NeedsCompilation", "Additional_repositories", "Author", "Authors@R",
+  "Biarch", "BugReports", "BuildKeepEmpty", "BuildManual",
+  "BuildResaveData", "BuildVignettes", "Built", "ByteCompile",
+  "Classification/ACM", "Classification/ACM-2012", "Classification/JEL",
+  "Classification/MSC", "Classification/MSC-2010", "Collate",
+  "Collate.unix", "Collate.windows", "Contact", "Copyright", "Date",
+  "Description", "Encoding", "KeepSource", "Language", "LazyData",
+  "LazyDataCompression", "LazyLoad", "MailingList", "Maintainer", "Note",
+  "Packaged", "RdMacros", "StagedInstall", "SysDataCompression",
+  "SystemRequirements", "Title", "Type", "URL", "UseLTO",
+  "VignetteBuilder", "ZipData", "Repository", "Path", "Date/Publication",
+  "LastChangedDate", "LastChangedRevision", "Revision", "RcmdrModels",
+  "RcppModules", "Roxygen", "Acknowledgements", "Acknowledgments",
+  "biocViews"
+)
+
+# The field-name prefixes R's incoming check lets through, as it writes them.
+DESCRIPTION_FIELD_PREFIXES <- c(
+  "X-CRAN", "X-schema.org", "Repository/R-Forge", "VCS/", "Config/"
+)
+
+#' Diagnose DESCRIPTION Fields R Does Not Know
+#'
+#' Flags a `DESCRIPTION` field that is not one of the fields R knows, which is
+#' how CRAN's incoming check reads it. The usual one is `Remotes`, which
+#' `devtools` and `pak` read but CRAN does not, since CRAN installs
+#' dependencies from CRAN and Bioconductor alone. The others are typos such as
+#' `Bugreports`, `Import`, `Suggest` or `URLs`, which R ignores, so the field
+#' meant is silently missing; the finding names the field that was probably
+#' meant.
+#'
+#' The fields R allows beyond its own list are allowed here too: any
+#' `Config/` field, such as `Config/testthat/edition`, and fields starting
+#' `X-CRAN`, `X-schema.org`, `Repository/R-Forge` or `VCS/`, and a standard
+#' field name followed by `Note`, such as `RoxygenNote`.
+#'
+#' @section Source:
+#' The
+#' [CRAN incoming check](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages)
+#' run by `R CMD check --as-cran` NOTEs "Unknown, possibly misspelled, fields in
+#' DESCRIPTION". The
+#' [CRAN Repository Policy](https://cran.r-project.org/web/packages/policies.html)
+#' says "The strong dependencies ... should be available from CRAN or the
+#' Bioconductor software repository", which is why a `Remotes` field has no
+#' place in a submission. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to
+#' its source.
+#' @param path Character. Path to the package directory. Default: `"."`.
+#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
+#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
+#'   Defaults to reading it from `path`.
+#'
+#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
+#' @seealso [checktor()], which runs this and every other check.
+#' @export
+#' @examples
+#' pkg <- example_diagnose_scenario(
+#'   "description_examples/description_fields_bad.txt",
+#'   show_content = FALSE
+#' )
+#' lab_description_fields(pkg, verbose = FALSE)$issues
+lab_description_fields <- function(path = ".", verbose = TRUE, desc = NULL) {
+  path <- find_package_root(path)
+  desc <- resolve_description(path, desc)
+  fields <- names(desc)
+  prefix <- paste0("^(", paste(DESCRIPTION_FIELD_PREFIXES, collapse = "|"), ")")
+  unknown <- fields[
+    !fields %in% STANDARD_DESCRIPTION_FIELDS &
+      !grepl(prefix, fields) &
+      !fields %in% paste0(STANDARD_DESCRIPTION_FIELDS, "Note")
+  ]
+  issues <- vapply(
+    unknown,
+    function(field) {
+      what <- paste0(field, ": not a DESCRIPTION field R knows")
+      if (identical(field, "Remotes")) {
+        return(paste0(
+          what, "; CRAN installs dependencies from CRAN and Bioconductor only, ",
+          "so remove it before submitting"
+        ))
+      }
+      # A near miss is a typo: R ignores the field, so the one meant is missing.
+      d <- utils::adist(tolower(field), tolower(STANDARD_DESCRIPTION_FIELDS))[1L, ]
+      best <- which.min(d)
+      if (d[best] <= 2L && d[best] < nchar(field) / 3) {
+        what <- paste0(what, "; did you mean ", STANDARD_DESCRIPTION_FIELDS[best], "?")
+      }
+      what
+    },
+    "",
+    USE.NAMES = FALSE
+  )
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues,
+    verbose,
+    "Every DESCRIPTION field is one R knows",
+    "DESCRIPTION fields R does not know",
+    paste0(
+      "Treatment: Fix a misspelt field name, and remove Remotes and any other ",
+      "field R does not know, or move it under Config/"
+    )
+  )
+  checktor_check_result(passed, issues, "DESCRIPTION fields check")
+}
+
+# The template text usethis and package.skeleton() leave in a DESCRIPTION, as
+# R's incoming check tests for it: a field and a test on its value. Title and
+# Description are compared in lower case, Author and Maintainer as written.
+DESCRIPTION_PLACEHOLDERS <- list(
+  Title = function(x) startsWith(tolower(x), "what the package does"),
+  Description = function(x) {
+    startsWith(tolower(x), "what the package does") ||
+      startsWith(tolower(x), "more about what it does")
+  },
+  Author = function(x) x == "Who wrote it",
+  Maintainer = function(x) {
+    startsWith(x, "Who to complain to") || startsWith(x, "The package maintainer")
+  }
+)
+
+#' Diagnose Template Text Left in DESCRIPTION
+#'
+#' Flags a `Title`, `Description`, `Author` or `Maintainer` that still holds the
+#' text a package template wrote: the `usethis` template's "What the Package
+#' Does (One Line, Title Case)" and "What the package does (one paragraph).",
+#' and `package.skeleton()`'s "What the Package Does (Short Line)", "More about
+#' what it does (maybe more than one line).", "Who wrote it" and "Who to
+#' complain to". It applies R's own tests, so it flags what CRAN flags. A
+#' template `Authors@R` is [lab_authors()]'s to report.
+#'
+#' @section Source:
+#' The
+#' [CRAN incoming check](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages)
+#' run by `R CMD check --as-cran` NOTEs "DESCRIPTION fields with placeholder
+#' content". [Writing R Extensions](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file)
+#' asks for a `Title` and `Description` that describe the package. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to
+#' its source.
+#' @param path Character. Path to the package directory. Default: `"."`.
+#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
+#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
+#'   Defaults to reading it from `path`.
+#'
+#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
+#' @seealso [checktor()], which runs this and every other check.
+#' @export
+#' @examples
+#' pkg <- example_diagnose_scenario(
+#'   "description_examples/description_placeholders_bad.txt",
+#'   show_content = FALSE
+#' )
+#' lab_description_placeholders(pkg, verbose = FALSE)$issues
+lab_description_placeholders <- function(path = ".", verbose = TRUE, desc = NULL) {
+  path <- find_package_root(path)
+  desc <- resolve_description(path, desc)
+  issues <- character(0)
+  for (field in names(DESCRIPTION_PLACEHOLDERS)) {
+    value <- dcf_field(desc, field)
+    if (is.null(value) || is.na(value)) {
+      next
+    }
+    value <- trimws(gsub("[\n\t]", " ", value))
+    if (isTRUE(DESCRIPTION_PLACEHOLDERS[[field]](value))) {
+      issues <- c(issues, paste0(field, " is template text: ", value))
+    }
+  }
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues,
+    verbose,
+    "No template text left in DESCRIPTION",
+    "DESCRIPTION still holds template text",
+    "Treatment: Replace the template text with the package's own Title, Description and authors"
+  )
+  checktor_check_result(passed, issues, "DESCRIPTION placeholders check")
 }
 
 # Resolve the DESCRIPTION for a check that may be called either directly by a
@@ -1081,16 +1278,122 @@ lab_authors <- function(path = ".", verbose = TRUE, desc = NULL) {
   checktor_check_result(passed, issues, "Authors@R field check")
 }
 
+# CRAN's incoming rules for links in the Description, copied from
+# tools:::.check_package_CRAN_incoming (R 4.6.1) rather than called through
+# `:::`. R joins the alternatives of a rule with "|" and applies them, case
+# sensitive or not as given here, to each line of strwrap(Description). A test
+# holds `r_patterns` to R's own source. `label` opens the finding, and R's own
+# message is the one its NOTE prints.
+DESCRIPTION_REFERENCE_RULES <- list(
+  bad_urls = list(
+    r_patterns = "(^|[^</\"])https?://",
+    ignore_case = FALSE,
+    label = "URL not enclosed in angle brackets (<...>)",
+    r_message = "Please enclose URLs in angle brackets (<...>)."
+  ),
+  bad_dois = list(
+    r_patterns = c("https?:.*doi.org/", "(^|[^<])doi:", "<doi[^:]", "<10[.]"),
+    ignore_case = TRUE,
+    label = "DOI not written as <doi:prefix/suffix>",
+    r_message = "Please write DOIs as <doi:prefix/suffix>."
+  ),
+  replace_by_doi = list(
+    r_patterns = "<https?:.*/10\\.\\d{4,}/.*?>",
+    ignore_case = TRUE,
+    label = "Publisher link to a DOI, which CRAN asks to see as <doi:prefix/suffix>",
+    r_message = paste(
+      "Please use permanent DOI markup for linking to publications as in",
+      "<doi:prefix/suffix>."
+    )
+  ),
+  bad_arxiv = list(
+    r_patterns = c(
+      "<(arXiv|arxiv):(([[:alpha:].-]+/)?[[:digit:].]+)(v[[:digit:]]+)?([[:space:]]*\\[[^]]+\\])?>",
+      "https?://arxiv.org",
+      "(^|[^<])arxiv:",
+      "<arxiv[^:]"
+    ),
+    ignore_case = TRUE,
+    label = "arXiv reference, which CRAN asks to see as its arXiv DOI",
+    r_message = paste(
+      "Please refer to arXiv e-prints via their arXiv DOI",
+      "<doi:10.48550/arXiv.YYMM.NNNNN>."
+    )
+  )
+)
+
+# The whitespace-delimited text around each match of `pattern` in `lines`, so a
+# finding quotes the reference itself rather than the whole wrapped line.
+# Trailing sentence punctuation is dropped.
+reference_spans <- function(lines, pattern, ignore_case = FALSE) {
+  spans <- character(0)
+  for (line in lines) {
+    m <- gregexpr(pattern, line, ignore.case = ignore_case)[[1L]]
+    if (m[1L] < 1L) {
+      next
+    }
+    tok <- gregexpr("[^[:space:]]+", line)[[1L]]
+    tok_end <- tok + attr(tok, "match.length") - 1L
+    for (i in seq_along(m)) {
+      first <- m[i]
+      last <- m[i] + attr(m, "match.length")[i] - 1L
+      hit <- tok_end >= first & tok <= last
+      if (any(hit)) {
+        span <- substr(line, min(tok[hit]), max(tok_end[hit]))
+        # The sentence's punctuation is not part of the reference.
+        spans <- c(spans, sub("[.,;]+$", "", span))
+      }
+    }
+  }
+  unique(spans)
+}
+
+# The arXiv DOI for a span naming an arXiv e-print, as "<doi:10.48550/arXiv.ID>",
+# or "" when no identifier can be read from it. A version suffix is dropped, as
+# the DOI names the e-print rather than one version of it.
+arxiv_doi_for <- function(span) {
+  rx <- "(?i)arxiv(?:\\.org/(?:abs|pdf)/|:)((?:[a-z.-]+/)?[0-9]+(?:\\.[0-9]+)*)"
+  m <- regmatches(span, regexec(rx, span, perl = TRUE))[[1L]]
+  if (length(m) < 2L) {
+    return("")
+  }
+  paste0("<doi:10.48550/arXiv.", sub("\\.$", "", m[2L]), ">")
+}
+
 #' Diagnose Reference Formatting in DESCRIPTION
 #'
-#' Flags a reference that is not in CRAN's expected `<doi:...>` / `<arXiv:...>` form.
+#' Flags the links in the `Description` that CRAN's incoming check NOTEs,
+#' applying its own rules to the same wrapped lines R reads:
+#'
+#' * a URL not enclosed in angle brackets, which should read `<https://...>`;
+#' * a DOI not written as `<doi:prefix/suffix>`, such as a `https://doi.org/`
+#'   link, a bare `doi:`, `<doi` with no colon, or `<10.xxxx/...>`;
+#' * a publisher link that embeds a DOI, such as
+#'   `<https://onlinelibrary.wiley.com/doi/10.1002/...>`, reported only when no
+#'   DOI is malformed, as R does;
+#' * an arXiv id or link, such as `<arXiv:1509.03700>` or
+#'   `<https://arxiv.org/abs/...>`, which should be the e-print's arXiv DOI,
+#'   `<doi:10.48550/arXiv.1509.03700>`.
+#'
+#' It also flags a reference with no closing `>`, which CRAN's page does not
+#' render as a link. Each rule is one finding, quoting every reference that
+#' breaks it. A space after the colon, as in `<doi: 10.1000/xyz>`, is left
+#' alone: R does not NOTE it and CRAN's page links it all the same.
 #'
 #' @section Source:
 #' The [CRAN incoming check](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages)
-#' run by `R CMD check --as-cran` NOTEs a reference not written in the
-#' `<doi:...>` or `<arXiv:...>` form. See
-#' `vignette("check-sources", package = "checktor")` for how every check maps to its
-#' source.
+#' run by `R CMD check --as-cran` NOTEs each of the four forms, with "Please
+#' enclose URLs in angle brackets (<...>).", "Please write DOIs as
+#' <doi:prefix/suffix>.", "Please use permanent DOI markup for linking to
+#' publications as in <doi:prefix/suffix>." and "Please refer to arXiv e-prints
+#' via their arXiv DOI <doi:10.48550/arXiv.YYMM.NNNNN>.". The
+#' [submission checklist](https://cran.r-project.org/web/packages/submission_checklist.html)
+#' says "arXiv preprints should be referred to via their arXiv DOI", and the
+#' Cookbook's [References](https://contributor.r-project.org/cran-cookbook/description_issues.html#references)
+#' recipe asks for "angle brackets for auto-linking". `devtools::check()` turns the incoming check off, so these
+#' usually surface first on win-builder or at CRAN. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to
+#' its source.
 #' @param path Character. Path to the package directory. Default: `"."`.
 #' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
 #' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
@@ -1100,9 +1403,9 @@ lab_authors <- function(path = ".", verbose = TRUE, desc = NULL) {
 #' @seealso [checktor()], which runs this and every other check.
 #' @export
 #' @examples
-#' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+#' pkg <- example_diagnose_scenario("description_examples/references_bad.txt",
 #'                                  show_content = FALSE)
-#' lab_references(pkg, verbose = FALSE)$passed
+#' lab_references(pkg, verbose = FALSE)$issues
 lab_references <- function(
   path = ".",
   verbose = TRUE,
@@ -1110,46 +1413,82 @@ lab_references <- function(
 ) {
   path <- find_package_root(path)
   desc <- resolve_description(path, desc)
-  text <- desc[["Description"]]
-  if (is.null(text) || !nzchar(text)) {
-    return(checktor_check_result(TRUE, character(0), "References check"))
-  }
-
-  has_doi <- grepl("<doi:", text)
-  has_url <- grepl("<https?:", text)
-  has_arxiv <- grepl("<arXiv:", text, ignore.case = TRUE)
-  has_references <- has_doi || has_url || has_arxiv
-
+  text <- dcf_field(desc, "Description")
   issues <- character(0)
-  if (has_references) {
-    if (grepl("<doi:\\s+", text)) {
-      issues <- c(issues, "Space found after 'doi:' - should be no space")
+  if (!is.null(text) && !is.na(text) && nzchar(trimws(text))) {
+    # As R reads it: one line, then wrapped. The width is fixed at the one R
+    # uses in an 80-column session, so the result does not depend on the console.
+    flat <- gsub("[\n\t]", " ", trimws(text))
+    lines <- strwrap(flat, width = 72L)
+
+    report <- function(rule, spans = NULL) {
+      if (is.null(spans)) {
+        spans <- reference_spans(
+          lines,
+          paste(rule$r_patterns, collapse = "|"),
+          rule$ignore_case
+        )
+      }
+      if (length(spans) == 0L) {
+        return(character(0))
+      }
+      paste0(rule$label, ": ", paste(spans, collapse = ", "))
     }
-    if (grepl("<https?:\\s+", text)) {
-      issues <- c(issues, "Space found after 'https:' - should be no space")
+    rules <- DESCRIPTION_REFERENCE_RULES
+    issues <- c(issues, report(rules$bad_urls))
+    dois <- report(rules$bad_dois)
+    # R reports a publisher link only when no DOI is malformed (an else-branch).
+    issues <- c(
+      issues,
+      if (length(dois)) dois else report(rules$replace_by_doi)
+    )
+    arxiv <- reference_spans(
+      lines,
+      paste(rules$bad_arxiv$r_patterns, collapse = "|"),
+      TRUE
+    )
+    if (length(arxiv)) {
+      fixes <- vapply(arxiv, arxiv_doi_for, "", USE.NAMES = FALSE)
+      arxiv <- ifelse(nzchar(fixes), paste0(arxiv, " (write ", fixes, ")"), arxiv)
     }
-    # References should be enclosed in <...>, with a closing '>'
-    open_count <- length(gregexpr(
-      "<(doi|https?|arXiv)",
-      text,
-      ignore.case = TRUE
-    )[[1]])
-    if (open_count > 0L && !grepl(">", text)) {
-      issues <- c(issues, "Reference markup is missing a closing '>'")
+    issues <- c(issues, report(rules$bad_arxiv, arxiv))
+
+    # A space after the colon, as in <doi: 10.1000/xyz>, is not reported. The
+    # Cookbook asks for none, but R does not NOTE it, CRAN's page renders it as a
+    # working link (tools:::.DESCRIPTION_to_HTML allows the space), and 76 of the
+    # packages CRAN published in the year to September 2026 carry one.
+    #
+    # An unclosed reference, with no '>' anywhere after the opening, is read from
+    # the flat text so a reference split by the wrap is still whole. R does not
+    # NOTE it, but CRAN's page renders a reference as a link only when it is
+    # closed. A SICI DOI has angle brackets of its own, so the next '<' is no
+    # sign the reference ended.
+    open <- regmatches(
+      flat,
+      gregexpr("<(doi|https?|arxiv):[^>]*$", flat, ignore.case = TRUE)
+    )[[1L]]
+    if (length(open)) {
+      issues <- c(
+        issues,
+        paste0(
+          "Reference with no closing '>': ",
+          sub("[.,;]+$", "", sub("[[:space:]].*", "", open))
+        )
+      )
     }
   }
 
-  passed <- length(issues) == 0
-  if (verbose) {
-    if (passed && has_references) {
-      cli::cli_alert_success("Reference formatting appears correct")
-    } else if (passed && !has_references) {
-      cli::cli_alert_info("No references found in Description")
-    } else {
-      cli::cli_alert_warning("Reference formatting issues")
-      cli::cli_ul(issues)
-    }
-  }
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues,
+    verbose,
+    "References in Description are in CRAN's form",
+    "References in Description are not in CRAN's form",
+    paste0(
+      "Treatment: Write links as <https://...>, DOIs as <doi:prefix/suffix> ",
+      "and arXiv e-prints as <doi:10.48550/arXiv.ID>, each closed with '>'"
+    )
+  )
   checktor_check_result(passed, issues, "References check")
 }
 
@@ -1205,18 +1544,22 @@ lab_date_format <- function(path = ".", verbose = TRUE, desc = NULL) {
   checktor_check_result(passed, issues, "Date field check")
 }
 
-#' Diagnose a Non-Portable DESCRIPTION Encoding
+#' Diagnose a DESCRIPTION Encoding Other Than UTF-8
 #'
-#' Flags an `Encoding` outside the portable set Writing R Extensions names: `UTF-8`, `latin1`, `latin2` (compared case-insensitively). An absent `Encoding` passes.
+#' Flags an `Encoding` that is anything but exactly `UTF-8`, which is the test
+#' CRAN's incoming check applies. `latin1` and `latin2` are still legal R, but
+#' CRAN NOTEs them as deprecated, and the comparison is case-sensitive, so a
+#' lower-case `utf-8` is NOTEd too. An absent `Encoding` passes.
 #'
 #' @section Source:
 #' [Writing R Extensions](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file),
 #' under "The DESCRIPTION file", says a non-ASCII DESCRIPTION "should contain an
 #' 'Encoding' field"; the
 #' [incoming check](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages)
-#' flags a non-portable one. See
-#' `vignette("check-sources", package = "checktor")` for how every check maps to its
-#' source.
+#' run by `R CMD check --as-cran` NOTEs any value but `UTF-8` with "Package
+#' encoding '...' is deprecated. Please change to UTF-8 for non-ASCII content."
+#' See `vignette("check-sources", package = "checktor")` for how every check
+#' maps to its source.
 #' @param path Character. Path to the package directory. Default: `"."`.
 #' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
 #' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
@@ -1232,31 +1575,25 @@ lab_date_format <- function(path = ".", verbose = TRUE, desc = NULL) {
 lab_encoding_utf8 <- function(path = ".", verbose = TRUE, desc = NULL) {
   path <- find_package_root(path)
   desc <- resolve_description(path, desc)
-  enc <- desc[["Encoding"]]
+  enc <- dcf_field(desc, "Encoding")
   issues <- character(0)
-  # Writing R Extensions names UTF-8, latin1 and latin2 as the portable encodings.
-  # latin1 is legal and ships on CRAN, so only an encoding outside that set is a
-  # portability concern. Compared case-insensitively, since "utf-8" is a valid
-  # iconv spelling.
-  portable <- c("utf-8", "latin1", "latin2")
-  if (
-    !is.null(enc) &&
-      !is.na(enc) &&
-      nzchar(trimws(enc)) &&
-      !(tolower(trimws(enc)) %in% portable)
-  ) {
+  # R's own test, from tools:::.check_package_CRAN_incoming:
+  #     if (!is.na(enc <- meta["Encoding"]) && (enc != "UTF-8"))
+  # An exact, case-sensitive comparison. latin1 and latin2 are portable in the
+  # sense Writing R Extensions uses, but CRAN now calls them deprecated.
+  if (!is.null(enc) && !is.na(enc) && !identical(trimws(enc), "UTF-8")) {
+    enc <- trimws(enc)
     issues <- paste0(
-      "Encoding is declared as \"",
-      trimws(enc),
-      "\"; use a portable encoding (UTF-8, latin1 or latin2)"
+      "Encoding is \"", enc, "\"; CRAN's incoming check says package ",
+      "encoding '", enc, "' is deprecated and asks for UTF-8"
     )
   }
   passed <- length(issues) == 0L
   emit_issue_summary(
     issues,
     verbose,
-    "{.field Encoding} is portable or unset",
-    "Non-portable Encoding declared",
+    "{.field Encoding} is UTF-8 or unset",
+    "Encoding other than UTF-8 declared",
     "Treatment: re-encode sources as UTF-8 and set Encoding: UTF-8",
     level = "warning"
   )
@@ -1976,6 +2313,81 @@ lab_title_length <- function(path = ".", verbose = TRUE, desc = NULL) {
   checktor_check_result(passed, issues, "Title length check", nchar = n)
 }
 
+#' Diagnose a Title That Repeats the Package Name
+#'
+#' Flags a `Title` that is just the package name, or that opens with the name
+#' followed by a colon, as in `toypkg: Fit Simple Models`. Package listings
+#' already show the name beside the `Title`, so it reads twice.
+#'
+#' R's incoming check also NOTEs a `Title` that opens with the name followed
+#' by a space, but that form is left alone here: when the name is an ordinary
+#' word, as in survival's "Survival Analysis", CRAN accepts it routinely, and
+#' over a hundred packages on CRAN carry one. R drops the NOTE for an update
+#' whose `Title` is unchanged since the version on CRAN, which checktor cannot
+#' see offline, so an older package may pass CRAN with a finding here.
+#'
+#' @section Source:
+#' [Writing R Extensions](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file),
+#' under "The DESCRIPTION file", says of the `Title`: "Do not repeat the package
+#' name: it is often used prefixed by the name." The
+#' [incoming check](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages)
+#' NOTEs "The Title field is just the package name: provide a real title." and
+#' "The Title field starts with the package name.". See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to
+#' its source.
+#' @param path Character. Path to the package directory. Default: `"."`.
+#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
+#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
+#'   Defaults to reading it from `path`.
+#'
+#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
+#' @seealso [checktor()], which runs this and every other check.
+#' @export
+#' @examples
+#' pkg <- example_diagnose_scenario(
+#'   "description_examples/title_package_name_bad.txt",
+#'   show_content = FALSE
+#' )
+#' lab_title_package_name(pkg, verbose = FALSE)$issues
+lab_title_package_name <- function(path = ".", verbose = TRUE, desc = NULL) {
+  path <- find_package_root(path)
+  desc <- resolve_description(path, desc)
+  title <- dcf_field(desc, "Title")
+  pkg <- dcf_field(desc, "Package")
+  issues <- character(0)
+  if (
+    !is.null(title) && !is.na(title) && !is.null(pkg) && !is.na(pkg) &&
+      nzchar(trimws(pkg))
+  ) {
+    # As R reads them: the Title on one line, the name with its dots escaped.
+    title <- trimws(gsub("[\n\t]", " ", title))
+    pkg <- trimws(pkg)
+    if (tolower(title) == tolower(pkg)) {
+      issues <- "Title is just the package name: provide a real title"
+    } else if (
+      grepl(
+        paste0("^", gsub(".", "[.]", pkg, fixed = TRUE), "[[:space:]]*:"),
+        title,
+        ignore.case = TRUE
+      )
+    ) {
+      issues <- paste0(
+        "Title starts with the package name: ", title,
+        " (R drops this NOTE for an update whose Title is unchanged)"
+      )
+    }
+  }
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues,
+    verbose,
+    "Title does not repeat the package name",
+    "Title repeats the package name",
+    "Treatment: Drop the package name from the Title, since listings show it already"
+  )
+  checktor_check_result(passed, issues, "Title package-name check")
+}
+
 # Function names must NOT be single-quoted in Title/Description (single quotes
 # are reserved for software/package/API names). Heuristic: flag a single-quoted
 # token of the form `'name(...)'` - a quoted call is a clear function name.
@@ -2202,6 +2614,103 @@ lab_license <- function(
     "Treatment: Use a standardizable license, and add '+ file LICENSE' for MIT/BSD"
   )
   checktor_check_result(length(issues) == 0L, issues, "License check")
+}
+
+# The licenses whose R template leaves the year and copyright holder to a
+# LICENSE file, as named in tools:::.license_component_is_for_stub_and_ok()'s
+# `fields_for_stubs` (R 4.6.1). For these '+ file LICENSE' is required, not
+# redundant.
+LICENSE_STUB_BASES <- c(
+  "MIT License", "MIT",
+  "BSD 2-clause License", "BSD_2_clause",
+  "BSD 3-clause License", "BSD_3_clause"
+)
+
+#' Diagnose an Unneeded LICENSE File Pointer
+#'
+#' Flags `+ file LICENSE` added to a standard license R knows, such as
+#' `GPL-3 + file LICENSE`, `LGPL-3 + file LICENSE` or
+#' `Apache License 2.0 + file LICENSE`. MIT and the BSD licenses are templates
+#' that need a `LICENSE` file naming the year and copyright holder, so they are
+#' left alone, as is a bare `file LICENSE`. Each alternative of a dual license
+#' such as `GPL-3 + file LICENSE | MIT + file LICENSE` is judged on its own.
+#'
+#' A `LICENSE` that adds attribution requirements or other restrictions is
+#' the exception CRAN allows. Explain it in `cran-comments.md` and allow the
+#' finding with `Config/checktor/allow: license_file_unneeded`.
+#'
+#' @section Source:
+#' The CRAN Cookbook's
+#' [LICENSE files](https://contributor.r-project.org/cran-cookbook/description_issues.html#license-files)
+#' recipe gives the reviewers' text: "We do not need \"+ file LICENSE\" and the
+#' file as these are part of R. This is only needed in case of attribution
+#' requirements or other possible restrictions. Hence please omit it." R agrees
+#' in two places. `R CMD check` NOTEs "License components with restrictions not
+#' permitted" for a license that takes no extension, such as `GPL (>= 2)` or
+#' Apache, and the
+#' [incoming check](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages)
+#' NOTEs "License components with restrictions and base license permitting
+#' such" for one that does, such as `GPL-3`. See
+#' `vignette("check-sources", package = "checktor")` for how every check maps to
+#' its source.
+#' @param path Character. Path to the package directory. Default: `"."`.
+#' @param verbose Logical. Print diagnostic output. Default: `TRUE`.
+#' @param desc Optional pre-parsed `DESCRIPTION`, as returned by [base::read.dcf()].
+#'   Defaults to reading it from `path`.
+#'
+#' @return [checktor_check_result()] with `passed`, `issues`, `message`.
+#' @seealso [lab_license()] for a license R cannot read; [checktor()], which
+#'   runs this and every other check.
+#' @export
+#' @examples
+#' pkg <- example_diagnose_scenario(
+#'   "description_examples/license_file_unneeded_bad.txt",
+#'   show_content = FALSE
+#' )
+#' lab_license_file_unneeded(pkg, verbose = FALSE)$issues
+lab_license_file_unneeded <- function(path = ".", verbose = TRUE, desc = NULL) {
+  path <- find_package_root(path)
+  desc <- resolve_description(path, desc)
+  lic <- dcf_field(desc, "License")
+  issues <- character(0)
+  if (!is.null(lic) && !is.na(lic) && nzchar(trimws(lic))) {
+    components <- trimws(strsplit(gsub("[\n\t]", " ", lic), "|", fixed = TRUE)[[1L]])
+    pointer <- "[[:space:]]*\\+[[:space:]]*file[[:space:]]+LICEN[CS]E[[:space:]]*$"
+    for (component in components[grepl(pointer, components)]) {
+      base <- trimws(sub(pointer, "", component))
+      if (!nzchar(base)) {
+        next
+      }
+      # A base R cannot read is lab_license()'s to report.
+      a <- tryCatch(tools::analyze_license(base), error = function(e) NULL)
+      if (is.null(a) || !isTRUE(a$is_standardizable)) {
+        next
+      }
+      if (base %in% LICENSE_STUB_BASES || a$standardization %in% LICENSE_STUB_BASES) {
+        next
+      }
+      issues <- c(
+        issues,
+        paste0(
+          component, ": ", base, " is a standard license R knows, so CRAN ",
+          "needs neither '+ file LICENSE' nor the file"
+        )
+      )
+    }
+  }
+  passed <- length(issues) == 0L
+  emit_issue_summary(
+    issues,
+    verbose,
+    "No '+ file LICENSE' on a standard license",
+    "'+ file LICENSE' on a standard license",
+    paste0(
+      "Treatment: CRAN asks: \"We do not need '+ file LICENSE' and the file as ",
+      "these are part of R. Hence please omit it.\" Drop both, unless LICENSE ",
+      "adds attribution requirements or other restrictions"
+    )
+  )
+  checktor_check_result(passed, issues, "License file pointer check")
 }
 
 # What the Description must not start with. R's own CRAN-incoming check uses a

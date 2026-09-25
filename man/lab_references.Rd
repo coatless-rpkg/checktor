@@ -18,21 +18,48 @@ Defaults to reading it from \code{path}.}
 \code{\link[=checktor_check_result]{checktor_check_result()}} with \code{passed}, \code{issues}, \code{message}.
 }
 \description{
-Flags a reference that is not in CRAN's expected \verb{<doi:...>} / \verb{<arXiv:...>} form.
+Flags the links in the \code{Description} that CRAN's incoming check NOTEs,
+applying its own rules to the same wrapped lines R reads:
+}
+\details{
+\itemize{
+\item a URL not enclosed in angle brackets, which should read \verb{<https://...>};
+\item a DOI not written as \verb{<doi:prefix/suffix>}, such as a \verb{https://doi.org/}
+link, a bare \verb{doi:}, \verb{<doi} with no colon, or \verb{<10.xxxx/...>};
+\item a publisher link that embeds a DOI, such as
+\verb{<https://onlinelibrary.wiley.com/doi/10.1002/...>}, reported only when no
+DOI is malformed, as R does;
+\item an arXiv id or link, such as \verb{<arXiv:1509.03700>} or
+\verb{<https://arxiv.org/abs/...>}, which should be the e-print's arXiv DOI,
+\verb{<doi:10.48550/arXiv.1509.03700>}.
+}
+
+It also flags a reference with no closing \code{>}, which CRAN's page does not
+render as a link. Each rule is one finding, quoting every reference that
+breaks it. A space after the colon, as in \verb{<doi: 10.1000/xyz>}, is left
+alone: R does not NOTE it and CRAN's page links it all the same.
 }
 \section{Source}{
 
 The \href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages}{CRAN incoming check}
-run by \verb{R CMD check --as-cran} NOTEs a reference not written in the
-\verb{<doi:...>} or \verb{<arXiv:...>} form. See
-\code{vignette("check-sources", package = "checktor")} for how every check maps to its
-source.
+run by \verb{R CMD check --as-cran} NOTEs each of the four forms, with "Please
+enclose URLs in angle brackets (<...>).", "Please write DOIs as
+\url{doi:prefix/suffix}.", "Please use permanent DOI markup for linking to
+publications as in \url{doi:prefix/suffix}." and "Please refer to arXiv e-prints
+via their arXiv DOI \url{doi:10.48550/arXiv.YYMM.NNNNN}.". The
+\href{https://cran.r-project.org/web/packages/submission_checklist.html}{submission checklist}
+says "arXiv preprints should be referred to via their arXiv DOI", and the
+Cookbook's \href{https://contributor.r-project.org/cran-cookbook/description_issues.html#references}{References}
+recipe asks for "angle brackets for auto-linking". \code{devtools::check()} turns the incoming check off, so these
+usually surface first on win-builder or at CRAN. See
+\code{vignette("check-sources", package = "checktor")} for how every check maps to
+its source.
 }
 
 \examples{
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("description_examples/references_bad.txt",
                                  show_content = FALSE)
-lab_references(pkg, verbose = FALSE)$passed
+lab_references(pkg, verbose = FALSE)$issues
 }
 \seealso{
 \code{\link[=checktor]{checktor()}}, which runs this and every other check.

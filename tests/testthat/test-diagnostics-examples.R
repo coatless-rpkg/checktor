@@ -944,6 +944,122 @@ test_that("lab_example_state(): reads a hidden block that ends in ;", {
   )
 })
 
+# Test lab_example_tf_usage() ----
+
+# "Please write TRUE and FALSE instead of T and F. 'T' and 'F' instead of TRUE and
+# FALSE: man/quiet.Rd: quiet(x, be_quiet = T)"
+test_that("lab_example_tf_usage(): reports T in an example on its .Rd line", {
+  res <- lab_example_tf_usage(rd_pkg("quiet(x, be_quiet = T)"), verbose = FALSE)
+  expect_equal(res$issues, "example f.Rd:7")
+})
+
+test_that("lab_example_tf_usage(): reports F in a vignette chunk on its line", {
+  pkg <- script_pkg(
+    c("---", "title: v", "---", "", "```{r}", "knitr::opts_chunk$set(echo = F)", "```"),
+    "vignettes", "v.Rmd"
+  )
+  expect_equal(lab_example_tf_usage(pkg, verbose = FALSE)$issues, "vignette v.Rmd:6")
+})
+
+test_that("lab_example_tf_usage(): reports T in a demo", {
+  pkg <- script_pkg(c("x <- 1", "y <- T"), "demo", "d.R")
+  expect_equal(lab_example_tf_usage(pkg, verbose = FALSE)$issues, "demo d.R:2")
+})
+
+test_that("lab_example_tf_usage(): reads a dontrun block", {
+  pkg <- rd_pkg(c("\\dontrun{", "f(verbose = T)", "}"))
+  expect_equal(lab_example_tf_usage(pkg, verbose = FALSE)$issues, "example f.Rd:8")
+})
+
+test_that("lab_example_tf_usage(): leaves tests out unless asked", {
+  # Tests are where most hits are, and CRAN rarely reads them.
+  pkg <- script_pkg("expect_true(T)", file.path("tests", "testthat"), "test-a.R")
+  expect_true(lab_example_tf_usage(pkg, verbose = FALSE)$passed)
+  expect_equal(
+    lab_example_tf_usage(pkg, verbose = FALSE, tests = TRUE)$issues,
+    "test test-a.R:1"
+  )
+})
+
+test_that("lab_example_tf_usage(): judges T as lab_tf_usage() does", {
+  # The same exemptions: a string, a comment, an argument name, `x$T` and
+  # language built by quote() are not the logical.
+  pkg <- rd_pkg(c(
+    "x <- \"T\" # T",
+    "f(T = 1)",
+    "d$T",
+    "quote(F[a] - F[b])",
+    "g(TRUE, FALSE)"
+  ))
+  expect_true(lab_example_tf_usage(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_example_tf_usage(): passes a package with no examples", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  expect_true(lab_example_tf_usage(pkg, verbose = FALSE)$passed)
+})
+
+# Test lab_example_unparseable() ----
+
+# "Warning: Unexecutable code in man/make.trait.model.Rd"
+test_that("lab_example_unparseable(): reports an example that is not R, on its line", {
+  pkg <- rd_pkg(c("x <- 1", "plot(x, main = 'a'"))
+  res <- lab_example_unparseable(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_length(res$issues, 1L)
+  expect_match(res$issues, "^example f\\.Rd:\\d+ \\(")
+})
+
+test_that("lab_example_unparseable(): reads inside dontrun, which R CMD check does not", {
+  pkg <- rd_pkg(c("x <- 1", "\\dontrun{", "my_fn(<your API key>)", "}"))
+  res <- lab_example_unparseable(pkg, verbose = FALSE)
+  expect_match(res$issues, "^example f\\.Rd:9 \\(unexpected '<'\\)$")
+})
+
+test_that("lab_example_unparseable(): the repair other checks rely on does not hide it", {
+  # The other example checks read the parts of a broken block that parse, so an
+  # install beside a placeholder is still seen. That repair must not make the
+  # example itself count as R.
+  pkg <- rd_pkg(c(
+    "\\dontrun{", "my_fn(<your key>)", "install.packages('x')", "}"
+  ))
+  expect_false(lab_example_installs(pkg, verbose = FALSE)$passed)
+  expect_false(lab_example_unparseable(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_example_unparseable(): an Rd comment is not code", {
+  pkg <- rd_pkg(c("% this is <not R>", "x <- 1 % nor <this>", "f(x)"))
+  expect_true(lab_example_unparseable(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_example_unparseable(): passes blocks that are R, on a line or across", {
+  pkg <- rd_pkg(c(
+    "\\dontrun{f()}\\donttest{g()}",
+    "suppressWarnings(\\donttest{h()})",
+    "\\dontrun{a()}; b()",
+    "if (TRUE) {",
+    "  1",
+    "} else 2",
+    "x <- '100\\%'"
+  ))
+  expect_true(lab_example_unparseable(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_example_unparseable(): reports an unfinished example at its last line", {
+  pkg <- rd_pkg(c("f(1,", "  2"))
+  expect_match(
+    lab_example_unparseable(pkg, verbose = FALSE)$issues,
+    "^example f\\.Rd:8 \\("
+  )
+})
+
+test_that("lab_example_unparseable(): passes a package with no examples", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  expect_true(lab_example_unparseable(pkg, verbose = FALSE)$passed)
+})
+
 # Test lab_example_internal_ns() ----
 
 # "Used ::: in documentation: man/paint_format.Rd: paintr:::paint_format(...)"

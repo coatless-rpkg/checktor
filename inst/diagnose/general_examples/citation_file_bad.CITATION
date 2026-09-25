@@ -1,0 +1,15 @@
+# An old-style inst/CITATION. CRAN's incoming check NOTEs citEntry() and
+# personList(), and packageDescription() assumes the package is installed: R
+# already hands the file the DESCRIPTION as `meta`.
+citHeader("To cite examplepackage in publications use:")
+
+desc <- packageDescription("examplepackage")
+
+citEntry(
+  entry = "Manual",
+  title = "examplepackage: Example Package for Diagnostic Testing",
+  author = personList(as.person("Test User")),
+  year = "2026",
+  note = paste("R package version", desc$Version),
+  textVersion = "User T (2026). examplepackage: Example Package."
+)

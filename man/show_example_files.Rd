@@ -8,7 +8,7 @@ show_example_files(category = "all", pattern = NULL)
 }
 \arguments{
 \item{category}{Character. Optional category filter. One of "code",
-"description", "documentation", "network", "temp", or "all".
+"description", "documentation", "general", "network", "temp", or "all".
 Default: "all".}
 
 \item{pattern}{Character. Optional regex pattern to filter filenames.

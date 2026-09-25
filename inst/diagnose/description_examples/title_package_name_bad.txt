@@ -1,0 +1,8 @@
+Package: toypkg
+Title: toypkg: Fit Simple Models to Data
+Version: 0.1.0
+Authors@R: person("Jane", "Roe", email = "jane@example.com", role = c("aut", "cre"))
+Description: Fits linear and generalised linear models to small data sets and
+    summarises the fits in a single table.
+License: GPL-3
+Encoding: UTF-8

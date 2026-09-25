@@ -32,8 +32,8 @@ session's temporary directory. Default: \code{FALSE} (you manage cleanup).}
 \value{
 Character. Path to the temporary package directory containing the example
 file. Returns \code{NULL}, with a warning, if the example file cannot be found. An
-\code{example_path} that is not an \code{.R}, \code{.Rd}, \code{.Rmd}, \code{.qmd}, \code{.Rnw} or \code{.txt}
-file is an error, since a package has no place for it.
+\code{example_path} that is not an \code{.R}, \code{.Rd}, \code{.Rmd}, \code{.qmd}, \code{.Rnw}, \code{.txt} or
+\code{.CITATION} file is an error, since a package has no place for it.
 }
 \description{
 Creates a temporary package structure with a specified example file for
@@ -47,7 +47,8 @@ This function:
 \item Creates a temporary package directory structure
 \item Copies the example file to where a package keeps its kind: an \code{.R} file in
 \verb{R/}, an \code{.Rd} file in \verb{man/}, a vignette (\code{.Rmd}, \code{.qmd}, \code{.Rnw}) in
-\verb{vignettes/}, and a DESCRIPTION scenario (\code{.txt}) as the \code{DESCRIPTION}
+\verb{vignettes/}, a DESCRIPTION scenario (\code{.txt}) as the \code{DESCRIPTION}, and a
+citation scenario (\code{.CITATION}) as \code{inst/CITATION}
 \item Optionally displays the example file content
 \item Returns the path to the temporary package for diagnostic testing
 }
@@ -67,6 +68,7 @@ the one place its extension names, and the other directories stay empty:
 |-- cran-comments.md     # So the cran-comments check has nothing to report
 |-- R/                   # An .R scenario, such as tf_usage_bad.R
 |-- man/                 # An .Rd scenario, such as missing_value_tag.Rd
+|-- inst/CITATION        # A .CITATION scenario; made only for one
 |-- tests/               # Always empty
 `-- vignettes/           # An .Rmd, .qmd or .Rnw scenario; made only for one
 }\if{html}{\out{</div>}}

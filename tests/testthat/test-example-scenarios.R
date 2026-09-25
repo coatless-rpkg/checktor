@@ -263,6 +263,9 @@ test_that("show_example_files(): filters by category and by pattern", {
     ) %in% desc
   ))
   expect_true(all(startsWith(show_example_files("documentation"), "documentation_examples/")))
+  general <- show_example_files("general")
+  expect_true("general_examples/code_exercised_bad.R" %in% general)
+  expect_true(all(startsWith(general, "general_examples/")))
 
   bad <- show_example_files(pattern = "_bad\\.R$")
   expect_gt(length(bad), 0L)
@@ -273,4 +276,17 @@ test_that("show_example_files(): filters by category and by pattern", {
     "code_examples/seed_setting_bad.R"
   )
   expect_identical(show_example_files(pattern = "no-such-file-xyz"), character(0))
+})
+
+test_that("scenario_target(): puts a CITATION scenario at inst/CITATION", {
+  expect_identical(
+    scenario_target("general_examples/citation_file_bad.CITATION"),
+    file.path("inst", "CITATION")
+  )
+  pkg <- example_diagnose_scenario(
+    "general_examples/citation_file_bad.CITATION",
+    show_content = FALSE,
+    cleanup = TRUE
+  )
+  expect_false(lab_citation_file(pkg, verbose = FALSE)$passed)
 })

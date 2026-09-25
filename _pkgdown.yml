@@ -103,14 +103,18 @@ reference:
     Individual checks on the DESCRIPTION file, parsed via `base::read.dcf()`.
   contents:
   - lab_description_file
+  - lab_description_fields
+  - lab_description_placeholders
   - lab_software_names
   - lab_language_names
   - lab_format_names
   - lab_acronyms
   - lab_license
+  - lab_license_file_unneeded
   - lab_license_year
   - lab_title_case
   - lab_title_length
+  - lab_title_package_name
   - lab_title_starts_with_article
   - lab_title_redundant_phrases
   - lab_description_function_quotes
@@ -138,6 +142,8 @@ reference:
   - lab_commented_examples
   - lab_donttest_vs_dontrun
   - lab_suggested_in_examples
+  - lab_rd_bibliography
+  - lab_rd_bibliography_files
 
 - title: Example, vignette and demo checks
   desc: >
@@ -149,6 +155,8 @@ reference:
   - lab_example_writes
   - lab_example_state
   - lab_example_internal_ns
+  - lab_example_tf_usage
+  - lab_example_unparseable
 
 - title: General checks
   desc: >
@@ -159,6 +167,8 @@ reference:
   - lab_url_liveness
   - lab_news_file
   - lab_readme_links
+  - lab_code_exercised
+  - lab_citation_file
   - lab_cran_comments_file
 
 - title: CRAN policy checks

@@ -603,3 +603,228 @@ test_that("extract_link_targets(): rejects a bare target containing a space", {
 test_that("extract_link_targets(): finds nothing in text with no links", {
   expect_identical(extract_link_targets("plain prose"), character(0))
 })
+
+# Test lab_code_exercised() ----
+
+test_that("lab_code_exercised(): flags exports with no examples, tests or vignettes", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  writeLines("export(test_fn)", file.path(pkg, "NAMESPACE"))
+  res <- lab_code_exercised(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_length(res$issues, 1L)
+  expect_match(res$issues, "no examples, no tests and no vignettes")
+})
+
+test_that("lab_code_exercised(): any one of the three is enough", {
+  exported <- function() {
+    pkg <- make_temp_dir(envir = parent.frame())
+    write_pkg(pkg)
+    writeLines("export(test_fn)", file.path(pkg, "NAMESPACE"))
+    pkg
+  }
+
+  # An example, even one R CMD check never runs: Rd2ex still writes it out.
+  with_example <- exported()
+  writeLines(
+    c(
+      "\\name{f}",
+      "\\alias{f}",
+      "\\title{F}",
+      "\\description{d}",
+      "\\examples{\\dontrun{test_fn()}}"
+    ),
+    file.path(with_example, "man", "f.Rd")
+  )
+  expect_true(lab_code_exercised(with_example, verbose = FALSE)$passed)
+
+  with_test <- exported()
+  dir.create(file.path(with_test, "tests"))
+  writeLines("library(testthat)", file.path(with_test, "tests", "testthat.R"))
+  expect_true(lab_code_exercised(with_test, verbose = FALSE)$passed)
+
+  with_vignette <- exported()
+  dir.create(file.path(with_vignette, "vignettes"))
+  writeLines("text", file.path(with_vignette, "vignettes", "intro.qmd"))
+  expect_true(lab_code_exercised(with_vignette, verbose = FALSE)$passed)
+})
+
+test_that("lab_code_exercised(): judges what the tarball includes", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  writeLines("export(test_fn)", file.path(pkg, "NAMESPACE"))
+  dir.create(file.path(pkg, "tests"))
+  writeLines("stopifnot(TRUE)", file.path(pkg, "tests", "local.R"))
+  dir.create(file.path(pkg, "vignettes"))
+  writeLines("text", file.path(pkg, "vignettes", "draft.Rmd"))
+  writeLines(
+    c("^tests$", "^vignettes/draft\\.Rmd$"),
+    file.path(pkg, ".Rbuildignore")
+  )
+  expect_false(lab_code_exercised(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_code_exercised(): tests R CMD check never runs do not count", {
+  # R CMD check runs tests/*.R. A tests/testthat/ folder with no driver in tests/
+  # is never run, so CRAN still sees no tests, and the finding says why.
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  writeLines("export(test_fn)", file.path(pkg, "NAMESPACE"))
+  dir.create(file.path(pkg, "tests", "testthat"), recursive = TRUE)
+  writeLines(
+    "test_that('x', expect_true(TRUE))",
+    file.path(pkg, "tests", "testthat", "test-x.R")
+  )
+  res <- lab_code_exercised(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_match(res$issues, "tests/testthat.R", fixed = TRUE)
+})
+
+test_that("lab_code_exercised(): stays quiet when nothing is exported", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  writeLines("importFrom(stats, sd)", file.path(pkg, "NAMESPACE"))
+  expect_true(lab_code_exercised(pkg, verbose = FALSE)$passed)
+
+  # S3 methods and export patterns count as exports, as they do for R.
+  writeLines("S3method(print, foo)", file.path(pkg, "NAMESPACE"))
+  expect_false(lab_code_exercised(pkg, verbose = FALSE)$passed)
+  writeLines("exportPattern('^[[:alpha:]]+')", file.path(pkg, "NAMESPACE"))
+  expect_false(lab_code_exercised(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_code_exercised(): does not guess without a NAMESPACE or R/", {
+  # No NAMESPACE, or one R cannot parse: the exports are unknown, so no finding.
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  expect_true(lab_code_exercised(pkg, verbose = FALSE)$passed)
+  writeLines("export(", file.path(pkg, "NAMESPACE"))
+  expect_true(lab_code_exercised(pkg, verbose = FALSE)$passed)
+
+  # A data-only package has no R/ to exercise; R skips the check too.
+  data_only <- make_temp_dir()
+  write_pkg(data_only, r_code = NULL)
+  unlink(file.path(data_only, "R"), recursive = TRUE)
+  writeLines("exportPattern('.')", file.path(data_only, "NAMESPACE"))
+  expect_true(lab_code_exercised(data_only, verbose = FALSE)$passed)
+})
+
+# Test lab_citation_file() ----
+
+test_that("lab_citation_file(): flags the old-style citEntry() and personList()", {
+  pkg <- citation_pkg(c(
+    "bibentry(",
+    "  'Manual',",
+    "  title = 'Test',",
+    "  author = personList(person('A', 'B'), as.personList('C D')),",
+    "  year = '2026'",
+    ")",
+    "citEntry(entry = 'Manual', title = 'Test', year = '2026')"
+  ))
+  res <- lab_citation_file(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_length(res$issues, 3L)
+  expect_match(res$issues[[1]], "^inst/CITATION:4 .*personList\\(\\).*c\\(\\)")
+  expect_match(res$issues[[2]], "^inst/CITATION:4 .*as\\.personList\\(\\)")
+  expect_match(
+    res$issues[[3]],
+    "^inst/CITATION:7 .*citEntry\\(\\).*bibentry\\(\\)"
+  )
+  # Each finding carries a location issues() can point at.
+  expect_identical(.split_issue(res$issues)$line, c(4L, 4L, 7L))
+})
+
+test_that("lab_citation_file(): flags calls that assume the package is installed", {
+  pkg <- citation_pkg(c(
+    "library(utils)",
+    "desc <- packageDescription('testpkg')",
+    "if (!require(stats)) stop()",
+    "bibentry('Manual', title = 'Test', year = desc$Date)"
+  ))
+  res <- lab_citation_file(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_match(res$issues, "^inst/CITATION:[123] ")
+  expect_match(res$issues[[1]], "library()", fixed = TRUE)
+  expect_match(res$issues[[2]], "packageDescription().*meta")
+  expect_match(res$issues[[3]], "require()", fixed = TRUE)
+})
+
+test_that("lab_citation_file(): exempts R's own `meta` fallback idiom", {
+  # digest, mlbench and cluster all do this. R drops a top-level `if` with exactly
+  # this condition and no else before looking, so it is not a finding.
+  pkg <- citation_pkg(c(
+    "if (!exists('meta') || is.null(meta)) meta <- packageDescription('testpkg')",
+    "if(!exists(\"meta\")||is.null(meta)) {",
+    "  meta <- packageDescription(\"testpkg\")",
+    "}",
+    "bibentry('Manual', title = 'Test', year = meta$Date)"
+  ))
+  expect_true(lab_citation_file(pkg, verbose = FALSE)$passed)
+
+  # Only that exact form: another condition, or an else branch, is not exempt.
+  other <- citation_pkg(c(
+    "if (is.null(meta)) meta <- packageDescription('testpkg')",
+    "if (!exists('meta') || is.null(meta)) 1 else library(utils)",
+    "if (!exists(meta) || is.null(meta)) require(utils)"
+  ))
+  res <- lab_citation_file(other, verbose = FALSE)
+  expect_match(res$issues, "^inst/CITATION:[123] ")
+  expect_length(res$issues, 3L)
+})
+
+test_that("lab_citation_file(): reads the parse tree, not the text", {
+  pkg <- citation_pkg(c(
+    "# citEntry() and personList() are the old style",
+    "bibentry('Manual', title = 'Why not citEntry(x) or library(y)', year = '2026',",
+    "  textVersion = paste('packageDescription(', 'x)'))"
+  ))
+  expect_true(lab_citation_file(pkg, verbose = FALSE)$passed)
+
+  # A namespaced call is still the call.
+  ns <- citation_pkg(
+    "utils::citEntry(entry = 'Manual', title = 'T', year = '2026')"
+  )
+  expect_match(
+    lab_citation_file(ns, verbose = FALSE)$issues,
+    "citEntry()",
+    fixed = TRUE
+  )
+})
+
+test_that("lab_citation_file(): reports a CITATION that does not parse", {
+  pkg <- citation_pkg(c("bibentry('Manual',", "  title = 'T' year = '2026')"))
+  res <- lab_citation_file(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_length(res$issues, 1L)
+  expect_match(
+    res$issues,
+    "^inst/CITATION:2 \\(does not parse: unexpected symbol at column 15\\)$"
+  )
+})
+
+test_that("lab_citation_file(): passes without a CITATION the tarball ships", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  expect_true(lab_citation_file(pkg, verbose = FALSE)$passed)
+
+  ignored <- citation_pkg(
+    "citEntry(entry = 'Manual', title = 'T', year = '2026')"
+  )
+  writeLines("^inst/CITATION$", file.path(ignored, ".Rbuildignore"))
+  expect_true(lab_citation_file(ignored, verbose = FALSE)$passed)
+})
+
+test_that("lab_citation_file(): reads a CITATION in the package's declared encoding", {
+  # "Mueller" with a u-umlaut, in latin1: the byte 0xFC is not valid UTF-8.
+  name <- rawToChar(as.raw(c(0x4d, 0xfc, 0x6c, 0x6c, 0x65, 0x72)))
+  pkg <- citation_pkg(
+    paste0(
+      "bibentry('Manual', title = 'T', author = person('A', '",
+      name,
+      "'), year = '2026')"
+    )
+  )
+  desc <- file.path(pkg, "DESCRIPTION")
+  writeLines(sub("^Encoding: .*", "Encoding: latin1", readLines(desc)), desc)
+  expect_true(lab_citation_file(pkg, verbose = FALSE)$passed)
+})

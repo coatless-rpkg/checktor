@@ -2,7 +2,7 @@
 % Please edit documentation in R/diagnostics-description.R
 \name{lab_encoding_utf8}
 \alias{lab_encoding_utf8}
-\title{Diagnose a Non-Portable DESCRIPTION Encoding}
+\title{Diagnose a DESCRIPTION Encoding Other Than UTF-8}
 \usage{
 lab_encoding_utf8(path = ".", verbose = TRUE, desc = NULL)
 }
@@ -18,7 +18,10 @@ Defaults to reading it from \code{path}.}
 \code{\link[=checktor_check_result]{checktor_check_result()}} with \code{passed}, \code{issues}, \code{message}.
 }
 \description{
-Flags an \code{Encoding} outside the portable set Writing R Extensions names: \code{UTF-8}, \code{latin1}, \code{latin2} (compared case-insensitively). An absent \code{Encoding} passes.
+Flags an \code{Encoding} that is anything but exactly \code{UTF-8}, which is the test
+CRAN's incoming check applies. \code{latin1} and \code{latin2} are still legal R, but
+CRAN NOTEs them as deprecated, and the comparison is case-sensitive, so a
+lower-case \code{utf-8} is NOTEd too. An absent \code{Encoding} passes.
 }
 \section{Source}{
 
@@ -26,9 +29,10 @@ Flags an \code{Encoding} outside the portable set Writing R Extensions names: \c
 under "The DESCRIPTION file", says a non-ASCII DESCRIPTION "should contain an
 'Encoding' field"; the
 \href{https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages}{incoming check}
-flags a non-portable one. See
-\code{vignette("check-sources", package = "checktor")} for how every check maps to its
-source.
+run by \verb{R CMD check --as-cran} NOTEs any value but \code{UTF-8} with "Package
+encoding '...' is deprecated. Please change to UTF-8 for non-ASCII content."
+See \code{vignette("check-sources", package = "checktor")} for how every check
+maps to its source.
 }
 
 \examples{

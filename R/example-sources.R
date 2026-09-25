@@ -36,17 +36,14 @@ rd_example_code <- function(path) {
     # it stopped the whole example parsing, which hid the example from every
     # check. \dontrun{} contents are included: a reader copies them, and CRAN
     # asks about installs and writes wherever they appear in an example.
-    offset <- strrep("\n", rd_node_line(section) - 1L)
-    src <- rd_example_lines(
-      paste0(offset, rd_example_marked(section, mark = FALSE))
-    )
+    src <- rd_example_source(section)
     # A hidden block may hold something that is not R, such as a `<your key>`
     # placeholder. Only then is each block cut down to the lines that parse, since
     # reading a block a line at a time can split a valid `if` from its `else`.
+    # lab_example_unparseable() reads the example unrepaired, so this repair lets
+    # the other checks read the rest without hiding that it was needed.
     if (!parses(src$code)) {
-      src <- rd_example_lines(
-        paste0(offset, rd_example_marked(section, repair = TRUE, mark = FALSE))
-      )
+      src <- rd_example_source(section, repair = TRUE)
     }
     if (!nzchar(trimws(src$code))) {
       next
@@ -60,6 +57,16 @@ rd_example_code <- function(path) {
     )
   }
   out
+}
+
+# An Rd \examples{} section as R code, each line on the line of the .Rd file it
+# comes from: list(code, lines), as rd_example_lines() gives it. With `repair =
+# TRUE` each \dontrun{} and \donttest{} block keeps only the lines that parse.
+rd_example_source <- function(section, repair = FALSE) {
+  offset <- strrep("\n", rd_node_line(section) - 1L)
+  rd_example_lines(
+    paste0(offset, rd_example_marked(section, repair = repair, mark = FALSE))
+  )
 }
 
 # Put each node of code parsed by parse_text_xml() on the line of its file that

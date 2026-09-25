@@ -1,0 +1,8 @@
+Package: refexample
+Title: Perceptually Uniform Colour Maps
+Version: 0.1.0
+Authors@R: person("Jane", "Roe", email = "jane@example.com", role = c("aut", "cre"))
+Description: Provides the colour maps of Kovesi (2015) <arXiv:1509.03700>,
+    as described at https://colorcet.com and in doi:10.1000/xyz123.
+License: GPL-3
+Encoding: UTF-8

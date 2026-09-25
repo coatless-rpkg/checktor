@@ -247,3 +247,52 @@ policy_pkg <- function(envir = parent.frame()) {
   )
   pkg
 }
+
+# A package whose man/f.Rd cites with R's bibliography macros. `description` is
+# the text of its \description{}, on line 4 of f.Rd, and `references` the body of
+# its \references{}. `refs` maps a file name under the package root, such as
+# "inst/REFERENCES.bib", to its lines. `...` goes to write_pkg().
+bib_pkg <- function(
+  description,
+  references = "\\bibshow{*}",
+  refs = list("inst/REFERENCES.bib" = BIB_SMITH),
+  ...,
+  envir = parent.frame()
+) {
+  pkg <- make_temp_dir(envir = envir)
+  write_pkg(
+    pkg,
+    rd_files = list(
+      "f.Rd" = c(
+        "\\name{f}", "\\alias{f}", "\\title{F}",
+        paste0("\\description{", description, "}"),
+        "\\value{x}",
+        if (!is.null(references)) paste0("\\references{", references, "}")
+      )
+    ),
+    ...
+  )
+  for (nm in names(refs)) {
+    dir.create(dirname(file.path(pkg, nm)), recursive = TRUE, showWarnings = FALSE)
+    writeLines(refs[[nm]], file.path(pkg, nm))
+  }
+  pkg
+}
+
+BIB_SMITH <- c(
+  "@Article{smith2020,",
+  "  author = {John Smith},",
+  "  title = {A Paper},",
+  "  journal = {J Stat},",
+  "  year = {2020}",
+  "}"
+)
+
+# A package with an inst/CITATION holding `lines`. `...` goes to write_pkg().
+citation_pkg <- function(lines, ..., envir = parent.frame()) {
+  pkg <- make_temp_dir(envir = envir)
+  write_pkg(pkg, ...)
+  dir.create(file.path(pkg, "inst"), showWarnings = FALSE)
+  writeLines(lines, file.path(pkg, "inst", "CITATION"), useBytes = TRUE)
+  pkg
+}

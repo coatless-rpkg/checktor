@@ -21,8 +21,8 @@
 #' @return
 #' Character. Path to the temporary package directory containing the example
 #' file. Returns `NULL`, with a warning, if the example file cannot be found. An
-#' `example_path` that is not an `.R`, `.Rd`, `.Rmd`, `.qmd`, `.Rnw` or `.txt`
-#' file is an error, since a package has no place for it.
+#' `example_path` that is not an `.R`, `.Rd`, `.Rmd`, `.qmd`, `.Rnw`, `.txt` or
+#' `.CITATION` file is an error, since a package has no place for it.
 #'
 #' @details
 #' This function:
@@ -31,7 +31,8 @@
 #' 2. Creates a temporary package directory structure
 #' 3. Copies the example file to where a package keeps its kind: an `.R` file in
 #'    `R/`, an `.Rd` file in `man/`, a vignette (`.Rmd`, `.qmd`, `.Rnw`) in
-#'    `vignettes/`, and a DESCRIPTION scenario (`.txt`) as the `DESCRIPTION`
+#'    `vignettes/`, a DESCRIPTION scenario (`.txt`) as the `DESCRIPTION`, and a
+#'    citation scenario (`.CITATION`) as `inst/CITATION`
 #' 4. Optionally displays the example file content
 #' 5. Returns the path to the temporary package for diagnostic testing
 #'
@@ -50,6 +51,7 @@
 #' |-- cran-comments.md     # So the cran-comments check has nothing to report
 #' |-- R/                   # An .R scenario, such as tf_usage_bad.R
 #' |-- man/                 # An .Rd scenario, such as missing_value_tag.Rd
+#' |-- inst/CITATION        # A .CITATION scenario; made only for one
 #' |-- tests/               # Always empty
 #' `-- vignettes/           # An .Rmd, .qmd or .Rnw scenario; made only for one
 #' ```
@@ -102,8 +104,8 @@ example_diagnose_scenario <- function(
     cli::cli_abort(c(
       paste(
         "{.arg example_path} must be an {.file .R}, {.file .Rd}, vignette",
-        "({.file .Rmd}, {.file .qmd}, {.file .Rnw}) or DESCRIPTION ({.file .txt})",
-        "scenario."
+        "({.file .Rmd}, {.file .qmd}, {.file .Rnw}), DESCRIPTION ({.file .txt})",
+        "or CITATION ({.file .CITATION}) scenario."
       ),
       "x" = "{.file {example_path}} is none of these."
     ))
@@ -181,6 +183,7 @@ scenario_target <- function(example_path) {
     rmd = ,
     qmd = ,
     rnw = file.path("vignettes", basename(example_path)),
+    citation = file.path("inst", "CITATION"),
     NA_character_
   )
 }
@@ -255,7 +258,7 @@ create_example_description <- function(desc_path, type = "minimal") {
 #' can be used with [example_diagnose_scenario()].
 #'
 #' @param category Character. Optional category filter. One of "code",
-#'   "description", "documentation", "network", "temp", or "all".
+#'   "description", "documentation", "general", "network", "temp", or "all".
 #'   Default: "all".
 #' @param pattern Character. Optional regex pattern to filter filenames.
 #'   Default: `NULL` (no filtering).
@@ -299,6 +302,7 @@ show_example_files <- function(category = "all", pattern = NULL) {
       "code" = "^code_examples/",
       "description" = "^description_examples/",
       "documentation" = "^documentation_examples/",
+      "general" = "^general_examples/",
       "network" = "^network_examples/",
       "temp" = "^temp_examples/",
       ".*" # Default: include all
