@@ -258,12 +258,17 @@ test_that("parse_authors_at_r(): refuses exactly the calls R's own reader does",
     "person('A', role = 'cre', comment = c(n = -1))",
     "person('A', role = if (TRUE) 'cre')"
   )
+  # R-devel (4.7) evaluates the field in an environment holding only the allowed
+  # functions, so it also accepts a parenthesised name such as (c)(...). R 4.6,
+  # which builds packages today, refuses one, and so does checktor.
+  paren_callee <- c("(c)(person('A', role = 'cre'))", "(person)('A', role = 'cre')")
   for (aar in fields) {
+    # A refusal is an error; its wording differs between R versions.
     r <- tryCatch(
       utils:::.read_authors_at_R_field(aar, strict = TRUE),
-      error = conditionMessage
+      error = function(e) e
     )
-    r_refuses <- is.character(r) && grepl("possibly unsafe calls", r)
+    r_refuses <- inherits(r, "error") || aar %in% paren_callee
     pa <- parse_authors_at_r(list(`Authors@R` = aar))
     expect_identical(length(pa$refused) > 0L, r_refuses, info = aar)
   }

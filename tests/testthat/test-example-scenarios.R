@@ -300,8 +300,11 @@ test_that("example_diagnose_scenario(): every lab_*() example shows its check fi
   # - lab_spelling() needs aspell or hunspell. Without one it is skipped, and
   #   which words a dictionary flags differs by machine, so a finding is
   #   required only off CRAN on a machine with a backend.
+  # - lab_rd_bibliography() looks keys up in R's own bibliography, which R 4.6.0
+  #   added. On an older R it is skipped, so its example finds nothing there.
   not_run <- "lab_url_liveness"
   backend <- "lab_spelling"
+  needs_r_bibliography <- if (is.null(r_bibliography_keys())) "lab_rd_bibliography"
   withr::local_options(checktor.spelling = TRUE)
   has_backend <- nzchar(Sys.which("aspell")) || nzchar(Sys.which("hunspell"))
 
@@ -322,6 +325,10 @@ test_that("example_diagnose_scenario(): every lab_*() example shows its check fi
     expect_gt(length(seen), 0L, label = paste(fn, "calls in its example"))
     res <- seen[[length(seen)]]
     if (fn %in% backend && (!has_backend || !identical(Sys.getenv("NOT_CRAN"), "true"))) {
+      next
+    }
+    if (fn %in% needs_r_bibliography) {
+      expect_true(isTRUE(res$skipped), label = paste(fn, "skipped without R's bibliography"))
       next
     }
     expect_false(isTRUE(res$skipped), label = paste(fn, "skipped in its example"))

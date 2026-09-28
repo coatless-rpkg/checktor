@@ -5,6 +5,7 @@
 # Test lab_rd_bibliography() ----
 
 test_that("lab_rd_bibliography(): reports a key with no entry, on its line", {
+  skip_without_r_bibliography()
   # R CMD check: "Could not find bibentries for the following keys: 'nokey99'"
   pkg <- bib_pkg("See \\bibcitet{smith2020} and \\bibcitep{nokey99}.")
   expect_equal(
@@ -14,12 +15,13 @@ test_that("lab_rd_bibliography(): reports a key with no entry, on its line", {
 })
 
 test_that("lab_rd_bibliography(): a key in R's own bibliography is found", {
-  skip_if_not(length(r_bibliography_keys()) > 0L, "R's bibliography needs R 4.6.0")
+  skip_without_r_bibliography()
   pkg <- bib_pkg("See \\bibcitep{R:Chambers:2008}.", refs = list())
   expect_true(lab_rd_bibliography(pkg, verbose = FALSE)$passed)
 })
 
 test_that("lab_rd_bibliography(): reads the key out of a citespec", {
+  skip_without_r_bibliography()
   pkg <- bib_pkg("See \\bibcitep{see|smith2020|page 3} and \\bibcitep{e|nokey|}.")
   expect_equal(
     lab_rd_bibliography(pkg, verbose = FALSE)$issues,
@@ -28,6 +30,7 @@ test_that("lab_rd_bibliography(): reads the key out of a citespec", {
 })
 
 test_that("lab_rd_bibliography(): reports a key that only \\bibshow{} names", {
+  skip_without_r_bibliography()
   pkg <- bib_pkg("Text.", references = "\\bibshow{smith2020, gone2001}")
   expect_equal(
     lab_rd_bibliography(pkg, verbose = FALSE)$issues,
@@ -36,6 +39,7 @@ test_that("lab_rd_bibliography(): reports a key that only \\bibshow{} names", {
 })
 
 test_that("lab_rd_bibliography(): reads REFERENCES.R without running it", {
+  skip_without_r_bibliography()
   pkg <- bib_pkg(
     "See \\bibcitet{jones2019} and \\bibcitet{smith2020}.",
     refs = list("inst/REFERENCES.R" = c(
@@ -51,6 +55,7 @@ test_that("lab_rd_bibliography(): reads REFERENCES.R without running it", {
 })
 
 test_that("lab_rd_bibliography(): uses the first REFERENCES file R would", {
+  skip_without_r_bibliography()
   # R looks in the package root before inst/, and takes .rds, then .R, then
   # .bib, stopping at the first it finds.
   pkg <- bib_pkg(
@@ -77,6 +82,7 @@ test_that("lab_rd_bibliography(): does not guess at a bibliography it cannot rea
 })
 
 test_that("lab_rd_bibliography(): reports a REFERENCES file left at the top level", {
+  skip_without_r_bibliography()
   # R CMD check --as-cran: "Non-standard file/directory found at top level".
   pkg <- bib_pkg(
     "See \\bibcitet{smith2020}.",
@@ -92,6 +98,7 @@ test_that("lab_rd_bibliography(): reports a REFERENCES file left at the top leve
 })
 
 test_that("lab_rd_bibliography(): reports a citation no \\bibshow{} lists", {
+  skip_without_r_bibliography()
   # R CMD check: "Bibentries cited but not shown in Rd file 'f.Rd'".
   pkg <- bib_pkg("See \\bibcitet{smith2020}.", references = NULL)
   expect_equal(
@@ -109,6 +116,7 @@ test_that("lab_rd_bibliography(): an empty \\bibshow{} clears what was cited", {
 })
 
 test_that("lab_rd_bibliography(): checks pkg::key against an installed dependency", {
+  skip_without_r_bibliography()
   dep <- make_temp_dir()
   writeLines(BIB_SMITH, file.path(dep, "REFERENCES.bib"))
   pkg <- bib_pkg(
@@ -126,6 +134,7 @@ test_that("lab_rd_bibliography(): checks pkg::key against an installed dependenc
 })
 
 test_that("lab_rd_bibliography(): a dependency with no bibliography has no keys", {
+  skip_without_r_bibliography()
   # R installs only inst/, so a package that kept REFERENCES at its top level
   # gives another package nothing to cite.
   dep <- make_temp_dir()

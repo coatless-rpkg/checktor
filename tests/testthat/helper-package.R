@@ -248,6 +248,12 @@ policy_pkg <- function(envir = parent.frame()) {
   pkg
 }
 
+# lab_rd_bibliography() looks cited keys up in R's own bibliography, which R 4.6.0
+# added; on an older R it is skipped, so a test that needs a finding skips too.
+skip_without_r_bibliography <- function() {
+  testthat::skip_if(is.null(r_bibliography_keys()), "R's bibliography needs R 4.6.0")
+}
+
 # A package whose man/f.Rd cites with R's bibliography macros. `description` is
 # the text of its \description{}, on line 4 of f.Rd, and `references` the body of
 # its \references{}. `refs` maps a file name under the package root, such as
