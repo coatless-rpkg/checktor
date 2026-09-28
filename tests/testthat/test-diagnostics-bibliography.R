@@ -4,11 +4,6 @@
 
 # Test lab_rd_bibliography() ----
 
-test_that("lab_rd_bibliography(): passes a key found in inst/REFERENCES.bib", {
-  pkg <- bib_pkg("See \\bibcitet{smith2020}.", extra = "Suggests: bibtex")
-  expect_true(lab_rd_bibliography(pkg, verbose = FALSE)$passed)
-})
-
 test_that("lab_rd_bibliography(): reports a key with no entry, on its line", {
   # R CMD check: "Could not find bibentries for the following keys: 'nokey99'"
   pkg <- bib_pkg("See \\bibcitet{smith2020} and \\bibcitep{nokey99}.")

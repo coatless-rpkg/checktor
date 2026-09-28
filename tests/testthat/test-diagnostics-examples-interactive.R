@@ -15,13 +15,30 @@ test_that("lab_example_interactive(): accepts an interactive() guard", {
   expect_true(lab_example_interactive(pkg, verbose = FALSE)$passed)
 })
 
-test_that("lab_example_interactive(): accepts dontrun AROUND a guard", {
-  # The test above has no \dontrun{} at all, so it never gets past the "nothing is
-  # hidden" guard and never reaches the interactive() exemption. This shape does:
-  # something IS hidden, and it is an interactive call, and the author has already
-  # written the guard CRAN asks for. Belt and braces, not a finding.
-  pkg <- rd_pkg(c("\\dontrun{", "  if (interactive()) runApp(app)", "}"))
-  expect_true(lab_example_interactive(pkg, verbose = FALSE)$passed)
+test_that("lab_example_interactive(): accepts a guard inside dontrun that keeps the call out of R CMD check", {
+  cases <- list(
+    # "accepts an interactive() guard" has no \dontrun{} at all, so it never gets
+    # past the "nothing is hidden" guard and never reaches the interactive()
+    # exemption. This shape does: something IS hidden, and it is an interactive
+    # call, and the author has already written the guard CRAN asks for. Belt and
+    # braces, not a finding.
+    around = "  if (interactive()) runApp(app)",
+    eq_assignment = "if (interactive()) res = readline('Name? ')",
+    else_of_negated = "if (!interactive()) message('skip') else shiny::runApp(app)",
+    # The else runs only when both sides are false, so only in a session.
+    else_of_negated_disjunction =
+      "if (!interactive() || !ready()) message('skip') else shiny::runApp(app)",
+    # `&&` evaluates its right side only when its left side is true.
+    short_circuit = "interactive() && shiny::runApp(app)",
+    comment_inside = c(
+      "if (interactive() && # someone at the keyboard",
+      "    ready()) shiny::runApp(app)"
+    )
+  )
+  for (case in names(cases)) {
+    pkg <- rd_pkg(c("\\dontrun{", cases[[case]], "}"))
+    expect_true(lab_example_interactive(pkg, verbose = FALSE)$passed, label = case)
+  }
 })
 
 test_that("lab_example_interactive(): a guard outside dontrun is no excuse", {
@@ -52,11 +69,6 @@ test_that("lab_example_interactive(): prints its finding and treatment", {
   )
   expect_match(out, "in place of `\\dontrun{}`", fixed = TRUE)
   expect_match(out, "runs `\\donttest{}` code", fixed = TRUE)
-})
-
-test_that("lab_example_interactive(): leaves a non-interactive dontrun alone", {
-  pkg <- rd_pkg(c("\\dontrun{", "  long_running_fit(data)", "}"))
-  expect_true(lab_example_interactive(pkg, verbose = FALSE)$passed)
 })
 
 test_that("lab_example_interactive(): ignores a call named in a comment (#19)", {
@@ -104,61 +116,55 @@ test_that("lab_example_interactive(): a method of the same name is not the call"
 })
 
 test_that("lab_example_interactive(): recognises a launcher by its name", {
-  pkg <- rd_pkg(c("\\dontrun{", "launch_app()", "runShinyApp(dir)", "}"))
+  pkg <- rd_pkg(c(
+    "\\dontrun{",
+    "launch_app()",
+    "runShinyApp(dir)",
+    # manureshed's launch_dashboard() wraps shiny::runApp(); shinystan's launcher
+    # and a GUI launcher are named for what they open, not for "app".
+    "launch_dashboard(port = 3838)",
+    "launch_shinystan(fit)",
+    "launchGUI()",
+    "run_shiny()",
+    "}"
+  ))
   res <- lab_example_interactive(pkg, verbose = FALSE)
   expect_false(res$passed)
-  expect_match(res$issues, "launch_app()", all = FALSE, fixed = TRUE)
-  expect_match(res$issues, "runShinyApp()", all = FALSE, fixed = TRUE)
+  for (fn in c("launch_app()", "runShinyApp()", "launch_dashboard()",
+               "launch_shinystan()", "launchGUI()", "run_shiny()")) {
+    expect_match(res$issues, fn, all = FALSE, fixed = TRUE, label = fn)
+  }
 })
 
-test_that("lab_example_interactive(): a guard in a comment or string is no excuse", {
-  pkg <- rd_pkg(c(
-    "\\dontrun{",
-    "# needs an interactive() session",
-    "message('not interactive()-safe')",
-    "shiny::runApp(app)",
-    "}"
-  ))
-  expect_false(lab_example_interactive(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_example_interactive(): a negated guard is no excuse", {
-  # Under R CMD check the stop() fires, so the example errors either way.
-  pkg <- rd_pkg(c(
-    "\\dontrun{",
-    "if (!interactive()) stop('run me at the console')",
-    "shiny::runApp(app)",
-    "}"
-  ))
-  expect_equal(
-    lab_example_interactive(pkg, verbose = FALSE)$issues,
-    "f.Rd: runApp() is hidden in \\dontrun{}"
+test_that("lab_example_interactive(): a guard that does not keep the call out of R CMD check is no excuse", {
+  cases <- list(
+    in_comment_or_string = c(
+      "# needs an interactive() session",
+      "message('not interactive()-safe')",
+      "shiny::runApp(app)"
+    ),
+    # Under R CMD check the stop() fires, so the example errors either way.
+    negated = c("if (!interactive()) stop('run me at the console')", "shiny::runApp(app)"),
+    around_another_call = c("if (interactive()) utils::View(df)", "shiny::runApp(app)"),
+    else_branch = "if (interactive()) print(1) else shiny::runApp(app)",
+    # The else runs whenever either side is false, so `ready()` alone being false
+    # runs the app outside a session.
+    else_of_negated_conjunction =
+      "if (!interactive() && ready()) message('skip') else shiny::runApp(app)",
+    # The next three conditions can be true under R CMD check, so none of them
+    # is a guard.
+    is_false = "if (isFALSE(interactive())) shiny::runApp(app)",
+    or_ci_unset = "if (Sys.getenv('CI') == '' || interactive()) shiny::runApp(app)",
+    method = "if (session$interactive()) shiny::runApp(app)"
   )
-})
-
-test_that("lab_example_interactive(): a guard around one call excuses only it", {
-  pkg <- rd_pkg(c(
-    "\\dontrun{",
-    "if (interactive()) utils::View(df)",
-    "shiny::runApp(app)",
-    "}"
-  ))
-  expect_equal(
-    lab_example_interactive(pkg, verbose = FALSE)$issues,
-    "f.Rd: runApp() is hidden in \\dontrun{}"
-  )
-})
-
-test_that("lab_example_interactive(): the else branch is not guarded", {
-  pkg <- rd_pkg(c(
-    "\\dontrun{",
-    "if (interactive()) print(1) else shiny::runApp(app)",
-    "}"
-  ))
-  expect_equal(
-    lab_example_interactive(pkg, verbose = FALSE)$issues,
-    "f.Rd: runApp() is hidden in \\dontrun{}"
-  )
+  for (case in names(cases)) {
+    pkg <- rd_pkg(c("\\dontrun{", cases[[case]], "}"))
+    expect_equal(
+      lab_example_interactive(pkg, verbose = FALSE)$issues,
+      "f.Rd: runApp() is hidden in \\dontrun{}",
+      label = case
+    )
+  }
 })
 
 test_that("lab_example_interactive(): accepts an @examplesIf interactive() guard", {
@@ -191,23 +197,6 @@ test_that("lab_example_interactive(): tells adjacent blocks apart", {
   expect_false(res$passed)
   expect_match(res$issues, "\\donttest{}", all = FALSE, fixed = TRUE)
   expect_false(any(grepl("dontrun", res$issues, fixed = TRUE)))
-})
-
-test_that("lab_example_interactive(): recognises launchers beyond app and gadget", {
-  # manureshed's launch_dashboard() wraps shiny::runApp(); shinystan's launcher
-  # and a GUI launcher are named for what they open, not for "app".
-  pkg <- rd_pkg(c(
-    "\\dontrun{",
-    "launch_dashboard(port = 3838)",
-    "launch_shinystan(fit)",
-    "launchGUI()",
-    "run_shiny()",
-    "}"
-  ))
-  res <- lab_example_interactive(pkg, verbose = FALSE)
-  for (fn in c("launch_dashboard()", "launch_shinystan()", "launchGUI()", "run_shiny()")) {
-    expect_match(res$issues, fn, all = FALSE, fixed = TRUE)
-  }
 })
 
 test_that("lab_example_interactive(): building a shiny app is not running it", {
@@ -264,71 +253,6 @@ test_that("lab_example_interactive(): keeps an enclosing guard when a block will
     "\\dontshow{\\}) # examplesIf}"
   ))
   expect_true(lab_example_interactive(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_example_interactive(): a guarded `=` assignment is guarded", {
-  pkg <- rd_pkg(c("\\dontrun{", "if (interactive()) res = readline('Name? ')", "}"))
-  expect_true(lab_example_interactive(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_example_interactive(): the else of a negated guard is guarded", {
-  pkg <- rd_pkg(c(
-    "\\dontrun{",
-    "if (!interactive()) message('skip') else shiny::runApp(app)",
-    "}"
-  ))
-  expect_true(lab_example_interactive(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_example_interactive(): the else of a negated conjunction is not guarded", {
-  # The else runs whenever either side is false, so `ready()` alone being false
-  # runs the app outside a session.
-  pkg <- rd_pkg(c(
-    "\\dontrun{",
-    "if (!interactive() && ready()) message('skip') else shiny::runApp(app)",
-    "}"
-  ))
-  expect_equal(
-    lab_example_interactive(pkg, verbose = FALSE)$issues,
-    "f.Rd: runApp() is hidden in \\dontrun{}"
-  )
-})
-
-test_that("lab_example_interactive(): the else of a negated disjunction is guarded", {
-  # The else runs only when both sides are false, so only in a session.
-  pkg <- rd_pkg(c(
-    "\\dontrun{",
-    "if (!interactive() || !ready()) message('skip') else shiny::runApp(app)",
-    "}"
-  ))
-  expect_true(lab_example_interactive(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_example_interactive(): a guard that short-circuits is a guard", {
-  # `&&` evaluates its right side only when its left side is true.
-  pkg <- rd_pkg(c("\\dontrun{", "interactive() && shiny::runApp(app)", "}"))
-  expect_true(lab_example_interactive(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_example_interactive(): a comment inside a guard leaves it a guard", {
-  pkg <- rd_pkg(c(
-    "\\dontrun{",
-    "if (interactive() && # someone at the keyboard",
-    "    ready()) shiny::runApp(app)",
-    "}"
-  ))
-  expect_true(lab_example_interactive(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_example_interactive(): a condition that is true under R CMD check is no guard", {
-  for (guard in c(
-    "isFALSE(interactive())",
-    "Sys.getenv('CI') == '' || interactive()",
-    "session$interactive()"
-  )) {
-    pkg <- rd_pkg(c("\\dontrun{", paste0("if (", guard, ") shiny::runApp(app)"), "}"))
-    expect_false(lab_example_interactive(pkg, verbose = FALSE)$passed, label = guard)
-  }
 })
 
 test_that("lab_example_interactive(): reads each block when the whole will not", {

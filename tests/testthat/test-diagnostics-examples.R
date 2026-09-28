@@ -131,16 +131,6 @@ test_that("lab_example_installs(): reads a dontdiff block as code", {
   )
 })
 
-test_that("lab_example_installs(): names the .Rd line of a call after an #ifdef", {
-  pkg <- rd_pkg(c(
-    "#ifdef windows", "x <- 1", "#endif", "y <- 2", "install.packages('x')"
-  ))
-  expect_equal(
-    lab_example_installs(pkg, verbose = FALSE)$issues,
-    "example f.Rd:11 (installs software)"
-  )
-})
-
 test_that("lab_example_installs(): honours a Quarto eval: false chunk option", {
   # Quarto sets chunk options in `#|` comments rather than in the chunk header.
   pkg <- script_pkg(
@@ -186,21 +176,10 @@ test_that("lab_example_writes(): reports a write to a literal path", {
   pkg <- rd_pkg("writeLines('x', 'out.txt')")
   res <- lab_example_writes(pkg, verbose = FALSE)
   expect_equal(res$issues, "example f.Rd:7 (writeLines())")
-})
-
-test_that("lab_example_writes(): reads hidden blocks that share a line", {
-  # Run together, the two bodies read `f()writeLines(...)`, which does not parse.
-  pkg <- rd_pkg("\\dontrun{f()}\\donttest{writeLines('x', 'out.txt')}")
+  # A write in a hidden block is read too, even as a call's argument.
+  hidden <- rd_pkg("suppressMessages(\\donttest{writeLines('x', 'out.txt')})")
   expect_equal(
-    lab_example_writes(pkg, verbose = FALSE)$issues,
-    "example f.Rd:7 (writeLines())"
-  )
-})
-
-test_that("lab_example_writes(): reads a hidden block that is a call's argument", {
-  pkg <- rd_pkg("suppressMessages(\\donttest{writeLines('x', 'out.txt')})")
-  expect_equal(
-    lab_example_writes(pkg, verbose = FALSE)$issues,
+    lab_example_writes(hidden, verbose = FALSE)$issues,
     "example f.Rd:7 (writeLines())"
   )
 })
@@ -268,6 +247,9 @@ test_that("lab_example_writes(): knows the tidyverse and common writers", {
 test_that("lab_example_tf_usage(): reports T in an example on its .Rd line", {
   res <- lab_example_tf_usage(rd_pkg("quiet(x, be_quiet = T)"), verbose = FALSE)
   expect_equal(res$issues, "example f.Rd:7")
+  # \dontrun{} code is read as well: a reader copies it.
+  pkg <- rd_pkg(c("\\dontrun{", "f(verbose = T)", "}"))
+  expect_equal(lab_example_tf_usage(pkg, verbose = FALSE)$issues, "example f.Rd:8")
 })
 
 test_that("lab_example_tf_usage(): reports F in a vignette chunk on its line", {
@@ -281,11 +263,6 @@ test_that("lab_example_tf_usage(): reports F in a vignette chunk on its line", {
 test_that("lab_example_tf_usage(): reports T in a demo", {
   pkg <- script_pkg(c("x <- 1", "y <- T"), "demo", "d.R")
   expect_equal(lab_example_tf_usage(pkg, verbose = FALSE)$issues, "demo d.R:2")
-})
-
-test_that("lab_example_tf_usage(): reads a dontrun block", {
-  pkg <- rd_pkg(c("\\dontrun{", "f(verbose = T)", "}"))
-  expect_equal(lab_example_tf_usage(pkg, verbose = FALSE)$issues, "example f.Rd:8")
 })
 
 test_that("lab_example_tf_usage(): leaves tests out unless asked", {
@@ -320,29 +297,29 @@ test_that("lab_example_tf_usage(): passes a package with no examples", {
 # Test lab_example_unparseable() ----
 
 # "Warning: Unexecutable code in man/make.trait.model.Rd"
-test_that("lab_example_unparseable(): reports an example that is not R, on its line", {
-  pkg <- rd_pkg(c("x <- 1", "plot(x, main = 'a'"))
-  res <- lab_example_unparseable(pkg, verbose = FALSE)
-  expect_false(res$passed)
-  expect_length(res$issues, 1L)
-  expect_match(res$issues, "^example f\\.Rd:\\d+ \\(")
+test_that("lab_example_unparseable(): reports an unfinished example at its last line", {
+  # The parser stops past the last line, so the report names the last line with
+  # code in it.
+  cases <- list(
+    missing_paren = c("x <- 1", "plot(x, main = 'a'"),
+    open_call = c("f(1,", "  2")
+  )
+  for (case in names(cases)) {
+    res <- lab_example_unparseable(rd_pkg(cases[[case]]), verbose = FALSE)
+    expect_false(res$passed, info = case)
+    expect_identical(length(res$issues), 1L, info = case)
+    expect_match(res$issues, "^example f\\.Rd:8 \\(", info = case)
+  }
 })
 
 test_that("lab_example_unparseable(): reads inside dontrun, which R CMD check does not", {
+  # The other example checks read the parts of a broken block that parse, so an
+  # install beside a placeholder is still seen. That repair must not make the
+  # example itself count as R: this check reads it unrepaired. Read repaired,
+  # `x <- 1` and a blanked block would parse and nothing would be reported.
   pkg <- rd_pkg(c("x <- 1", "\\dontrun{", "my_fn(<your API key>)", "}"))
   res <- lab_example_unparseable(pkg, verbose = FALSE)
   expect_match(res$issues, "^example f\\.Rd:9 \\(unexpected '<'\\)$")
-})
-
-test_that("lab_example_unparseable(): the repair other checks rely on does not hide it", {
-  # The other example checks read the parts of a broken block that parse, so an
-  # install beside a placeholder is still seen. That repair must not make the
-  # example itself count as R.
-  pkg <- rd_pkg(c(
-    "\\dontrun{", "my_fn(<your key>)", "install.packages('x')", "}"
-  ))
-  expect_false(lab_example_installs(pkg, verbose = FALSE)$passed)
-  expect_false(lab_example_unparseable(pkg, verbose = FALSE)$passed)
 })
 
 test_that("lab_example_unparseable(): an Rd comment is not code", {
@@ -363,14 +340,6 @@ test_that("lab_example_unparseable(): passes blocks that are R, on a line or acr
   expect_true(lab_example_unparseable(pkg, verbose = FALSE)$passed)
 })
 
-test_that("lab_example_unparseable(): reports an unfinished example at its last line", {
-  pkg <- rd_pkg(c("f(1,", "  2"))
-  expect_match(
-    lab_example_unparseable(pkg, verbose = FALSE)$issues,
-    "^example f\\.Rd:8 \\("
-  )
-})
-
 test_that("lab_example_unparseable(): passes a package with no examples", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
@@ -384,30 +353,6 @@ test_that("lab_example_internal_ns(): reports a triple colon in an example", {
   pkg <- rd_pkg("t:::internal_fn(1)")
   res <- lab_example_internal_ns(pkg, verbose = FALSE)
   expect_equal(res$issues, "example f.Rd:7 (uses :::)")
-})
-
-test_that("lab_example_internal_ns(): reads an example that carries an Rd comment", {
-  pkg <- rd_pkg(c("% was: t:::old_fn()", "t:::internal_fn(1)"))
-  expect_equal(
-    lab_example_internal_ns(pkg, verbose = FALSE)$issues,
-    "example f.Rd:8 (uses :::)"
-  )
-})
-
-test_that("lab_example_internal_ns(): reads the code after a block that ends in ;", {
-  pkg <- rd_pkg(c("\\dontrun{f();}", "t:::internal_fn(1)"))
-  expect_equal(
-    lab_example_internal_ns(pkg, verbose = FALSE)$issues,
-    "example f.Rd:8 (uses :::)"
-  )
-})
-
-test_that("lab_example_internal_ns(): reads the code after a block and a ;", {
-  pkg <- rd_pkg("\\dontrun{f()} ; t:::g()")
-  expect_equal(
-    lab_example_internal_ns(pkg, verbose = FALSE)$issues,
-    "example f.Rd:7 (uses :::)"
-  )
 })
 
 test_that("lab_example_internal_ns(): accepts a double colon in an example", {

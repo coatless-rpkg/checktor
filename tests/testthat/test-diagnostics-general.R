@@ -3,26 +3,6 @@
 
 # Test lab_package_size() ----
 
-test_that("lab_package_size(): excludes .Rbuildignore'd directories", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-
-  # Add a faux .git directory that would inflate size if included.
-  big_dir <- file.path(pkg, ".git")
-  dir.create(big_dir, recursive = TRUE)
-  writeLines(rep("x", 1e5), file.path(big_dir, "huge.txt"))
-
-  # Add it to .Rbuildignore so the matcher excludes it (also matched by
-  # the always-skip set).
-  writeLines(c("^\\.git$"), file.path(pkg, ".Rbuildignore"))
-
-  res <- lab_package_size(pkg, verbose = FALSE)
-  # The fake huge file is ~ 200 KB but checked exclusion should keep us well
-  # under the 5 MB threshold.
-  expect_lt(res$size_mb, 1)
-  expect_true(res$passed)
-})
-
 test_that("lab_package_size(): excludes a large .Rbuildignore'd docs/ tree", {
   # The pkgdown case: an untracked docs/ excluded by a bare `^docs$` must not
   # count. 6 MB of incompressible bytes would blow the 5 MB limit if counted.

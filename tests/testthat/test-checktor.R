@@ -73,13 +73,9 @@ test_that("checktor(): a DESCRIPTION R cannot read counts against the verdict", 
   td <- tidy(r)
   expect_identical(td$check[!td$passed & !td$skipped], "description_file")
   expect_identical(failed_checks(r), "description.description_file")
-})
 
-test_that("checktor(): names the DESCRIPTION checks that could not run", {
-  r <- checktor(unparseable_pkg(), verbose = FALSE, progress = FALSE)
-  td <- tidy(r)
-  desc_rows <- td[td$category == "description", ]
-  sat_out <- desc_rows$check[desc_rows$skipped]
+  # The checks that read DESCRIPTION sit out, and the run names them.
+  sat_out <- td$check[td$category == "description" & td$skipped]
   expect_true(all(c("software_names", "authors", "license") %in% sat_out))
   expect_false(any(c("description_file", "license_year") %in% sat_out))
   expect_true(all(sat_out %in% r$metadata$skipped_checks))
@@ -105,53 +101,17 @@ test_that("checktor(): a DESCRIPTION R cannot open prints no warning", {
   expect_identical(failed_checks(r), "description.description_file")
 })
 
-test_that("checktor(): policy violations are part of the main run", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg, r_code = c("f <- function() { browser(); 1 }"))
-
-  results <- checktor(pkg, verbose = FALSE, progress = FALSE)
-  expect_true("policy_issues" %in% names(results))
-  expect_false(results$policy_issues$browser_calls$passed)
-})
-
-test_that("checktor(): reads the code when keep.parse.data is off", {
-  # sys.source() and some IDE tooling turn the option off, and getParseData() is
-  # then empty for every parse. Each parse-tree check saw a blank file, so a
-  # package full of bare T came back healthy.
-  withr::local_options(keep.parse.data = FALSE)
-  pkg <- make_temp_dir()
-  write_pkg(pkg, r_code = "f <- function() T")
-
-  results <- checktor(pkg, verbose = FALSE, progress = FALSE)
-  expect_equal(results$code_issues$tf_usage$issues, "test.R:1")
-  expect_false(is_healthy(results))
-  # The caller's setting is theirs, and is back once the run ends.
-  expect_false(getOption("keep.parse.data"))
-})
-
-test_that("checktor(): errors clearly on a non-package directory", {
-  empty <- make_temp_dir()
-  expect_error(checktor(empty, verbose = FALSE), "No DESCRIPTION file found")
-})
-
-test_that("checktor(): category objects are classed checktor_category_result", {
-  pkg <- example_diagnose_scenario(
-    "code_examples/tf_usage_bad.R",
-    show_content = FALSE,
-    cleanup = TRUE
+test_that("checktor(): errors clearly on a directory outside any package", {
+  skip_if_tempdir_in_package()
+  bare <- make_temp_dir()
+  err <- expect_error(
+    checktor(bare, verbose = FALSE, progress = FALSE),
+    "No DESCRIPTION file found"
   )
-  r <- checktor(pkg, verbose = FALSE, progress = FALSE)
-  expect_s3_class(r$code_issues, "checktor_category_result")
-  expect_s3_class(
-    diagnose_code_issues(pkg, verbose = FALSE),
-    "checktor_category_result"
-  )
-  # nested access still works
-  expect_false(r$code_issues$tf_usage$passed)
-  expect_type(r$code_issues$passed, "logical")
+  expect_match(conditionMessage(err), "any directory above it")
 })
 
-test_that("checktor(): from a subdirectory matches a run from the root", {
+test_that("checktor(): resolves the package from a subdirectory or the working directory", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
 
@@ -161,11 +121,6 @@ test_that("checktor(): from a subdirectory matches a run from the root", {
   expect_equal(tidy(from_sub)$check, tidy(from_root)$check)
   expect_equal(tidy(from_sub)$passed, tidy(from_root)$passed)
   expect_equal(n_issues(from_sub), n_issues(from_root))
-})
-
-test_that("checktor(): resolves the package from the working directory", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
 
   # withr undoes in reverse order, so the working directory is restored before
   # make_temp_dir() removes the package. Windows refuses to remove a directory
@@ -174,15 +129,6 @@ test_that("checktor(): resolves the package from the working directory", {
   res <- checktor(verbose = FALSE, progress = FALSE) # path defaults to "."
   expect_s3_class(res, "checktor_results")
   expect_true(is_healthy(res))
-})
-
-test_that("checktor(): a directory outside any package still errors clearly", {
-  skip_if_tempdir_in_package()
-  bare <- make_temp_dir()
-  expect_error(
-    checktor(bare, verbose = FALSE, progress = FALSE),
-    "any directory above it"
-  )
 })
 
 test_that("checktor(): an on-request check is discoverable, not a skip", {
@@ -218,9 +164,6 @@ test_that("checktor(): a check that did not run is skipped, not passing", {
   # setup.R turns both gated checks off, which is the same state as a CI run.
   r <- checktor(pkg, verbose = FALSE, progress = FALSE)
   td <- tidy(r)
-
-  expect_true("skipped" %in% names(td))
-  expect_true(any(td$skipped))
   expect_true("url_liveness" %in% td$check[td$skipped])
   expect_false(td$passed[td$check == "url_liveness"])
 
@@ -235,18 +178,7 @@ test_that("checktor(): a check that did not run is skipped, not passing", {
   expect_true("url_liveness" %in% r$metadata$skipped_checks)
 })
 
-test_that("checktor(): a check that ran is not marked skipped", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  withr::local_options(checktor.url_check = TRUE)
-  testthat::local_mocked_bindings(fetch_url_db = function(path) data.frame())
-
-  r <- checktor(pkg, verbose = FALSE, progress = FALSE)
-  expect_false(isTRUE(r$general_issues$url_liveness$skipped))
-  expect_false("url_liveness" %in% r$metadata$skipped_checks)
-})
-
-test_that("checktor(): counts only the tiers the verdict is about", {
+test_that("checktor(): severity is validated and decides which tiers count against the verdict", {
   # The fixture trips tf_usage (robustness, 7 issues) and, without its NEWS.md,
   # news_file (opinion, 1). By default the opinion finding is REPORTED but does
   # not count against a clean bill of health.
@@ -256,47 +188,31 @@ test_that("checktor(): counts only the tiers the verdict is about", {
     cleanup = TRUE
   )
   unlink(file.path(pkg, "NEWS.md"))
-  r <- checktor(pkg, verbose = FALSE, progress = FALSE)
 
-  expect_equal(n_issues(r), 7L) # verdict
-  expect_equal(nrow(issues(r)), 8L) # everything, still visible
-  expect_equal(r$metadata$advisory_issues, 1L)
-  expect_true("opinion" %in% issues(r)$severity)
-})
+  r_default <- checktor(pkg, verbose = FALSE, progress = FALSE)
+  expect_equal(n_issues(r_default), 7L) # verdict
+  expect_equal(nrow(issues(r_default)), 8L) # everything, still visible
+  expect_equal(r_default$metadata$advisory_issues, 1L)
+  expect_true("opinion" %in% issues(r_default)$severity)
 
-test_that("checktor(): asking for all tiers folds opinion into the verdict", {
-  pkg <- example_diagnose_scenario(
-    "code_examples/tf_usage_bad.R",
-    show_content = FALSE,
-    cleanup = TRUE
-  )
-  unlink(file.path(pkg, "NEWS.md")) # an opinion finding: news_file
-  r <- checktor(
+  # Asking for all tiers folds opinion into the verdict.
+  r_all <- checktor(
     pkg,
     verbose = FALSE,
     progress = FALSE,
     severity = SEVERITY_LEVELS
   )
-  expect_equal(n_issues(r), 8L)
-  expect_equal(r$metadata$advisory_issues, 0L)
-})
+  expect_equal(n_issues(r_all), 8L)
+  expect_equal(r_all$metadata$advisory_issues, 0L)
+  expect_equal(r_all$metadata$failed_checks, 2L)
 
-test_that("checktor(): a policy-only run ignores robustness findings", {
-  pkg <- example_diagnose_scenario(
-    "code_examples/tf_usage_bad.R",
-    show_content = FALSE,
-    cleanup = TRUE
-  )
-  unlink(file.path(pkg, "NEWS.md")) # an opinion finding: news_file
-  r <- checktor(pkg, verbose = FALSE, progress = FALSE, severity = "policy")
-  expect_equal(n_issues(r), 0L) # tf_usage is robustness, not policy
-  expect_true(is_healthy(r))
-  expect_equal(r$metadata$advisory_issues, 8L)
-})
+  # A policy-only run ignores robustness findings.
+  r_policy <- checktor(pkg, verbose = FALSE, progress = FALSE, severity = "policy")
+  expect_equal(n_issues(r_policy), 0L) # tf_usage is robustness, not policy
+  expect_true(is_healthy(r_policy))
+  expect_equal(r_policy$metadata$advisory_issues, 8L)
 
-test_that("checktor(): severity is validated", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
+  # An unknown tier is refused before anything runs.
   expect_error(
     checktor(pkg, verbose = FALSE, progress = FALSE, severity = "nonsense")
   )

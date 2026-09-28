@@ -134,10 +134,16 @@ test_that("checktor(): honours disable and allow end to end", {
   expect_equal(sum(issues(r)$check == "tf_usage"), 0L)
   expect_gte(r$metadata$suppressed, 1L)
 
+  # The docs promise a disabled check does not run. It used to run, print its
+  # finding in the live output, and only then be removed from the results.
   pkg2 <- make_temp_dir()
   write_pkg(pkg2, news = FALSE, extra = "Config/checktor/disable: news_file")
-  r2 <- checktor(pkg2, verbose = FALSE, progress = FALSE)
+  out <- paste(
+    cli::cli_fmt(r2 <- checktor(pkg2, verbose = TRUE, progress = FALSE)),
+    collapse = "\n"
+  )
   expect_false("news_file" %in% tidy(r2)$check)
+  expect_false(grepl("No NEWS file found", out, fixed = TRUE))
 })
 
 test_that("checktor(): suppression reaches a DESCRIPTION-category check", {
@@ -151,39 +157,20 @@ test_that("checktor(): suppression reaches a DESCRIPTION-category check", {
   expect_false("title_case" %in% tidy(r)$check)
 })
 
-test_that("checktor(): a disabled check does not run or print", {
-  # The docs promise a disabled check does not run. It used to run, print its
-  # finding in the live output, and only then be removed from the results.
-  pkg <- make_temp_dir()
-  write_pkg(pkg, news = FALSE, extra = "Config/checktor/disable: news_file")
-  out <- paste(
-    cli::cli_fmt(checktor(pkg, verbose = TRUE, progress = FALSE)),
-    collapse = "\n"
-  )
-  expect_false(grepl("No NEWS file found", out, fixed = TRUE))
-})
-
-test_that("checktor(): options(checktor.disable) turns a check off (#17)", {
+test_that("checktor(): options(checktor.disable) turns a check off, and warns on a typo (#17)", {
   # For a check you never want, in every package, without adding a field to each
   # DESCRIPTION: set it once, e.g. in ~/.Rprofile.
   pkg <- make_temp_dir()
   write_pkg(pkg, news = FALSE)
-  withr::local_options(checktor.disable = "news_file")
+  withr::local_options(checktor.disable = c("news_file", "news_fiel"))
 
-  out <- paste(
-    cli::cli_fmt(r <- checktor(pkg, verbose = TRUE, progress = FALSE)),
-    collapse = "\n"
+  expect_warning(
+    out <- paste(
+      cli::cli_fmt(r <- checktor(pkg, verbose = TRUE, progress = FALSE)),
+      collapse = "\n"
+    ),
+    "news_fiel"
   )
   expect_false("news_file" %in% tidy(r)$check)
   expect_false(grepl("No NEWS file found", out, fixed = TRUE))
-})
-
-test_that("checktor(): an unknown name in options(checktor.disable) warns", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  withr::local_options(checktor.disable = "news_fiel")
-  expect_warning(
-    checktor(pkg, verbose = FALSE, progress = FALSE),
-    "news_fiel"
-  )
 })

@@ -21,13 +21,6 @@ test_that("lab_description_length(): reads continuation lines, not just line 1",
   expect_gte(res$description_length$sentences, 2L)
 })
 
-test_that("lab_description_length(): still flags short descriptions", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg, description = "Short.")
-  res <- diagnose_description_issues(pkg, verbose = FALSE)
-  expect_false(res$description_length$passed)
-})
-
 test_that("lab_description_length(): measures words, not sentences", {
   # renderthis ships a complete 31-word single-sentence Description. Demanding
   # "2+ sentences" has no authority and flagged it.
@@ -50,22 +43,6 @@ test_that("lab_description_length(): flags a Description that says nothing", {
     desc = c(Description = "Does stuff.")
   )
   expect_false(res$passed)
-})
-
-test_that("lab_description_length(): a 31-word single-sentence Description is not too short", {
-  # renderthis/DESCRIPTION. The old rule demanded 2+ sentences, which has no
-  # authority behind it.
-  desc <- paste(
-    "Render slides to different formats, including 'html', 'pdf', 'png', 'gif',",
-    "'pptx', and 'mp4', as well as a 'social' output, a 'png' of the first slide",
-    "re-sized for sharing on social media."
-  )
-  expect_true(
-    lab_description_length(make_temp_dir(),
-      verbose = FALSE,
-      desc = c(Description = desc)
-    )$passed
-  )
 })
 
 # Test lab_description_function_quotes() ----
@@ -138,27 +115,6 @@ test_that("lab_description_starts_with(): accepts a well-formed Description", {
       verbose = FALSE,
       desc = c(Description = "Runs extra diagnostics on R packages.")
     )$passed
-  )
-})
-
-# Test spelling_accepted_words() ----
-
-test_that("spelling_accepted_words(): reads every Config/checktor vocabulary", {
-  # A name listed for any of the quoting checks is a word the package uses on
-  # purpose, so the spelling check must not ask about it either.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    extra = c(
-      "Config/checktor/acronyms: Qacro",
-      "Config/checktor/software_names: Vbtool",
-      "Config/checktor/language_names: Zqlang",
-      "Config/checktor/format_names: Qwxformat"
-    )
-  )
-  expect_contains(
-    spelling_accepted_words(pkg),
-    c("Qacro", "Vbtool", "Zqlang", "Qwxformat")
   )
 })
 
@@ -267,14 +223,20 @@ test_that("lab_spelling(): reports a skip when no backend is installed", {
 # Test spelling_accepted_words() ----
 
 test_that("spelling_accepted_words(): gathers every whitelist mechanism", {
-  # The detection test above is gated behind a backend that no CI leg installs,
-  # so the whitelist plumbing is pinned here instead: no aspell/hunspell needed.
+  # The lab_spelling() detection test is gated behind a backend that no CI leg
+  # installs, so the whitelist plumbing is pinned here instead: no
+  # aspell/hunspell needed.
+  #
+  # A name listed for any of the quoting checks is a word the package uses on
+  # purpose, so the spelling check must not ask about it either.
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
     extra = c(
       "Config/checktor/acronyms: WebAssembly",
-      "Config/checktor/software_names: Shinylive"
+      "Config/checktor/software_names: Shinylive",
+      "Config/checktor/language_names: Zqlang",
+      "Config/checktor/format_names: Qwxformat"
     )
   )
   dir.create(file.path(pkg, ".aspell"))
@@ -285,7 +247,7 @@ test_that("spelling_accepted_words(): gathers every whitelist mechanism", {
   # One word per source, so dropping any single source changes the answer.
   expect_setequal(
     spelling_accepted_words(pkg),
-    c("WASM", "REPL", "WebAssembly", "Shinylive")
+    c("WASM", "REPL", "WebAssembly", "Shinylive", "Zqlang", "Qwxformat")
   )
 })
 

@@ -1,45 +1,50 @@
 # Test lab_example_structure() ----
 
 test_that("lab_example_structure(): flags unjustified \\dontrun{}", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    rd_files = list(
-      "fn.Rd" = c(
-        "\\name{fn}",
-        "\\title{fn}",
-        "\\value{1}",
-        "\\examples{",
-        "\\dontrun{",
-        "  x <- 1 + 1",
-        "}",
-        "}"
-      )
-    )
+  cases <- list(
+    arithmetic = "  x <- 1 + 1",
+    "plain call" = "  add(1, 2)",
+    # checktor used to accept this shape, which is the one CRAN sent back.
+    "install and launcher" = c("  install_nodejs()", "  run_electron_app()")
   )
-  res <- lab_example_structure(pkg, verbose = FALSE)
-  expect_false(res$passed)
+  for (case in names(cases)) {
+    pkg <- rd_pkg(c("\\dontrun{", cases[[case]], "}"))
+    expect_false(lab_example_structure(pkg, verbose = FALSE)$passed, label = case)
+  }
 })
 
-test_that("lab_example_structure(): accepts \\dontrun{} justified by a keyword", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    rd_files = list(
-      "fn.Rd" = c(
-        "\\name{fn}",
-        "\\title{fn}",
-        "\\value{1}",
-        "\\examples{",
-        "\\dontrun{",
-        "  # Requires API token",
-        "  authenticate(api_key = 'secret')",
-        "}",
-        "}"
-      )
+test_that("lab_example_structure(): accepts \\dontrun{} justified by a keyword or a placeholder path", {
+  # The credential/network justifiers were covered by a single fixture that read
+  # "# Requires API token" and called authenticate(api_key = 'secret') -- that one
+  # example matches FIVE alternatives at once (API, token, key, secret, auth), so
+  # four of them could be deleted from justify_re and the test stayed green. Each
+  # of the first five cases matches exactly ONE alternative alone, so any single
+  # deletion is caught.
+  cases <- list(
+    API = "  pull_from_API(cfg)",
+    token = "  refresh_token(tok)",
+    key = "  set_key(cfg)",
+    secret = "  read_secret(cfg)",
+    auth = "  run_auth(cfg)",
+    # The old fixture described above. It matches API, token, key, secret and
+    # auth at once, and is kept only as the original input.
+    "several keywords (old fixture)" = c(
+      "  # Requires API token",
+      "  authenticate(api_key = 'secret')"
+    ),
+    # shinyelectron ships run_electron_app("path/to/app") examples. The path/to
+    # placeholder is what justifies \dontrun{} here: an install or launcher call
+    # alone does not (CRAN asks for if (interactive()) there), as the install
+    # case in "flags unjustified \dontrun{}" shows.
+    "placeholder path" = c(
+      "  install_nodejs()",
+      "  run_electron_app(\"path/to/electron/app\")"
     )
   )
-  expect_true(lab_example_structure(pkg, verbose = FALSE)$passed)
+  for (case in names(cases)) {
+    pkg <- rd_pkg(c("\\dontrun{", cases[[case]], "}"))
+    expect_true(lab_example_structure(pkg, verbose = FALSE)$passed, label = case)
+  }
 })
 
 test_that("lab_example_structure(): extracts only the \\examples{} block", {
@@ -68,131 +73,6 @@ test_that("lab_example_structure(): accepts \\dontrun{} around a shiny server", 
   # surveydown's examples define server <- function(input, output, session),
   # which cannot run outside a live app -- but never say the word "shiny", so a
   # literal search for it reported three correct \dontrun{} blocks as needless.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    rd_files = list(
-      "sd_value.Rd" = c(
-        "\\name{sd_value}",
-        "\\alias{sd_value}",
-        "\\title{v}",
-        "\\description{d}",
-        "\\value{x}",
-        "\\examples{",
-        "\\dontrun{",
-        "  server <- function(input, output, session) {",
-        "    age <- sd_value(age)",
-        "  }",
-        "}",
-        "}"
-      )
-    )
-  )
-  expect_true(lab_example_structure(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_example_structure(): accepts an install/launcher \\dontrun{}", {
-  # shinyelectron ships install_*() and run_electron_app("path/to/app") examples:
-  # they install software or open a placeholder path, so \dontrun{} is justified.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    rd_files = list(
-      "launch.Rd" = c(
-        "\\name{launch}",
-        "\\alias{launch}",
-        "\\title{l}",
-        "\\description{d}",
-        "\\value{x}",
-        "\\examples{",
-        "\\dontrun{",
-        "  install_nodejs()",
-        "  run_electron_app(\"path/to/electron/app\")",
-        "}",
-        "}"
-      )
-    )
-  )
-  expect_true(lab_example_structure(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_example_structure(): still flags an unjustified \\dontrun{}", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    rd_files = list(
-      "add.Rd" = c(
-        "\\name{add}",
-        "\\alias{add}",
-        "\\title{a}",
-        "\\description{d}",
-        "\\value{x}",
-        "\\examples{",
-        "\\dontrun{",
-        "  add(1, 2)",
-        "}",
-        "}"
-      )
-    )
-  )
-  expect_false(lab_example_structure(pkg, verbose = FALSE)$passed)
-})
-
-# The credential/network justifiers were covered by a single fixture that read
-# "# Requires API token" and called authenticate(api_key = 'secret') -- that one
-# example matches FIVE alternatives at once (API, token, key, secret, auth), so
-# four of them could be deleted from justify_re and the test stayed green. Each
-# fixture below matches exactly ONE alternative, so any single deletion is caught.
-local({
-  justifier_fixtures <- c(
-    API = "  pull_from_API(cfg)",
-    token = "  refresh_token(tok)",
-    key = "  set_key(cfg)",
-    secret = "  read_secret(cfg)",
-    auth = "  run_auth(cfg)"
-  )
-
-  for (justifier in names(justifier_fixtures)) {
-    test_that(
-      paste0(
-        "lab_example_structure(): accepts \\dontrun{} justified by '",
-        justifier,
-        "' alone"
-      ),
-      {
-        pkg <- make_temp_dir()
-        write_pkg(
-          pkg,
-          rd_files = list(
-            "fn.Rd" = c(
-              "\\name{fn}",
-              "\\alias{fn}",
-              "\\title{f}",
-              "\\description{d}",
-              "\\value{x}",
-              "\\examples{",
-              "\\dontrun{",
-              justifier_fixtures[[justifier]],
-              "}",
-              "}"
-            )
-          )
-        )
-        expect_true(lab_example_structure(pkg, verbose = FALSE)$passed)
-      }
-    )
-  }
-})
-
-test_that("lab_example_structure(): an install is not a reason for dontrun", {
-  # checktor used to accept this shape, which is the one CRAN sent back.
-  pkg <- rd_pkg(c("\\dontrun{", "  install_nodejs()", "  run_electron_app()", "}"))
-  expect_false(lab_example_structure(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_example_structure(): \\dontrun{} around a shiny reactive context is justified", {
-  # surveydown/man/sd_value.Rd. Cannot run outside a live app, but never says
-  # the word "shiny".
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -314,14 +194,6 @@ test_that("lab_missing_examples(): exempts \\keyword{internal} topics", {
 
 # Test lab_suggested_in_examples() ----
 
-test_that("lab_suggested_in_examples(): flags an unguarded Suggested package", {
-  pkg <- rd_pkg(c("library(dplyr)", "dplyr::filter(x)"), extra = "Suggests: dplyr")
-  expect_equal(
-    lab_suggested_in_examples(pkg, verbose = FALSE)$issues,
-    "f.Rd: uses Suggested package 'dplyr' in \\examples without a guard"
-  )
-})
-
 test_that("lab_suggested_in_examples(): recognises each way an example needs a package", {
   for (use in c(
     "library(dplyr)",
@@ -333,24 +205,25 @@ test_that("lab_suggested_in_examples(): recognises each way an example needs a p
     "data <- dplyr::starwars"
   )) {
     pkg <- rd_pkg(use, extra = "Suggests: dplyr")
-    expect_false(lab_suggested_in_examples(pkg, verbose = FALSE)$passed, label = use)
+    expect_equal(
+      lab_suggested_in_examples(pkg, verbose = FALSE)$issues,
+      "f.Rd: uses Suggested package 'dplyr' in \\examples without a guard",
+      label = use
+    )
   }
-})
 
-test_that("lab_suggested_in_examples(): accepts a requireNamespace guard", {
-  pkg <- rd_pkg(
-    c(
-      "if (requireNamespace(\"dplyr\", quietly = TRUE)) {",
-      "  library(dplyr)",
-      "}"
-    ),
-    extra = "Suggests: dplyr"
+  # Two uses on one page are reported as a single issue.
+  pkg <- rd_pkg(c("library(dplyr)", "dplyr::filter(x)"), extra = "Suggests: dplyr")
+  expect_equal(
+    lab_suggested_in_examples(pkg, verbose = FALSE)$issues,
+    "f.Rd: uses Suggested package 'dplyr' in \\examples without a guard",
+    label = "two uses, one issue"
   )
-  expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
 })
 
 test_that("lab_suggested_in_examples(): accepts each guard that names the package", {
   for (guard in c(
+    "requireNamespace(\"dplyr\", quietly = TRUE)",
     "rlang::is_installed('dplyr')",
     "rlang::is_installed(c('tidyr', 'dplyr'))",
     "require(dplyr)",
@@ -360,7 +233,7 @@ test_that("lab_suggested_in_examples(): accepts each guard that names the packag
     "FALSE"
   )) {
     pkg <- rd_pkg(
-      c(paste0("if (", guard, ") {"), "  dplyr::filter(x)", "}"),
+      c(paste0("if (", guard, ") {"), "  library(dplyr)", "  dplyr::filter(x)", "}"),
       extra = "Suggests: dplyr, tidyr"
     )
     expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed, label = guard)
@@ -412,17 +285,32 @@ test_that("lab_suggested_in_examples(): a guard kept in a variable is a guard", 
   expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
 })
 
-test_that("lab_suggested_in_examples(): a comment inside a guard leaves it a guard", {
-  pkg <- rd_pkg(
+test_that("lab_suggested_in_examples(): a comment inside a guard, an assignment or a call leaves a guard", {
+  # A comment is a node of its own: after `&&`, between the arrow and the value,
+  # or between a function's name and its arguments.
+  for (example in list(
     c(
       "if (requireNamespace('dplyr', quietly = TRUE) && # need it",
       "    requireNamespace('tidyr', quietly = TRUE)) {",
       "  dplyr::filter(x)",
       "}"
     ),
-    extra = "Suggests: dplyr, tidyr"
-  )
-  expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
+    c(
+      "ok <- # ask once",
+      "  requireNamespace('dplyr', quietly = TRUE)",
+      "if (ok) dplyr::filter(x)"
+    ),
+    c(
+      "if (requireNamespace # ask first",
+      "    ('dplyr', quietly = TRUE)) dplyr::filter(x)"
+    )
+  )) {
+    pkg <- rd_pkg(example, extra = "Suggests: dplyr, tidyr")
+    expect_true(
+      lab_suggested_in_examples(pkg, verbose = FALSE)$passed,
+      label = paste(example, collapse = " ")
+    )
+  }
 })
 
 test_that("lab_suggested_in_examples(): a guard read through a wrapper is a guard", {
@@ -445,19 +333,34 @@ test_that("lab_suggested_in_examples(): a guard read through a wrapper is a guar
   }
 })
 
-test_that("lab_suggested_in_examples(): a guard assigned inside another function is no guard", {
-  # `ok` is local to g(), so the `if` at top level reads nothing g() set.
+test_that("lab_suggested_in_examples(): a guard assigned in another function, local() or a lambda is no guard", {
+  for (example in list(
+    # `ok` is local to g(), so the `if` at top level reads nothing g() set.
+    "g <- function() ok <- requireNamespace('dplyr', quietly = TRUE)",
+    # local() and `\(x)` open a scope of their own, like `function(x)`.
+    c("local({", "  ok <- requireNamespace('dplyr', quietly = TRUE)", "})"),
+    "g <- \\\\(x) ok <- requireNamespace('dplyr', quietly = TRUE)"
+  )) {
+    pkg <- rd_pkg(c(example, "if (ok) dplyr::filter(x)"), extra = "Suggests: dplyr")
+    expect_equal(
+      lab_suggested_in_examples(pkg, verbose = FALSE)$issues,
+      "f.Rd: uses Suggested package 'dplyr' in \\examples without a guard",
+      label = paste(example, collapse = " ")
+    )
+  }
+
+  # Assigned and tested inside the same local() or lambda, it is a guard.
   pkg <- rd_pkg(
     c(
-      "g <- function() ok <- requireNamespace('dplyr', quietly = TRUE)",
-      "if (ok) dplyr::filter(x)"
+      "local({",
+      "  ok <- requireNamespace('dplyr', quietly = TRUE)",
+      "  if (ok) dplyr::filter(x)",
+      "})",
+      "h <- \\\\(x) { ok <- requireNamespace('dplyr'); if (ok) dplyr::filter(x) }"
     ),
     extra = "Suggests: dplyr"
   )
-  expect_equal(
-    lab_suggested_in_examples(pkg, verbose = FALSE)$issues,
-    "f.Rd: uses Suggested package 'dplyr' in \\examples without a guard"
-  )
+  expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
 })
 
 test_that("lab_suggested_in_examples(): a guard assigned in a condition feeds a later test", {
@@ -493,28 +396,13 @@ test_that("lab_suggested_in_examples(): a guard assigned in a condition feeds a 
   }
 })
 
-test_that("lab_suggested_in_examples(): a guard assigned in a loop body is no guard", {
-  # The body may never run, and then `ok` holds what it held before.
-  for (loop in c(
-    "for (i in seq_len(n)) ok <- requireNamespace('dplyr', quietly = TRUE)",
-    "while (retry()) ok <- requireNamespace('dplyr', quietly = TRUE)"
-  )) {
-    pkg <- rd_pkg(
-      c("ok <- TRUE", loop, "if (ok) dplyr::filter(x)"),
-      extra = "Suggests: dplyr"
-    )
-    expect_equal(
-      lab_suggested_in_examples(pkg, verbose = FALSE)$issues,
-      "f.Rd: uses Suggested package 'dplyr' in \\examples without a guard",
-      label = loop
-    )
-  }
-})
-
-test_that("lab_suggested_in_examples(): a guard assigned on the right of && or || is no guard", {
-  # `a && b` evaluates `b` only when `a` is true, and `a || b` only when `a` is
-  # false, so the assignment may never run and `ok` keeps what it held before.
+test_that("lab_suggested_in_examples(): a guard assigned where it may never run is no guard", {
   for (line in c(
+    # The body may never run, and then `ok` holds what it held before.
+    "for (i in seq_len(n)) ok <- requireNamespace('dplyr', quietly = TRUE)",
+    "while (retry()) ok <- requireNamespace('dplyr', quietly = TRUE)",
+    # `a && b` evaluates `b` only when `a` is true, and `a || b` only when `a` is
+    # false, so the assignment may never run and `ok` keeps what it held before.
     "if (interactive() && (ok <- requireNamespace('dplyr'))) NULL",
     "if (interactive() || (ok <- requireNamespace('dplyr'))) NULL",
     "y <- interactive() && (ok <- requireNamespace('dplyr'))",
@@ -551,55 +439,6 @@ test_that("lab_suggested_in_examples(): reads \\dontdiff{} code written beside a
     lab_suggested_in_examples(pkg, verbose = FALSE)$issues,
     "f.Rd: uses Suggested package 'dplyr' in \\examples without a guard"
   )
-})
-
-test_that("lab_suggested_in_examples(): a guard assigned in local() or a lambda is no guard", {
-  # local() and `\(x)` open a scope of their own, like `function(x)`.
-  for (example in list(
-    c("local({", "  ok <- requireNamespace('dplyr', quietly = TRUE)", "})"),
-    "g <- \\\\(x) ok <- requireNamespace('dplyr', quietly = TRUE)"
-  )) {
-    pkg <- rd_pkg(c(example, "if (ok) dplyr::filter(x)"), extra = "Suggests: dplyr")
-    expect_equal(
-      lab_suggested_in_examples(pkg, verbose = FALSE)$issues,
-      "f.Rd: uses Suggested package 'dplyr' in \\examples without a guard",
-      label = paste(example, collapse = " ")
-    )
-  }
-
-  pkg <- rd_pkg(
-    c(
-      "local({",
-      "  ok <- requireNamespace('dplyr', quietly = TRUE)",
-      "  if (ok) dplyr::filter(x)",
-      "})",
-      "h <- \\\\(x) { ok <- requireNamespace('dplyr'); if (ok) dplyr::filter(x) }"
-    ),
-    extra = "Suggests: dplyr"
-  )
-  expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_suggested_in_examples(): a comment inside an assignment or a call leaves a guard", {
-  # A comment is a node of its own, between the arrow and the value, or between a
-  # function's name and its arguments.
-  for (example in list(
-    c(
-      "ok <- # ask once",
-      "  requireNamespace('dplyr', quietly = TRUE)",
-      "if (ok) dplyr::filter(x)"
-    ),
-    c(
-      "if (requireNamespace # ask first",
-      "    ('dplyr', quietly = TRUE)) dplyr::filter(x)"
-    )
-  )) {
-    pkg <- rd_pkg(example, extra = "Suggests: dplyr")
-    expect_true(
-      lab_suggested_in_examples(pkg, verbose = FALSE)$passed,
-      label = paste(example, collapse = " ")
-    )
-  }
 })
 
 test_that("lab_suggested_in_examples(): a variable holding another answer is no guard", {
@@ -673,7 +512,7 @@ test_that("lab_suggested_in_examples(): an @examplesIf interactive() excuses the
   expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
 })
 
-test_that("lab_suggested_in_examples(): a condition that holds under R CMD check is no guard", {
+test_that("lab_suggested_in_examples(): a condition that holds or errors under R CMD check is no guard", {
   for (guard in c(
     "!interactive()",
     "Sys.getenv('NOT_CRAN') != 'true'",
@@ -686,41 +525,9 @@ test_that("lab_suggested_in_examples(): a condition that holds under R CMD check
     "nzchar(Sys.getenv('IN_PKGDOWN', 'no'))",
     "Sys.getenv('IN_PKGDOWN') == ''",
     "Sys.getenv('IN_PKGDOWN', 'no') != ''",
-    "as.logical(Sys.getenv('NOT_CRAN', 'true'))"
-  )) {
-    pkg <- rd_pkg(
-      c(paste0("if (", guard, ") {"), "  leaflet::leaflet()", "}"),
-      extra = "Suggests: leaflet"
-    )
-    expect_equal(
-      lab_suggested_in_examples(pkg, verbose = FALSE)$issues,
-      "f.Rd: uses Suggested package 'leaflet' in \\examples without a guard",
-      label = guard
-    )
-  }
-})
-
-test_that("lab_suggested_in_examples(): a recommended package ships with R", {
-  # R ships its recommended packages, and CRAN's checks keep one available once the
-  # DESCRIPTION declares it, in Suggests too. ggplot2's examples reach rpart and
-  # nlme in \donttest{}.
-  pkg <- rd_pkg(
-    c(
-      "MASS::fractions(0.5)",
-      "\\donttest{",
-      "library(nlme)",
-      "fit <- rpart::rpart(Kyphosis ~ Age, data = rpart::kyphosis)",
-      "}"
-    ),
-    extra = "Suggests: MASS, nlme, rpart"
-  )
-  expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_suggested_in_examples(): a condition that errors under R CMD check is no guard", {
-  # as.logical("") is NA, and `if (NA)` stops the example there instead of
-  # skipping the branch; isTRUE() is what turns it into a guard.
-  for (guard in c(
+    "as.logical(Sys.getenv('NOT_CRAN', 'true'))",
+    # as.logical("") is NA, and `if (NA)` stops the example there instead of
+    # skipping the branch; isTRUE() is what turns it into a guard.
     "as.logical(Sys.getenv('NOT_CRAN'))",
     "as.logical(Sys.getenv('NOT_CRAN', unset = 'no'))"
   )) {
@@ -736,7 +543,22 @@ test_that("lab_suggested_in_examples(): a condition that errors under R CMD chec
   }
 })
 
-test_that("lab_suggested_in_examples(): a base package ships with R", {
+test_that("lab_suggested_in_examples(): a base or recommended package ships with R, and excuses no other", {
+  # R ships its recommended packages, and CRAN's checks keep one available once the
+  # DESCRIPTION declares it, in Suggests too. ggplot2's examples reach rpart and
+  # nlme in \donttest{}.
+  pkg <- rd_pkg(
+    c(
+      "MASS::fractions(0.5)",
+      "\\donttest{",
+      "library(nlme)",
+      "fit <- rpart::rpart(Kyphosis ~ Age, data = rpart::kyphosis)",
+      "}"
+    ),
+    extra = "Suggests: MASS, nlme, rpart"
+  )
+  expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed, label = "recommended")
+
   # Every R installation has its base packages, so one in Suggests is always there.
   base <- c(
     "parallel", "tcltk", "tools", "utils", "stats", "methods", "grDevices",
@@ -752,27 +574,21 @@ test_that("lab_suggested_in_examples(): a base package ships with R", {
     ),
     extra = paste("Suggests:", paste(base, collapse = ", "))
   )
-  expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed)
+  expect_true(lab_suggested_in_examples(pkg, verbose = FALSE)$passed, label = "base")
 
-  pkg <- rd_pkg(
-    c("parallel::detectCores()", "dplyr::filter(x)"),
-    extra = "Suggests: parallel, dplyr"
-  )
-  expect_equal(
-    lab_suggested_in_examples(pkg, verbose = FALSE)$issues,
-    "f.Rd: uses Suggested package 'dplyr' in \\examples without a guard"
-  )
-})
-
-test_that("lab_suggested_in_examples(): a recommended package excuses no other", {
-  pkg <- rd_pkg(
-    c("MASS::fractions(0.5)", "dplyr::filter(x)"),
-    extra = "Suggests: MASS, dplyr"
-  )
-  expect_equal(
-    lab_suggested_in_examples(pkg, verbose = FALSE)$issues,
-    "f.Rd: uses Suggested package 'dplyr' in \\examples without a guard"
-  )
+  # Neither excuses another Suggested package used beside it.
+  shipped <- c(parallel = "parallel::detectCores()", MASS = "MASS::fractions(0.5)")
+  for (p in names(shipped)) {
+    pkg <- rd_pkg(
+      c(shipped[[p]], "dplyr::filter(x)"),
+      extra = paste0("Suggests: ", p, ", dplyr")
+    )
+    expect_equal(
+      lab_suggested_in_examples(pkg, verbose = FALSE)$issues,
+      "f.Rd: uses Suggested package 'dplyr' in \\examples without a guard",
+      label = p
+    )
+  }
 })
 
 test_that("lab_suggested_in_examples(): a guard from a Suggested package is itself a use", {
@@ -892,57 +708,41 @@ test_that("lab_suggested_in_examples(): a package whose name starts with a Sugge
 
 # Test lab_commented_examples() ----
 
-test_that("lab_commented_examples(): does not flag ordinary prose comments", {
-  # The old rule was "a comment containing an open paren", which flags English.
-  # All 41 comment lines across the 9 Rd files this fired on in the wild were
-  # prose; not one was a disabled call.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    rd_files = list(
-      "foo.Rd" = c(
-        "\\name{foo}",
-        "\\alias{foo}",
-        "\\title{Foo}",
-        "\\usage{foo()}",
-        "\\description{d}",
-        "\\value{x}",
-        "\\examples{",
-        "# Simulate random choices (default)",
-        "# (Columns are attributes, rows are alternatives)",
-        "# Example 2: Named categorical priors (more explicit)",
-        "foo()",
-        "}"
-      )
-    )
+test_that("lab_commented_examples(): does not flag prose comments", {
+  cases <- list(
+    # The old rule was "a comment containing an open paren", which flags English.
+    # All 41 comment lines across the 9 Rd files this fired on in the wild were
+    # prose; not one was a disabled call. The first two lines are cbcTools'.
+    "prose with parens" = c(
+      "# Simulate random choices (default)",
+      "# (Columns are attributes, rows are alternatives)",
+      "# Example 2: Named categorical priors (more explicit)",
+      "foo()"
+    ),
+    "short note" = c("# Prepare data", "x <- 1")
   )
-  expect_true(lab_commented_examples(pkg, verbose = FALSE)$passed)
+  for (case in names(cases)) {
+    pkg <- rd_pkg(cases[[case]])
+    expect_true(lab_commented_examples(pkg, verbose = FALSE)$passed, label = case)
+  }
 })
 
-test_that("lab_commented_examples(): flags an example that runs nothing", {
-  # The real defect: every line that would demonstrate the function is commented
-  # out, so the example block executes nothing at all.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    rd_files = list(
-      "foo.Rd" = c(
-        "\\name{foo}",
-        "\\alias{foo}",
-        "\\title{Foo}",
-        "\\usage{foo()}",
-        "\\description{d}",
-        "\\value{x}",
-        "\\examples{",
-        "# foo(slow = TRUE)",
-        "# foo()",
-        "}"
-      )
-    )
+test_that("lab_commented_examples(): flags an \\examples block that runs nothing", {
+  cases <- list(
+    # The real defect: every line that would demonstrate the function is
+    # commented out, so the example block executes nothing at all.
+    "every call commented out" = c("# foo(slow = TRUE)", "# foo()"),
+    # A commented-out call is only a defect when it is ALL the example has. Beside
+    # live code it is illustration, which is why the live `actual_call()` this
+    # fixture used to carry made it a false positive.
+    "a lone commented call" = "# my_function(x)   # the only 'example' here"
   )
-  res <- lab_commented_examples(pkg, verbose = FALSE)
-  expect_false(res$passed)
-  expect_match(res$issues, "runs nothing", all = FALSE)
+  for (case in names(cases)) {
+    pkg <- rd_pkg(cases[[case]])
+    res <- lab_commented_examples(pkg, verbose = FALSE)
+    expect_false(res$passed, label = case)
+    expect_match(res$issues, "runs nothing", all = FALSE, label = case)
+  }
 })
 
 test_that("lab_commented_examples(): names \\examples{} with its braces", {
@@ -996,71 +796,6 @@ test_that("lab_commented_examples(): allows a comment alongside live code", {
   expect_true(lab_commented_examples(pkg, verbose = FALSE)$passed)
 })
 
-test_that("lab_commented_examples(): flags an \\examples block that runs nothing", {
-  # A commented-out call is only a defect when it is ALL the example has. Beside
-  # live code it is illustration, which is why the live `actual_call()` this
-  # fixture used to carry made it a false positive.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    rd_files = list(
-      "fn.Rd" = c(
-        "\\name{fn}",
-        "\\title{fn}",
-        "\\value{1}",
-        "\\examples{",
-        "# my_function(x)   # the only 'example' here",
-        "}"
-      )
-    )
-  )
-  res <- lab_commented_examples(pkg, verbose = FALSE)
-  expect_false(res$passed)
-})
-
-test_that("lab_commented_examples(): accepts explanatory comments", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    rd_files = list(
-      "fn.Rd" = c(
-        "\\name{fn}",
-        "\\title{fn}",
-        "\\value{1}",
-        "\\examples{",
-        "# Prepare data",
-        "x <- 1",
-        "}"
-      )
-    )
-  )
-  res <- lab_commented_examples(pkg, verbose = FALSE)
-  expect_true(res$passed)
-})
-
-test_that("lab_commented_examples(): prose comments in \\examples are not commented-out code", {
-  # cbcTools. All 41 comment lines across the 9 flagged Rd files were English.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    rd_files = list(
-      "cbc_choices.Rd" = c(
-        "\\name{cbc_choices}",
-        "\\alias{cbc_choices}",
-        "\\title{c}",
-        "\\description{d}",
-        "\\value{x}",
-        "\\examples{",
-        "# Simulate random choices (default)",
-        "# (Columns are attributes, rows are alternatives)",
-        "cbc_choices(design)",
-        "}"
-      )
-    )
-  )
-  expect_true(lab_commented_examples(pkg, verbose = FALSE)$passed)
-})
-
 # Test lab_unexported_example_ns() ----
 
 test_that("lab_unexported_example_ns(): flags a bare call to an unexported topic", {
@@ -1074,28 +809,29 @@ test_that("lab_unexported_example_ns(): flags a bare call to an unexported topic
   expect_match(res$issues, "helper", all = FALSE)
 })
 
-test_that("lab_unexported_example_ns(): accepts a ::: -qualified call", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  writeLines("export(add)", file.path(pkg, "NAMESPACE"))
-  write_unexported_rd(pkg, "pkg:::helper(1)")
-
-  expect_true(
-    lab_unexported_example_ns(pkg, verbose = FALSE)$passed
+test_that("lab_unexported_example_ns(): accepts an example that runs no bare call to the unexported topic", {
+  examples <- c(
+    # Qualified with :::.
+    ":::" = "pkg:::helper(1)",
+    # \dontrun{} is never executed, so a bare call there cannot fail. R CMD check
+    # would not run it either.
+    "\\dontrun" = "\\dontrun{helper(1)}",
+    # The exact false positive the AST rewrite exists to prevent.
+    "comment or string" = paste(
+      "# you could call helper(1) yourself",
+      "msg <- \"helper(2)\"",
+      sep = "\n"
+    ),
+    # `helper` as a value, never invoked, is not a namespace problem.
+    "same-named value" = "x <- list(helper = 1)"
   )
-})
-
-test_that("lab_unexported_example_ns(): ignores \\dontrun{} examples", {
-  # \dontrun{} is never executed, so a bare call there cannot fail. R CMD check
-  # would not run it either.
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  writeLines("export(add)", file.path(pkg, "NAMESPACE"))
-  write_unexported_rd(pkg, "\\dontrun{helper(1)}")
-
-  expect_true(
-    lab_unexported_example_ns(pkg, verbose = FALSE)$passed
-  )
+  for (case in names(examples)) {
+    pkg <- make_temp_dir()
+    write_pkg(pkg)
+    writeLines("export(add)", file.path(pkg, "NAMESPACE"))
+    write_unexported_rd(pkg, examples[[case]])
+    expect_true(lab_unexported_example_ns(pkg, verbose = FALSE)$passed, label = case)
+  }
 })
 
 test_that("lab_unexported_example_ns(): reads an exported [ method (#18)", {
@@ -1139,35 +875,6 @@ test_that("lab_unexported_example_ns(): does not flag an exported topic", {
   writeLines("export(helper)", file.path(pkg, "NAMESPACE"))
   write_unexported_rd(pkg, "helper(1)")
 
-  expect_true(
-    lab_unexported_example_ns(pkg, verbose = FALSE)$passed
-  )
-})
-
-test_that("lab_unexported_example_ns(): ignores a call in a comment or a string", {
-  # The exact false positive the AST rewrite exists to prevent.
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  writeLines("export(add)", file.path(pkg, "NAMESPACE"))
-  write_unexported_rd(
-    pkg,
-    paste(
-      "# you could call helper(1) yourself",
-      "msg <- \"helper(2)\"",
-      sep = "\n"
-    )
-  )
-  expect_true(
-    lab_unexported_example_ns(pkg, verbose = FALSE)$passed
-  )
-})
-
-test_that("lab_unexported_example_ns(): is not fooled by a same-named object", {
-  # `helper` as a value, never invoked, is not a namespace problem.
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  writeLines("export(add)", file.path(pkg, "NAMESPACE"))
-  write_unexported_rd(pkg, "x <- list(helper = 1)")
   expect_true(
     lab_unexported_example_ns(pkg, verbose = FALSE)$passed
   )
@@ -1283,27 +990,6 @@ test_that("lab_donttest_vs_dontrun(): leaves slow code that ALSO cannot run", {
   expect_false(res$passed)
   expect_equal(length(res$issues), 1L)
   expect_match(res$issues, "^slow_only\\.Rd: uses \\\\dontrun\\{\\} for slow code")
-})
-
-test_that("lab_donttest_vs_dontrun(): suggests \\donttest{} for slow-only code", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    rd_files = list(
-      "slow.Rd" = c(
-        "\\name{slow}",
-        "\\title{slow}",
-        "\\value{1}",
-        "\\examples{",
-        "\\dontrun{",
-        "Sys.sleep(60)",
-        "}",
-        "}"
-      )
-    )
-  )
-  res <- lab_donttest_vs_dontrun(pkg, verbose = FALSE)
-  expect_false(res$passed)
 })
 
 test_that("lab_donttest_vs_dontrun(): names both wrappers with their braces", {

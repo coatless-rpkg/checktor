@@ -115,14 +115,7 @@ test_that("health_report(): the treatment section of each format", {
 
 # Test report_findings() ----
 
-test_that("report_findings(): walks every category checktor() runs", {
-  # The guard against one format quietly dropping a panel again.
-  r <- checktor(policy_pkg(), verbose = FALSE, progress = FALSE)
-  categories <- grep("_issues$", names(r), value = TRUE)
-  expect_setequal(CATEGORY_FIELDS, categories)
-})
-
-test_that("report_findings(): one entry per failing check, in category order", {
+test_that("report_findings(): one entry per failing check, in category order, as prescribe() treats them", {
   r <- checktor(policy_pkg(), verbose = FALSE, progress = FALSE)
   found <- report_findings(r)
   checks <- vapply(found, function(f) f$check, character(1))
@@ -131,17 +124,17 @@ test_that("report_findings(): one entry per failing check, in category order", {
   expect_gt(sum(td$skipped), 0L)
   failed <- td$check[!td$passed & !td$skipped]
 
+  # The guard against one format quietly dropping a panel again.
   expect_setequal(checks, failed)
   expect_false(anyDuplicated(checks) > 0L)
   cats <- unique(vapply(found, function(f) f$category, character(1)))
   expect_equal(cats, intersect(CATEGORY_FIELDS, cats))
-})
-
-test_that("report_findings(): a check prescribe() treats is the one each report lists", {
-  r <- checktor(policy_pkg(), verbose = FALSE, progress = FALSE)
+  # prescribe() picks its checks with failed_results(), so every report must
+  # list exactly those checks, in the same order: a check's remedy then appears
+  # wherever its finding does.
   expect_identical(
     vapply(failed_results(r), function(f) f$name, character(1)),
-    vapply(report_findings(r), function(f) f$check, character(1))
+    checks
   )
 })
 

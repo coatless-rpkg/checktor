@@ -19,7 +19,7 @@ test_that("lab_tf_usage(): flags bare T/F (including leading position)", {
   expect_equal(length(res$issues), 4L)
 })
 
-test_that("lab_tf_usage(): ignores T/F inside strings and comments", {
+test_that("lab_tf_usage(): ignores strings, comments, TRUE/FALSE and words containing T or F", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -28,26 +28,13 @@ test_that("lab_tf_usage(): ignores T/F inside strings and comments", {
       "# T - reminder",
       "# F-statistic",
       'msg <- "T"',
-      "y <- TRUE"
-    )
-  )
-  res <- lab_tf_usage(pkg, verbose = FALSE)
-  expect_true(res$passed)
-})
-
-test_that("lab_tf_usage(): ignores TRUE/FALSE and words containing T or F", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    r_code = c(
-      "x <- TRUE",
-      "y <- FALSE",
+      "y <- TRUE",
+      "z <- FALSE",
       "transform <- function() NULL",
       "field <- 1"
     )
   )
-  res <- lab_tf_usage(pkg, verbose = FALSE)
-  expect_true(res$passed)
+  expect_identical(lab_tf_usage(pkg, verbose = FALSE)$issues, character(0))
 })
 
 test_that("lab_tf_usage(): T/F inside expression()/substitute() are language tokens", {
@@ -64,12 +51,6 @@ test_that("lab_tf_usage(): T/F inside expression()/substitute() are language tok
     )
   )
   expect_true(lab_tf_usage(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_tf_usage(): a real bare T/F is still flagged", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg, r_code = "f <- function() mean(x, na.rm = T)")
-  expect_false(lab_tf_usage(pkg, verbose = FALSE)$passed)
 })
 
 test_that("lab_tf_usage(): `na.rm = T` is flagged, `f(T = 1)` is not", {
@@ -123,29 +104,20 @@ test_that("lab_internal_ns(): accepts :: in package code and ::: in a string", {
 
 # Test lab_hardcoded_credentials() ----
 
-test_that("lab_hardcoded_credentials(): flags a token in a string literal", {
-  pkg <- make_temp_dir()
-  # Assembled at run time so no secret-shaped literal is committed to this repo.
-  token <- paste0("ghp_", strrep("A", 36))
-  write_pkg(
-    pkg,
-    r_code = sprintf("get_client <- function() '%s'", token)
-  )
-  res <- lab_hardcoded_credentials(pkg, verbose = FALSE)
-  expect_false(res$passed)
-  expect_true(any(grepl("GitHub token", res$issues)))
-})
-
-test_that("lab_hardcoded_credentials(): is quiet on ordinary code", {
+test_that("lab_hardcoded_credentials(): is quiet on ordinary strings, a slug or a bare SHA", {
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
     r_code = c(
       "greet <- function(name) paste('hello', name)",
-      "token_pattern <- 'looks like a variable name, not a secret'"
+      "token_pattern <- 'looks like a variable name, not a secret'",
+      # a near miss for the sk- OpenAI prefix
+      "model <- 'sk-learn-style-identifier-that-is-quite-long'",
+      # a 40-hex commit SHA
+      "commit <- 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0'"
     )
   )
-  expect_true(lab_hardcoded_credentials(pkg, verbose = FALSE)$passed)
+  expect_identical(lab_hardcoded_credentials(pkg, verbose = FALSE)$issues, character(0))
 })
 
 test_that("lab_hardcoded_credentials(): ignores a secret shape in a comment", {
@@ -164,6 +136,7 @@ test_that("lab_hardcoded_credentials(): recognises multiple provider formats", {
   # fabricated, format-correct sample tokens across providers
   # Assembled at run time so no secret-shaped literal is committed to this repo.
   cases <- list(
+    "GitHub token" = paste0("ghp_", strrep("A", 36)),
     "AWS access key" = "AKIAIOSFODNN7EXAMPLE", # AWS's documented example key
     "Stripe key" = paste0("sk_live_", strrep("A", 24)),
     "Anthropic key" = paste0("sk-ant-api03-", strrep("A", 30)),
@@ -184,18 +157,6 @@ test_that("lab_hardcoded_credentials(): recognises multiple provider formats", {
     expect_false(res$passed, info = label)
     expect_true(any(grepl(label, res$issues, fixed = TRUE)), info = label)
   }
-})
-
-test_that("lab_hardcoded_credentials(): does not flag a slug or a bare SHA", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    r_code = c(
-      "model <- 'sk-learn-style-identifier-that-is-quite-long'",
-      "commit <- 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0'"
-    )
-  )
-  expect_true(lab_hardcoded_credentials(pkg, verbose = FALSE)$passed)
 })
 
 # Test diagnose_code_issues() ----

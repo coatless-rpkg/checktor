@@ -158,7 +158,7 @@ test_that("ci_report(): a mistyped tier errors instead of reading as clean", {
   expect_error(ci_report(r, format = "text", file = NULL, severity = "opinions"))
 })
 
-test_that("ci_report(): a check that did not run is named once in the log", {
+test_that("ci_report(): a check that did not run is named once in the log, unless skipped = FALSE", {
   r <- checktor(ci_pkg(), verbose = FALSE, progress = FALSE)
   expect_equal(r$metadata$skipped_checks, CI_SKIPPED)
 
@@ -179,10 +179,7 @@ test_that("ci_report(): a check that did not run is named once in the log", {
   txt <- grep("did not run", ci_report(r, format = "text", file = NULL), value = TRUE)
   expect_length(txt, 1L)
   expect_match(txt, "^skipped: 2 checks did not run: spelling, url_liveness$")
-})
 
-test_that("ci_report(): skipped = FALSE leaves the note out entirely", {
-  r <- checktor(ci_pkg(), verbose = FALSE, progress = FALSE)
   out <- ci_report(r, format = "github", file = NULL, skipped = FALSE)
   expect_false(any(grepl("did not run", out)))
   expect_length(out, 2L) # the two findings, and nothing else
@@ -243,15 +240,13 @@ test_that("ci_report(): a DESCRIPTION R cannot read is reported against it", {
     out,
     "^DESCRIPTION:1 \\[policy\\] description_file - DESCRIPTION file check: DESCRIPTION does not parse: "
   )
-})
-
-test_that("ci_report(): names the DESCRIPTION checks that could not run", {
-  r <- checktor(unparseable_pkg(), verbose = FALSE, progress = FALSE)
-  out <- ci_report(r, format = "text", file = NULL)
-  note <- out[startsWith(out, "skipped: ")]
+  # The checks that read DESCRIPTION sat out, and the log names them once, as
+  # not run: never the check that failed, nor license_year, which still ran.
+  note <- grep("^skipped: ", ci_report(r, format = "text", file = NULL), value = TRUE)
   expect_length(note, 1L)
-  expect_match(note, "software_names", fixed = TRUE)
-  expect_match(note, "authors", fixed = TRUE)
+  named <- strsplit(sub("^skipped: .* did not run: ", "", note), ", ", fixed = TRUE)[[1]]
+  expect_true(all(c("software_names", "authors", "license") %in% named))
+  expect_false(any(c("description_file", "license_year") %in% named))
 })
 
 test_that("ci_report(): a multi-line finding stays on one line", {

@@ -22,18 +22,12 @@ test_that("example_diagnose_scenario(): warns and returns NULL for an unknown fi
 })
 
 test_that("example_diagnose_scenario(): puts each kind of file where a package keeps it", {
-  shipped <- function(...) system.file("diagnose", ..., package = "checktor")
-
   code <- example_diagnose_scenario(
     "code_examples/tf_usage_bad.R",
     show_content = FALSE,
     cleanup = TRUE
   )
   expect_identical(list.files(file.path(code, "R")), "tf_usage_bad.R")
-  expect_identical(
-    readLines(file.path(code, "R", "tf_usage_bad.R")),
-    readLines(shipped("code_examples", "tf_usage_bad.R"))
-  )
   expect_true(all(dir.exists(file.path(code, c("R", "man", "tests")))))
   # A scenario that brings no DESCRIPTION gets the template, and the NEWS.md and
   # cran-comments.md that keep the general checks quiet.
@@ -43,15 +37,13 @@ test_that("example_diagnose_scenario(): puts each kind of file where a package k
   )
   expect_true(all(file.exists(file.path(code, c("NEWS.md", "cran-comments.md")))))
 
-  # A DESCRIPTION scenario IS the DESCRIPTION, so the template must not replace it.
+  # A .txt scenario becomes the DESCRIPTION itself (the content is checked for
+  # every scenario in "every shipped scenario lands where its kind belongs"), and
+  # brings no R code.
   desc <- example_diagnose_scenario(
     "description_examples/bad_description.txt",
     show_content = FALSE,
     cleanup = TRUE
-  )
-  expect_identical(
-    readLines(file.path(desc, "DESCRIPTION")),
-    readLines(shipped("description_examples", "bad_description.txt"))
   )
   expect_identical(list.files(file.path(desc, "R")), character(0))
 
@@ -111,6 +103,9 @@ test_that("example_diagnose_scenario(): an extension no package keeps is an erro
 })
 
 test_that("example_diagnose_scenario(): every shipped scenario lands where its kind belongs", {
+  # Each scenario arrives exactly as shipped. That includes a .txt scenario,
+  # whose target is DESCRIPTION: it IS the DESCRIPTION, so the template must
+  # not replace it.
   for (example in show_example_files()) {
     pkg <- example_diagnose_scenario(example, show_content = FALSE, cleanup = TRUE)
     target <- file.path(pkg, scenario_target(example))
@@ -132,6 +127,14 @@ test_that("scenario_target(): maps each extension to its place in a package", {
       file.path("vignettes", vignette)
     )
   }
+  expect_identical(
+    scenario_target("general_examples/citation_file_bad.CITATION"),
+    file.path("inst", "CITATION")
+  )
+  expect_identical(
+    scenario_target("description_examples/license_year_bad.LICENSE"),
+    "LICENSE"
+  )
   expect_identical(scenario_target("misc/notes.md"), NA_character_)
 })
 
@@ -213,16 +216,12 @@ test_that("example_diagnose_scenario(): cleanup = TRUE removes the scenario when
   expect_true(dir.exists(kept))
 })
 
-test_that("example_diagnose_scenario(): show_content prints the scenario file", {
+test_that("example_diagnose_scenario(): show_content frames the file with its name, and FALSE prints nothing", {
   out <- cli::cli_fmt(
     pkg <- example_diagnose_scenario("code_examples/seed_setting_bad.R")
   )
   withr::defer(unlink(pkg, recursive = TRUE))
-  shipped <- readLines(
-    system.file("diagnose", "code_examples", "seed_setting_bad.R", package = "checktor")
-  )
   expect_match(out[1], "Example file: seed_setting_bad.R", fixed = TRUE)
-  expect_true(all(shipped[nzchar(shipped)] %in% out))
   expect_match(out, "End of example", all = FALSE, fixed = TRUE)
 
   expect_silent(
@@ -286,33 +285,6 @@ test_that("show_example_files(): filters by category and by pattern", {
     "code_examples/seed_setting_bad.R"
   )
   expect_identical(show_example_files(pattern = "no-such-file-xyz"), character(0))
-})
-
-test_that("scenario_target(): puts a CITATION scenario at inst/CITATION", {
-  expect_identical(
-    scenario_target("general_examples/citation_file_bad.CITATION"),
-    file.path("inst", "CITATION")
-  )
-  pkg <- example_diagnose_scenario(
-    "general_examples/citation_file_bad.CITATION",
-    show_content = FALSE,
-    cleanup = TRUE
-  )
-  expect_false(lab_citation_file(pkg, verbose = FALSE)$passed)
-})
-
-test_that("scenario_target(): puts a LICENSE scenario at the package root", {
-  expect_identical(
-    scenario_target("description_examples/license_year_bad.LICENSE"),
-    "LICENSE"
-  )
-  pkg <- example_diagnose_scenario(
-    "description_examples/license_year_bad.LICENSE",
-    show_content = FALSE,
-    cleanup = TRUE
-  )
-  expect_true(file.exists(file.path(pkg, "LICENSE")))
-  expect_false(lab_license_year(pkg, verbose = FALSE)$passed)
 })
 
 # Test the scenarios the help pages use ----

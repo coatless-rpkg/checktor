@@ -2,22 +2,27 @@
 
 # "Please always make sure to reset to user's options(), working directory or par()
 # after you changed it in examples and vignettes and demos" -> in your inst/demo folder
-test_that("lab_example_state(): reports state never restored in a demo", {
-  pkg <- script_pkg(c("options(digits = 3)", "plot(1:10)"), file.path("inst", "demo"), "d.R")
-  expect_identical(
-    lab_example_state(pkg, verbose = FALSE)$issues,
-    "demo d.R:1 (never restored)"
+test_that("lab_example_state(): reports a change never restored in a demo", {
+  cases <- list(
+    options = list(c("options(digits = 3)", "plot(1:10)"), "demo d.R:1 (never restored)"),
+    # setwd() takes a bare path, so unlike options() and par() it needs no named
+    # argument to count as a change.
+    setwd = list(c("setwd(tempdir())", "plot(1)"), "demo d.R:1 (never restored)"),
+    # A restore needs an assignment that CAPTURES options(), par() or the working
+    # directory. This one assigns something else and changes state anyway.
+    unrelated_assignment = list(
+      c("x <- 1", "options(digits = 3)", "plot(x)"),
+      "demo d.R:2 (never restored)"
+    )
   )
-})
-
-test_that("lab_example_state(): reports a setwd() never put back", {
-  # setwd() takes a bare path, so unlike options() and par() it needs no named
-  # argument to count as a change.
-  pkg <- script_pkg(c("setwd(tempdir())", "plot(1)"), file.path("inst", "demo"), "d.R")
-  expect_identical(
-    lab_example_state(pkg, verbose = FALSE)$issues,
-    "demo d.R:1 (never restored)"
-  )
+  for (case in names(cases)) {
+    pkg <- script_pkg(cases[[case]][[1L]], file.path("inst", "demo"), "d.R")
+    expect_identical(
+      lab_example_state(pkg, verbose = FALSE)$issues,
+      cases[[case]][[2L]],
+      info = case
+    )
+  }
 })
 
 test_that("lab_example_state(): points at the vignette line that changes state", {
@@ -35,24 +40,30 @@ test_that("lab_example_state(): points at the vignette line that changes state",
 })
 
 test_that("lab_example_state(): accepts state captured and put back", {
-  pkg <- script_pkg(
+  shapes <- list(
     c("old <- options(digits = 3)", "plot(1:10)", "options(old)"),
-    file.path("inst", "demo"), "d.R"
-  )
-  expect_identical(lab_example_state(pkg, verbose = FALSE)$issues, character(0))
-
-  par_pkg <- script_pkg(
     c("oldpar <- par(mfrow = c(1, 2))", "plot(1:10)", "par(oldpar)"),
-    file.path("inst", "demo"), "d.R"
-  )
-  expect_identical(lab_example_state(par_pkg, verbose = FALSE)$issues, character(0))
-
-  # `=` is an assignment too, though it does not parse as an `expr` node.
-  eq_pkg <- script_pkg(
+    # `=` is an assignment too, though it does not parse as an `expr` node.
     c("old = options(digits = 3)", "plot(1:10)", "options(old)"),
-    file.path("inst", "demo"), "d.R"
+    # knitr's rocco.Rd restores in on.exit(), data.table's froll.Rd captures with
+    # `=` into a dotted name, and the rest capture the old state before changing it.
+    c("f <- function() {", "  owd = setwd(tempdir())", "  on.exit(setwd(owd))", "}"),
+    c(".op = options(datatable.verbose = TRUE)", "plot(1)", "options(.op)"),
+    c("op <- par(no.readonly = TRUE)", "par(mfrow = c(1, 2))", "par(op)"),
+    c("owd <- getwd()", "setwd(tempdir())", "setwd(owd)"),
+    c("setwd(tempdir()) -> old", "plot(1)", "setwd(old)"),
+    # One setting read out and handed back by name, as simBKMRdata's vignette does.
+    c("old <- par()[['mfrow']]", "par(mfrow = c(2, 1))", "par(mfrow = old)"),
+    c("old <- getOption('digits')", "options(digits = 3)", "options(scipen = 0, digits = old)")
   )
-  expect_identical(lab_example_state(eq_pkg, verbose = FALSE)$issues, character(0))
+  for (lines in shapes) {
+    pkg <- script_pkg(lines, file.path("inst", "demo"), "d.R")
+    expect_identical(
+      lab_example_state(pkg, verbose = FALSE)$issues,
+      character(0),
+      info = paste(lines, collapse = "; ")
+    )
+  }
 })
 
 test_that("lab_example_state(): accepts a setwd() whose old directory is captured", {
@@ -91,29 +102,6 @@ test_that("lab_example_state(): accepts a setwd() whose old directory is capture
   expect_identical(lab_example_state(vig, verbose = FALSE)$issues, character(0))
 })
 
-test_that("lab_example_state(): accepts the other ways state is captured and put back", {
-  # knitr's rocco.Rd restores in on.exit(), data.table's froll.Rd captures with
-  # `=` into a dotted name, and the rest capture the old state before changing it.
-  shapes <- list(
-    c("f <- function() {", "  owd = setwd(tempdir())", "  on.exit(setwd(owd))", "}"),
-    c(".op = options(datatable.verbose = TRUE)", "plot(1)", "options(.op)"),
-    c("op <- par(no.readonly = TRUE)", "par(mfrow = c(1, 2))", "par(op)"),
-    c("owd <- getwd()", "setwd(tempdir())", "setwd(owd)"),
-    c("setwd(tempdir()) -> old", "plot(1)", "setwd(old)"),
-    # One setting read out and handed back by name, as simBKMRdata's vignette does.
-    c("old <- par()[['mfrow']]", "par(mfrow = c(2, 1))", "par(mfrow = old)"),
-    c("old <- getOption('digits')", "options(digits = 3)", "options(scipen = 0, digits = old)")
-  )
-  for (lines in shapes) {
-    pkg <- script_pkg(lines, file.path("inst", "demo"), "d.R")
-    expect_identical(
-      lab_example_state(pkg, verbose = FALSE)$issues,
-      character(0),
-      info = paste(lines, collapse = "; ")
-    )
-  }
-})
-
 test_that("lab_example_state(): a capture never handed back is not a restore", {
   # `old <- setwd(tempdir())` keeps the way back but never takes it, which is the
   # shape CRAN sends back. The value has to reach options(), par() or setwd().
@@ -135,6 +123,12 @@ test_that("lab_example_state(): a capture never handed back is not a restore", {
       info = paste(shape[[1]], collapse = "; ")
     )
   }
+  # The same in a hidden block, which is read like the rest of the example.
+  hidden <- rd_pkg("\\dontrun{old <- setwd(tempdir());}")
+  expect_identical(
+    lab_example_state(hidden, verbose = FALSE)$issues,
+    "example f.Rd:7 (never restored)"
+  )
 })
 
 test_that("lab_example_state(): a capture is an assignment OF the state call", {
@@ -168,19 +162,6 @@ test_that("lab_example_state(): a capture is an assignment OF the state call", {
   expect_identical(
     lab_example_state(derived, verbose = FALSE)$issues,
     c("demo d.R:1 (never restored)", "demo d.R:2 (never restored)")
-  )
-})
-
-test_that("lab_example_state(): an unrelated assignment is not a restore", {
-  # A restore needs an assignment that CAPTURES options(), par() or the working
-  # directory. This one assigns something else and changes state anyway.
-  pkg <- script_pkg(
-    c("x <- 1", "options(digits = 3)", "plot(x)"),
-    file.path("inst", "demo"), "d.R"
-  )
-  expect_identical(
-    lab_example_state(pkg, verbose = FALSE)$issues,
-    "demo d.R:2 (never restored)"
   )
 })
 
@@ -349,12 +330,4 @@ test_that("lab_example_state(): a restore puts back only the kind of state it ca
     file.path("inst", "demo"), "d.R"
   )
   expect_identical(lab_example_state(every, verbose = FALSE)$issues, character(0))
-})
-
-test_that("lab_example_state(): reads a hidden block that ends in ;", {
-  pkg <- rd_pkg("\\dontrun{options(digits = 3);}")
-  expect_equal(
-    lab_example_state(pkg, verbose = FALSE)$issues,
-    "example f.Rd:7 (never restored)"
-  )
 })

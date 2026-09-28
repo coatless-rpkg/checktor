@@ -33,17 +33,24 @@ test_that("prescribe(): surfaces a registered check, which has no treatment", {
   expect_match(out, "a.R mentions {stop('evaluated')}", fixed = TRUE)
 })
 
-test_that("prescribe(): lists what a check with a treatment found", {
+test_that("prescribe(): lists what a check with a treatment found, even on a clean verdict", {
+  # The verdict can be clean while advisory findings remain. Prescribing for the
+  # verdict alone would withhold the remedy for every one of them.
   pkg <- make_temp_dir()
-  write_pkg(pkg, news = FALSE)
+  write_pkg(pkg, news = FALSE) # clean except: no NEWS file, which is `opinion`
   res <- checktor(pkg, verbose = FALSE, progress = FALSE)
   expect_false(res$general_issues$passed[["news_file"]]) # sanity
+  expect_true(is_healthy(res)) # nothing CRAN will reject
+  expect_gt(res$metadata$advisory_issues, 0L) # but there IS something to say
 
   txt <- paste(cli::cli_fmt(prescribe(res)), collapse = "\n")
+  # A curated check gets its own title and remedy, not #4's generic fallback.
   expect_match(txt, "Missing NEWS File", fixed = TRUE)
-  # The finding, not only the heading: "NEWS" alone is satisfied by a header.
-  expect_match(txt, "No NEWS file found", fixed = TRUE)
   expect_match(txt, "usethis::use_news_md()", fixed = TRUE)
+  # The finding, not only the "NEWS file check" heading: "NEWS" alone is
+  # satisfied by a header, and a header-only prescription is exactly the
+  # silence this test is here to rule out.
+  expect_match(txt, "No NEWS file found", fixed = TRUE)
 
   # The issues quote the package, so they print as written.
   res$general_issues$news_file$issues <- "NEWS.md mentions {stop('evaluated')}"
@@ -54,16 +61,6 @@ test_that("prescribe(): lists what a check with a treatment found", {
     "NEWS.md mentions {stop('evaluated')}",
     fixed = TRUE
   )
-})
-
-test_that("prescribe(): still emits curated treatments for known checks", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg, r_code = "bad <- function() T")
-
-  res <- checktor(pkg, verbose = FALSE, progress = FALSE)
-  out <- cli::cli_fmt(prescribe(res))
-  txt <- paste(out, collapse = "\n")
-  expect_match(txt, "T/F Usage Issues")
 })
 
 test_that("prescribe(): gives a DESCRIPTION R cannot read its own treatment", {
@@ -112,21 +109,6 @@ test_that("prescribe(): fits the DESCRIPTION example to why R cannot read it", {
     "record"
   ))
   expect_match(txt, "reflowed", fixed = TRUE)
-})
-
-test_that("prescribe(): still offers remedies for advisory-only findings", {
-  # The verdict can be clean while advisory findings remain. Prescribing for the
-  # verdict alone would withhold the remedy for every one of them.
-  pkg <- make_temp_dir()
-  write_pkg(pkg, news = FALSE) # clean except: no NEWS file, which is `opinion`
-  r <- checktor(pkg, verbose = FALSE, progress = FALSE)
-
-  expect_true(is_healthy(r)) # nothing CRAN will reject
-  expect_gt(r$metadata$advisory_issues, 0L) # but there IS something to say
-  txt <- paste(cli::cli_fmt(prescribe(r)), collapse = "\n")
-  # The finding itself, not the "NEWS file check" heading: a header-only
-  # prescription is exactly the silence this test is here to rule out.
-  expect_match(txt, "No NEWS file found", fixed = TRUE)
 })
 
 test_that("prescribe(): prints the finding, the treatment and the example", {

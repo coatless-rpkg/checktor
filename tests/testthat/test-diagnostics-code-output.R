@@ -40,8 +40,15 @@ test_that("lab_print_cat_usage(): recognises every verbosity-flag stem", {
     "print", "report", "note", "info", "show", "echo", "progress",
     "log", "warn", "output"
   )
-  for (stem in stems) {
-    flag <- paste0(stem, "_flag")
+  flags <- c(
+    stats::setNames(paste0(stems, "_flag"), stems),
+    # geoR gates every message on `messages.screen`. checktor's verbosity
+    # whitelist was 8 hardcoded stems with no "message" among them, so all 117
+    # of geoR's correctly-guarded cat() calls were reported.
+    geoR = "messages.screen"
+  )
+  for (case in names(flags)) {
+    flag <- flags[[case]]
     pkg <- make_temp_dir()
     write_pkg(
       pkg,
@@ -52,7 +59,7 @@ test_that("lab_print_cat_usage(): recognises every verbosity-flag stem", {
         "}"
       )
     )
-    expect_true(lab_print_cat_usage(pkg, verbose = FALSE)$passed, info = stem)
+    expect_true(lab_print_cat_usage(pkg, verbose = FALSE)$passed, info = case)
   }
 
   # The control: the same shape gated on something that is not an output flag is
@@ -128,7 +135,8 @@ test_that("lab_print_cat_usage(): still flags cat beside an exempt method", {
 })
 
 test_that("lab_print_cat_usage(): flags output from a value-returning fn", {
-  # The genuine violation: the caller wants the value and gets the noise too.
+  # The genuine violation, and the rule the exemptions must never swallow: the
+  # caller wants the value and gets the noise too.
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -201,9 +209,11 @@ test_that("lab_print_cat_usage(): still flags a plain console print()", {
   expect_false(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
 })
 
-test_that("lab_print_cat_usage(): exempts output before a yesno() prompt", {
+test_that("lab_print_cat_usage(): exempts output that sets up a yesno() prompt", {
   # CRAN's rule ends "(except for print, summary, interactive functions)".
-  # surveydown cat()s a file tree, then asks "Overwrite all existing files?".
+  # surveydown/R/util.R sd_create_survey() cat()s a file tree, then asks
+  # "Overwrite all existing files?". The prompt exempts the output both at the
+  # top of the body and nested inside an ordinary (non-verbosity) if.
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -214,6 +224,15 @@ test_that("lab_print_cat_usage(): exempts output before a yesno() prompt", {
       "  ok <- yesno('Overwrite all existing files?')",
       "  if (!ok) stop('Aborted.')",
       "  scaffold(files)",
+      "}",
+      "sd_create_survey <- function(existing_files, ask = TRUE) {",
+      "  if (ask && length(existing_files) > 0) {",
+      "    cat('The following files already exist:\\n\\n')",
+      "    cat(format_file_tree(existing_files), '\\n\\n', sep = '')",
+      "    overwrite_all <- yesno('Overwrite all existing files?')",
+      "    if (!overwrite_all) stop('Operation aborted by the user.')",
+      "  }",
+      "  scaffold(existing_files)",
       "}"
     )
   )
@@ -305,84 +324,6 @@ test_that("lab_print_cat_usage(): a treatment line renders its markup", {
   expect_false(grepl("{.code", txt, fixed = TRUE))
 })
 
-test_that("lab_print_cat_usage(): a console reporter is not unsuppressable output", {
-  # logitr/R/utils.R statusCodes(), cbcTools/R/priors.R cbc_suggest_priors().
-  # Both exist to print. WRE permits console output when producing it IS the
-  # function's purpose.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    r_code = c(
-      "statusCodes <- function() {",
-      "  codes <- getStatusCodes()",
-      "  cat('Status codes:', '\\n', sep = '')",
-      "  for (i in seq_len(nrow(codes))) cat(codes$code[i], ': ', codes$msg[i], '\\n', sep = '')",
-      "}",
-      "",
-      "cbc_suggest_priors <- function(profiles) {",
-      "  suggestions <- compute_priors(profiles)",
-      "  cat('========================================\\n')",
-      "  cat('Copy-paste this into your code:\\n\\n')",
-      "  cat('priors <- cbc_priors(\\n')",
-      "  invisible(suggestions)",
-      "}"
-    )
-  )
-  expect_true(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_print_cat_usage(): print(doc, target) writes a file, it does not print", {
-  # renderthis/R/pptx.R to_pptx(). officer's print.rpptx(x, target) SAVES.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    r_code = c(
-      "to_pptx <- function(png, output_file) {",
-      "  doc <- officer::read_pptx()",
-      "  print(doc, output_file)",
-      "}"
-    )
-  )
-  expect_true(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_print_cat_usage(): output that sets up a user prompt is interactive output", {
-  # surveydown/R/util.R sd_create_survey(). CRAN's rule ends "(except for print,
-  # summary, interactive functions)".
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    r_code = c(
-      "sd_create_survey <- function(existing_files, ask = TRUE) {",
-      "  if (ask && length(existing_files) > 0) {",
-      "    cat('The following files already exist:\\n\\n')",
-      "    cat(format_file_tree(existing_files), '\\n\\n', sep = '')",
-      "    overwrite_all <- yesno('Overwrite all existing files?')",
-      "    if (!overwrite_all) stop('Operation aborted by the user.')",
-      "  }",
-      "  scaffold(existing_files)",
-      "}"
-    )
-  )
-  expect_true(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_print_cat_usage(): printing during a computation is still caught", {
-  # The rule the exemptions must never swallow: the caller wants a value and gets
-  # the noise as well.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    r_code = c(
-      "estimate <- function(data) {",
-      "  cat('Fitting model...\\n')",
-      "  fit_model(data)",
-      "}"
-    )
-  )
-  expect_false(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
-})
-
 test_that("lab_print_cat_usage(): obj$cat() is a method call, not base::cat()", {
   # cli is built on objects with a `$cat` member, and was reported 25 times for
   # calling its own method. R's parser emits a SYMBOL_FUNCTION_CALL for the member
@@ -415,23 +356,6 @@ test_that("lab_print_cat_usage(): base::cat() is still matched", {
     )
   )
   expect_false(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_print_cat_usage(): an output flag named `messages` is a verbosity gate", {
-  # geoR gates every message on `messages.screen`. checktor's verbosity whitelist
-  # was 8 hardcoded stems with no "message" among them, so all 117 of geoR's
-  # correctly-guarded cat() calls were reported.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    r_code = c(
-      "krige <- function(x, messages.screen = TRUE) {",
-      "  if (messages.screen) cat('krige.conv: computing\\n')",
-      "  compute(x)",
-      "}"
-    )
-  )
-  expect_true(lab_print_cat_usage(pkg, verbose = FALSE)$passed)
 })
 
 test_that("lab_print_cat_usage(): a method defined with a QUOTED name is still a method", {

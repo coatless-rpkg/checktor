@@ -3,24 +3,6 @@
 
 # Test lab_value_tags() ----
 
-test_that("lab_value_tags(): flags missing \\value{} in function topics", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    rd_files = list(
-      "fn.Rd" = c(
-        "\\name{fn}",
-        "\\title{fn}",
-        "\\usage{fn(x)}",
-        "\\description{No value tag here}"
-      )
-    )
-  )
-  res <- lab_value_tags(pkg, verbose = FALSE)
-  expect_false(res$passed)
-  expect_equal(res$missing, "fn.Rd")
-})
-
 test_that("lab_value_tags(): accepts well-documented topics", {
   pkg <- make_temp_dir()
   write_pkg(
@@ -159,39 +141,101 @@ test_that("lab_value_tags(): flags missing \\value, exempts internal topics", {
 # Test lab_roxygen_usage() ----
 
 test_that("lab_roxygen_usage(): flags an @export missing from NAMESPACE", {
-  # The real cost of a forgotten devtools::document(): the function is tagged
-  # for export, is not exported, and R CMD check says nothing.
-  pkg <- make_temp_dir()
-  write_roxy_pkg(
-    pkg,
-    r_code = c("#' Add", "#' @export", "add <- function(a, b) a + b"),
-    namespace = character(0)
+  cases <- list(
+    # The real cost of a forgotten devtools::document(): the function is tagged
+    # for export, is not exported, and R CMD check says nothing.
+    "one-line assignment" = list(
+      r_code = c("#' Add", "#' @export", "add <- function(a, b) a + b"),
+      pattern = "add is tagged @export"
+    ),
+    # One the previous regex implementation got wrong: `add <-` and
+    # `function(a, b)` on separate lines. A "regex the next line for `name <-`"
+    # approach misses this entirely.
+    "assignment split across lines" = list(
+      r_code = c("#' Add", "#' @export", "add <-", "  function(a, b) a + b"),
+      pattern = "add is tagged @export"
+    ),
+    # One the previous regex implementation got wrong.
+    "backticked name assigned with =" = list(
+      r_code = c("#' Odd", "#' @export", "`odd name` = function() NULL"),
+      pattern = "odd name"
+    )
   )
-
-  res <- lab_roxygen_usage(pkg, verbose = FALSE)
-  expect_false(res$passed)
-  expect_match(res$issues, "add is tagged @export", all = FALSE)
+  for (case in names(cases)) {
+    pkg <- make_temp_dir()
+    write_roxy_pkg(pkg, cases[[case]]$r_code, namespace = character(0))
+    res <- lab_roxygen_usage(pkg, verbose = FALSE)
+    expect_false(res$passed, info = case)
+    expect_match(res$issues, cases[[case]]$pattern, all = FALSE, info = case)
+  }
 })
 
-test_that("lab_roxygen_usage(): passes when the export is registered", {
-  pkg <- make_temp_dir()
-  write_roxy_pkg(
-    pkg,
-    r_code = c("#' Add", "#' @export", "add <- function(a, b) a + b"),
-    namespace = "export(add)"
+test_that("lab_roxygen_usage(): passes when NAMESPACE matches the roxygen tags", {
+  cases <- list(
+    "registered export()" = list(
+      r_code = c("#' Add", "#' @export", "add <- function(a, b) a + b"),
+      namespace = "export(add)"
+    ),
+    # `#' @export` on print.foo generates S3method(print, foo), not export().
+    "S3method() registration" = list(
+      r_code = c("#' Print", "#' @export", "print.foo <- function(x, ...) x"),
+      namespace = "S3method(print,foo)"
+    ),
+    # `@exportS3Method` starts with `@export`; matched loosely it would read as
+    # an @export naming `S3Method` and `generics::tidy`.
+    "@exportS3Method is not @export" = list(
+      r_code = c(
+        "#' Tidy",
+        "#' @exportS3Method generics::tidy",
+        "tidy.foo <- function(x, ...) x"
+      ),
+      namespace = "S3method(generics::tidy,foo)"
+    ),
+    # One the previous regex implementation got wrong. Neither is a roxygen
+    # tag. Only a `#'` COMMENT token counts.
+    "string or plain comment" = list(
+      r_code = c(
+        "# @export not_a_tag",
+        "tag <- \"#' @export also_not_a_tag\"",
+        "helper <- function() NULL"
+      ),
+      namespace = character(0)
+    ),
+    # One the previous regex implementation got wrong. cbcTools/NAMESPACE.
+    # S3method("[",cbc_profiles) quotes the generic; keeping the quotes made
+    # every [.foo / names<-.foo method look unregistered.
+    "non-syntactic S3 methods (cbcTools)" = list(
+      r_code = c(
+        "#' Subset",
+        "#' @export",
+        "`[.cbc_profiles` <- function(x, i) x",
+        "#' Rename",
+        "#' @export",
+        "`names<-.cbc_profiles` <- function(x, value) x"
+      ),
+      namespace = c(
+        "S3method(\"[\",cbc_profiles)",
+        "S3method(\"names<-\",cbc_profiles)"
+      )
+    ),
+    # One the previous regex implementation got wrong. jsonlite/R/fromJSON.R
+    # line 21 is `#' @export fromJSON toJSON`. Storing that whole string as one
+    # name invented a function called "fromJSON toJSON".
+    "several names in one @export (jsonlite)" = list(
+      r_code = c(
+        "#' Convert",
+        "#' @export fromJSON toJSON",
+        "fromJSON <- function(txt) txt",
+        "toJSON <- function(x) x"
+      ),
+      namespace = c("export(fromJSON)", "export(toJSON)")
+    )
   )
-  expect_true(lab_roxygen_usage(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_roxygen_usage(): counts an S3method registration as an export", {
-  # `#' @export` on print.foo generates S3method(print, foo), not export().
-  pkg <- make_temp_dir()
-  write_roxy_pkg(
-    pkg,
-    r_code = c("#' Print", "#' @export", "print.foo <- function(x, ...) x"),
-    namespace = "S3method(print,foo)"
-  )
-  expect_true(lab_roxygen_usage(pkg, verbose = FALSE)$passed)
+  for (case in names(cases)) {
+    pkg <- make_temp_dir()
+    write_roxy_pkg(pkg, cases[[case]]$r_code, cases[[case]]$namespace)
+    expect_true(lab_roxygen_usage(pkg, verbose = FALSE)$passed, info = case)
+  }
 })
 
 test_that("lab_roxygen_usage(): flags an Rd orphaned by a deleted file", {
@@ -228,140 +272,4 @@ test_that("lab_roxygen_usage(): ignores a hand-written NAMESPACE", {
   )
   writeLines("# hand maintained", file.path(pkg, "NAMESPACE"))
   expect_true(lab_roxygen_usage(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_roxygen_usage(): never confuses @exportS3Method with @export", {
-  pkg <- make_temp_dir()
-  write_roxy_pkg(
-    pkg,
-    r_code = c(
-      "#' Tidy",
-      "#' @exportS3Method generics::tidy",
-      "tidy.foo <- function(x, ...) x"
-    ),
-    namespace = "S3method(generics::tidy,foo)"
-  )
-  expect_true(lab_roxygen_usage(pkg, verbose = FALSE)$passed)
-})
-
-# Each case below is one the previous regex implementation got wrong.
-
-test_that("lab_roxygen_usage(): sees an assignment split across lines", {
-  # `add <-` and `function(a, b)` on separate lines. A "regex the next line for
-  # `name <-`" approach misses this entirely.
-  pkg <- make_temp_dir()
-  write_roxy_pkg(
-    pkg,
-    r_code = c("#' Add", "#' @export", "add <-", "  function(a, b) a + b"),
-    namespace = character(0)
-  )
-  res <- lab_roxygen_usage(pkg, verbose = FALSE)
-  expect_false(res$passed)
-  expect_match(res$issues, "add is tagged @export", all = FALSE)
-})
-
-test_that("lab_roxygen_usage(): reads a backticked or `=` assigned name", {
-  pkg <- make_temp_dir()
-  write_roxy_pkg(
-    pkg,
-    r_code = c("#' Odd", "#' @export", "`odd name` = function() NULL"),
-    namespace = character(0)
-  )
-  res <- lab_roxygen_usage(pkg, verbose = FALSE)
-  expect_false(res$passed)
-  expect_match(res$issues, "odd name", all = FALSE)
-})
-
-test_that("lab_roxygen_usage(): ignores @export in a string or plain comment", {
-  # Neither is a roxygen tag. Only a `#'` COMMENT token counts.
-  pkg <- make_temp_dir()
-  write_roxy_pkg(
-    pkg,
-    r_code = c(
-      "# @export not_a_tag",
-      "tag <- \"#' @export also_not_a_tag\"",
-      "helper <- function() NULL"
-    ),
-    namespace = character(0)
-  )
-  expect_true(lab_roxygen_usage(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_roxygen_usage(): accepts @export on a non-syntactic S3 method", {
-  pkg <- make_temp_dir()
-  write_roxy_pkg(
-    pkg,
-    r_code = c(
-      "#' Subset",
-      "#' @export",
-      "`[.foo` <- function(x, i) x",
-      "#' Rename",
-      "#' @export",
-      "`names<-.foo` <- function(x, value) x"
-    ),
-    namespace = c("S3method(\"[\",foo)", "S3method(\"names<-\",foo)")
-  )
-  expect_true(lab_roxygen_usage(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_roxygen_usage(): a non-syntactic S3 method is registered, not unexported", {
-  # cbcTools/NAMESPACE. S3method("[",cbc_profiles) quotes the generic; keeping
-  # the quotes made every [.foo / names<-.foo method look unregistered.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    r_code = c(
-      "#' Subset",
-      "#' @export",
-      "`[.cbc_profiles` <- function(x, i) x",
-      "#' Rename",
-      "#' @export",
-      "`names<-.cbc_profiles` <- function(x, value) x"
-    )
-  )
-  writeLines(
-    c(
-      "# Generated by roxygen2: do not edit by hand",
-      "S3method(\"[\",cbc_profiles)",
-      "S3method(\"names<-\",cbc_profiles)"
-    ),
-    file.path(pkg, "NAMESPACE")
-  )
-  expect_true(lab_roxygen_usage(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_roxygen_usage(): roxygen @export may name several objects at once", {
-  # jsonlite/R/fromJSON.R line 21 is `#' @export fromJSON toJSON`. Storing that
-  # whole string as one name invented a function called "fromJSON toJSON".
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    r_code = c(
-      "#' Convert",
-      "#' @export fromJSON toJSON",
-      "fromJSON <- function(txt) txt",
-      "toJSON <- function(x) x"
-    )
-  )
-  writeLines(
-    c(
-      "# Generated by roxygen2: do not edit by hand",
-      "export(fromJSON)",
-      "export(toJSON)"
-    ),
-    file.path(pkg, "NAMESPACE")
-  )
-  expect_true(lab_roxygen_usage(pkg, verbose = FALSE)$passed)
-})
-
-# Test checktor() ----
-
-test_that("checktor(): runs the example checks", {
-  pkg <- rd_pkg("install.packages('somepkg')")
-  td <- tidy(checktor(pkg, verbose = FALSE, progress = FALSE))
-  for (nm in c("example_interactive", "example_installs", "example_writes",
-               "example_state", "example_internal_ns")) {
-    expect_true(nm %in% td$check, info = nm)
-  }
-  expect_false(td$passed[td$check == "example_installs"])
 })

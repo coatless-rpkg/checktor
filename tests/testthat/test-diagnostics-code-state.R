@@ -18,7 +18,7 @@ test_that("lab_seed_setting(): flags set.seed(1) but not set.seed(seed)", {
   expect_true(lab_seed_setting(pkg_ok, verbose = FALSE)$passed)
 })
 
-test_that("lab_seed_setting(): flags a seed under a live condition", {
+test_that("lab_seed_setting(): exempts if (FALSE) but flags a live condition", {
   # The dead-code carve-out is narrow on purpose: only `if (FALSE)` can never run.
   # A seed under any condition a caller can satisfy DOES reach the user's RNG
   # state, so it stays a finding.
@@ -29,20 +29,6 @@ test_that("lab_seed_setting(): flags a seed under a live condition", {
   pkg_dead <- make_temp_dir()
   write_pkg(pkg_dead, r_code = "f <- function(x) { if (FALSE) set.seed(123); x }")
   expect_true(lab_seed_setting(pkg_dead, verbose = FALSE)$passed)
-})
-
-test_that("lab_seed_setting(): set.seed() in dead code cannot touch the RNG", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    r_code = c(
-      "f <- function(x) {",
-      "  if (FALSE) set.seed(123)",
-      "  x",
-      "}"
-    )
-  )
-  expect_true(lab_seed_setting(pkg, verbose = FALSE)$passed)
 })
 
 # Test lab_option_changes() ----
@@ -64,10 +50,6 @@ test_that("lab_option_changes(): recognises on.exit and withr::local_*", {
     )
   )
   expect_true(lab_option_changes(pkg_ok, verbose = FALSE)$passed)
-
-  pkg_bad <- make_temp_dir()
-  write_pkg(pkg_bad, r_code = "f <- function() options(scipen = 999)")
-  expect_false(lab_option_changes(pkg_bad, verbose = FALSE)$passed)
 })
 
 test_that("lab_option_changes(): exempts a factored on.exit restore handler", {
@@ -92,9 +74,20 @@ test_that("lab_option_changes(): exempts a factored on.exit restore handler", {
   pkg_bad <- make_temp_dir()
   write_pkg(
     pkg_bad,
-    r_code = "set_margins <- function() par(mar = c(1, 1, 1, 1))"
+    r_code = c(
+      "reset_par <- function(op) par(cex = op$cex, mar = op$mar)",
+      "draw <- function() {",
+      "  op <- par(no.readonly = TRUE)",
+      "  on.exit(reset_par(op))",
+      "  par(mar = c(2, 2, 2, 2))",
+      "  plot(1)",
+      "}",
+      "set_margins <- function() par(mar = c(1, 1, 1, 1))"
+    )
   )
-  expect_false(lab_option_changes(pkg_bad, verbose = FALSE)$passed)
+  res <- lab_option_changes(pkg_bad, verbose = FALSE)
+  expect_false(res$passed)
+  expect_equal(length(res$issues), 1L)
 })
 
 test_that("lab_option_changes(): exempts a setter that returns the old value", {
@@ -266,23 +259,6 @@ test_that("lab_globalenv_mod(): reads the right-hand superassignment too", {
   expect_match(res$issues, "undeclared_global", all = FALSE, fixed = TRUE)
 })
 
-test_that("lab_globalenv_mod(): a memoisation cache is not a .GlobalEnv write", {
-  # `<<-` binds in the first ENCLOSING frame where the name exists, reaching
-  # .GlobalEnv only when it is bound nowhere. A package-level cache never is.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    r_code = c(
-      ".cache <- NULL",
-      "get_data <- function() {",
-      "  if (is.null(.cache)) .cache <<- expensive_computation()",
-      "  .cache",
-      "}"
-    )
-  )
-  expect_true(lab_globalenv_mod(pkg, verbose = FALSE)$passed)
-})
-
 test_that("lab_globalenv_mod(): `<<-` inside local() binds in the local() env, not .GlobalEnv", {
   # curl's make_option_type_table <- local({ cache <- NULL; function() ... }).
   # local() is a CALL, not a function, so an ancestor::expr[FUNCTION] search walks
@@ -379,48 +355,36 @@ test_that("lab_warn_option(): only objects to -1, not to every warn = value", {
 
 # Test lab_sys_setenv() ----
 
-test_that("lab_sys_setenv(): flags an env var that is never put back", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg, r_code = "f <- function() Sys.setenv(MYVAR = '1')")
-  res <- lab_sys_setenv(pkg, verbose = FALSE)
+test_that("lab_sys_setenv(): flags an unrestored env var and accepts cleanup", {
+  pkg_bad <- make_temp_dir()
+  write_pkg(pkg_bad, r_code = "f <- function() Sys.setenv(MYVAR = '1')")
+  res <- lab_sys_setenv(pkg_bad, verbose = FALSE)
   expect_false(res$passed)
   expect_equal(length(res$issues), 1L)
-})
 
-test_that("lab_sys_setenv(): accepts on.exit and local_envvar restores", {
-  pkg <- make_temp_dir()
+  pkg_ok <- make_temp_dir()
   write_pkg(
-    pkg,
+    pkg_ok,
     r_code = c(
+      # restore the old value on exit
       "f <- function() {",
       "  old <- Sys.getenv('MYVAR')",
       "  on.exit(Sys.setenv(MYVAR = old))",
       "  Sys.setenv(MYVAR = '1')",
       "  invisible()",
       "}",
-      "g <- function() withr::local_envvar(c(MYVAR = '1'))"
-    )
-  )
-  expect_true(lab_sys_setenv(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_sys_setenv(): flags naked Sys.setenv and accepts cleanup", {
-  pkg_bad <- make_temp_dir()
-  write_pkg(pkg_bad, r_code = "f <- function() Sys.setenv(FOO = 1)")
-  expect_false(lab_sys_setenv(pkg_bad, verbose = FALSE)$passed)
-
-  pkg_ok <- make_temp_dir()
-  write_pkg(
-    pkg_ok,
-    r_code = c(
-      "f <- function() {",
+      # withr does the restore
+      "g <- function() withr::local_envvar(c(MYVAR = '1'))",
+      # restore by unsetting on exit
+      "h <- function() {",
       "  Sys.setenv(FOO = 1)",
       "  on.exit(Sys.unsetenv('FOO'))",
-      "}",
-      "g <- function() withr::local_envvar(c(BAR = 1))"
+      "}"
     )
   )
-  expect_true(lab_sys_setenv(pkg_ok, verbose = FALSE)$passed)
+  res <- lab_sys_setenv(pkg_ok, verbose = FALSE)
+  expect_true(res$passed)
+  expect_identical(res$issues, character())
 })
 
 test_that("lab_sys_setenv(): a setter that returns the captured state is not a leak", {

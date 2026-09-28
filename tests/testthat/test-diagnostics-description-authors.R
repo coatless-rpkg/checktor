@@ -19,59 +19,46 @@ test_that("lab_authors(): is OK when Authors@R is present, fails otherwise", {
   )
 })
 
-test_that("lab_authors(): flags an unfilled usethis template", {
-  # pcaR2 shipped exactly this and checktor's presence-only check passed it, even
-  # though it is a hard CRAN rejection. R CMD check says nothing: the field IS
-  # present, so it has nothing to complain about.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    authors_r = paste0(
-      "person(\"First\", \"Last\", , \"january.weiner@gmail.com\", ",
-      "role = c(\"aut\", \"cre\", \"cph\"))"
+test_that("lab_authors(): flags an unfilled usethis or package.skeleton() template", {
+  cases <- list(
+    # pcaR2 shipped exactly this and checktor's presence-only check passed it,
+    # even though it is a hard CRAN rejection. R CMD check says nothing: the
+    # field IS present, so it has nothing to complain about.
+    `usethis (pcaR2)` = list(
+      paste0(
+        "person(\"First\", \"Last\", , \"january.weiner@gmail.com\", ",
+        "role = c(\"aut\", \"cre\", \"cph\"))"
+      ),
+      "Authors@R: unfilled template placeholder (\"First\", \"Last\")"
+    ),
+    # Both placeholders must be named. The email alone would fail the check, so
+    # without the exact issue a lost "Your Name" entry would go unnoticed.
+    `usethis name and email` = list(
+      "person(\"Your Name\", , , \"you@example.com\", role = c(\"aut\", \"cre\"))",
+      "Authors@R: unfilled template placeholder (\"Your Name\", \"you@example.com\")"
+    ),
+    # What utils::package.skeleton() writes (R 4.6.1). R's incoming check tests
+    # only the Author and Maintainer fields older skeletons wrote, so it is
+    # silent.
+    `package.skeleton()` = list(
+      paste0(
+        "c(person(\"Givenname\", \"Familyname\", role = c(\"aut\", \"cre\"),\n",
+        "    email = \"yourfault@somewhere.net\"),\n",
+        "  person(\"Anotherone\", \"Ifany\", role = \"ctb\"))"
+      ),
+      paste(
+        "Authors@R: unfilled template placeholder (\"Givenname\", \"Familyname\",",
+        "\"Anotherone\", \"Ifany\", \"yourfault@somewhere.net\")"
+      )
     )
   )
-  res <- diagnose_description_issues(pkg, verbose = FALSE)$authors
-  expect_false(res$passed)
-  expect_true(any(grepl("placeholder", res$issues)))
-})
-
-test_that("lab_authors(): flags a placeholder email and Your Name", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    authors_r = paste0(
-      "person(\"Your Name\", , , \"you@example.com\", role = c(\"aut\", \"cre\"))"
+  for (case in names(cases)) {
+    res <- lab_authors(make_temp_dir(),
+      verbose = FALSE,
+      desc = c(`Authors@R` = cases[[case]][[1L]])
     )
-  )
-  res <- diagnose_description_issues(pkg, verbose = FALSE)$authors
-  expect_false(res$passed)
-  # Both placeholders must be named. The email detector alone satisfies
-  # `passed == FALSE`, so without this the "Your Name" entry could vanish from
-  # the placeholder list unnoticed.
-  expect_match(res$issues, "Your Name", all = FALSE)
-  expect_match(res$issues, "you@example.com", all = FALSE)
-})
-
-test_that("lab_authors(): flags the package.skeleton() template", {
-  # What utils::package.skeleton() writes (R 4.6.1). R's incoming check tests
-  # only the Author and Maintainer fields older skeletons wrote, so it is silent.
-  skeleton <- paste0(
-    "c(person(\"Givenname\", \"Familyname\", role = c(\"aut\", \"cre\"),\n",
-    "    email = \"yourfault@somewhere.net\"),\n",
-    "  person(\"Anotherone\", \"Ifany\", role = \"ctb\"))"
-  )
-  res <- lab_authors(make_temp_dir(),
-    verbose = FALSE,
-    desc = c(`Authors@R` = skeleton)
-  )
-  expect_identical(
-    res$issues,
-    paste(
-      "Authors@R: unfilled template placeholder (\"Givenname\", \"Familyname\",",
-      "\"Anotherone\", \"Ifany\", \"yourfault@somewhere.net\")"
-    )
-  )
+    expect_identical(res$issues, cases[[case]][[2L]], info = case)
+  }
 })
 
 test_that("lab_authors(): reads the Authors@R strings, not its comments", {
@@ -116,59 +103,25 @@ test_that("lab_authors(): does not invent placeholders in a real name", {
   expect_equal(length(res$issues), 0L)
 })
 
-test_that("lab_authors(): passes a real, filled-in Authors@R", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg) # helper default is a real name/email
-  expect_true(diagnose_description_issues(pkg, verbose = FALSE)$authors$passed)
-})
-
-test_that("lab_authors(): passes a well-formed Authors@R", {
-  aar <- "person('Jane', 'Doe', email = 'jane@example.org', role = c('aut', 'cre'))"
-  expect_true(
-    lab_authors(make_temp_dir(),
+test_that("lab_authors(): flags a missing maintainer, name or role, and a field R cannot read", {
+  cases <- list(
+    `no maintainer` = list("person('Jane', 'Doe', role = 'aut')", "cre"),
+    `no name` = list("person(role = c('aut', 'cre'))", "no name"),
+    `no role` = list(
+      "c(person('Jane', 'Doe', role = 'cre'), person('No', 'Role'))",
+      "no role"
+    ),
+    `syntax error` = list("person('Jane',,", "does not parse"),
+    `not a person` = list("list(1, 2)", "does not (parse|evaluate)")
+  )
+  for (case in names(cases)) {
+    res <- lab_authors(make_temp_dir(),
       verbose = FALSE,
-      desc = list(`Authors@R` = aar)
-    )$passed
-  )
-})
-
-test_that("lab_authors(): flags Authors@R with no maintainer (cre)", {
-  aar <- "person('Jane', 'Doe', role = 'aut')"
-  res <- lab_authors(make_temp_dir(), verbose = FALSE, desc = list(`Authors@R` = aar))
-  expect_false(res$passed)
-  expect_true(any(grepl("cre", res$issues)))
-})
-
-test_that("lab_authors(): flags a person with no name", {
-  aar <- "person(role = c('aut', 'cre'))"
-  res <- lab_authors(make_temp_dir(), verbose = FALSE, desc = list(`Authors@R` = aar))
-  expect_false(res$passed)
-  expect_true(any(grepl("no name", res$issues)))
-})
-
-test_that("lab_authors(): flags an Authors@R that does not parse", {
-  res <- lab_authors(make_temp_dir(),
-    verbose = FALSE,
-    desc = list(`Authors@R` = "person('Jane',,")
-  )
-  expect_false(res$passed)
-  expect_true(any(grepl("does not parse", res$issues)))
-})
-
-test_that("lab_authors(): flags a person with no role", {
-  aar <- "c(person('Jane', 'Doe', role = 'cre'), person('No', 'Role'))"
-  res <- lab_authors(make_temp_dir(), verbose = FALSE, desc = list(`Authors@R` = aar))
-  expect_false(res$passed)
-  expect_true(any(grepl("no role", res$issues)))
-})
-
-test_that("lab_authors(): reports a field that evaluates to a non-person", {
-  res <- lab_authors(make_temp_dir(),
-    verbose = FALSE,
-    desc = list(`Authors@R` = "list(1, 2)")
-  )
-  expect_false(res$passed)
-  expect_true(any(grepl("does not (parse|evaluate)", res$issues)))
+      desc = list(`Authors@R` = cases[[case]][[1L]])
+    )
+    expect_false(res$passed, info = case)
+    expect_match(res$issues, cases[[case]][[2L]], all = FALSE, info = case)
+  }
 })
 
 test_that("lab_authors(): a deeply nested Authors@R is reported, not a crash", {
@@ -187,16 +140,6 @@ test_that("lab_authors(): a deeply nested Authors@R is reported, not a crash", {
   expect_false(res$passed)
 })
 
-test_that("lab_authors(): Authors@R is not executed while diagnosing", {
-  # checktor lints other people's packages; a malicious Authors@R must not run.
-  marker <- withr::local_tempfile()
-  # A pure-R side effect, so a leak shows on every OS, Windows included.
-  aar <- sprintf("file.create(%s)", deparse(marker))
-  res <- lab_authors(make_temp_dir(), verbose = FALSE, desc = list(`Authors@R` = aar))
-  expect_false(file.exists(marker)) # the command did not run
-  expect_false(res$passed) # and the field is reported, not silently accepted
-})
-
 test_that("lab_authors(): accepts parentheses around a value, as R does", {
   # panelSUR writes role = ("aut") and TwoCutoff person(("Bhrigu Kumar"), ...).
   # R's own reader allows `(`, so both build, and neither is a finding.
@@ -209,52 +152,46 @@ test_that("lab_authors(): accepts parentheses around a value, as R does", {
   expect_length(res$issues, 0L)
 })
 
-test_that("lab_authors(): reads utils::person() but reports it, as R CMD build does", {
+test_that("lab_authors(): reads the calls R's reader refuses, and reports them in one issue", {
   # R 4.6.0 and later refuse any call in Authors@R outside person(),
   # as.person(), c(), list(), paste(), paste0() and `(`, so R CMD build stops
-  # with "Malformed Authors@R field" on a namespace-qualified call.
-  aar <- paste0(
-    "utils::person('Ann', 'Bee', email = 'a@example.com', ",
-    "role = c('aut', 'cre'))"
-  )
-  res <- lab_authors(make_temp_dir(),
-    verbose = FALSE,
-    desc = list(`Authors@R` = aar)
-  )
-  expect_false(res$passed)
-  expect_identical(
-    res$issues,
+  # with "Malformed Authors@R field" on a namespace-qualified call. The field
+  # is still read, so the refused calls are its only finding.
+  refused_issue <- function(calls) {
     paste0(
-      "Authors@R calls utils::person(...), which R CMD build refuses from ",
-      "R 4.6.0 on as a malformed field: call only person(), as.person(), ",
-      "c(), list(), paste() and paste0(), by their bare names"
+      "Authors@R calls ", calls, ", which R CMD build refuses from R 4.6.0 on ",
+      "as a malformed field: call only person(), as.person(), c(), list(), ",
+      "paste() and paste0(), by their bare names"
+    )
+  }
+  cases <- list(
+    `one call` = list(
+      paste0(
+        "utils::person('Ann', 'Bee', email = 'a@example.com', ",
+        "role = c('aut', 'cre'))"
+      ),
+      "utils::person(...)"
+    ),
+    # R's allow-list is on the name of the function called, so a parenthesised
+    # function is refused as well as a namespaced one, though both evaluate to
+    # person() or c().
+    `three calls` = list(
+      paste0(
+        "(c)(person('Ann', 'Bee', email = 'a@example.com', ",
+        "role = c('aut', 'cre')), (person)('ACME', role = 'cph'), ",
+        "utils::person('Cy', 'Dee', role = 'ctb'))"
+      ),
+      "(c)(...), (person)(...) and utils::person(...)"
     )
   )
-})
-
-test_that("lab_authors(): reports every call R's reader refuses, in one issue", {
-  # R's allow-list is on the name of the function called, so a parenthesised
-  # function is refused as well as a namespaced one, though both evaluate to
-  # person() or c().
-  aar <- paste0(
-    "(c)(person('Ann', 'Bee', email = 'a@example.com', ",
-    "role = c('aut', 'cre')), (person)('ACME', role = 'cph'), ",
-    "utils::person('Cy', 'Dee', role = 'ctb'))"
-  )
-  res <- lab_authors(make_temp_dir(),
-    verbose = FALSE,
-    desc = list(`Authors@R` = aar)
-  )
-  expect_false(res$passed)
-  expect_identical(
-    res$issues,
-    paste0(
-      "Authors@R calls (c)(...), (person)(...) and utils::person(...), which ",
-      "R CMD build refuses from R 4.6.0 on as a malformed field: call only ",
-      "person(), as.person(), c(), list(), paste() and paste0(), by their ",
-      "bare names"
+  for (case in names(cases)) {
+    res <- lab_authors(make_temp_dir(),
+      verbose = FALSE,
+      desc = list(`Authors@R` = cases[[case]][[1L]])
     )
-  )
+    expect_false(res$passed, info = case)
+    expect_identical(res$issues, refused_issue(cases[[case]][[2L]]), info = case)
+  }
 })
 
 test_that("lab_authors(): reports a person combined with a list, rather than erroring", {
@@ -332,13 +269,14 @@ test_that("parse_authors_at_r(): refuses exactly the calls R's own reader does",
   }
 })
 
-test_that("parse_authors_at_r(): names the calls R refuses without running them", {
-  # The walk reads only the parse tree. Pure-R side effects, so a leak shows on
-  # every OS, Windows included.
+test_that("parse_authors_at_r(): names the calls R refuses and runs none of them", {
+  # checktor lints other people's packages, so a malicious Authors@R must not
+  # run: the walk reads only the parse tree. Pure-R side effects, so a leak
+  # shows on every OS, Windows included.
   marker <- withr::local_tempfile()
   m <- deparse(marker)
   payloads <- list(
-    list(sprintf("(file.create)(%s)", m), "(file.create)(...)"),
+    list(sprintf("file.create(%s)", m), "file.create(...)"),
     list(sprintf("do.call('file.create', list(%s))", m), "do.call(...)"),
     list(
       sprintf("person('A', role = 'cph', comment = c(x = file.create(%s)))", m),
@@ -348,140 +286,123 @@ test_that("parse_authors_at_r(): names the calls R refuses without running them"
       sprintf("eval(quote(file.create(%s)))", m),
       c("eval(...)", "quote(...)", "file.create(...)")
     ),
+    # A refused function part is named whole, what it contains included.
+    list(
+      sprintf("(function() file.create(%s))()", m),
+      sprintf("(function() file.create(%s))()", m)
+    ),
+    # `(`, `::` and `:::` are the only operators the sandbox itself resolves,
+    # and only to person() and as.person(), so these probe whether they can
+    # reach code outside it.
+    list(sprintf("base::file.create(%s)", m), "base::file.create(...)"),
+    list(sprintf("base:::file.create(%s)", m), "base:::file.create(...)"),
+    list(sprintf("(base::file.create)(%s)", m), "(base::file.create)(...)"),
+    list(sprintf("(file.create)(%s)", m), "(file.create)(...)"),
     list(
       sprintf("`::`('base', 'file.create')(%s)", m),
       "\"base\"::\"file.create\"(...)"
     ),
     list(
+      sprintf("`::`(paste0('ba', 'se'), file.create)(%s)", m),
+      "paste0(\"ba\", \"se\")::file.create(...)"
+    ),
+    list(
+      sprintf("utils::getFromNamespace('file.create', 'base')(%s)", m),
+      "utils::getFromNamespace(\"file.create\", \"base\")(...)"
+    ),
+    list(
       sprintf("utils::person(given = (file.create)(%s), role = 'cph')", m),
       c("utils::person(...)", "(file.create)(...)")
     ),
-    # A refused function part is named whole, what it contains included.
     list(
-      sprintf("(function() file.create(%s))()", m),
-      sprintf("(function() file.create(%s))()", m)
+      sprintf(
+        "person('A', role = 'cph', comment = c(x = base::file.create(%s)))",
+        m
+      ),
+      "base::file.create(...)"
     )
   )
   for (p in payloads) {
-    pa <- parse_authors_at_r(list(`Authors@R` = p[[1L]]))
-    expect_false(file.exists(marker))
-    expect_identical(pa$refused, p[[2L]], info = p[[1L]])
+    payload <- p[[1L]]
+    pa <- parse_authors_at_r(list(`Authors@R` = payload))
+    expect_false(file.exists(marker), info = payload)
+    expect_null(pa$persons, info = payload)
+    # expect_type() takes no info, so the type is compared directly.
+    expect_identical(typeof(pa$error), "character", info = payload)
+    expect_identical(pa$refused, p[[2L]], info = payload)
     res <- lab_authors(make_temp_dir(),
       verbose = FALSE,
-      desc = list(`Authors@R` = p[[1L]])
+      desc = list(`Authors@R` = payload)
     )
-    expect_false(file.exists(marker))
-    expect_match(res$issues, "^Authors@R calls ", all = FALSE)
-  }
-})
-
-test_that("parse_authors_at_r(): `(` and `::` cannot reach code outside the sandbox", {
-  # Pure-R side effects, so a leak shows on every OS, Windows included.
-  marker <- withr::local_tempfile()
-  m <- deparse(marker)
-  payloads <- c(
-    sprintf("base::file.create(%s)", m),
-    sprintf("base:::file.create(%s)", m),
-    sprintf("(base::file.create)(%s)", m),
-    sprintf("(file.create)(%s)", m),
-    sprintf("`::`('base', 'file.create')(%s)", m),
-    sprintf("`::`(paste0('ba', 'se'), file.create)(%s)", m),
-    sprintf("utils::getFromNamespace('file.create', 'base')(%s)", m),
-    sprintf("utils::person(given = (file.create)(%s), role = 'cph')", m),
-    sprintf("person('A', role = 'cph', comment = c(x = base::file.create(%s)))", m)
-  )
-  for (aar in payloads) {
-    pa <- parse_authors_at_r(list(`Authors@R` = aar))
-    expect_false(file.exists(marker))
-    expect_null(pa$persons)
-    expect_type(pa$error, "character")
-    res <- lab_authors(make_temp_dir(), verbose = FALSE, desc = list(`Authors@R` = aar))
-    expect_false(file.exists(marker))
-    expect_match(res$issues, "^Authors@R does not parse: ", all = FALSE)
+    expect_false(file.exists(marker), info = payload)
+    expect_match(res$issues, "^Authors@R calls ", all = FALSE, info = payload)
+    expect_match(
+      res$issues, "^Authors@R does not parse: ",
+      all = FALSE, info = payload
+    )
   }
 })
 
 # Test lab_identifier_format() ----
 
-test_that("lab_identifier_format(): passes a valid ORCID and no identifier", {
-  ok <- "person('J', 'D', role = 'cre', comment = c(ORCID = '0000-0002-1825-0097'))"
-  expect_true(
-    lab_identifier_format(make_temp_dir(),
-      verbose = FALSE,
-      desc = list(`Authors@R` = ok)
-    )$passed
+test_that("lab_identifier_format(): flags a malformed ORCID or ROR id, and nothing else", {
+  bad_orcid <- "Invalid ORCID iD in Authors@R: 0000-0002-1825-0090"
+  cases <- list(
+    `valid ORCID` = list(
+      "person('J', 'D', role = 'cre', comment = c(ORCID = '0000-0002-1825-0097'))",
+      character(0)
+    ),
+    `no identifier` = list("person('J', 'D', role = 'cre')", character(0)),
+    `X check-digit` = list(
+      "person('J', 'D', role = 'cre', comment = c(ORCID = '0000-0002-1694-233X'))",
+      character(0)
+    ),
+    `ORCID URL` = list(
+      paste0(
+        "person('J', 'D', role = 'cre', ",
+        "comment = c(ORCID = 'https://orcid.org/0000-0002-1694-233X'))"
+      ),
+      character(0)
+    ),
+    `valid ROR` = list(
+      "person('J', 'D', role = 'cre', comment = c(ROR = '05dxps055'))",
+      character(0)
+    ),
+    `free text` = list(
+      "person('J', 'D', role = 'cre', comment = 'maintainer since 2020')",
+      character(0)
+    ),
+    `ORCID checksum` = list(
+      "person('J', 'D', role = 'cre', comment = c(ORCID = '0000-0002-1825-0090'))",
+      bad_orcid
+    ),
+    `ROR shape` = list(
+      "person('J', 'D', role = 'cre', comment = c(ROR = 'nope'))",
+      "Invalid ROR ID in Authors@R: nope"
+    ),
+    `behind (` = list(
+      paste0(
+        "person(('J'), 'D', role = 'cre', ",
+        "comment = c(ORCID = ('0000-0002-1825-0090')))"
+      ),
+      bad_orcid
+    ),
+    `utils::person()` = list(
+      paste0(
+        "utils::person('J', 'D', role = 'cre', ",
+        "comment = c(ORCID = '0000-0002-1825-0090'))"
+      ),
+      bad_orcid
+    )
   )
-  none <- "person('J', 'D', role = 'cre')"
-  expect_true(
-    lab_identifier_format(make_temp_dir(),
-      verbose = FALSE,
-      desc = list(`Authors@R` = none)
-    )$passed
-  )
-})
-
-test_that("lab_identifier_format(): flags an ORCID that fails its checksum", {
-  bad <- "person('J', 'D', role = 'cre', comment = c(ORCID = '0000-0002-1825-0090'))"
-  res <- lab_identifier_format(make_temp_dir(),
-    verbose = FALSE,
-    desc = list(`Authors@R` = bad)
-  )
-  expect_false(res$passed)
-  expect_true(any(grepl("ORCID", res$issues)))
-})
-
-test_that("lab_identifier_format(): accepts an X check-digit and a URL form", {
-  xd <- "person('J', 'D', role = 'cre', comment = c(ORCID = '0000-0002-1694-233X'))"
-  expect_true(
-    lab_identifier_format(make_temp_dir(),
-      verbose = FALSE,
-      desc = list(`Authors@R` = xd)
-    )$passed
-  )
-  url <- "person('J', 'D', role = 'cre', comment = c(ORCID = 'https://orcid.org/0000-0002-1694-233X'))"
-  expect_true(
-    lab_identifier_format(make_temp_dir(),
-      verbose = FALSE,
-      desc = list(`Authors@R` = url)
-    )$passed
-  )
-})
-
-test_that("lab_identifier_format(): validates ROR ids and ignores free text", {
-  good <- "person('J', 'D', role = 'cre', comment = c(ROR = '05dxps055'))"
-  expect_true(
-    lab_identifier_format(make_temp_dir(),
-      verbose = FALSE,
-      desc = list(`Authors@R` = good)
-    )$passed
-  )
-  bad <- "person('J', 'D', role = 'cre', comment = c(ROR = 'nope'))"
-  res <- lab_identifier_format(make_temp_dir(),
-    verbose = FALSE,
-    desc = list(`Authors@R` = bad)
-  )
-  expect_false(res$passed)
-  expect_true(any(grepl("ROR", res$issues)))
-  free <- "person('J', 'D', role = 'cre', comment = 'maintainer since 2020')"
-  expect_true(
-    lab_identifier_format(make_temp_dir(),
-      verbose = FALSE,
-      desc = list(`Authors@R` = free)
-    )$passed
-  )
-})
-
-test_that("lab_identifier_format(): reads identifiers behind `(` and utils::person()", {
-  bad <- c(
-    "person(('J'), 'D', role = 'cre', comment = c(ORCID = ('0000-0002-1825-0090')))",
-    "utils::person('J', 'D', role = 'cre', comment = c(ORCID = '0000-0002-1825-0090'))"
-  )
-  for (aar in bad) {
+  for (case in names(cases)) {
+    expected <- cases[[case]][[2L]]
     res <- lab_identifier_format(make_temp_dir(),
       verbose = FALSE,
-      desc = list(`Authors@R` = aar)
+      desc = list(`Authors@R` = cases[[case]][[1L]])
     )
-    expect_identical(res$issues, "Invalid ORCID iD in Authors@R: 0000-0002-1825-0090")
+    expect_identical(res$issues, expected, info = case)
+    expect_identical(res$passed, length(expected) == 0L, info = case)
   }
 })
 
@@ -574,7 +495,7 @@ test_that("lab_cph_role(): reads roles, not the text of the field", {
   expect_true(no_role("utils::as.person('ACME [cph]')")$passed)
 })
 
-test_that("lab_cph_role(): reads the roles in a legacy Author field", {
+test_that("lab_cph_role(): reads the roles in a legacy Author field, in any case, outside comments", {
   # With no Authors@R, the Author field is where R reads the authors from, and
   # it writes each person's roles in square brackets.
   pkg <- make_temp_dir()
@@ -591,32 +512,30 @@ test_that("lab_cph_role(): reads the roles in a legacy Author field", {
   legacy <- function(author) {
     lab_cph_role(make_temp_dir(), verbose = FALSE, desc = list(Author = author))
   }
-  expect_true(legacy("Ann Bee [aut,cre,cph]")$passed)
-  # The role, not the letters: an address or a plain name is no holder.
-  for (author in c("Ann Bee <cph@example.com> [aut, cre]", "Ann Bee, cph", "Ann Bee")) {
-    res <- legacy(author)
-    expect_false(res$passed)
-    expect_identical(res$issues, "No [cph] role in Author and no Copyright field")
-  }
-})
-
-test_that("lab_cph_role(): reads a legacy role in any case, but not in a comment", {
-  legacy <- function(author) {
-    lab_cph_role(make_temp_dir(), verbose = FALSE, desc = list(Author = author))
-  }
-  expect_true(legacy("Ann Bee [aut, cre], ACME Corporation [CPH]")$passed)
-  expect_true(legacy("ACME (formerly Acme Ltd) [Cph]")$passed)
-  # A comment is written in parentheses after the roles, and a bracket quoted
-  # there is not a role.
   for (author in c(
+    "Ann Bee [aut,cre,cph]",
+    # A role is read in any case.
+    "Ann Bee [aut, cre], ACME Corporation [CPH]",
+    "ACME (formerly Acme Ltd) [Cph]"
+  )) {
+    expect_true(legacy(author)$passed, info = author)
+  }
+  for (author in c(
+    # The role, not the letters: an address or a plain name is no holder.
+    "Ann Bee <cph@example.com> [aut, cre]",
+    "Ann Bee, cph",
+    "Ann Bee",
+    # A comment is written in parentheses after the roles, and a bracket
+    # quoted there is not a role.
     "Ann Bee [aut, cre] (see the [cph] note)",
     "Ann Bee [aut, cre] (ACME (her employer) [cph])"
   )) {
     res <- legacy(author)
-    expect_false(res$passed)
+    expect_false(res$passed, info = author)
     expect_identical(
       res$issues,
-      "No [cph] role in Author and no Copyright field"
+      "No [cph] role in Author and no Copyright field",
+      info = author
     )
   }
 })

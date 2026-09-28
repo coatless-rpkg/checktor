@@ -66,20 +66,25 @@ test_that("lab_encoding_utf8(): flags any other Encoding, as CRAN incoming does"
 
 # Test lab_version_format() ----
 
-test_that("lab_version_format(): passes on ordinary versions and dated ones", {
-  expect_true(
-    lab_version_format(make_temp_dir(),
-      verbose = FALSE,
-      desc = list(Version = "0.2.0")
-    )$passed
+test_that("lab_version_format(): passes ordinary, dated and dev versions", {
+  # a calendar-versioned package from a prior year, a zero-padded month, and the
+  # ubiquitous .9000 development suffix are all legitimate, not oversized.
+  versions <- c(
+    ordinary = "0.2.0",
+    current_year = paste0(format(Sys.Date(), "%Y"), ".1"),
+    prior_year = "2025.4",
+    padded_month = "2026.01", # exempt from the leading-zero rule
+    dev = "0.2.0.9000"
   )
-  dated <- paste0(format(Sys.Date(), "%Y"), ".1")
-  expect_true(
-    lab_version_format(make_temp_dir(),
-      verbose = FALSE,
-      desc = list(Version = dated)
-    )$passed
-  )
+  for (case in names(versions)) {
+    expect_true(
+      lab_version_format(make_temp_dir(),
+        verbose = FALSE,
+        desc = list(Version = versions[[case]])
+      )$passed,
+      info = case
+    )
+  }
 })
 
 test_that("lab_version_format(): flags a leading-zero component", {
@@ -107,29 +112,6 @@ test_that("lab_version_format(): flags an unparseable version", {
   )
   expect_false(res$passed)
   expect_true(any(grepl("not a valid", res$issues)))
-})
-
-test_that("lab_version_format(): exempts dated and dev versions", {
-  # a calendar-versioned package from a prior year, a zero-padded month, and the
-  # ubiquitous .9000 development suffix are all legitimate, not oversized.
-  expect_true(
-    lab_version_format(make_temp_dir(),
-      verbose = FALSE,
-      desc = list(Version = "2025.4")
-    )$passed
-  )
-  expect_true(
-    lab_version_format(make_temp_dir(),
-      verbose = FALSE,
-      desc = list(Version = "2026.01")
-    )$passed
-  )
-  expect_true(
-    lab_version_format(make_temp_dir(),
-      verbose = FALSE,
-      desc = list(Version = "0.2.0.9000")
-    )$passed
-  )
 })
 
 # Test lab_description_fields() ----
@@ -202,12 +184,13 @@ test_that("lab_description_fields(): knows every field R's incoming check knows"
   )
 })
 
-test_that("lab_description_fields(): runs with the DESCRIPTION panel at policy tier", {
+test_that("lab_description_fields(): is a policy-tier check in every default run", {
   pkg <- make_temp_dir()
   write_pkg(pkg, extra = "Remotes: user/otherpkg")
   res <- diagnose_description_issues(pkg, verbose = FALSE)
   expect_false(res$description_fields$passed)
   expect_identical(check_severity("description_fields"), "policy")
+  expect_identical(check_when("description_fields"), "always")
 })
 
 # Test lab_description_placeholders() ----
@@ -253,9 +236,15 @@ test_that("lab_description_placeholders(): passes a filled-in DESCRIPTION", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   expect_true(lab_description_placeholders(pkg, verbose = FALSE)$passed)
+})
+
+test_that("lab_description_placeholders(): is a policy-tier check in every default run", {
+  pkg <- make_temp_dir()
+  write_pkg(pkg, title = "What the Package Does (One Line, Title Case)")
   res <- diagnose_description_issues(pkg, verbose = FALSE)
-  expect_true(res$description_placeholders$passed)
+  expect_false(res$description_placeholders$passed)
   expect_identical(check_severity("description_placeholders"), "policy")
+  expect_identical(check_when("description_placeholders"), "always")
 })
 
 # Test lab_description_file() ----
@@ -298,49 +287,38 @@ test_that("lab_description_file(): flags a missing DESCRIPTION", {
   expect_identical(res$issues, "DESCRIPTION file not found")
 })
 
-test_that("lab_description_file(): gives the reason R cannot open DESCRIPTION", {
+test_that("lab_description_file(): gives the reason R cannot open DESCRIPTION, in any language", {
   # read.dcf() stops with "cannot open the connection" and leaves the reason in
   # a warning, which used to reach the console while the issue said only that.
-  pkg <- unopenable_pkg("directory")
-  expect_no_warning(res <- lab_description_file(pkg, verbose = FALSE))
-  expect_false(res$passed)
-  expect_identical(res$issues, "DESCRIPTION is a directory, not a file")
-
-  skip_on_os("windows") # a mode-000 file is not portable
-  pkg <- unopenable_pkg("no_permission")
-  skip_if(
-    file.access(file.path(pkg, "DESCRIPTION"), 4L) == 0L,
-    "this user can read a file with no read permission"
-  )
-  expect_no_warning(res <- lab_description_file(pkg, verbose = FALSE))
-  expect_identical(
-    res$issues,
-    "DESCRIPTION cannot be read (permission denied)"
-  )
-})
-
-test_that("lab_description_file(): gives the same reason in any language", {
   # The reason comes from the file system, not from the wording of R's
   # warnings, which a translated session words differently: in German the
   # directory was reported as "does not parse: kann Verbindung nicht öffnen".
   # local_language() sets LANGUAGE and resets R's message cache, as
   # Sys.setLanguage() does, and puts both back when the test ends.
-  withr::local_language("de")
-  pkg <- unopenable_pkg("directory")
-  expect_no_warning(res <- lab_description_file(pkg, verbose = FALSE))
-  expect_identical(res$issues, "DESCRIPTION is a directory, not a file")
+  langs <- c("en", "de")
+  for (lang in langs) {
+    withr::local_language(lang)
+    pkg <- unopenable_pkg("directory")
+    expect_no_warning(res <- lab_description_file(pkg, verbose = FALSE))
+    expect_false(res$passed, info = lang)
+    expect_identical(res$issues, "DESCRIPTION is a directory, not a file", info = lang)
+  }
 
   skip_on_os("windows") # a mode-000 file is not portable
-  pkg <- unopenable_pkg("no_permission")
-  skip_if(
-    file.access(file.path(pkg, "DESCRIPTION"), 4L) == 0L,
-    "this user can read a file with no read permission"
-  )
-  expect_no_warning(res <- lab_description_file(pkg, verbose = FALSE))
-  expect_identical(
-    res$issues,
-    "DESCRIPTION cannot be read (permission denied)"
-  )
+  for (lang in langs) {
+    withr::local_language(lang)
+    pkg <- unopenable_pkg("no_permission")
+    skip_if(
+      file.access(file.path(pkg, "DESCRIPTION"), 4L) == 0L,
+      "this user can read a file with no read permission"
+    )
+    expect_no_warning(res <- lab_description_file(pkg, verbose = FALSE))
+    expect_identical(
+      res$issues,
+      "DESCRIPTION cannot be read (permission denied)",
+      info = lang
+    )
+  }
 })
 
 test_that("lab_description_file(): takes desc like the other DESCRIPTION checks", {

@@ -49,6 +49,8 @@ test_that("lab_core_usage(): exempts availableCores, <=2 literals, defaults", {
     pkg,
     r_code = c(
       "a <- function() future::plan(future::multisession, workers = parallelly::availableCores())",
+      # cbcTools/R/design.R: the old rule demanded mc.cores, which makeCluster()
+      # does not take, so this compliant call was flagged every time.
       "b <- function(x) parallel::makeCluster(2L)",
       "c1 <- function(x) parallel::mclapply(x, f, mc.cores = 2L)",
       "d <- function(x) parallel::mclapply(x, f)", # default mc.cores is 2L
@@ -74,29 +76,13 @@ test_that("lab_core_usage(): draws the line at two, not a larger number", {
   expect_true(lab_core_usage(pkg_ok, verbose = FALSE)$passed)
 })
 
-test_that("lab_core_usage(): makeCluster(2L) is CRAN-compliant, not a violation", {
-  # cbcTools/R/design.R. The old rule demanded an mc.cores argument, which
-  # makeCluster() does not take, so a compliant call was flagged 100% of the time.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    r_code = c(
-      "setup <- function() {",
-      "  cl <- parallel::makeCluster(2L)",
-      "  on.exit(parallel::stopCluster(cl))",
-      "  cl",
-      "}"
-    )
-  )
-  expect_true(lab_core_usage(pkg, verbose = FALSE)$passed)
-})
-
 # Test lab_detect_cores_robustness() ----
 
 test_that("lab_detect_cores_robustness(): flags an unguarded detectCores()", {
-  # logitr and cbcTools both do this. ?detectCores says "An integer, NA if the
-  # answer is unknown", and NA - 1 is NA, so the next comparison errors with
-  # "missing value where TRUE/FALSE needed".
+  # logitr and cbcTools both do this (logitr/R/modelInputs.R setNumCores(),
+  # cbcTools/R/util.R). ?detectCores says "An integer, NA if the answer is
+  # unknown", and NA - 1 is NA, so the next comparison errors with "missing value
+  # where TRUE/FALSE needed" -- reproduced live.
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -133,23 +119,4 @@ test_that("lab_detect_cores_robustness(): is silent when it is never called", {
   pkg <- make_temp_dir()
   write_pkg(pkg, r_code = "f <- function() parallelly::availableCores()")
   expect_true(lab_detect_cores_robustness(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_detect_cores_robustness(): an unguarded detectCores() is caught", {
-  # logitr/R/modelInputs.R setNumCores(), cbcTools/R/util.R. ?detectCores: "An
-  # integer, NA if the answer is unknown". NA - 1 is NA, and the comparison below
-  # then errors with "missing value where TRUE/FALSE needed" -- reproduced live.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    r_code = c(
-      "setNumCores <- function(numCores) {",
-      "  coresAvailable <- parallel::detectCores()",
-      "  maxCores <- coresAvailable - 1",
-      "  if (numCores > maxCores) numCores <- maxCores",
-      "  numCores",
-      "}"
-    )
-  )
-  expect_false(lab_detect_cores_robustness(pkg, verbose = FALSE)$passed)
 })

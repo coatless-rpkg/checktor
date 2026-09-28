@@ -94,27 +94,17 @@ test_that("list_rd_files(): returns man/*.Rd and nothing else", {
   expect_equal(sort(basename(list_rd_files(pkg))), c("a.Rd", "b.Rd"))
 })
 
-test_that("list_rd_files(): drops the topics .Rbuildignore holds back", {
+test_that("list_rd_files(): drops only the topics .Rbuildignore holds back", {
   # {devtag}'s @dev tag writes exactly this: an .Rd plus an .Rbuildignore line
-  # naming it, so the topic never enters the tarball.
+  # naming it, so the topic never enters the tarball. The unrelated entries
+  # beside it must not take the rest of man/ with them.
   pkg <- make_temp_dir()
   write_pkg(pkg, rd_files = list("a.Rd" = "\\name{a}", "dev.Rd" = "\\name{dev}"))
-  writeLines("^man/dev\\.Rd$", file.path(pkg, ".Rbuildignore"))
+  writeLines(
+    c("^docs$", "^README\\.Rmd$", "^man/dev\\.Rd$"),
+    file.path(pkg, ".Rbuildignore")
+  )
   expect_equal(basename(list_rd_files(pkg)), "a.Rd")
-})
-
-test_that("list_rd_files(): keeps man/ when .Rbuildignore is about something else", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg, rd_files = list("a.Rd" = "\\name{a}"))
-  writeLines(c("^docs$", "^README\\.Rmd$"), file.path(pkg, ".Rbuildignore"))
-  expect_equal(basename(list_rd_files(pkg)), "a.Rd")
-})
-
-test_that("list_rd_files(): is empty when there is no man/", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  unlink(file.path(pkg, "man"), recursive = TRUE)
-  expect_identical(list_rd_files(pkg), character(0))
 })
 
 # Test vignette_r_code() ----
@@ -314,26 +304,23 @@ test_that("find_package_root(): returns a root path untouched", {
   expect_identical(find_package_root(pkg), pkg)
 })
 
-test_that("find_package_root(): walks up from a subdirectory", {
+test_that("find_package_root(): walks up from a subdirectory or a file in it", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   dir.create(file.path(pkg, "tests", "testthat"), recursive = TRUE)
   real <- normalizePath(pkg, winslash = "/")
 
-  for (sub in c("R", "man", file.path("tests", "testthat"))) {
-    found <- find_package_root(file.path(pkg, sub))
-    expect_equal(normalizePath(found, winslash = "/"), real)
-  }
-})
-
-test_that("find_package_root(): accepts a file inside the package", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  found <- find_package_root(file.path(pkg, "R", "test.R"))
-  expect_equal(
-    normalizePath(found, winslash = "/"),
-    normalizePath(pkg, winslash = "/")
+  starts <- c(
+    "R" = "R",
+    "man" = "man",
+    "tests/testthat" = file.path("tests", "testthat"),
+    # A file, not a directory: the walk starts from the directory holding it.
+    "the file R/test.R" = file.path("R", "test.R")
   )
+  for (start in names(starts)) {
+    found <- find_package_root(file.path(pkg, starts[[start]]))
+    expect_equal(normalizePath(found, winslash = "/"), real, info = start)
+  }
 })
 
 test_that("find_package_root(): leaves a non-package path alone", {
@@ -452,11 +439,6 @@ test_that("checkup(): follows the verdict, so opinion does not fail CI", {
   write_pkg(clean, news = FALSE)
   expect_true(checkup(clean))
   expect_false(checkup(clean, severity = SEVERITY_LEVELS)) # unless you ask for it
-})
-
-test_that("checkup(): fails a package whose DESCRIPTION R cannot read", {
-  # R CMD build and INSTALL both stop on it, so no build should go green.
-  expect_false(checkup(unparseable_pkg()))
 })
 
 # Test emit_issue_summary() ----

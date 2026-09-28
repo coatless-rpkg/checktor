@@ -65,10 +65,6 @@ test_that("lab_software_install(): an install behind a consent prompt is consent
     )
   )
   expect_true(lab_software_install(pkg, verbose = FALSE)$passed)
-
-  bad <- make_temp_dir()
-  write_pkg(bad, r_code = "f <- function() install.packages('dplyr')")
-  expect_false(lab_software_install(bad, verbose = FALSE)$passed)
 })
 
 # Test lab_library_in_pkg() ----
@@ -83,16 +79,17 @@ test_that("lab_library_in_pkg(): exempts library() sent to a parallel worker", {
       "run <- function(cl) {",
       "  mirai::everywhere({ library(logitr) }, .compute = 'logitr')",
       "  parallel::clusterEvalQ(cl, library(stats))",
+      "}",
+      # From logitr/R/optimLoop.R.
+      "run_multistart <- function(mi) {",
+      "  mirai::everywhere(",
+      "    { library(logitr); RcppParallel::setThreadOptions(numThreads = nThreads) },",
+      "    .args = list(nThreads = 1L), .compute = 'logitr'",
+      "  )",
       "}"
     )
   )
-  expect_true(lab_library_in_pkg(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_library_in_pkg(): still flags library() in ordinary code", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg, r_code = "f <- function() { library(dplyr); mutate(x) }")
-  expect_false(lab_library_in_pkg(pkg, verbose = FALSE)$passed)
+  expect_identical(lab_library_in_pkg(pkg, verbose = FALSE)$issues, character(0))
 })
 
 test_that("lab_library_in_pkg(): does not read $library() as base::library()", {
@@ -135,21 +132,4 @@ test_that("lab_library_in_pkg(): flags library()/require() but not pkg::fn", {
   res <- lab_library_in_pkg(pkg, verbose = FALSE)
   expect_false(res$passed)
   expect_equal(length(res$issues), 2L)
-})
-
-test_that("lab_library_in_pkg(): library() sent to a parallel daemon is not a search-path change", {
-  # logitr/R/optimLoop.R. A daemon starts with an empty search path.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    r_code = c(
-      "run_multistart <- function(mi) {",
-      "  mirai::everywhere(",
-      "    { library(logitr); RcppParallel::setThreadOptions(numThreads = nThreads) },",
-      "    .args = list(nThreads = 1L), .compute = 'logitr'",
-      "  )",
-      "}"
-    )
-  )
-  expect_true(lab_library_in_pkg(pkg, verbose = FALSE)$passed)
 })

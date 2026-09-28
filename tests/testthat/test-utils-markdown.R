@@ -1,111 +1,96 @@
 # Test blank_fenced_code() ----
 
-test_that("blank_fenced_code(): blanks a fence and its contents in place", {
-  lines <- c("before", "```r", "x <- 1", "```", "after")
-  expect_identical(
-    blank_fenced_code(lines),
-    c("before", "", "", "", "after")
+test_that("blank_fenced_code(): blanks a fenced block by CommonMark's rules", {
+  cases <- list(
+    "a fence and its contents, in place" = list(
+      lines = c("before", "```r", "x <- 1", "```", "after"),
+      expected = c("before", "", "", "", "after")
+    ),
+    "a file with no fence" = list(
+      lines = c("# Title", "Some prose with `code` in it.", ""),
+      expected = c("# Title", "Some prose with `code` in it.", "")
+    ),
+    # A README showing markdown quotes a ``` block inside a ```` one.
+    "a shorter fence does not close a longer one" = list(
+      lines = c("````md", "```r", "x <- 1", "```", "quoted", "````", "after"),
+      expected = c(rep("", 6L), "after")
+    ),
+    "a tilde fence" = list(
+      lines = c("~~~", "x <- 1", "~~~", "after"),
+      expected = c("", "", "", "after")
+    ),
+    "a tilde fence is not closed by backticks" = list(
+      lines = c("~~~", "```", "x <- 1", "~~~", "after"),
+      expected = c("", "", "", "", "after")
+    ),
+    "a fence left open runs to the end of the file" = list(
+      lines = c("before", "```r", "x <- 1"),
+      expected = c("before", "", "")
+    ),
+    "three spaces open a fence" = list(
+      lines = c("   ```r", "x <- 1", "   ```"),
+      expected = c("", "", "")
+    ),
+    "four spaces do not" = list(
+      lines = c("    ```r", "x <- 1"),
+      expected = c("    ```r", "x <- 1")
+    ),
+    # ``` `a` ``` is a code span sitting on its own line, not a block opener.
+    "a backtick in the info string means no fence" = list(
+      lines = c("``` `a` ```", "after"),
+      expected = c("``` `a` ```", "after")
+    ),
+    # knitr lets a chunk option come from inline R, backticks and all.
+    "a knitr chunk header is a fence anyway" = list(
+      lines = c("```{r, eval = `r ok`}", "x <- 1", "```", "after"),
+      expected = c("", "", "", "after")
+    ),
+    # "```r" reopens nothing; it is content until a bare fence arrives.
+    "a closing fence carries no info string" = list(
+      lines = c("```", "```r", "```", "after"),
+      expected = c("", "", "", "after")
+    )
   )
-})
-
-test_that("blank_fenced_code(): leaves a file with no fence untouched", {
-  lines <- c("# Title", "Some prose with `code` in it.", "")
-  expect_identical(blank_fenced_code(lines), lines)
-})
-
-test_that("blank_fenced_code(): a shorter fence does not close a longer one", {
-  # A README showing markdown quotes a ``` block inside a ```` one.
-  lines <- c("````md", "```r", "x <- 1", "```", "quoted", "````", "after")
-  expect_identical(
-    blank_fenced_code(lines),
-    c(rep("", 6L), "after")
-  )
-})
-
-test_that("blank_fenced_code(): knows a tilde fence", {
-  expect_identical(
-    blank_fenced_code(c("~~~", "x <- 1", "~~~", "after")),
-    c("", "", "", "after")
-  )
-})
-
-test_that("blank_fenced_code(): a tilde fence is not closed by backticks", {
-  expect_identical(
-    blank_fenced_code(c("~~~", "```", "x <- 1", "~~~", "after")),
-    c("", "", "", "", "after")
-  )
-})
-
-test_that("blank_fenced_code(): a fence left open runs to the end of the file", {
-  expect_identical(
-    blank_fenced_code(c("before", "```r", "x <- 1")),
-    c("before", "", "")
-  )
-})
-
-test_that("blank_fenced_code(): three spaces open a fence and four do not", {
-  expect_identical(
-    blank_fenced_code(c("   ```r", "x <- 1", "   ```")),
-    c("", "", "")
-  )
-  indented <- c("    ```r", "x <- 1")
-  expect_identical(blank_fenced_code(indented), indented)
-})
-
-test_that("blank_fenced_code(): a backtick in the info string means no fence", {
-  # ``` `a` ``` is a code span sitting on its own line, not a block opener.
-  lines <- c("``` `a` ```", "after")
-  expect_identical(blank_fenced_code(lines), lines)
-})
-
-test_that("blank_fenced_code(): a knitr chunk header is a fence anyway", {
-  # knitr lets a chunk option come from inline R, backticks and all.
-  expect_identical(
-    blank_fenced_code(c("```{r, eval = `r ok`}", "x <- 1", "```", "after")),
-    c("", "", "", "after")
-  )
-})
-
-test_that("blank_fenced_code(): a closing fence carries no info string", {
-  # "```r" reopens nothing; it is content until a bare fence arrives.
-  expect_identical(
-    blank_fenced_code(c("```", "```r", "```", "after")),
-    c("", "", "", "after")
-  )
+  for (case in names(cases)) {
+    expect_identical(
+      blank_fenced_code(cases[[case]]$lines),
+      cases[[case]]$expected,
+      info = case
+    )
+  }
 })
 
 # Test blank_code_spans() ----
 
-test_that("blank_code_spans(): replaces a span with spaces of equal width", {
-  out <- blank_code_spans("Use `fn()` here.")
-  expect_identical(out, "Use        here.")
-  expect_identical(nchar(out), nchar("Use `fn()` here."))
-})
-
-test_that("blank_code_spans(): leaves a line with no backtick alone", {
-  expect_identical(blank_code_spans("plain prose"), "plain prose")
-})
-
-test_that("blank_code_spans(): only an equal-length run closes a span", {
-  # The single backtick inside the ``...`` span is content, not a closer.
-  expect_identical(
-    blank_code_spans("a ``x ` y`` b"),
-    paste0("a ", strrep(" ", 9L), " b")
+test_that("blank_code_spans(): blanks a code span to spaces of equal width", {
+  cases <- list(
+    "a span becomes spaces" = list(
+      input = "Use `fn()` here.",
+      expected = "Use        here."
+    ),
+    "a line with no backtick" = list(
+      input = "plain prose",
+      expected = "plain prose"
+    ),
+    # The single backtick inside the ``...`` span is content, not a closer.
+    "only an equal-length run closes a span" = list(
+      input = "a ``x ` y`` b",
+      expected = paste0("a ", strrep(" ", 9L), " b")
+    ),
+    "an unpaired run is ordinary text" = list(
+      input = "It is a `bad idea to leave one.",
+      expected = "It is a `bad idea to leave one."
+    ),
+    "runs pair left to right" = list(
+      input = "`a` and `b`",
+      expected = "    and    "
+    )
   )
-})
-
-test_that("blank_code_spans(): an unpaired run is ordinary text", {
-  expect_identical(
-    blank_code_spans("It is a `bad idea to leave one."),
-    "It is a `bad idea to leave one."
-  )
-})
-
-test_that("blank_code_spans(): pairs runs left to right", {
-  expect_identical(
-    blank_code_spans("`a` and `b`"),
-    "    and    "
-  )
+  for (case in names(cases)) {
+    out <- blank_code_spans(cases[[case]]$input)
+    expect_identical(out, cases[[case]]$expected, info = case)
+    expect_identical(nchar(out), nchar(cases[[case]]$input), info = case)
+  }
 })
 
 # Test strip_markdown_code() ----

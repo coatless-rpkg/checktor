@@ -8,54 +8,40 @@ test_that("lab_software_names(): inspects continuation lines of Description", {
     sep = "\n"
   )
   write_pkg(pkg, description = desc)
+  res <- lab_software_names(pkg, verbose = FALSE)
   expect_identical(
-    lab_software_names(pkg, verbose = FALSE)$issues,
+    res$issues,
     c(
       "Description: ggplot2 should be in single quotes",
       "Description: dplyr should be in single quotes"
     )
   )
+
+  # read.dcf()'s one-row matrix, the form `desc` is documented to take, finds the
+  # same. Its fields are column names, so looking them up with names() found none
+  # and a bare name passed.
+  m <- read.dcf(file.path(pkg, "DESCRIPTION"))
+  expect_identical(lab_software_names(pkg, verbose = FALSE, desc = m)$issues, res$issues)
 })
 
-test_that("lab_software_names(): reads a desc from read.dcf(), a one-row matrix", {
-  # The form `desc` is documented to take. Its fields are column names, so
-  # looking them up with names() found none and a bare ggplot2 passed.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    title = "Draws Python Figures with JSON Themes",
-    description = "Builds on ggplot2 layers for the users of the package here."
+test_that("lab_software_names(): accepts quoted names, does not flag bare R", {
+  cases <- c(
+    "quoted package names" = "Wraps 'ggplot2' and 'dplyr' for convenience.",
+    # R is never flagged in either form: no authority names it, and both bare R
+    # and 'R' clear CRAN.
+    "bare R is never flagged" = "A package for R users that integrates with 'ggplot2'.",
+    "quoted names across sentences" = paste(
+      "Extends 'ggplot2' and 'shiny' with new layers.",
+      "It does a number of useful things for the user here."
+    )
   )
-  desc <- read.dcf(file.path(pkg, "DESCRIPTION"))
-  expect_identical(
-    lab_software_names(pkg, verbose = FALSE, desc = desc)$issues,
-    "Description: ggplot2 should be in single quotes"
-  )
-  expect_identical(
-    lab_language_names(pkg, verbose = FALSE, desc = desc)$issues,
-    "Title: Python should be in single quotes"
-  )
-  expect_identical(
-    lab_format_names(pkg, verbose = FALSE, desc = desc)$issues,
-    "Title: JSON is not in single quotes"
-  )
-})
-
-test_that("lab_software_names(): accepts properly quoted names", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg, description = "Wraps 'ggplot2' and 'dplyr' for convenience.")
-  res <- lab_software_names(pkg, verbose = FALSE)
-  expect_true(res$passed)
-  expect_identical(res$issues, character(0))
-})
-
-test_that("lab_software_names(): does NOT flag the bare letter R", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    description = "A package for R users that integrates with 'ggplot2'."
-  )
-  expect_identical(lab_software_names(pkg, verbose = FALSE)$issues, character(0))
+  for (case in names(cases)) {
+    pkg <- make_temp_dir()
+    write_pkg(pkg, description = cases[[case]])
+    res <- lab_software_names(pkg, verbose = FALSE)
+    expect_true(res$passed, info = case)
+    expect_identical(res$issues, character(0), info = case)
+  }
 })
 
 test_that("lab_software_names(): flags an unquoted WebAssembly", {
@@ -72,25 +58,17 @@ test_that("lab_software_names(): flags an unquoted WebAssembly", {
   )
 })
 
-test_that("lab_software_names(): a configured name is flagged when unquoted", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    description = "Wraps brms models for the user. It does several helpful things here.",
-    extra = "Config/checktor/software_names: brms"
-  )
-  res <- lab_software_names(pkg, verbose = FALSE)
+test_that("lab_software_names(): Config/checktor/software_names adds a name", {
+  d <- "Wraps brms models for the user. It does several helpful things here."
+  plain <- make_temp_dir()
+  write_pkg(plain, description = d)
+  expect_true(lab_software_names(plain, verbose = FALSE)$passed)
+
+  configured <- make_temp_dir()
+  write_pkg(configured, description = d, extra = "Config/checktor/software_names: brms")
+  res <- lab_software_names(configured, verbose = FALSE)
   expect_false(res$passed)
   expect_identical(res$issues, "Description: brms should be in single quotes")
-})
-
-test_that("lab_software_names(): without config, the name is NOT flagged", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    description = "Wraps brms models for the user. It does several helpful things here."
-  )
-  expect_true(lab_software_names(pkg, verbose = FALSE)$passed)
 })
 
 test_that("lab_software_names(): a dotted name does not match plain English", {
@@ -123,18 +101,6 @@ test_that("lab_software_names(): flags a package name but not a programming lang
     lab_software_names(pkg, verbose = FALSE)$issues,
     "Description: ggplot2 should be in single quotes"
   )
-})
-
-test_that("lab_software_names(): accepts a properly quoted package name", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    description = paste(
-      "Extends 'ggplot2' and 'shiny' with new layers.",
-      "It does a number of useful things for the user here."
-    )
-  )
-  expect_true(lab_software_names(pkg, verbose = FALSE)$passed)
 })
 
 test_that("lab_software_names(): a name inside a quoted longer name is quoted", {
@@ -232,19 +198,6 @@ test_that("lab_software_names(): a name in a double-quoted title is part of the 
   expect_identical(res$issues, "Description: tidyverse should be in single quotes")
 })
 
-test_that("lab_software_names(): leaves a double-quoted name to lab_description_quoted_quotes()", {
-  # A name alone in double quotes is the wrong kind of quote, not a bare name,
-  # and lab_description_quoted_quotes() is the check that says so.
-  d <- c(Description = "Builds dashboards with \"shiny\" for the user here.")
-  expect_identical(
-    lab_software_names(make_temp_dir(), verbose = FALSE, desc = d)$issues,
-    character(0)
-  )
-  res <- lab_description_quoted_quotes(make_temp_dir(), verbose = FALSE, desc = d)
-  expect_length(res$issues, 1L)
-  expect_match(res$issues, "Description: \"shiny\" is a software name in double quotes", fixed = TRUE)
-})
-
 test_that("lab_software_names(): an elided year opens no quotation", {
   # The apostrophe in '90s is not a quote, so the text up to the next apostrophe
   # is not quoted either.
@@ -281,6 +234,10 @@ test_that("lab_language_names(): flags bare programming-language names", {
       "Description: Julia should be in single quotes"
     )
   )
+
+  # So does read.dcf()'s one-row matrix, the form `desc` is documented to take.
+  m <- read.dcf(file.path(pkg, "DESCRIPTION"))
+  expect_identical(lab_language_names(pkg, verbose = FALSE, desc = m)$issues, res$issues)
 })
 
 test_that("lab_language_names(): accepts quoted names, does not flag bare R", {
@@ -324,20 +281,6 @@ test_that("lab_language_names(): flags C# but not inside a larger token", {
   expect_identical(
     lab_language_names(edge, verbose = FALSE)$issues,
     "Description: JavaScript should be in single quotes"
-  )
-})
-
-test_that("lab_language_names(): covers statistical-computing environments", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg, description = "Imports data from MATLAB and SAS into R.")
-  res <- lab_language_names(pkg, verbose = FALSE)
-  expect_false(res$passed)
-  expect_identical(
-    res$issues,
-    c(
-      "Description: MATLAB should be in single quotes",
-      "Description: SAS should be in single quotes"
-    )
   )
 })
 
@@ -403,28 +346,6 @@ test_that("lab_language_names(): one quoted mention does not excuse a bare one",
     desc = c(Title = "'AWS' Java 'SDK' for R")
   )
   expect_identical(res$issues, "Title: Java should be in single quotes")
-})
-
-test_that("lab_language_names(): a name in a double-quoted title is part of the title", {
-  res <- lab_language_names(make_temp_dir(),
-    verbose = FALSE,
-    desc = c(Description = paste(
-      "Wraps the 'Python' API; see \"Python for Data Analysis\"",
-      "(McKinney 2017) for the background."
-    ))
-  )
-  expect_identical(res$issues, character(0))
-})
-
-test_that("lab_language_names(): a name in a web address or DOI is part of it", {
-  res <- lab_language_names(make_temp_dir(),
-    verbose = FALSE,
-    desc = c(Description = paste(
-      "Mirrors <https://github.com/JuliaLang/Julia/> and the method of",
-      "<doi:10.1000/Python-2020>, with notes at https://example.org/SAS/ too."
-    ))
-  )
-  expect_identical(res$issues, character(0))
 })
 
 # Test lab_format_names() ----
@@ -527,6 +448,24 @@ test_that("lab_format_names(): Config/checktor/format_names adds a name", {
   )
 })
 
+test_that("lab_format_names(): reads a desc from read.dcf(), a one-row matrix", {
+  # The form `desc` is documented to take. Its fields are column names, so
+  # looking them up with names() found none and a bare name passed. Python and
+  # ggplot2 are for lab_language_names() and lab_software_names(), which read a
+  # matrix in their own tests above, so JSON is the only finding here.
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    title = "Draws Python Figures with JSON Themes",
+    description = "Builds on ggplot2 layers for the users of the package here."
+  )
+  desc <- read.dcf(file.path(pkg, "DESCRIPTION"))
+  expect_identical(
+    lab_format_names(pkg, verbose = FALSE, desc = desc)$issues,
+    "Title: JSON is not in single quotes"
+  )
+})
+
 test_that("lab_format_names(): runs only on request (#16)", {
   # A bare format name is how most accepted packages write it, so it cannot count
   # against a clean result; it is there for a maintainer who wants consistency.
@@ -587,15 +526,6 @@ test_that("blank_ignored_spans(): NA or empty in, empty out", {
   expect_identical(blank_ignored_spans(""), "")
   expect_identical(blank_ignored_spans(c("Julia", NA)), c(" Julia ", ""))
   expect_identical(blank_ignored_spans(character(0)), character(0))
-})
-
-test_that("blank_ignored_spans(): a quote opening a continuation line counts", {
-  # read.dcf() joins continuation lines with a newline, which CRAN's pattern does
-  # not accept as the blank before a quote.
-  expect_identical(
-    gsub(" +", " ", blank_ignored_spans("Deploys to the\n'MATLAB Runtime' today.")),
-    " Deploys to the today. "
-  )
 })
 
 # Test lab_description_quoted_quotes() ----
@@ -669,7 +599,8 @@ test_that("lab_description_quoted_quotes(): leaves format names to lab_format_na
 
 test_that("lab_description_quoted_quotes(): ignores scare-quoted English", {
   # Double-quoted ordinary jargon IS what double quotes are reserved for; only
-  # a recognised software name is a finding.
+  # a recognised software name is a finding. cbcTools ships these two,
+  # "labeled" and "no choice", on CRAN today.
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
@@ -726,48 +657,6 @@ test_that("lab_description_quoted_quotes(): honours Config software_names", {
   expect_false(lab_description_quoted_quotes(lang, verbose = FALSE)$passed)
 })
 
-test_that("lab_description_quoted_quotes(): flags a double-quoted SOFTWARE name", {
-  # Writing R Extensions: double quotes are for quotations, single quotes for
-  # "names of other packages and external software".
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    description = paste(
-      'Builds dashboards with "shiny" and plots.',
-      "It does things and more things."
-    )
-  )
-  res <- diagnose_description_issues(pkg, verbose = FALSE)
-  expect_false(res$description_quoted_quotes$passed)
-  expect_true(any(grepl("shiny", res$description_quoted_quotes$issues)))
-})
-
-test_that("lab_description_quoted_quotes(): does not flag scare-quoted jargon", {
-  # cbcTools ships "labeled" and "no choice" on CRAN today. Those ARE the
-  # quotations that double quotes are reserved for, not software names.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    description = paste(
-      'Supports "labeled" designs and a "no choice"',
-      "alternative for conjoint experiments."
-    )
-  )
-  res <- diagnose_description_issues(pkg, verbose = FALSE)
-  expect_true(res$description_quoted_quotes$passed)
-
-  pkg_ok <- make_temp_dir()
-  write_pkg(
-    pkg_ok,
-    description = paste(
-      "A package that does helpful things.",
-      "No quoted phrases here at all."
-    )
-  )
-  res2 <- diagnose_description_issues(pkg_ok, verbose = FALSE)
-  expect_true(res2$description_quoted_quotes$passed)
-})
-
 test_that("lab_description_quoted_quotes(): reads the Title as well as the Description", {
   # lab_software_names() and lab_language_names() read a double-quoted span in
   # either field as a quotation, so a name alone in double quotes in the Title is
@@ -790,6 +679,12 @@ test_that("lab_description_quoted_quotes(): reads the Title as well as the Descr
         "software and package names)"
       )
     )
+  )
+  # t() makes `d` the one-row matrix read.dcf() gives, the form `desc` is
+  # documented to take; the check finds the same two, in the same order.
+  expect_identical(
+    lab_description_quoted_quotes(make_temp_dir(), verbose = FALSE, desc = t(d))$issues,
+    lab_description_quoted_quotes(make_temp_dir(), verbose = FALSE, desc = d)$issues
   )
 
   # A full run reports it, where the two quoting checks now pass.
@@ -849,37 +744,7 @@ test_that("lab_description_quoted_quotes(): a Title Case word in the Title is no
   expect_length(res$issues, 1L)
 })
 
-test_that("lab_description_quoted_quotes(): reads a desc from read.dcf(), a one-row matrix", {
-  # The form `desc` is documented to take. Reading desc[["Description"]] from a
-  # matrix stopped with "subscript out of bounds".
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    title = "Tools for \"ggplot2\" Plots",
-    description = "Builds dashboards with \"shiny\" for the user."
-  )
-  desc <- read.dcf(file.path(pkg, "DESCRIPTION"))
-  res <- lab_description_quoted_quotes(pkg, verbose = FALSE, desc = desc)
-  expect_identical(
-    res$issues,
-    lab_description_quoted_quotes(pkg, verbose = FALSE)$issues
-  )
-  expect_identical(
-    substr(res$issues, 1L, 20L),
-    c("Title: \"ggplot2\" is ", "Description: \"shiny\"")
-  )
-})
-
 # Test lab_acronyms() ----
-
-test_that("lab_acronyms(): reads a desc from read.dcf(), a one-row matrix", {
-  # The form `desc` is documented to take. Reading desc[["Description"]] from a
-  # matrix stopped with "subscript out of bounds".
-  pkg <- make_temp_dir()
-  write_pkg(pkg, description = "Fits XYZ models to the data for the user here.")
-  desc <- read.dcf(file.path(pkg, "DESCRIPTION"))
-  expect_identical(lab_acronyms(pkg, verbose = FALSE, desc = desc)$issues, "XYZ")
-})
 
 test_that("lab_acronyms(): knows common abbreviations, reads continuations", {
   pkg <- make_temp_dir()
@@ -893,6 +758,10 @@ test_that("lab_acronyms(): knows common abbreviations, reads continuations", {
   # XYZ, on the continuation line, is flagged; OS and HTTP are common abbreviations.
   expect_false(res$passed)
   expect_identical(res$issues, "XYZ")
+
+  # So does read.dcf()'s one-row matrix, the form `desc` is documented to take.
+  m <- read.dcf(file.path(pkg, "DESCRIPTION"))
+  expect_identical(lab_acronyms(pkg, verbose = FALSE, desc = m)$issues, "XYZ")
 })
 
 test_that("lab_acronyms(): knows YAML and TOML", {
@@ -959,19 +828,6 @@ test_that("lab_acronyms(): treats 'ACRONYM (expansion)' as explained", {
   expect_identical(res$issues, character(0))
 })
 
-test_that("lab_acronyms(): still flags genuinely unexplained acronyms", {
-  pkg <- make_temp_dir()
-  desc <- paste(
-    "Provides FOOBAR utilities for the analysis of tabular data and the",
-    "    production of summaries across many datasets and output formats.",
-    sep = "\n"
-  )
-  write_pkg(pkg, description = desc)
-  res <- lab_acronyms(pkg, verbose = FALSE)
-  expect_false(res$passed)
-  expect_identical(res$issues, "FOOBAR")
-})
-
 test_that("lab_acronyms(): Config/checktor/acronyms suppresses a finding", {
   desc <- "Runs MCMC over models for the analysis of tabular data here."
   plain <- make_temp_dir()
@@ -1007,19 +863,6 @@ test_that("lab_acronyms(): skips a name the user has single-quoted", {
   expect_identical(res$issues, c("MATLAB", "SPSS"))
 })
 
-test_that("lab_acronyms(): skips a name in typographic single quotes", {
-  # \u2018GLMM\u2019 is quoted as surely as 'GLMM', and the gloss detection already
-  # reads the curly closing quote. A curly apostrophe opens nothing.
-  res <- lab_acronyms(make_temp_dir(),
-    verbose = FALSE,
-    desc = c(Description = paste(
-      "Fits \u2018GLMM\u2019 models with an \u2018MCMC\u2019 sampler, and the",
-      "package\u2019s GWAS helpers."
-    ))
-  )
-  expect_identical(res$issues, "GWAS")
-})
-
 test_that("lab_acronyms(): a typographic single quote opens and closes like a straight one", {
   # A curly quote follows the rules of a straight one: it opens after a blank or
   # punctuation but not at an elided year (\u201890s), and it closes where a
@@ -1037,6 +880,15 @@ test_that("lab_acronyms(): a typographic single quote opens and closes like a st
       c("GWAS", "MCMC"),
     # Unclosed: the apostrophe inside don\u2019t is not a closing quote.
     "Reads \u2018GWAS files that don\u2019t fit in memory with an MCMC sampler." =
+      c("GWAS", "MCMC"),
+    # \u2018GLMM\u2019 is quoted as surely as 'GLMM', and the gloss detection
+    # already reads the curly closing quote. The curly apostrophe in
+    # package\u2019s opens nothing.
+    "Fits \u2018GLMM\u2019 models with an \u2018MCMC\u2019 sampler, and the package\u2019s GWAS helpers." =
+      "GWAS",
+    # The straight-quote control for the \u201890s case: the apostrophe in '90s
+    # opens no quotation either.
+    "Analyses the '90s GWAS data with the package's MCMC sampler." =
       c("GWAS", "MCMC")
   )
   for (d in names(cases)) {
@@ -1079,14 +931,6 @@ test_that("lab_acronyms(): a curly quote opens and closes beside typographic pun
   d <- "Fits é‘GLMM’ models of GWAS data."
   res <- lab_acronyms(make_temp_dir(), verbose = FALSE, desc = c(Description = d))
   expect_identical(res$issues, c("GLMM", "GWAS"))
-})
-
-test_that("lab_acronyms(): an elided year opens no quotation", {
-  res <- lab_acronyms(make_temp_dir(),
-    verbose = FALSE,
-    desc = c(Description = "Analyses the '90s GWAS data with the package's MCMC sampler.")
-  )
-  expect_identical(res$issues, c("GWAS", "MCMC"))
 })
 
 test_that("lab_acronyms(): a missing Description has no acronyms", {

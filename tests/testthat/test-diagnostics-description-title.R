@@ -1,21 +1,8 @@
 # Test lab_title_length() ----
 
-test_that("lab_title_length(): flags a title longer than 65 characters", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg, title = paste(rep("Word", 20), collapse = " ")) # > 65 chars
-  res <- diagnose_description_issues(pkg, verbose = FALSE)
-  expect_false(res$title_length$passed)
-
-  pkg_ok <- make_temp_dir()
-  write_pkg(pkg_ok, title = "Concise Package Title")
-  expect_true(
-    diagnose_description_issues(pkg_ok, verbose = FALSE)$title_length$passed
-  )
-})
-
 test_that("lab_title_length(): puts the boundary between 65 and 66 chars", {
-  # The other fixtures are 99 and 21 characters, which leaves the threshold free
-  # to move anywhere in 22..99 undetected. Pin it exactly.
+  # Titles well under and well over the limit would leave the threshold free to
+  # move anywhere between them undetected. Pin it exactly.
   #
   # 65 is the width Writing R Extensions says a listing may truncate to, not a
   # limit, so a title of exactly 65 characters shows in full and is not a
@@ -55,17 +42,6 @@ test_that("lab_title_case(): flags a genuinely non-title-case Title", {
 test_that("lab_title_case(): accepts a correct Title", {
   desc <- c(Title = "Extra CRAN Diagnostics for R Packages")
   expect_true(lab_title_case(make_temp_dir(), verbose = FALSE, desc = desc)$passed)
-})
-
-test_that("lab_title_case(): a quoted package name in Title keeps its own capitalisation", {
-  # R's own toTitleCase() restores single-quoted spans, which is why R does not
-  # flag 'shiny' and the homegrown word-loop did.
-  expect_true(
-    lab_title_case(make_temp_dir(),
-      verbose = FALSE,
-      desc = c(Title = "Extra Diagnostics for 'shiny' and 'rmarkdown' Packages")
-    )$passed
-  )
 })
 
 # Test lab_title_package_name() ----
@@ -128,12 +104,13 @@ test_that("lab_title_package_name(): leaves a name that is an ordinary word alon
   )
 })
 
-test_that("lab_title_package_name(): runs with the DESCRIPTION panel at policy tier", {
+test_that("lab_title_package_name(): is a policy-tier check in every default run", {
   pkg <- make_temp_dir()
   write_pkg(pkg, package = "toypkg", title = "toypkg: Fit Simple Models")
   res <- diagnose_description_issues(pkg, verbose = FALSE)
   expect_false(res$title_package_name$passed)
   expect_identical(check_severity("title_package_name"), "policy")
+  expect_identical(check_when("title_package_name"), "always")
 })
 
 # Test lab_title_starts_with_article() ----

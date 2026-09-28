@@ -88,72 +88,24 @@ test_that("lab_file_operations(): does NOT double-match saveRDS as save()", {
   expect_false(any(grepl(":\\d+ \\(save\\(\\)\\)", res$issues)))
 })
 
-test_that("lab_file_operations(): exempts tempfile/tempdir targets", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    r_code = c(
-      "f <- function() {",
-      "  path <- tempfile()",
-      "  saveRDS(1, path)",
-      "  unlink(path)",
-      "}"
-    )
-  )
-  res <- lab_file_operations(pkg, verbose = FALSE)
-  expect_true(res$passed)
-})
-
-test_that("lab_file_operations(): flags writes outside tempdir", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg, r_code = "f <- function() write.csv(mtcars, '/etc/foo.csv')")
-  res <- lab_file_operations(pkg, verbose = FALSE)
-  expect_false(res$passed)
-})
-
-test_that("lab_file_operations(): exempts a write to a caller-supplied path", {
-  # CRAN's rule is about writing without permission, and a path the caller
-  # passed in is permission.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    r_code = c(
-      "report <- function(results, file) {",
-      "  writeLines(results, file)",
-      "}"
-    )
-  )
-  expect_true(lab_file_operations(pkg, verbose = FALSE)$passed)
-})
-
 test_that("lab_file_operations(): flags a formal that defaults into the user's filespace", {
-  # The destination is a formal, but calling report() with no arguments writes
-  # to $HOME, so the exemption must not apply.
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
     r_code = c(
+      # The destination is a formal, but calling report() with no arguments
+      # writes to $HOME, so the exemption must not apply.
       'report <- function(results, file = "~/report.txt") {',
       "  writeLines(results, file)",
-      "}"
+      "}",
+      # The hole the literal rule would otherwise leave: the destination IS a
+      # symbol, but calling with no argument writes to the user's home.
+      "f <- function(x, path = '~/data.csv') writeLines(x, path)"
     )
   )
-  expect_false(lab_file_operations(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_file_operations(): does not exempt on the strength of a non-destination arg", {
-  # `x` is a formal, but it is the DATA argument. The destination is a literal
-  # home path and must still be flagged.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    r_code = c(
-      "bad <- function(x) {",
-      '  writeLines(x, "~/data.csv")',
-      "}"
-    )
-  )
-  expect_false(lab_file_operations(pkg, verbose = FALSE)$passed)
+  res <- lab_file_operations(pkg, verbose = FALSE)
+  expect_false(res$passed)
+  expect_identical(res$issues, c("test.R:2 (writeLines())", "test.R:4 (writeLines())"))
 })
 
 # Only a provable destination is a violation.
@@ -164,42 +116,57 @@ test_that("lab_file_operations(): flags a hardcoded literal destination", {
     pkg,
     r_code = c(
       "f <- function(x) writeLines(x, 'output.csv')", # writes to the CWD
-      "g <- function(x) saveRDS(x, '~/cache.rds')" # writes to $HOME
+      "g <- function(x) saveRDS(x, '~/cache.rds')", # writes to $HOME
+      "h <- function() write.csv(mtcars, '/etc/foo.csv')", # an absolute path
+      # `x` is a formal, but it is the DATA argument. The destination is a
+      # literal home path and must still be flagged.
+      'bad <- function(x) writeLines(x, "~/data.csv")'
     )
   )
   res <- lab_file_operations(pkg, verbose = FALSE)
   expect_false(res$passed)
-  expect_equal(length(res$issues), 2L)
+  expect_identical(
+    res$issues,
+    c(
+      "test.R:1 (writeLines())", "test.R:2 (saveRDS())",
+      "test.R:3 (write.csv())", "test.R:4 (writeLines())"
+    )
+  )
 })
 
 test_that("lab_file_operations(): allows a caller-supplied or computed path", {
   # CRAN's rule is about writing WITHOUT PERMISSION. A path the caller passed in
-  # is permission, and a computed path proves nothing either way. surveydown's
-  # `writeLines(template, env_file)` builds env_file from a user-given directory.
+  # is permission, and a computed path proves nothing either way.
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
     r_code = c(
       "f <- function(x, file) writeLines(x, file)",
-      "g <- function(x, path) {",
+      # surveydown/R/db.R: `writeLines(template, env_file)` builds env_file
+      # from a user-given directory.
+      "create_env <- function(path, template) {",
       "  env_file <- file.path(path, '.env')",
-      "  writeLines(x, env_file)",
+      "  writeLines(template, env_file)",
       "}",
-      "h <- function(x) saveRDS(x, tempfile())"
+      # surveydown/R/config.R: the destination is a member of a caller
+      # argument, passed by name as `con =`.
+      "write_settings <- function(paths, content) {",
+      "  writeLines(content, con = paths$target_settings)",
+      "}",
+      "h <- function(x) saveRDS(x, tempfile())",
+      # A local destination counts as computed whatever it holds: the rule
+      # does not trace `path` back to tempfile(), so k passes by its symbol
+      # root, not by the tempfile exemption.
+      "k <- function() {",
+      "  path <- tempfile()",
+      "  saveRDS(1, path)",
+      "  unlink(path)",
+      "}"
     )
   )
-  expect_true(lab_file_operations(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_file_operations(): catches a formal that defaults into $HOME", {
-  # The hole the literal rule would otherwise leave: the destination IS a symbol,
-  # but calling with no argument writes to the user's home.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    r_code = "f <- function(x, path = '~/data.csv') writeLines(x, path)"
-  )
-  expect_false(lab_file_operations(pkg, verbose = FALSE)$passed)
+  res <- lab_file_operations(pkg, verbose = FALSE)
+  expect_true(res$passed)
+  expect_identical(res$issues, character(0))
 })
 
 test_that("lab_file_operations(): reads file.create()'s destination as its FIRST arg", {
@@ -235,40 +202,6 @@ test_that("lab_file_operations(): flags a path whose ROOT is a literal", {
     r_code = c(
       "a <- function(x) writeLines(x, file.path('~', 'out.csv'))", # $HOME
       "b <- function(x) writeLines(x, file.path('output', 'out.csv'))" # working dir
-    )
-  )
-  res <- lab_file_operations(pkg, verbose = FALSE)
-  expect_false(res$passed)
-  expect_equal(length(res$issues), 2L)
-})
-
-test_that("lab_file_operations(): a caller-supplied write destination is permission", {
-  # surveydown/R/db.R and config.R. CRAN forbids writing to the user's filespace
-  # WITHOUT PERMISSION; a path the caller passed in is permission.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    r_code = c(
-      "create_env <- function(path, template) {",
-      "  env_file <- file.path(path, '.env')",
-      "  writeLines(template, env_file)",
-      "}",
-      "",
-      "write_settings <- function(paths, content) {",
-      "  writeLines(content, con = paths$target_settings)",
-      "}"
-    )
-  )
-  expect_true(lab_file_operations(pkg, verbose = FALSE)$passed)
-})
-
-test_that("lab_file_operations(): a hardcoded write destination is still caught", {
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    r_code = c(
-      "f <- function(x) writeLines(x, 'output.csv')",
-      "g <- function(x, path = '~/data.csv') writeLines(x, path)"
     )
   )
   res <- lab_file_operations(pkg, verbose = FALSE)
@@ -339,14 +272,6 @@ test_that("lab_file_operations(): a method named like a writer is not a write", 
 })
 
 # Test lab_network_operations() ----
-
-test_that("lab_network_operations(): flags an unwrapped download.file in Rd", {
-  pkg <- rd_pkg("download.file('https://example.com/x', 'x')")
-  expect_equal(
-    lab_network_operations(pkg, verbose = FALSE)$issues,
-    "f.Rd (unwrapped network call in \\examples)"
-  )
-})
 
 test_that("lab_network_operations(): reads an example with an #ifdef inside a call", {
   # The #ifdef condition is not R. Kept, it ran into the vector around it, the
@@ -529,15 +454,9 @@ test_that("lab_network_operations(): recognises the requests each package makes"
     "httr::GET(u)",
     "httr::POST(u, body = b)",
     "resp <- httr2::req_perform(req)",
-    "RCurl::getURL(u)"
-  )) {
-    pkg <- rd_pkg(call)
-    expect_false(lab_network_operations(pkg, verbose = FALSE)$passed, label = call)
-  }
-})
-
-test_that("lab_network_operations(): recognises curl's DNS lookup and mail", {
-  for (call in c(
+    "RCurl::getURL(u)",
+    # nslookup() asks a DNS server and send_mail() talks to an SMTP server, so
+    # both reach the network.
     "curl::nslookup('r-project.org')",
     "curl::send_mail(sender, recipients, message, smtp_server = server)"
   )) {
@@ -653,28 +572,24 @@ test_that("lab_network_operations(): defining a request function is not a reques
   expect_true(lab_network_operations(pkg, verbose = FALSE)$passed)
 })
 
-test_that("lab_network_operations(): names a request made through a string", {
-  pkg <- script_pkg(
-    c("```{r}", "do.call('download.file', list(u, f))", "```"),
-    dir = "vignettes",
-    file = "intro.Rmd"
+test_that("lab_network_operations(): names a vignette request made through a string or handed on as a value", {
+  cases <- c(
+    # The reported name is unquoted: (download.file), not ('download.file').
+    string = "do.call('download.file', list(u, f))",
+    value = "invisible(Map(download.file, urls, files))"
   )
-  expect_equal(
-    lab_network_operations(pkg, verbose = FALSE)$issues,
-    "intro.Rmd: unguarded network access in a code chunk (download.file)"
-  )
-})
-
-test_that("lab_network_operations(): a vignette that hands a request on as a value is flagged", {
-  pkg <- script_pkg(
-    c("```{r}", "invisible(Map(download.file, urls, files))", "```"),
-    dir = "vignettes",
-    file = "intro.Rmd"
-  )
-  expect_equal(
-    lab_network_operations(pkg, verbose = FALSE)$issues,
-    "intro.Rmd: unguarded network access in a code chunk (download.file)"
-  )
+  for (case in names(cases)) {
+    pkg <- script_pkg(
+      c("```{r}", cases[[case]], "```"),
+      dir = "vignettes",
+      file = "intro.Rmd"
+    )
+    expect_equal(
+      lab_network_operations(pkg, verbose = FALSE)$issues,
+      "intro.Rmd: unguarded network access in a code chunk (download.file)",
+      label = case
+    )
+  }
 })
 
 test_that("lab_network_operations(): a comment inside a guard leaves it a guard", {

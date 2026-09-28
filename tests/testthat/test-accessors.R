@@ -99,12 +99,6 @@ test_that("is_healthy(): predicates report status without sublist navigation", {
   expect_true(pc[["seed_setting"]])
   expect_false(passed(r$code_issues$tf_usage))
   expect_equal(n_issues(r$code_issues$tf_usage), 7L)
-
-  cp <- make_temp_dir()
-  write_pkg(cp)
-  clean <- checktor(cp, verbose = FALSE, progress = FALSE)
-  expect_true(is_healthy(clean))
-  expect_equal(n_issues(clean), 0L)
 })
 
 # Test passed() ----
@@ -123,17 +117,13 @@ test_that("passed(): a skipped check did not fail, though tidy() does not pass i
   expect_identical(failed_checks(cat_res), character(0))
   expect_equal(n_failed_checks(cat_res), 0L)
 
-  # tidy() gives each check one state, so the same check is skipped, not passed.
-  td <- tidy(cat_res)
-  expect_identical(td$passed, c(FALSE, TRUE))
-  expect_identical(td$skipped, c(TRUE, FALSE))
-
   # The same split holds for a whole run, where url_liveness sits out in tests.
   pkg <- make_temp_dir()
   write_pkg(pkg)
   r <- checktor(pkg, verbose = FALSE, progress = FALSE)
   expect_true(passed(r)[["general"]])
   expect_true(passed(r$general_issues)[["url_liveness"]])
+  # tidy() gives each check one state, so the same check is skipped, not passed.
   rt <- tidy(r)
   expect_false(rt$passed[rt$check == "url_liveness"])
   expect_true(rt$skipped[rt$check == "url_liveness"])
@@ -168,6 +158,11 @@ test_that("tidy(): is per-check and summary() is per-category", {
   expect_setequal(td$check, by_default)
   expect_equal(nrow(td), length(by_default))
   expect_equal(td$n_issues[td$check == "tf_usage"], 7L)
+  # Each check reports under the category the registry gives it.
+  expect_identical(
+    td$category,
+    BUILTIN_CHECKS$category[match(td$check, BUILTIN_CHECKS$name)]
+  )
   expect_identical(as.data.frame(r), td) # as.data.frame == tidy
 
   s <- summary(r)
@@ -194,7 +189,30 @@ test_that("tidy(): a check that did not run is skipped, never passed (#15)", {
   expect_identical(td$skipped, c(TRUE, FALSE, FALSE, FALSE))
 })
 
-test_that("tidy(): passed, failed and skipped agree with summary()", {
+# Test summary() ----
+
+test_that("summary(): counts a skipped check as skipped, and a failure marked skipped as failed (#15)", {
+  cat_res <- checktor_category_result(
+    url_liveness = checktor_skipped_result("URL liveness check", "offline"),
+    tf_usage = checktor_check_result(TRUE, character(0), "T/F usage check"),
+    seed_setting = checktor_check_result(FALSE, "a.R:1", "Seed setting check")
+  )
+  s <- summary(cat_res)
+  expect_equal(s$checks, 3L)
+  expect_equal(s$passed, 1L)
+  expect_equal(s$failed, 1L)
+  expect_equal(s$skipped, 1L)
+
+  both <- checktor_category_result(
+    # A registered check can set both. A failure wins.
+    house_rule = checktor_check_result(FALSE, "z.R:1", "House rule", skipped = TRUE)
+  )
+  s <- summary(both)
+  expect_equal(s$failed, 1L)
+  expect_equal(s$skipped, 0L)
+})
+
+test_that("summary(): passed, failed and skipped add up to checks and agree with tidy()", {
   pkg <- make_temp_dir()
   write_pkg(pkg, news = FALSE) # news_file fails, so every state occurs
   r <- checktor(pkg, verbose = FALSE, progress = FALSE)
@@ -209,41 +227,10 @@ test_that("tidy(): passed, failed and skipped agree with summary()", {
   expect_equal(sum(td$passed), sum(s$passed))
   expect_equal(sum(failed), sum(s$failed))
   expect_equal(sum(td$skipped), sum(s$skipped))
-})
-
-# Test summary() ----
-
-test_that("summary(): counts a skipped check once, as skipped (#15)", {
-  cat_res <- checktor_category_result(
-    url_liveness = checktor_skipped_result("URL liveness check", "offline"),
-    tf_usage = checktor_check_result(TRUE, character(0), "T/F usage check"),
-    seed_setting = checktor_check_result(FALSE, "a.R:1", "Seed setting check")
-  )
-  s <- summary(cat_res)
-  expect_equal(s$checks, 3L)
-  expect_equal(s$passed, 1L)
-  expect_equal(s$failed, 1L)
-  expect_equal(s$skipped, 1L)
-})
-
-test_that("summary(): a failure marked skipped counts as failed", {
-  cat_res <- checktor_category_result(
-    house_rule = checktor_check_result(FALSE, "z.R:1", "House rule", skipped = TRUE)
-  )
-  s <- summary(cat_res)
-  expect_equal(s$failed, 1L)
-  expect_equal(s$skipped, 0L)
-})
-
-test_that("summary(): passed, failed and skipped add up to checks", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  s <- summary(checktor(pkg, verbose = FALSE, progress = FALSE))
-  expect_gt(sum(s$skipped), 0L) # url_liveness and spelling are off in tests
   expect_equal(s$passed + s$failed + s$skipped, s$checks)
 })
 
-test_that("summary(): robust to early-return categories (no R/ dir)", {
+test_that("summary(): an early-return category (no R/ dir) summarises cleanly and agrees with tidy()", {
   d <- make_temp_dir()
   writeLines(
     c(
@@ -256,36 +243,18 @@ test_that("summary(): robust to early-return categories (no R/ dir)", {
     file.path(d, "DESCRIPTION")
   )
   r <- checktor(d, verbose = FALSE, progress = FALSE)
-  expect_no_error(summary(r))
-  expect_equal(nrow(summary(r)), 5L)
-  expect_no_error(issues(r))
-  expect_no_error(tidy(r))
-  expect_no_error(n_issues(r$code_issues))
-  expect_equal(n_issues(r$code_issues), 0L)
-})
-
-test_that("summary(): check counts agree with tidy for early returns", {
-  d <- make_temp_dir()
-  writeLines(
-    c(
-      "Package: x",
-      "Title: T",
-      "Version: 0.0.1",
-      "Description: A minimal package used to pin summary/tidy agreement here.",
-      "License: GPL-3"
-    ),
-    file.path(d, "DESCRIPTION")
-  )
-  r <- checktor(d, verbose = FALSE, progress = FALSE)
   s <- summary(r)
   td <- tidy(r)
+  expect_equal(nrow(s), 5L)
+  expect_no_error(issues(r))
+  expect_equal(n_issues(r$code_issues), 0L)
+  expect_equal(n_failed_checks(r$code_issues), 0L)
   # the code category has no R/ dir -> zero checks ran
   expect_equal(s$checks[s$category == "code"], 0L)
   expect_equal(s$passed[s$category == "code"], 0L)
   # per-category check counts in summary must equal tidy's row counts
   tcounts <- as.integer(table(factor(td$category, levels = s$category)))
   expect_equal(s$checks, tcounts)
-  expect_equal(n_failed_checks(r$code_issues), 0L)
 })
 
 # Test result_checks() ----

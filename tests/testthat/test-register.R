@@ -27,32 +27,7 @@ test_that("registered_checks(): is empty by default, grows with registration", {
 
 # Test checktor() ----
 
-test_that("checktor(): runs a registered check and reports it in the results", {
-  on.exit(unregister_check(), add = TRUE)
-  register_check(
-    "no_banned",
-    function(path, verbose = TRUE, parsed = NULL) {
-      if (is.null(parsed)) {
-        parsed <- read_r_xml(path)
-      }
-      hits <- undesirable_function_check(parsed, "banned_helper")
-      checktor_check_result(length(hits) == 0L, hits, "no banned_helper()")
-    },
-    category = "code",
-    severity = "policy"
-  )
-
-  pkg <- make_temp_dir()
-  write_pkg(pkg, r_code = "f <- function() banned_helper(1)")
-  r <- checktor(pkg, verbose = FALSE, progress = FALSE)
-
-  expect_true("no_banned" %in% names(r$code_issues))
-  expect_false(r$code_issues$no_banned$passed)
-  expect_identical(r$code_issues$no_banned$severity, "policy")
-  expect_true("no_banned" %in% tidy(r)$check)
-})
-
-test_that("checktor(): a registered check's tier governs the verdict", {
+test_that("checktor(): runs a registered check, reports it, and counts it by its tier", {
   on.exit(unregister_check(), add = TRUE)
   pkg <- make_temp_dir()
   write_pkg(pkg, r_code = "f <- function() banned_helper(1)")
@@ -73,6 +48,10 @@ test_that("checktor(): a registered check's tier governs the verdict", {
 
   register_check("banned_policy", flag, category = "code", severity = "policy")
   r_policy <- checktor(pkg, verbose = FALSE, progress = FALSE)
+  expect_true("banned_policy" %in% names(r_policy$code_issues))
+  expect_false(r_policy$code_issues$banned_policy$passed)
+  expect_identical(r_policy$code_issues$banned_policy$severity, "policy")
+  expect_true("banned_policy" %in% tidy(r_policy)$check)
   expect_equal(r_policy$metadata$total_issues, base_total + 1L)
   unregister_check("banned_policy")
 
@@ -87,7 +66,7 @@ test_that("checktor(): a registered check's tier governs the verdict", {
   expect_gt(r_op$metadata$advisory_issues, 0L) # but it is still reported
 })
 
-test_that("checktor(): forwards the parse cache to a registered code check", {
+test_that("checktor(): hands a registered check only the shared parse its signature asks for", {
   on.exit(unregister_check(), add = TRUE)
   seen <- new.env()
   register_check(
@@ -98,16 +77,6 @@ test_that("checktor(): forwards the parse cache to a registered code check", {
     },
     category = "code"
   )
-
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  checktor(pkg, verbose = FALSE, progress = FALSE)
-  expect_true(isTRUE(seen$got_cache))
-})
-
-test_that("checktor(): forwards the parsed DESCRIPTION to a registered check", {
-  on.exit(unregister_check(), add = TRUE)
-  seen <- new.env()
   register_check(
     "desc_probe",
     function(path, verbose = TRUE, desc = NULL) {
@@ -116,16 +85,7 @@ test_that("checktor(): forwards the parsed DESCRIPTION to a registered check", {
     },
     category = "description"
   )
-
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  checktor(pkg, verbose = FALSE, progress = FALSE)
-  expect_true(isTRUE(seen$got_desc))
-})
-
-test_that("checktor(): a check with no cache argument is still called", {
-  on.exit(unregister_check(), add = TRUE)
-  seen <- new.env()
+  # A check with no cache argument is still called.
   register_check(
     "plain",
     function(path, verbose = TRUE) {
@@ -138,24 +98,18 @@ test_that("checktor(): a check with no cache argument is still called", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   checktor(pkg, verbose = FALSE, progress = FALSE)
+  expect_true(isTRUE(seen$got_cache))
+  expect_true(isTRUE(seen$got_desc))
   expect_true(isTRUE(seen$ran))
 })
 
-test_that("checktor(): a check that errors is caught, not fatal", {
+test_that("checktor(): a registered check that errors or returns the wrong type is caught, not fatal", {
   on.exit(unregister_check(), add = TRUE)
   register_check(
     "boom",
     function(path, verbose = TRUE) stop("kaboom"),
     category = "general"
   )
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  r <- checktor(pkg, verbose = FALSE, progress = FALSE)
-  expect_false(r$general_issues$boom$passed)
-})
-
-test_that("checktor(): a check returning the wrong type is caught, not fatal", {
-  on.exit(unregister_check(), add = TRUE)
   register_check(
     "wrongtype",
     function(path, verbose = TRUE) 42,
@@ -164,6 +118,7 @@ test_that("checktor(): a check returning the wrong type is caught, not fatal", {
   pkg <- make_temp_dir()
   write_pkg(pkg)
   r <- checktor(pkg, verbose = FALSE, progress = FALSE)
+  expect_false(r$general_issues$boom$passed)
   expect_false(r$general_issues$wrongtype$passed)
 })
 

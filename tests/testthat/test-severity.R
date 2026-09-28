@@ -5,16 +5,6 @@
 
 # Test check_severity() ----
 
-test_that("check_severity(): every check that runs has a valid tier", {
-  expect_true(all(CHECK_SEVERITY %in% SEVERITY_LEVELS))
-  # A check that runs but has no tier would silently fall back to `robustness`
-  # and quietly join the verdict. Catch that here rather than in someone's CI.
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  ran <- tidy(checktor(pkg, verbose = FALSE, progress = FALSE))$check
-  expect_true(all(ran %in% names(CHECK_SEVERITY)))
-})
-
 test_that("check_severity(): falls back to robustness, not to silence", {
   # An unregistered check is a real finding until someone says otherwise. Failing
   # safe here means a new check cannot be accidentally invisible.
@@ -27,14 +17,6 @@ test_that("check_severity(): falls back to robustness, not to silence", {
 # The registry in R/severity.R says what tier each check sits in and when it runs.
 # Both used to be spread across unrelated places, so these tests hold the table to
 # what the package actually does.
-
-test_that("check_severity(): every check that runs has a severity entry", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  ran <- tidy(checktor(pkg, verbose = FALSE, progress = FALSE))$check
-  expect_true(all(ran %in% names(CHECK_SEVERITY)))
-  expect_true(all(CHECK_SEVERITY %in% SEVERITY_LEVELS))
-})
 
 test_that("check_severity(): each check has a lab_ function named after it", {
   # The rename exists so `tidy()$check` and the function you call line up. A new
@@ -85,7 +67,9 @@ test_that("check_when(): agrees with what a default run actually does", {
   on_request <- names(CHECK_WHEN)[CHECK_WHEN == "request"]
   expect_false(any(on_request %in% ran), info = paste(on_request, collapse = ", "))
 
-  # Everything else in the severity table is part of the run.
+  # Everything else in the severity table is part of the run. A check that runs
+  # but has no tier would silently fall back to `robustness` and quietly join the
+  # verdict. Catch that here rather than in someone's CI.
   expected <- setdiff(names(CHECK_SEVERITY), on_request)
   expect_setequal(ran, expected)
 })

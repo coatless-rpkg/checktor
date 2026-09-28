@@ -66,21 +66,17 @@ test_that("resolve_description(): every DESCRIPTION check reads a read.dcf() mat
 
 # Test diagnose_description_issues() ----
 
-test_that("diagnose_description_issues(): a DESCRIPTION R cannot read is a failing check", {
+test_that("diagnose_description_issues(): a DESCRIPTION R cannot read fails description_file and sits the other checks out", {
   # It used to end the category early with no checks in it, which nothing
   # counted, so checktor() called a package R cannot install healthy.
+  pkg <- make_temp_dir()
+  write_pkg(pkg)
+  readable <- diagnose_description_issues(pkg, verbose = FALSE)
   res <- diagnose_description_issues(unparseable_pkg(), verbose = FALSE)
   expect_s3_class(res, "checktor_category_result")
   expect_identical(failed_checks(res), "description_file")
   expect_equal(n_issues(res), 1L)
   expect_identical(res$description_file$severity, "policy")
-})
-
-test_that("diagnose_description_issues(): the checks that read DESCRIPTION sit out when R cannot", {
-  pkg <- make_temp_dir()
-  write_pkg(pkg)
-  readable <- diagnose_description_issues(pkg, verbose = FALSE)
-  res <- diagnose_description_issues(unparseable_pkg(), verbose = FALSE)
 
   # The same panel, so a check that could not run is named rather than missing.
   expect_identical(.check_names(res), .check_names(readable))

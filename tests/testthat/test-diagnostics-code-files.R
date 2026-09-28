@@ -18,13 +18,20 @@ test_that("lab_home_writing(): does NOT flag formula tildes", {
 })
 
 test_that("lab_home_writing(): flags WRITES into the home directory", {
+  # The violation home_writing claimed to detect and did not: it inspected only
+  # read functions (Sys.getenv, path.expand) and missed every actual write.
+  # writeLines/saveRDS/write.csv are three of the forty entries in
+  # WRITE_FUNCTIONS. A device opened on a home path leaves a file there exactly
+  # as write.table() does, so both ends of the list are pinned.
   pkg <- make_temp_dir()
   write_pkg(
     pkg,
     r_code = c(
       'f <- function(x) writeLines(x, "~/leaked.txt")',
       'g <- function(x) saveRDS(x, "~/.myapp/cache.rds")',
-      'h <- function(x) write.csv(x, file = file.path(Sys.getenv("HOME"), "o.csv"))'
+      'h <- function(x) write.csv(x, file = file.path(Sys.getenv("HOME"), "o.csv"))',
+      "a <- function(x) write.table(x, '~/o.tsv')",
+      "b <- function() png('~/p.png')"
     )
   )
   res <- lab_home_writing(pkg, verbose = FALSE)
@@ -34,28 +41,11 @@ test_that("lab_home_writing(): flags WRITES into the home directory", {
     c(
       "test.R:1 (writeLines() writes under the home directory)",
       "test.R:2 (saveRDS() writes under the home directory)",
-      "test.R:3 (write.csv() writes under the home directory)"
+      "test.R:3 (write.csv() writes under the home directory)",
+      "test.R:4 (write.table() writes under the home directory)",
+      "test.R:5 (png() writes under the home directory)"
     )
   )
-})
-
-test_that("lab_home_writing(): knows the tabular and device writers too", {
-  # The three fixtures above exercise writeLines/saveRDS/write.csv, three of the
-  # forty entries in WRITE_FUNCTIONS. A device opened on a home path leaves a file
-  # there exactly as write.table() does, so both ends of the list are pinned.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    r_code = c(
-      "a <- function(x) write.table(x, '~/o.tsv')",
-      "b <- function() png('~/p.png')"
-    )
-  )
-  res <- lab_home_writing(pkg, verbose = FALSE)
-  expect_false(res$passed)
-  expect_equal(length(res$issues), 2L)
-  expect_match(res$issues, "write.table", all = FALSE, fixed = TRUE)
-  expect_match(res$issues, "png", all = FALSE, fixed = TRUE)
 })
 
 test_that("lab_home_writing(): does not flag reads of the home path", {
@@ -183,26 +173,6 @@ test_that("lab_home_writing(): catches a destination that defaults to the home d
       "c <- function(x, path = tempfile()) writeLines(x, path)",
       "d <- function(x, path = '/srv/x.txt') writeLines(x, path)",
       "e <- function(path, x = '~/data') writeLines(x, path)"
-    )
-  )
-  expect_identical(
-    lab_home_writing(pkg, verbose = FALSE)$issues,
-    c(
-      "test.R:1 (writeLines() writes under the home directory)",
-      "test.R:2 (saveRDS() writes under the home directory)"
-    )
-  )
-})
-
-test_that("lab_home_writing(): a genuine write to the user's home is caught", {
-  # The violation home_writing claimed to detect and did not: it inspected only
-  # read functions (Sys.getenv, path.expand) and missed every actual write.
-  pkg <- make_temp_dir()
-  write_pkg(
-    pkg,
-    r_code = c(
-      "leak <- function(x) writeLines(x, '~/leaked.txt')",
-      "cache <- function(x) saveRDS(x, '~/.myapp/cache.rds')"
     )
   )
   expect_identical(
