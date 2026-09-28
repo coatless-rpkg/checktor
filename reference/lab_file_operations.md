@@ -7,7 +7,7 @@ computed destination is permission, and is not flagged.
 ## Usage
 
 ``` r
-lab_file_operations(path, verbose = TRUE, parsed = NULL)
+lab_file_operations(path = ".", verbose = TRUE, parsed = NULL)
 ```
 
 ## Arguments
@@ -47,8 +47,10 @@ which runs this and every other check.
 ## Examples
 
 ``` r
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("code_examples/file_operations_bad.R",
                                  show_content = FALSE)
-lab_file_operations(pkg, verbose = FALSE)$passed
-#> [1] TRUE
+lab_file_operations(pkg, verbose = FALSE)$issues
+#> [1] "file_operations_bad.R:7 (write.csv())"
+#> [2] "file_operations_bad.R:13 (cat())"     
+unlink(pkg, recursive = TRUE)
 ```

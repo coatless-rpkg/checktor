@@ -13,7 +13,7 @@ inside S3 `print.*` and `format.*` methods are exempt, since
 ## Usage
 
 ``` r
-lab_print_cat_usage(path, verbose = TRUE, parsed = NULL)
+lab_print_cat_usage(path = ".", verbose = TRUE, parsed = NULL)
 ```
 
 ## Arguments
@@ -55,13 +55,8 @@ for how every check maps to its source.
 ``` r
 pkg <- example_diagnose_scenario("code_examples/print_cat_bad.R",
                                  show_content = FALSE)
-lab_print_cat_usage(pkg, verbose = FALSE)
-#> ✖ Print/cat usage check: FAILED
-#> Issues found:
-#> • print_cat_bad.R:6
-#> • print_cat_bad.R:9
-#> • print_cat_bad.R:14
-#> • print_cat_bad.R:21
-#> • print_cat_bad.R:24
-#> ... and 1 more
+lab_print_cat_usage(pkg, verbose = FALSE)$issues
+#> [1] "print_cat_bad.R:6"  "print_cat_bad.R:9"  "print_cat_bad.R:14"
+#> [4] "print_cat_bad.R:21" "print_cat_bad.R:24" "print_cat_bad.R:26"
+unlink(pkg, recursive = TRUE)
 ```

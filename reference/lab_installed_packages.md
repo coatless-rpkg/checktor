@@ -7,7 +7,7 @@ which is slow and is discouraged by its own help page.
 ## Usage
 
 ``` r
-lab_installed_packages(path, verbose = TRUE, parsed = NULL)
+lab_installed_packages(path = ".", verbose = TRUE, parsed = NULL)
 ```
 
 ## Arguments
@@ -46,8 +46,9 @@ which runs this and every other check.
 ## Examples
 
 ``` r
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("code_examples/installed_packages_bad.R",
                                  show_content = FALSE)
-lab_installed_packages(pkg, verbose = FALSE)$passed
-#> [1] TRUE
+lab_installed_packages(pkg, verbose = FALSE)$issues
+#> [1] "installed_packages_bad.R:7"
+unlink(pkg, recursive = TRUE)
 ```

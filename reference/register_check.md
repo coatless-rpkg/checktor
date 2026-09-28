@@ -37,7 +37,10 @@ register_check(
   `fn(path, verbose)`. If it also declares a `parsed` argument (for
   `code` and `policy` checks) or a `desc` argument (for `description`
   checks), checktor forwards its shared parse cache so the check does
-  not re-read the sources.
+  not re-read the sources. A check that cannot run where it is returns a
+  skipped result, as
+  [`checktor_check_result()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor_check_result.md)
+  describes, so it is reported as not run rather than as passing.
 
 - category:
 

@@ -6,7 +6,7 @@ matching cleanup in the same function.
 ## Usage
 
 ``` r
-lab_sys_setenv(path, verbose = TRUE, parsed = NULL)
+lab_sys_setenv(path = ".", verbose = TRUE, parsed = NULL)
 ```
 
 ## Arguments
@@ -49,8 +49,9 @@ which runs this and every other check.
 ## Examples
 
 ``` r
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("code_examples/sys_setenv_bad.R",
                                  show_content = FALSE)
-lab_sys_setenv(pkg, verbose = FALSE)$passed
-#> [1] TRUE
+lab_sys_setenv(pkg, verbose = FALSE)$issues
+#> [1] "sys_setenv_bad.R:6"
+unlink(pkg, recursive = TRUE)
 ```

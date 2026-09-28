@@ -39,5 +39,5 @@ pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                  show_content = FALSE)
 parsed <- read_r_xml(pkg)
 names(parsed)
-#> [1] "/tmp/RtmplTKXG2/checktor_example_20260823_060611_5527/R/tf_usage_bad.R"
+#> [1] "/tmp/Rtmp9yQlCj/checktor_example_1ab543a6c8b2/R/tf_usage_bad.R"
 ```

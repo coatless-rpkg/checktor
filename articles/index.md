@@ -2,7 +2,7 @@
 
 ### All vignettes
 
-- [Where checktor's Checks Come
+- [Where the Checks Come
   From](https://r-pkg.thecoatlessprofessor.com/checktor/articles/check-sources.md):
 - [checktor in Continuous
   Integration](https://r-pkg.thecoatlessprofessor.com/checktor/articles/checktor-in-ci.md):

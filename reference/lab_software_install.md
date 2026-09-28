@@ -7,7 +7,7 @@ and friends. A package may not install software on the user's machine.
 ## Usage
 
 ``` r
-lab_software_install(path, verbose = TRUE, parsed = NULL)
+lab_software_install(path = ".", verbose = TRUE, parsed = NULL)
 ```
 
 ## Arguments
@@ -47,8 +47,9 @@ which runs this and every other check.
 ## Examples
 
 ``` r
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("code_examples/software_install_bad.R",
                                  show_content = FALSE)
-lab_software_install(pkg, verbose = FALSE)$passed
-#> [1] TRUE
+lab_software_install(pkg, verbose = FALSE)$issues
+#> [1] "software_install_bad.R:6 (install.packages())"
+unlink(pkg, recursive = TRUE)
 ```

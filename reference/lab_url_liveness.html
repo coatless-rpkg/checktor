@@ -53,7 +53,7 @@ R CMD check --as-cran does, through the same base R machinery
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Diagnose Broken and Redirecting URLs</h1>
-      <small class="dont-index">Source: <a href="https://github.com/coatless-rpkg/checktor/blob/main/R/diagnostics-general.R" class="external-link"><code>R/diagnostics-general.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/coatless-rpkg/checktor/blob/main/R/diagnostics-general-urls.R" class="external-link"><code>R/diagnostics-general-urls.R</code></a></small>
       <div class="d-none name"><code>lab_url_liveness.Rd</code></div>
     </div>
 
@@ -68,7 +68,7 @@ redirects that ought to point at their final target. This is what
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">lab_url_liveness</span><span class="op">(</span><span class="va">path</span>, verbose <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">lab_url_liveness</span><span class="op">(</span>path <span class="op">=</span> <span class="st">"."</span>, verbose <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -96,8 +96,8 @@ or unreachable network would make results depend on the machine rather than the
 package. Set the option either way to decide for yourself:</p>
 <p></p><div class="sourceCode r"><pre><code><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>checktor.url_check <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>   <span class="co"># always check</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>checktor.url_check <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>  <span class="co"># never check</span></span></code></pre><p></p></div>
-<p>Without a network the fetch reports nothing and the check passes quietly, just
-as CRAN's own URL check does. For the offline half, which flags <code>http://</code> links
+<p>Without a network nothing can be fetched, so the check is reported as skipped
+rather than as passing. For the offline half, which flags <code>http://</code> links
 and URL shorteners without leaving the room, see <code><a href="lab_urls.html">lab_urls()</a></code>.</p>
     </div>
     <div class="section level2">
@@ -112,9 +112,16 @@ source.</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Needs a network, so this is not run automatically:</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Needs a network: it asks every URL the package lists whether it answers,</span></span></span>
+<span class="r-in"><span><span class="co"># so it is not run here. The scenario lists one page that exists and one that</span></span></span>
+<span class="r-in"><span><span class="co"># does not, and the missing one is reported with its 404. Outside an</span></span></span>
+<span class="r-in"><span><span class="co"># interactive session the check is skipped unless</span></span></span>
+<span class="r-in"><span><span class="co"># options(checktor.url_check = TRUE) turns it on.</span></span></span>
 <span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span><span class="fu">lab_url_liveness</span><span class="op">(</span><span class="st">"."</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">pkg</span> <span class="op">&lt;-</span> <span class="fu"><a href="example_diagnose_scenario.html">example_diagnose_scenario</a></span><span class="op">(</span><span class="st">"general_examples/url_liveness_bad.txt"</span>,</span></span>
+<span class="r-in"><span>                                 show_content <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">lab_url_liveness</span><span class="op">(</span><span class="va">pkg</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">$</span><span class="va">issues</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/unlink.html" class="external-link">unlink</a></span><span class="op">(</span><span class="va">pkg</span>, recursive <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
 </code></pre></div>
     </div>

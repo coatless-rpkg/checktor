@@ -1,7 +1,10 @@
 # Treatment Recommendations
 
-Prints specific treatment recommendations for issues found by
-[`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md).
+Prints specific treatment recommendations for the checks that failed in
+a
+[`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md)
+run, whatever their severity tier, so an advisory finding outside the
+verdict still gets its remedy.
 
 ## Usage
 
@@ -30,17 +33,17 @@ prescribe(results)
 #> ── Treatment Recommendations ───────────────────────────────────────────────────
 #> 
 #> ── T/F Usage Issues 
+#> Issues found:
+#> • tf_usage_bad.R:8
+#> • tf_usage_bad.R:11
+#> • tf_usage_bad.R:15
+#> • tf_usage_bad.R:18
+#> • tf_usage_bad.R:22
+#> ... and 2 more
 #> Treatment: Replace `T` with `TRUE` and `F` with `FALSE`
 #> # Before
 #> result <- T
 #> # After
 #> result <- TRUE
-#> 
-#> 
-#> ── cph role check 
-#> Issues found:
-#> • Authors@R lacks any [cph] (copyright holder) role
-#> Treatment: Review the detailed diagnosis above; re-run `checktor(verbose =
-#> TRUE)` for specifics.
 #> 
 ```

@@ -6,7 +6,7 @@ Flags a `LICENSE` file still carrying template placeholders such as
 ## Usage
 
 ``` r
-lab_license_year(path, verbose)
+lab_license_year(path = ".", verbose = TRUE)
 ```
 
 ## Arguments
@@ -42,8 +42,10 @@ which runs this and every other check.
 ## Examples
 
 ``` r
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("description_examples/license_year_bad.LICENSE",
                                  show_content = FALSE)
-lab_license_year(pkg, verbose = FALSE)$passed
-#> [1] TRUE
+lab_license_year(pkg, verbose = FALSE)$issues
+#> [1] "LICENSE has an unfilled template placeholder: <YEAR>"            
+#> [2] "LICENSE has an unfilled template placeholder: <COPYRIGHT HOLDER>"
+unlink(pkg, recursive = TRUE)
 ```

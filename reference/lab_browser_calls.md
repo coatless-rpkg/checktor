@@ -6,7 +6,7 @@ package code.
 ## Usage
 
 ``` r
-lab_browser_calls(path, verbose = TRUE, parsed = NULL)
+lab_browser_calls(path = ".", verbose = TRUE, parsed = NULL)
 ```
 
 ## Arguments
@@ -47,8 +47,9 @@ which runs this and every other check.
 ## Examples
 
 ``` r
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("code_examples/browser_calls_bad.R",
                                  show_content = FALSE)
-lab_browser_calls(pkg, verbose = FALSE)$passed
-#> [1] TRUE
+lab_browser_calls(pkg, verbose = FALSE)$issues
+#> [1] "browser_calls_bad.R:6"  "browser_calls_bad.R:11" "browser_calls_bad.R:23"
+unlink(pkg, recursive = TRUE)
 ```

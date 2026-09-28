@@ -11,7 +11,7 @@ without depending on the `urlchecker` package.
 ## Usage
 
 ``` r
-lab_url_liveness(path, verbose = TRUE)
+lab_url_liveness(path = ".", verbose = TRUE)
 ```
 
 ## Arguments
@@ -41,9 +41,9 @@ to decide for yourself:
     options(checktor.url_check = TRUE)   # always check
     options(checktor.url_check = FALSE)  # never check
 
-Without a network the fetch reports nothing and the check passes
-quietly, just as CRAN's own URL check does. For the offline half, which
-flags `http://` links and URL shorteners without leaving the room, see
+Without a network nothing can be fetched, so the check is reported as
+skipped rather than as passing. For the offline half, which flags
+`http://` links and URL shorteners without leaving the room, see
 [`lab_urls()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_urls.md).
 
 ## Source
@@ -58,8 +58,15 @@ for how every check maps to its source.
 ## Examples
 
 ``` r
-# Needs a network, so this is not run automatically:
+# Needs a network: it asks every URL the package lists whether it answers,
+# so it is not run here. The scenario lists one page that exists and one that
+# does not, and the missing one is reported with its 404. Outside an
+# interactive session the check is skipped unless
+# options(checktor.url_check = TRUE) turns it on.
 if (FALSE) { # \dontrun{
-lab_url_liveness(".")
+pkg <- example_diagnose_scenario("general_examples/url_liveness_bad.txt",
+                                 show_content = FALSE)
+lab_url_liveness(pkg, verbose = FALSE)$issues
+unlink(pkg, recursive = TRUE)
 } # }
 ```

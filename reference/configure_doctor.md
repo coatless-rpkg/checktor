@@ -37,12 +37,12 @@ call can be reversed with `options(.)`.
 ## Examples
 
 ``` r
-# Save defaults so we can restore them after the example runs
-old <- options(checktor.verbose = NULL, checktor.progress = NULL)
-on.exit(options(old), add = TRUE)
-
-configure_doctor(verbose_default = FALSE)
+# configure_doctor() returns the options it replaced
+old <- configure_doctor(verbose_default = FALSE)
 #> ✔ Package doctor configuration updated
 getOption("checktor.verbose")
 #> [1] FALSE
+
+# Put them back
+options(old)
 ```

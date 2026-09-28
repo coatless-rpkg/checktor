@@ -46,8 +46,9 @@ for the same rule in `R/`.
 ## Examples
 
 ``` r
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("documentation_examples/example_writes_bad.Rd",
                                  show_content = FALSE)
-lab_example_writes(pkg, verbose = FALSE)$passed
-#> [1] TRUE
+lab_example_writes(pkg, verbose = FALSE)$issues
+#> [1] "example example_writes_bad.Rd:18 (write.csv())"
+unlink(pkg, recursive = TRUE)
 ```

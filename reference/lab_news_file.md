@@ -7,7 +7,7 @@ user-facing changes in a `NEWS` file. Accepts `NEWS.md`, `NEWS`, or
 ## Usage
 
 ``` r
-lab_news_file(path, verbose = TRUE)
+lab_news_file(path = ".", verbose = TRUE)
 ```
 
 ## Arguments
@@ -35,13 +35,10 @@ for how every check maps to its source.
 ## Examples
 
 ``` r
-pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
-                                      show_content = FALSE)
-file.remove(file.path(pkg_path, "NEWS.md"))   # demonstrate the failing case
-#> [1] TRUE
-issues(lab_news_file(pkg_path, verbose = FALSE))
-#>   file line                                                         location
-#> 1 <NA>   NA No NEWS file found (add NEWS.md to document user-facing changes)
-#>           message
-#> 1 NEWS file check
+pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+                                 show_content = FALSE)
+invisible(file.remove(file.path(pkg, "NEWS.md")))
+lab_news_file(pkg, verbose = FALSE)$issues
+#> [1] "No NEWS file found (add NEWS.md to document user-facing changes)"
+unlink(pkg, recursive = TRUE)
 ```

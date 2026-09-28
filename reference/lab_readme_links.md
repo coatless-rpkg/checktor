@@ -10,7 +10,7 @@ flagged.
 ## Usage
 
 ``` r
-lab_readme_links(path, verbose = TRUE)
+lab_readme_links(path = ".", verbose = TRUE)
 ```
 
 ## Arguments
@@ -46,13 +46,12 @@ for how every check maps to its source.
 ## Examples
 
 ``` r
-pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
-                                      show_content = FALSE)
+pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+                                 show_content = FALSE)
+# A relative link to a file the package does not have
 writeLines("See [the guide](docs/guide.md) for details.",
-           file.path(pkg_path, "README.md"))
-issues(lab_readme_links(pkg_path, verbose = FALSE))
-#>   file line                                                 location
-#> 1 <NA>   NA README.md: relative link to missing file 'docs/guide.md'
-#>                       message
-#> 1 README relative-links check
+           file.path(pkg, "README.md"))
+lab_readme_links(pkg, verbose = FALSE)$issues
+#> [1] "README.md: relative link to missing file 'docs/guide.md'"
+unlink(pkg, recursive = TRUE)
 ```

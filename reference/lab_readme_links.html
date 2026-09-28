@@ -51,7 +51,7 @@ to files that are included (e.g. man/figures/logo.png) are not flagged."><meta n
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Diagnose Relative Links in the README</h1>
-      <small class="dont-index">Source: <a href="https://github.com/coatless-rpkg/checktor/blob/main/R/diagnostics-general.R" class="external-link"><code>R/diagnostics-general.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/coatless-rpkg/checktor/blob/main/R/diagnostics-general-urls.R" class="external-link"><code>R/diagnostics-general-urls.R</code></a></small>
       <div class="d-none name"><code>lab_readme_links.Rd</code></div>
     </div>
 
@@ -65,7 +65,7 @@ to files that are included (e.g. <code>man/figures/logo.png</code>) are not flag
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">lab_readme_links</span><span class="op">(</span><span class="va">path</span>, verbose <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">lab_readme_links</span><span class="op">(</span>path <span class="op">=</span> <span class="st">"."</span>, verbose <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -104,15 +104,14 @@ source.</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">pkg_path</span> <span class="op">&lt;-</span> <span class="fu"><a href="example_diagnose_scenario.html">example_diagnose_scenario</a></span><span class="op">(</span><span class="st">"code_examples/tf_usage_bad.R"</span>,</span></span>
-<span class="r-in"><span>                                      show_content <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">pkg</span> <span class="op">&lt;-</span> <span class="fu"><a href="example_diagnose_scenario.html">example_diagnose_scenario</a></span><span class="op">(</span><span class="st">"code_examples/tf_usage_bad.R"</span>,</span></span>
+<span class="r-in"><span>                                 show_content <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># A relative link to a file the package does not have</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/writeLines.html" class="external-link">writeLines</a></span><span class="op">(</span><span class="st">"See [the guide](docs/guide.md) for details."</span>,</span></span>
-<span class="r-in"><span>           <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">pkg_path</span>, <span class="st">"README.md"</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="issues.html">issues</a></span><span class="op">(</span><span class="fu">lab_readme_links</span><span class="op">(</span><span class="va">pkg_path</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   file line                                                 location</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1 &lt;NA&gt;   NA README.md: relative link to missing file 'docs/guide.md'</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                       message</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1 README relative-links check</span>
+<span class="r-in"><span>           <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">pkg</span>, <span class="st">"README.md"</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">lab_readme_links</span><span class="op">(</span><span class="va">pkg</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">$</span><span class="va">issues</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "README.md: relative link to missing file 'docs/guide.md'"</span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/unlink.html" class="external-link">unlink</a></span><span class="op">(</span><span class="va">pkg</span>, recursive <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

@@ -47,8 +47,9 @@ which runs this and every other check.
 ## Examples
 
 ``` r
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("description_examples/description_length_bad.txt",
                                  show_content = FALSE)
-lab_description_length(pkg, verbose = FALSE)$passed
-#> [1] TRUE
+lab_description_length(pkg, verbose = FALSE)$issues
+#> [1] "Description too short: 3 words"
+unlink(pkg, recursive = TRUE)
 ```

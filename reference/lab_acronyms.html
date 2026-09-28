@@ -43,7 +43,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Diagnose Unexplained Acronyms in DESCRIPTION</h1>
-      <small class="dont-index">Source: <a href="https://github.com/coatless-rpkg/checktor/blob/main/R/diagnostics-description.R" class="external-link"><code>R/diagnostics-description.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/coatless-rpkg/checktor/blob/main/R/diagnostics-description-names.R" class="external-link"><code>R/diagnostics-description-names.R</code></a></small>
       <div class="d-none name"><code>lab_acronyms.Rd</code></div>
     </div>
 
@@ -78,6 +78,14 @@ Defaults to reading it from <code>path</code>.</p></dd>
     <p><code><a href="checktor_check_result.html">checktor_check_result()</a></code> with <code>passed</code>, <code>issues</code>, <code>message</code>.</p>
     </div>
     <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>A name in single quotes, straight or typographic, is not read as an acronym,
+so <code>'YAML'</code> or <code>'MATLAB'</code> written as <code><a href="lab_language_names.html">lab_language_names()</a></code> and
+<code><a href="lab_format_names.html">lab_format_names()</a></code> ask is not reported here. Nor is anything inside a web
+address, a <code>&lt;doi:...&gt;</code>, a function call or a quotation in double quotes,
+straight or typographic, such as the title of an article.</p>
+    </div>
+    <div class="section level2">
     <h2 id="source">Source<a class="anchor" aria-label="anchor" href="#source"></a></h2>
 
 
@@ -95,10 +103,11 @@ source.</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">pkg</span> <span class="op">&lt;-</span> <span class="fu"><a href="example_diagnose_scenario.html">example_diagnose_scenario</a></span><span class="op">(</span><span class="st">"code_examples/tf_usage_bad.R"</span>,</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">pkg</span> <span class="op">&lt;-</span> <span class="fu"><a href="example_diagnose_scenario.html">example_diagnose_scenario</a></span><span class="op">(</span><span class="st">"description_examples/acronyms_bad.txt"</span>,</span></span>
 <span class="r-in"><span>                                 show_content <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">lab_acronyms</span><span class="op">(</span><span class="va">pkg</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">$</span><span class="va">passed</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
+<span class="r-in"><span><span class="fu">lab_acronyms</span><span class="op">(</span><span class="va">pkg</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">$</span><span class="va">issues</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "DEFF" "ESS" </span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/unlink.html" class="external-link">unlink</a></span><span class="op">(</span><span class="va">pkg</span>, recursive <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

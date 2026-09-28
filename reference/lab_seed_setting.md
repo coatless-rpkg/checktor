@@ -6,7 +6,7 @@ the check matches the call AST node, not raw text.
 ## Usage
 
 ``` r
-lab_seed_setting(path, verbose = TRUE, parsed = NULL)
+lab_seed_setting(path = ".", verbose = TRUE, parsed = NULL)
 ```
 
 ## Arguments
@@ -45,9 +45,7 @@ for how every check maps to its source.
 ``` r
 pkg <- example_diagnose_scenario("code_examples/seed_setting_bad.R",
                                  show_content = FALSE)
-lab_seed_setting(pkg, verbose = FALSE)   # prints PASSED/FAILED
-#> ✖ Seed setting check: FAILED
-#> Issues found:
-#> • seed_setting_bad.R:7
-#> • seed_setting_bad.R:15
+lab_seed_setting(pkg, verbose = FALSE)$issues
+#> [1] "seed_setting_bad.R:7"  "seed_setting_bad.R:15"
+unlink(pkg, recursive = TRUE)
 ```

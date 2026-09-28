@@ -75,8 +75,9 @@
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>For results: a 5-row <code>data.frame</code> (<code>category, checks, passed, failed, skipped, issues</code>). For a category: a 1-row <code>data.frame</code>
-(<code>checks, passed, failed, skipped, issues</code>). <code>skipped</code> counts the checks
-that did not run, which are not counted as passing.</p>
+(<code>checks, passed, failed, skipped, issues</code>). Each check is counted once, so
+<code>passed</code>, <code>failed</code> and <code>skipped</code> add up to <code>checks</code>, and a check that did
+not run is <code>skipped</code>, never <code>passed</code>.</p>
     </div>
 
     <div class="section level2">
@@ -87,9 +88,9 @@ that did not run, which are not counted as passing.</p>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>        category checks passed failed skipped issues</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1          code     16     15      1       0      7</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2   description     19     18      1       1      1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3 documentation     13     13      0       0      0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4       general      5      5      0       1      0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2   description     23     22      0       1      0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 documentation     17     17      0       0      0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4       general      7      6      0       1      0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 5        policy      4      4      0       0      0</span>
 </code></pre></div>
     </div>

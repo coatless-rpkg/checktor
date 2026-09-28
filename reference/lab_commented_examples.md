@@ -7,7 +7,7 @@ not flagged.
 ## Usage
 
 ``` r
-lab_commented_examples(path, verbose = TRUE)
+lab_commented_examples(path = ".", verbose = TRUE)
 ```
 
 ## Arguments
@@ -41,8 +41,9 @@ which runs this and every other check.
 ## Examples
 
 ``` r
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("documentation_examples/commented_examples_bad.Rd",
                                  show_content = FALSE)
-lab_commented_examples(pkg, verbose = FALSE)$passed
-#> [1] TRUE
+lab_commented_examples(pkg, verbose = FALSE)$issues
+#> [1] "commented_examples_bad.Rd: \\examples{} contains only commented-out code, so it runs nothing"
+unlink(pkg, recursive = TRUE)
 ```

@@ -63,7 +63,7 @@ to read. The format defaults to whichever forge the build is running on.</p>
 <span>  results <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  format <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"github"</span>, <span class="st">"gitlab"</span>, <span class="st">"checkstyle"</span>, <span class="st">"sarif"</span>, <span class="st">"azure"</span>, <span class="st">"text"</span><span class="op">)</span>,</span>
 <span>  file <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  severity <span class="op">=</span> <span class="va">SEVERITY_LEVELS</span>,</span>
+<span>  severity <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"policy"</span>, <span class="st">"robustness"</span>, <span class="st">"opinion"</span><span class="op">)</span>,</span>
 <span>  skipped <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  path <span class="op">=</span> <span class="st">"."</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -81,15 +81,19 @@ to read. The format defaults to whichever forge the build is running on.</p>
 <dt id="arg-format">format<a class="anchor" aria-label="anchor" href="#arg-format"></a></dt>
 <dd><p>Character. One of <code>"auto"</code>, <code>"github"</code>, <code>"gitlab"</code>,
 <code>"checkstyle"</code>, <code>"sarif"</code>, <code>"azure"</code> or <code>"text"</code>. <code>"auto"</code> reads the
-environment variables each forge sets.</p></dd>
+environment variables each forge sets: <code>"github"</code> when <code>GITHUB_ACTIONS</code> is
+set, <code>"gitlab"</code> for <code>GITLAB_CI</code>, <code>"azure"</code> for <code>TF_BUILD</code>, <code>"checkstyle"</code> for
+<code>JENKINS_URL</code>, and <code>"text"</code> anywhere else.</p></dd>
 
 
 <dt id="arg-file">file<a class="anchor" aria-label="anchor" href="#arg-file"></a></dt>
-<dd><p>Character. Where to write. Omit it for the format's natural
-destination, standard output for the comment styles and a conventional file
-name for the report styles. Pass <code>NULL</code> to emit nothing and only return the
-lines, which is what you want when testing or post-processing a report rather
-than handing it to a build. Pass <code><a href="https://rdrr.io/r/base/showConnections.html" class="external-link">stdout()</a></code> to print regardless of format.</p></dd>
+<dd><p>Character. Where to write. Leave it out for the format's natural
+destination: standard output for <code>"github"</code>, <code>"azure"</code> and <code>"text"</code>, and
+<code>gl-code-quality-report.json</code>, <code>checktor-checkstyle.xml</code> or <code>checktor.sarif</code>
+for the report styles. Passing <code>file = NULL</code> is not the same as leaving it
+out: nothing is written and the lines are only returned, which is what you
+want when testing or post-processing a report rather than handing it to a
+build. Pass <code><a href="https://rdrr.io/r/base/showConnections.html" class="external-link">stdout()</a></code> to print regardless of format.</p></dd>
 
 
 <dt id="arg-severity">severity<a class="anchor" aria-label="anchor" href="#arg-severity"></a></dt>

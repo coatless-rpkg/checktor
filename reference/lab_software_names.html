@@ -43,7 +43,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Diagnose Unquoted Software Names in DESCRIPTION</h1>
-      <small class="dont-index">Source: <a href="https://github.com/coatless-rpkg/checktor/blob/main/R/diagnostics-description.R" class="external-link"><code>R/diagnostics-description.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/coatless-rpkg/checktor/blob/main/R/diagnostics-description-names.R" class="external-link"><code>R/diagnostics-description-names.R</code></a></small>
       <div class="d-none name"><code>lab_software_names.Rd</code></div>
     </div>
 
@@ -78,6 +78,16 @@ Defaults to reading it from <code>path</code>.</p></dd>
     <p><code><a href="checktor_check_result.html">checktor_check_result()</a></code> with <code>passed</code>, <code>issues</code>, <code>message</code>.</p>
     </div>
     <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>Each occurrence is judged on its own, so one quoted mention does not excuse a
+bare one elsewhere. A name is not bare inside a single-quoted span such as
+<code>'shiny.semantic'</code>, a <code>&lt;https://...&gt;</code> or <code>&lt;doi:...&gt;</code>, or a function call such
+as <code><a href="https://purrr.tidyverse.org/reference/map.html" class="external-link">purrr::map()</a></code>, which are the spans CRAN's own incoming spell check skips.
+Nor is it bare in a plain web address, or in a double-quoted quotation such as
+the title of a book. A name alone in double quotes, in either field, is
+reported by <code><a href="lab_description_quoted_quotes.html">lab_description_quoted_quotes()</a></code> instead.</p>
+    </div>
+    <div class="section level2">
     <h2 id="source">Source<a class="anchor" aria-label="anchor" href="#source"></a></h2>
 
 
@@ -94,10 +104,11 @@ source.</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">pkg</span> <span class="op">&lt;-</span> <span class="fu"><a href="example_diagnose_scenario.html">example_diagnose_scenario</a></span><span class="op">(</span><span class="st">"code_examples/tf_usage_bad.R"</span>,</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">pkg</span> <span class="op">&lt;-</span> <span class="fu"><a href="example_diagnose_scenario.html">example_diagnose_scenario</a></span><span class="op">(</span><span class="st">"description_examples/software_names_bad.txt"</span>,</span></span>
 <span class="r-in"><span>                                 show_content <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">lab_software_names</span><span class="op">(</span><span class="va">pkg</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">$</span><span class="va">passed</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
+<span class="r-in"><span><span class="fu">lab_software_names</span><span class="op">(</span><span class="va">pkg</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">$</span><span class="va">issues</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "Description: ggplot2 should be in single quotes"</span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/unlink.html" class="external-link">unlink</a></span><span class="op">(</span><span class="va">pkg</span>, recursive <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

@@ -1,11 +1,11 @@
 # Writing Your Own Checks
 
-`checktor` includes more than forty checks, but every team has house
+`checktor` includes more than sixty checks, but every team has house
 rules too local to upstream: a function you have banned, a header you
 insist on, a habit you keep relapsing into. This vignette is for those.
-It walks through the handful of helpers in `R/ast.R` and shows how to
-author a new check against the parsed syntax tree in a few lines of
-XPath, with the orchestrator handling the bookkeeping.
+It walks through the handful of helpers in `R/ast.R` and `R/rd.R` and
+shows how to author a new check against the parsed syntax tree in a few
+lines of XPath, with the orchestrator handling the bookkeeping.
 
 Every check walks the same road. Your sources are parsed once into a
 syntax tree, an XPath query picks out the nodes you object to, and each
@@ -51,13 +51,14 @@ lab_<name> <- function(path, verbose = TRUE, parsed = NULL) {
 > when
 > [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md)
 > runs all code-side checks together, it parses each file once and hands
-> the cache to every check. Fifteen code-side checks against a 200-file
-> package then mean 200 parses rather than 3,000.
+> the cache to every check. Sixteen code-side checks against a 200-file
+> package then mean 200 parses rather than 3,200.
 
-## Helpers in `R/ast.R`
+## Helpers in `R/ast.R` and `R/rd.R`
 
-`R/ast.R` collects the shared machinery, and a check leans on the
-handful below in roughly the order of the road above.
+`R/ast.R` collects the shared machinery and `R/rd.R` the help-page
+walkers. A check leans on the handful below in roughly the order of the
+road above.
 [`read_r_xml()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/read_r_xml.md)
 does the parsing and
 [`xpath_lints()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/xpath_lints.md)
@@ -74,10 +75,11 @@ parse failure becomes an `error` slot instead of crashing the run.
 ``` r
 
 parsed <- read_r_xml(".")
-str(parsed[[1]])
+str(parsed[[1]], max.level = 1)
 #> List of 3
-#>  $ file : chr "R/foo.R"
-#>  $ xml  : xml_document
+#>  $ file : chr "./R/bar.R"
+#>  $ xml  :List of 2
+#>   ..- attr(*, "class")= chr [1:2] "xml_document" "xml_node"
 #>  $ error: NULL
 ```
 
@@ -95,9 +97,8 @@ hit.
 
 ``` r
 
-hits <- xpath_lints(parsed,
-                    "//SYMBOL_FUNCTION_CALL[text() = 'set.seed']")
-#> "foo.R:42" "bar.R:17"
+xpath_lints(parsed, "//SYMBOL_FUNCTION_CALL[text() = 'set.seed']")
+#> [1] "bar.R:17" "foo.R:42"
 ```
 
 ### `undesirable_function_check(parsed, funs, label = TRUE)`
@@ -107,8 +108,8 @@ helper:
 
 ``` r
 
-issues <- undesirable_function_check(parsed,
-                                     c("install.packages", "browser"))
+undesirable_function_check(parsed, c("install.packages", "browser"))
+#> [1] "foo.R:4 (install.packages())" "foo.R:5 (browser())"
 ```
 
 This is `checktor`’s equivalent of
@@ -137,7 +138,11 @@ xpath <- paste0(
 ### `extract_rd_section(rd, tag)` and `collect_rd_text(node, skip)`
 
 Walking `.Rd` files structurally via
-[`tools::parse_Rd()`](https://rdrr.io/r/tools/parse_Rd.html):
+[`tools::parse_Rd()`](https://rdrr.io/r/tools/parse_Rd.html); both live
+in `R/rd.R`. Reading `man/` yourself sees every help page, including any
+that `.Rbuildignore` keeps out of the tarball. The built-in checks skip
+those, so leave them out too if your check should judge only what CRAN
+receives.
 
 ``` r
 
@@ -157,8 +162,7 @@ checktor as `lab_sys_setenv`. Here is the essential shape:
 
 ``` r
 
-lab_sys_setenv <- function(path, verbose = TRUE,
-                                         parsed = NULL) {
+lab_sys_setenv <- function(path, verbose = TRUE, parsed = NULL) {
   # reuse the parse-cache when checktor() supplies one, else parse fresh
   if (is.null(parsed)) parsed <- read_r_xml(path)
   if (length(parsed) == 0L) {
@@ -284,6 +288,20 @@ A few things worth knowing:
   a finding counts against a clean bill of health under
   [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md)’s
   `severity` argument.
+- A check that cannot run where it is, because it needs a network, a
+  tool or a credential that is not there, should say so rather than
+  pass. Return
+  `checktor_check_result(TRUE, character(0), "<message>", skipped = TRUE, skip_reason = "<why>")`,
+  and it shows as skipped in
+  [`tidy()`](https://generics.r-lib.org/reference/tidy.html),
+  [`summary()`](https://rdrr.io/r/base/summary.html), the printed
+  report,
+  [`health_report()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/health_report.md)
+  and
+  [`ci_report()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/ci_report.md),
+  never as a pass.
+- `options(checktor.disable = "my_check")` or `Config/checktor/disable`
+  turns a registered check off, the same as a built-in one.
 
 [`registered_checks()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/registered_checks.md)
 lists what is currently registered, and `unregister_check("my_check")`
@@ -308,29 +326,48 @@ and
 
 > Contributing a check to checktor itself? Then skip the registry and
 > wire it the way the built-in checks are: add `lab_my_check()` to the
-> right `R/diagnostics-*.R` file, add one line to that file’s category
-> function inside its `run_checks(list(...))` call
-> (`my_check = function(p, v) lab_my_check(p, v, parsed = parsed)`), and
-> give it a tier in `CHECK_SEVERITY` (`R/severity.R`).
+> right `R/diagnostics-*.R` file and add a row for it to the check table
+> in `R/registry.R`, which gives its category, its tier and when it
+> runs. The category function runs every row of its category in table
+> order, passing `parsed` or `desc` to a check whose signature takes it.
+> A check that reads `desc` also gives the message it reports, so it can
+> be shown as skipped when R cannot read the `DESCRIPTION`. A check that
+> should not run every time says so in the row: `console` or `backend`
+> when it needs the network or an external tool, in which case it
+> returns `checktor_skipped_result()` when it cannot run, or `request`
+> when it runs only if called, in which case it stays out of the run
+> altogether. Then add a row for it to [Where the Checks Come
+> From](https://r-pkg.thecoatlessprofessor.com/checktor/articles/check-sources.md),
+> and a matching `*_bad` scenario under `inst/diagnose/` for its
+> example. `test-severity.R` holds the table, and the vignette’s copy of
+> it, to what actually runs.
 
 ## Without writing code
 
 Some house rules need no new check at all. A package configures checktor
-from `Config/checktor/*` fields in its own `DESCRIPTION`:
+from `Config/checktor/*` fields in its own `DESCRIPTION`. Each field is
+a comma-separated list, and `DESCRIPTION` has no comment syntax, so keep
+notes out of the field: anything after the last name becomes part of it.
 
-    Config/checktor/software_names: brms, cmdstanr   # flag these names when unquoted
-    Config/checktor/acronyms: MCMC, GLMM             # these domain acronyms are fine
-    Config/checktor/allow: urls:README.md            # mute a finding you have reviewed
-    Config/checktor/disable: news_file               # turn a check off entirely
+    Config/checktor/software_names: brms, cmdstanr
+    Config/checktor/acronyms: MCMC, GLMM
+    Config/checktor/allow: urls:README.md
+    Config/checktor/disable: news_file
 
-`software_names` and `acronyms` extend the vocabularies those checks
-already use; `allow` mutes a specific finding, either a whole check or a
+`software_names` flags those names when they appear unquoted and
+`acronyms` accepts those domain acronyms, each extending the vocabulary
+its check already uses; `language_names` and `format_names` work the
+same way. `allow` mutes a specific finding, either a whole check or a
 `check:substring`, which is what a green
 [`checkup()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checkup.md)
 gate needs when a finding has been reviewed and accepted. `disable`
-skips a check outright. Write a check of your own when the rule is
-genuinely yours, and reach for `Config/checktor/*` when you only need to
-teach or quiet a check checktor already includes.
+skips a check outright: it does not run and is not counted. To turn a
+check off in every package rather than one, set
+`options(checktor.disable = "news_file")` once, for example in
+`.Rprofile`; the option and the field are combined. Write a check of
+your own when the rule is genuinely yours, and reach for
+`Config/checktor/*` when you only need to teach or quiet a check
+checktor already includes.
 
 ## Conclusion
 

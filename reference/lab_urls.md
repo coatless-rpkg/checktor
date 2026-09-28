@@ -7,7 +7,7 @@ the `.Rd` files.
 ## Usage
 
 ``` r
-lab_urls(path, verbose = TRUE)
+lab_urls(path = ".", verbose = TRUE)
 ```
 
 ## Arguments
@@ -48,9 +48,9 @@ for how every check maps to its source.
 ## Examples
 
 ``` r
-pkg_path <- example_diagnose_scenario("description_examples/bad_description.txt",
-                                      show_content = FALSE)
-issues(lab_urls(pkg_path, verbose = FALSE))
-#>   file line                                       location    message
-#> 1 <NA>   NA DESCRIPTION: http://example.com (use https://) URLs check
+pkg <- example_diagnose_scenario("description_examples/bad_description.txt",
+                                 show_content = FALSE)
+lab_urls(pkg, verbose = FALSE)$issues
+#> [1] "DESCRIPTION: http://example.com (use https://)"
+unlink(pkg, recursive = TRUE)
 ```

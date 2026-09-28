@@ -108,20 +108,32 @@ name after `lab_` is the check name that
 Individual checks on the DESCRIPTION file, parsed via
 [`base::read.dcf()`](https://rdrr.io/r/base/dcf.html).
 
+- [`lab_description_file()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_description_file.md)
+  : Diagnose a DESCRIPTION File R Cannot Read
+- [`lab_description_fields()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_description_fields.md)
+  : Diagnose DESCRIPTION Fields R Does Not Know
+- [`lab_description_placeholders()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_description_placeholders.md)
+  : Diagnose Template Text Left in DESCRIPTION
 - [`lab_software_names()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_software_names.md)
   : Diagnose Unquoted Software Names in DESCRIPTION
 - [`lab_language_names()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_language_names.md)
   : Diagnose Programming-Language Names in DESCRIPTION
+- [`lab_format_names()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_format_names.md)
+  : Diagnose Bare Format and Markup Names in DESCRIPTION
 - [`lab_acronyms()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_acronyms.md)
   : Diagnose Unexplained Acronyms in DESCRIPTION
 - [`lab_license()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_license.md)
   : Diagnose the License Field
+- [`lab_license_file_unneeded()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_license_file_unneeded.md)
+  : Diagnose an Unneeded LICENSE File Pointer
 - [`lab_license_year()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_license_year.md)
   : Diagnose an Unfilled LICENSE Template
 - [`lab_title_case()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_title_case.md)
   : Diagnose Title Case in DESCRIPTION
 - [`lab_title_length()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_title_length.md)
   : Diagnose Title Length
+- [`lab_title_package_name()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_title_package_name.md)
+  : Diagnose a Title That Repeats the Package Name
 - [`lab_title_starts_with_article()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_title_starts_with_article.md)
   : Diagnose Title Starting With an Article
 - [`lab_title_redundant_phrases()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_title_redundant_phrases.md)
@@ -133,13 +145,13 @@ Individual checks on the DESCRIPTION file, parsed via
 - [`lab_identifier_format()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_identifier_format.md)
   : Diagnose Author Identifier Formatting
 - [`lab_cph_role()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_cph_role.md)
-  : Diagnose a Missing Copyright-Holder Role
+  : Diagnose a Missing Copyright Holder
 - [`lab_references()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_references.md)
   : Diagnose Reference Formatting in DESCRIPTION
 - [`lab_date_format()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_date_format.md)
   : Diagnose the DESCRIPTION Date Field
 - [`lab_encoding_utf8()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_encoding_utf8.md)
-  : Diagnose a Non-Portable DESCRIPTION Encoding
+  : Diagnose a DESCRIPTION Encoding Other Than UTF-8
 - [`lab_version_format()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_version_format.md)
   : Diagnose the DESCRIPTION Version Field
 - [`lab_spelling()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_spelling.md)
@@ -172,6 +184,10 @@ Individual checks on `.Rd` files, walked via
   : Diagnose dontrun Where donttest Belongs
 - [`lab_suggested_in_examples()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_suggested_in_examples.md)
   : Diagnose Suggested Packages Used in Examples Without a Guard
+- [`lab_rd_bibliography()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_rd_bibliography.md)
+  : Diagnose Citations Missing From the Bibliography
+- [`lab_rd_bibliography_files()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_rd_bibliography_files.md)
+  : Diagnose a Bibliography R Cannot Read or Install
 
 ## Example, vignette and demo checks
 
@@ -181,7 +197,8 @@ Individual checks on the code CRAN reads outside `R/`: the examples in
 - [`lab_example_interactive()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_example_interactive.md)
   :
 
-  Diagnose Interactive Examples Wrapped in `\\dontrun{}`
+  Diagnose Interactive Examples Hidden in `\\dontrun{}` or
+  `\\donttest{}`
 
 - [`lab_example_installs()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_example_installs.md)
   : Diagnose Installs in Examples, Vignettes and Demos
@@ -197,6 +214,14 @@ Individual checks on the code CRAN reads outside `R/`: the examples in
 
   Diagnose `:::` in Examples
 
+- [`lab_example_tf_usage()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_example_tf_usage.md)
+  :
+
+  Diagnose `T`/`F` Usage in Examples, Vignettes and Demos
+
+- [`lab_example_unparseable()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_example_unparseable.md)
+  : Diagnose Examples That Are Not Valid R
+
 ## General checks
 
 Package-level checks covering size, URLs, NEWS and README links.
@@ -211,6 +236,10 @@ Package-level checks covering size, URLs, NEWS and README links.
   : Diagnose a Missing NEWS File
 - [`lab_readme_links()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_readme_links.md)
   : Diagnose Relative Links in the README
+- [`lab_code_exercised()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_code_exercised.md)
+  : Diagnose a Package Nothing Exercises
+- [`lab_citation_file()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_citation_file.md)
+  : Diagnose Old-Style or Unsafe Calls in inst/CITATION
 - [`lab_cran_comments_file()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_cran_comments_file.md)
   : Diagnose a Missing cran-comments.md File
 

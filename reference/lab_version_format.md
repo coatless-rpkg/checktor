@@ -51,8 +51,9 @@ which runs this and every other check.
 ## Examples
 
 ``` r
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("description_examples/version_format_bad.txt",
                                  show_content = FALSE)
-lab_version_format(pkg, verbose = FALSE)$passed
-#> [1] TRUE
+lab_version_format(pkg, verbose = FALSE)$issues
+#> [1] "Version has a component with a leading zero: 0.01.0"
+unlink(pkg, recursive = TRUE)
 ```

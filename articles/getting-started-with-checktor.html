@@ -100,7 +100,7 @@
 <section class="level2"><h2 id="the-gap-checktor-fills">The gap checktor fills<a class="anchor" aria-label="anchor" href="#the-gap-checktor-fills"></a>
 </h2>
 <p><code>R CMD check</code> answers one question well, whether this package builds and runs. The question that actually decides your submission goes unasked. Will a CRAN volunteer, reading by hand, send it back? Those are different questions, and the space between them is where afternoons disappear. A missing <code>\value{}</code> tag. A <code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed()</a></code> left inside a function. A Description that never grew past one line. Nothing in the standard toolchain says a word about any of them.</p>
-<p><img src="figures/coverage-light.svg" class="ct-fig ct-light" alt="Seven failure modes against the three tools that might catch them. R CMD check alone catches undocumented arguments. lintr alone catches a line over 80 characters, which checktor does not check. Both catch a bare T, and R CMD check also flags a Title that is not in title case. The last three rows, a set.seed() left in a function, a one-line Description, and a missing \value{} tag, are caught only by checktor."><img src="figures/coverage-dark.svg" class="ct-fig ct-dark" aria-hidden="true"></p>
+<p><img src="figures/coverage-light.svg" class="ct-fig ct-light" alt="Seven failure modes against the three tools that might catch them. R CMD check alone catches undocumented arguments. lintr alone catches a line over 80 characters, which checktor does not check. lintr and checktor both catch a bare T in package code, and R CMD check and checktor both flag a Title that is not in title case. The last three rows, a set.seed() left in a function, a one-line Description, and a missing \value{} tag, are caught only by checktor."><img src="figures/coverage-dark.svg" class="ct-fig ct-dark" aria-hidden="true"></p>
 <p><code>checktor</code> is the specialist your build refers you to before that appointment. It runs the extra-CRAN checks that live in the Repository Policy and reviewers’ long memories but nowhere in the standard toolchain, and, true to the name, it gives you a checkup, a diagnosis, and a prescription.</p>
 </section><section class="level2"><h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
@@ -172,11 +172,11 @@
 <span><span class="va">results</span></span>
 <span><span class="co">#&gt; ── Package Doctor - Diagnosis Summary ──────────────────────────────────────────</span></span>
 <span><span class="co">#&gt; Patient: examplepackage</span></span>
-<span><span class="co">#&gt; Examined: 2026-08-23 06:06:17.563903</span></span>
+<span><span class="co">#&gt; Examined: 2026-09-28 22:00:35.012992</span></span>
 <span><span class="co">#&gt; Doctor version: 0.2.0</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; CODE ISSUES: 1 failing check</span></span>
-<span><span class="co">#&gt; DESCRIPTION ISSUES: 1 failing check</span></span>
+<span><span class="co">#&gt; DESCRIPTION ISSUES: HEALTHY</span></span>
 <span><span class="co">#&gt; DOCUMENTATION ISSUES: HEALTHY</span></span>
 <span><span class="co">#&gt; GENERAL ISSUES: HEALTHY</span></span>
 <span><span class="co">#&gt; POLICY ISSUES: HEALTHY</span></span>
@@ -192,40 +192,38 @@
 </section><section class="level2"><h2 id="reading-the-results-as-data">Reading the results as data<a class="anchor" aria-label="anchor" href="#reading-the-results-as-data"></a>
 </h2>
 <p>The printed report is for humans. When you want to <em>compute</em> on the findings, filter them, count them, fold them into a report of your own, reach for the accessors. They return plain data frames, so you never spelunk through nested lists.</p>
-<p><img src="figures/result-shapes-light.svg" class="ct-fig ct-light" alt="The one checktor_results object fans out into three plain data frames. summary() gives 5 rows, one per category. issues() gives 8 rows, one per issue, carrying the file and line. tidy() gives 51 rows, one per check, whether it passed or not."><img src="figures/result-shapes-dark.svg" class="ct-fig ct-dark" aria-hidden="true"></p>
+<p><img src="figures/result-shapes-light.svg" class="ct-fig ct-light" alt="The one checktor_results object fans out into three plain data frames. summary() gives 5 rows, one per category, counting the checks that passed, failed and were skipped. issues() gives 7 rows, one per issue, carrying its severity, file and line. tidy() gives 57 rows, one per check, with its severity and whether it passed or was skipped."><img src="figures/result-shapes-dark.svg" class="ct-fig ct-dark" aria-hidden="true"></p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span>   <span class="co"># one row per category</span></span>
 <span><span class="co">#&gt;        category checks passed failed skipped issues</span></span>
 <span><span class="co">#&gt; 1          code     16     15      1       0      7</span></span>
-<span><span class="co">#&gt; 2   description     19     18      1       1      1</span></span>
-<span><span class="co">#&gt; 3 documentation     13     13      0       0      0</span></span>
-<span><span class="co">#&gt; 4       general      5      5      0       1      0</span></span>
+<span><span class="co">#&gt; 2   description     23     22      0       1      0</span></span>
+<span><span class="co">#&gt; 3 documentation     17     17      0       0      0</span></span>
+<span><span class="co">#&gt; 4       general      7      6      0       1      0</span></span>
 <span><span class="co">#&gt; 5        policy      4      4      0       0      0</span></span></code></pre></div>
 </div>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/issues.html">issues</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span>    <span class="co"># one row per issue, with file and line</span></span>
-<span><span class="co">#&gt;      category    check   severity           file line</span></span>
-<span><span class="co">#&gt; 1        code tf_usage robustness tf_usage_bad.R    8</span></span>
-<span><span class="co">#&gt; 2        code tf_usage robustness tf_usage_bad.R   11</span></span>
-<span><span class="co">#&gt; 3        code tf_usage robustness tf_usage_bad.R   15</span></span>
-<span><span class="co">#&gt; 4        code tf_usage robustness tf_usage_bad.R   18</span></span>
-<span><span class="co">#&gt; 5        code tf_usage robustness tf_usage_bad.R   22</span></span>
-<span><span class="co">#&gt; 6        code tf_usage robustness tf_usage_bad.R   25</span></span>
-<span><span class="co">#&gt; 7        code tf_usage robustness tf_usage_bad.R   29</span></span>
-<span><span class="co">#&gt; 8 description cph_role    opinion           &lt;NA&gt;   NA</span></span>
-<span><span class="co">#&gt;                                            location         message</span></span>
-<span><span class="co">#&gt; 1                                  tf_usage_bad.R:8 T/F usage check</span></span>
-<span><span class="co">#&gt; 2                                 tf_usage_bad.R:11 T/F usage check</span></span>
-<span><span class="co">#&gt; 3                                 tf_usage_bad.R:15 T/F usage check</span></span>
-<span><span class="co">#&gt; 4                                 tf_usage_bad.R:18 T/F usage check</span></span>
-<span><span class="co">#&gt; 5                                 tf_usage_bad.R:22 T/F usage check</span></span>
-<span><span class="co">#&gt; 6                                 tf_usage_bad.R:25 T/F usage check</span></span>
-<span><span class="co">#&gt; 7                                 tf_usage_bad.R:29 T/F usage check</span></span>
-<span><span class="co">#&gt; 8 Authors@R lacks any [cph] (copyright holder) role  cph role check</span></span></code></pre></div>
+<span><span class="co">#&gt;   category    check   severity           file line          location</span></span>
+<span><span class="co">#&gt; 1     code tf_usage robustness tf_usage_bad.R    8  tf_usage_bad.R:8</span></span>
+<span><span class="co">#&gt; 2     code tf_usage robustness tf_usage_bad.R   11 tf_usage_bad.R:11</span></span>
+<span><span class="co">#&gt; 3     code tf_usage robustness tf_usage_bad.R   15 tf_usage_bad.R:15</span></span>
+<span><span class="co">#&gt; 4     code tf_usage robustness tf_usage_bad.R   18 tf_usage_bad.R:18</span></span>
+<span><span class="co">#&gt; 5     code tf_usage robustness tf_usage_bad.R   22 tf_usage_bad.R:22</span></span>
+<span><span class="co">#&gt; 6     code tf_usage robustness tf_usage_bad.R   25 tf_usage_bad.R:25</span></span>
+<span><span class="co">#&gt; 7     code tf_usage robustness tf_usage_bad.R   29 tf_usage_bad.R:29</span></span>
+<span><span class="co">#&gt;           message</span></span>
+<span><span class="co">#&gt; 1 T/F usage check</span></span>
+<span><span class="co">#&gt; 2 T/F usage check</span></span>
+<span><span class="co">#&gt; 3 T/F usage check</span></span>
+<span><span class="co">#&gt; 4 T/F usage check</span></span>
+<span><span class="co">#&gt; 5 T/F usage check</span></span>
+<span><span class="co">#&gt; 6 T/F usage check</span></span>
+<span><span class="co">#&gt; 7 T/F usage check</span></span></code></pre></div>
 </div>
-<p><code>tidy(results)</code> gives one row per check, passed or not, and <code><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame()</a></code> is its alias. Its <code>skipped</code> column marks any check that did not run, such as the URL fetch when you are not at the console, so a check that sat out never reads as one that passed. Three predicates answer the yes/no questions directly:</p>
+<p><code>tidy(results)</code> gives one row per check, passed or not, and <code><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame()</a></code> is its alias. Its <code>skipped</code> column marks any check that did not run, such as the URL fetch when you are not at the console, so a check that sat out never reads as one that passed. <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> counts such a check under <code>skipped</code>, so <code>passed</code>, <code>failed</code> and <code>skipped</code> add up to <code>checks</code>. Three helpers answer the common questions directly:</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/predicates.html">is_healthy</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span>
@@ -233,9 +231,9 @@
 <span><span class="fu"><a href="../reference/predicates.html">n_issues</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 7</span></span>
 <span><span class="fu"><a href="../reference/predicates.html">failed_checks</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] "code.tf_usage"        "description.cph_role"</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] "code.tf_usage"</span></span></code></pre></div>
 </div>
-<p>Each accessor also works on a single category, as in <code>issues(results$code_issues)</code>, or on a single check.</p>
+<p><code><a href="../reference/predicates.html">is_healthy()</a></code> and <code><a href="../reference/predicates.html">n_issues()</a></code> follow the verdict, counting only the policy and robustness tiers, while <code><a href="../reference/issues.html">issues()</a></code> and <code><a href="../reference/predicates.html">failed_checks()</a></code> list every tier, opinion included. Each accessor also works on a single category, as in <code>issues(results$code_issues)</code>, or on a single check.</p>
 </section><section class="level2"><h2 id="the-one-line-gate">The one-line gate<a class="anchor" aria-label="anchor" href="#the-one-line-gate"></a>
 </h2>
 <p>For scripts and pre-submission checklists, <code><a href="../reference/checkup.html">checkup()</a></code> collapses the whole diagnosis to a single verdict, <code>TRUE</code> when the package is clean:</p>
@@ -254,17 +252,18 @@
 <span><span class="co">#&gt; ── Treatment Recommendations ───────────────────────────────────────────────────</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; ── T/F Usage Issues</span></span>
+<span><span class="co">#&gt; Issues found:</span></span>
+<span><span class="co">#&gt; • tf_usage_bad.R:8</span></span>
+<span><span class="co">#&gt; • tf_usage_bad.R:11</span></span>
+<span><span class="co">#&gt; • tf_usage_bad.R:15</span></span>
+<span><span class="co">#&gt; • tf_usage_bad.R:18</span></span>
+<span><span class="co">#&gt; • tf_usage_bad.R:22</span></span>
+<span><span class="co">#&gt; ... and 2 more</span></span>
 <span><span class="co">#&gt; Treatment: Replace `T` with `TRUE` and `F` with `FALSE`</span></span>
 <span><span class="co">#&gt; # Before</span></span>
 <span><span class="co">#&gt; result &lt;- T</span></span>
 <span><span class="co">#&gt; # After</span></span>
 <span><span class="co">#&gt; result &lt;- TRUE</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; ── cph role check</span></span>
-<span><span class="co">#&gt; Issues found:</span></span>
-<span><span class="co">#&gt; • Authors@R lacks any [cph] (copyright holder) role</span></span>
-<span><span class="co">#&gt; Treatment: Review the detailed diagnosis above; re-run `checktor(verbose =</span></span>
-<span><span class="co">#&gt; TRUE)` for specifics.</span></span>
 <span><span class="co">#&gt; </span></span></code></pre></div>
 </div>
 <p><code><a href="../reference/health_report.html">health_report()</a></code> writes the whole consultation to a file, as Markdown, HTML, or plain text, to keep alongside your <code>cran-comments.md</code>:</p>
@@ -280,8 +279,8 @@
 <div class="sourceCode cell-code" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/diagnose_code_issues.html">diagnose_code_issues</a></span><span class="op">(</span><span class="op">)</span>           <span class="co"># just the R sources</span></span>
 <span><span class="fu"><a href="../reference/diagnose_description_issues.html">diagnose_description_issues</a></span><span class="op">(</span><span class="op">)</span>    <span class="co"># just DESCRIPTION</span></span>
-<span><span class="fu"><a href="../reference/diagnose_documentation_issues.html">diagnose_documentation_issues</a></span><span class="op">(</span><span class="op">)</span>  <span class="co"># just the .Rd files</span></span>
-<span><span class="fu"><a href="../reference/diagnose_general_issues.html">diagnose_general_issues</a></span><span class="op">(</span><span class="op">)</span>        <span class="co"># size, URLs</span></span>
+<span><span class="fu"><a href="../reference/diagnose_documentation_issues.html">diagnose_documentation_issues</a></span><span class="op">(</span><span class="op">)</span>  <span class="co"># help pages, examples, vignettes, demos</span></span>
+<span><span class="fu"><a href="../reference/diagnose_general_issues.html">diagnose_general_issues</a></span><span class="op">(</span><span class="op">)</span>        <span class="co"># size, URLs, NEWS, README links</span></span>
 <span><span class="fu"><a href="../reference/diagnose_policy_violations.html">diagnose_policy_violations</a></span><span class="op">(</span><span class="op">)</span>     <span class="co"># CRAN policy</span></span></code></pre></div>
 </div>
 </section><section class="level2"><h2 id="checking-only-what-is-included">Checking only what is included<a class="anchor" aria-label="anchor" href="#checking-only-what-is-included"></a>
@@ -299,16 +298,40 @@
 <span><span class="co"># or per call</span></span>
 <span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/checktor.html">checktor</a></span><span class="op">(</span>verbose <span class="op">=</span> <span class="cn">FALSE</span>, progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
 </div>
+</section><section class="level2"><h2 id="checks-you-ask-for-and-checks-you-turn-off">Checks you ask for, and checks you turn off<a class="anchor" aria-label="anchor" href="#checks-you-ask-for-and-checks-you-turn-off"></a>
+</h2>
+<p>A few checks never join a run, because no authority backs them or they ask about your submission workflow rather than the package itself. They are not skipped, since nothing tried to run them. A quiet run does not mention them, but the results name them:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">results</span><span class="op">$</span><span class="va">metadata</span><span class="op">$</span><span class="va">on_request_checks</span></span>
+<span><span class="co">#&gt; [1] "cph_role"                    "cran_comments_file"         </span></span>
+<span><span class="co">#&gt; [3] "description_function_quotes" "format_names"               </span></span>
+<span><span class="co">#&gt; [5] "title_starts_with_article"</span></span></code></pre></div>
+</div>
+<p>Each one is a <code>lab_*()</code> function like any other check, so running it is one call:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/lab_cran_comments_file.html">lab_cran_comments_file</a></span><span class="op">(</span><span class="va">pkg</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="co">#&gt; ✔ cran-comments file check: PASSED</span></span></code></pre></div>
+</div>
+<p>Going the other way, a check you have decided against can be turned off. For one package, name it in that package’s <code>DESCRIPTION</code>:</p>
+<pre><code><span><span class="va">Config</span><span class="op">/</span><span class="va">checktor</span><span class="op">/</span><span class="va">disable</span><span class="op">:</span> <span class="va">news_file</span></span></code></pre>
+<p>For every package, set the option once, for example in <code>.Rprofile</code>:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>checktor.disable <span class="op">=</span> <span class="st">"news_file"</span><span class="op">)</span></span></code></pre></div>
+</div>
+<p>A disabled check does not run and is not counted anywhere. That is the difference from a skipped check, which was meant to run and could not.</p>
 </section><section class="level2"><h2 id="where-it-fits">Where it fits<a class="anchor" aria-label="anchor" href="#where-it-fits"></a>
 </h2>
 <p>Run <code>checktor</code> in the gap between writing code and <code>R CMD check</code>:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">document</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">test</span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/checktor.html">checktor</a></span><span class="op">(</span><span class="op">)</span>  <span class="co"># the extra-CRAN checkup</span></span>
-<span><span class="fu"><a href="../reference/prescribe.html">prescribe</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span>     <span class="co"># apply the remedies</span></span>
+<span><span class="fu"><a href="../reference/prescribe.html">prescribe</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span>     <span class="co"># read the remedies</span></span>
 <span></span>
 <span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">check</span><span class="op">(</span><span class="op">)</span>      <span class="co"># the standard checks</span></span></code></pre></div>
 </div>
@@ -320,6 +343,8 @@
 <ul>
 <li>
 <a href="check-sources.html">Where the Checks Come From</a>: the source and severity tier behind every check, from CRAN policy to convention.</li>
+<li>
+<a href="r-cmd-check.html">What R CMD check Checks</a>: every step <code>R CMD check</code> takes, so you can see where checktor begins.</li>
 <li>
 <a href="checktor-in-ci.html">checktor in Continuous Integration</a>: put <code><a href="../reference/checkup.html">checkup()</a></code> in charge of a GitHub Actions build as a quality gate.</li>
 <li>

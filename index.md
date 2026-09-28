@@ -40,10 +40,23 @@ prescribe(results)
 
 # Generate a Markdown / HTML / text report
 cat(health_report(results, format = "markdown"), sep = "\n")
+
+# Findings as annotations on the pull request diff in CI
+ci_report()
 ```
+
+Every check carries a severity tier. By default a clean result means no
+`policy` finding, a rule CRAN cites, and no `robustness` finding, a
+defect that could crash a user. `opinion` findings are still reported
+but do not fail the verdict; pass
+`severity = c("policy", "robustness", "opinion")` to count them too.
 
 For end-to-end usage, see the [Getting Started
 vignette](https://r-pkg.thecoatlessprofessor.com/checktor/articles/getting-started-with-checktor.html).
+For the rule and tier behind every check, see [Where the Checks Come
+From](https://r-pkg.thecoatlessprofessor.com/checktor/articles/check-sources.html).
+To run checktor on every push, see [checktor in Continuous
+Integration](https://r-pkg.thecoatlessprofessor.com/checktor/articles/checktor-in-ci.html).
 To author new checks against the parsed AST, see the [Writing Your Own
 Checks
 vignette](https://r-pkg.thecoatlessprofessor.com/checktor/articles/writing-checks.html).

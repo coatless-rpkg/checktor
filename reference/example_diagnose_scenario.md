@@ -33,17 +33,23 @@ example_diagnose_scenario(
 
   Character. Type of DESCRIPTION file to create. Options: "minimal"
   (basic fields only), "bad" (with known issues), "good" (properly
-  formatted). Default: "minimal".
+  formatted). Default: "minimal". Ignored when `example_path` is a
+  `.txt` scenario, which becomes the `DESCRIPTION` itself.
 
 - cleanup:
 
-  Logical. Whether to register cleanup of temporary directory on exit.
-  Default: `FALSE` (user manages cleanup).
+  Logical. Whether to delete the temporary package when the function
+  that called `example_diagnose_scenario()` returns. Called at top level
+  there is no such function, so the package stays until R removes the
+  session's temporary directory. Default: `FALSE` (you manage cleanup).
 
 ## Value
 
 Character. Path to the temporary package directory containing the
-example file. Returns `NULL` if the example file cannot be found.
+example file. Returns `NULL`, with a warning, if the example file cannot
+be found. An `example_path` that is not an `.R`, `.Rd`, `.Rmd`, `.qmd`,
+`.Rnw`, `.txt`, `.CITATION` or `.LICENSE` file is an error, since a
+package has no place for it.
 
 ## Details
 
@@ -54,7 +60,11 @@ This function:
 
 2.  Creates a temporary package directory structure
 
-3.  Copies the example file to the appropriate location
+3.  Copies the example file to where a package keeps its kind: an `.R`
+    file in `R/`, an `.Rd` file in `man/`, a vignette (`.Rmd`, `.qmd`,
+    `.Rnw`) in `vignettes/`, a DESCRIPTION scenario (`.txt`) as the
+    `DESCRIPTION`, a citation scenario (`.CITATION`) as `inst/CITATION`,
+    and a licence scenario (`.LICENSE`) as `LICENSE`
 
 4.  Optionally displays the example file content
 
@@ -65,14 +75,20 @@ needed for running diagnostics, plus a basic `DESCRIPTION` file.
 
 ## Example File Structure
 
-The temporary package created has this structure:
+The temporary package created has this structure. The example file goes
+in the one place its extension names, and the other directories stay
+empty:
 
-    /tmp/checktor_example_XXXX/
-    |-- DESCRIPTION          # Basic or custom DESCRIPTION file
-    |-- R/                   # Contains copied example R files
-    |   `-- example.R        # The example file with issues
-    |-- man/                 # Empty directory for .Rd files
-    `-- tests/               # Empty directory for test files
+    <tempdir>/checktor_example_XXXX/
+    |-- DESCRIPTION          # The template, or a .txt scenario itself
+    |-- LICENSE              # A .LICENSE scenario; made only for one
+    |-- NEWS.md              # So the NEWS check has nothing to report
+    |-- cran-comments.md     # So the cran-comments check has nothing to report
+    |-- R/                   # An .R scenario, such as tf_usage_bad.R
+    |-- man/                 # An .Rd scenario, such as missing_value_tag.Rd
+    |-- inst/CITATION        # A .CITATION scenario; made only for one
+    |-- tests/               # Always empty
+    `-- vignettes/           # An .Rmd, .qmd or .Rnw scenario; made only for one
 
 ## See also
 
@@ -84,11 +100,11 @@ etc.
 ## Examples
 
 ``` r
-# Create scenario with T/F usage issues
+# A scenario with T/F usage issues. show_content defaults to TRUE, so the
+# offending file prints first
 pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R")
-#> === Example file: tf_usage_bad.R ===
+#> ── Example file: tf_usage_bad.R ────────────────────────────────────────────────
 #> # Example file showing T/F usage issues
-#> 
 #> #' Process Data Function
 #> #' @param data A data frame
 #> #' @return Logical indicating success
@@ -96,150 +112,79 @@ pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R")
 #>   if (is.null(data)) {
 #>     return(F) # Issue: should be FALSE
 #>   }
-#> 
 #>   has_complete_cases <- T # Issue: should be TRUE
-#> 
 #>   if (has_complete_cases) {
 #>     cleaned_data <- data[complete.cases(data), ]
 #>     return(T) # Issue: should be TRUE
 #>   }
-#> 
 #>   return(F) # Issue: should be FALSE
 #> }
-#> 
 #> # Another function with T/F issues
 #> validate_input <- function(x, strict = T) {
 #>   # Issue: should be TRUE
 #>   if (length(x) == 0) {
 #>     return(F)
 #>   } # Issue: should be FALSE
-#> 
 #>   valid <- all(is.numeric(x))
 #>   return(valid && strict == T) # Issue: should be TRUE
 #> }
-#> 
-#> === End of example ===
-#> 
-result <- lab_tf_usage(pkg_path, verbose = TRUE)
-#> ✖ Found `T`/`F` usage (should use `TRUE`/`FALSE`)
-#> • tf_usage_bad.R:8
-#> • tf_usage_bad.R:11
-#> • tf_usage_bad.R:15
-#> • tf_usage_bad.R:18
-#> • tf_usage_bad.R:22
-#> ... and 2 more
+#> ── End of example ──────────────────────────────────────────────────────────────
+lab_tf_usage(pkg_path, verbose = FALSE)$issues
+#> [1] "tf_usage_bad.R:8"  "tf_usage_bad.R:11" "tf_usage_bad.R:15"
+#> [4] "tf_usage_bad.R:18" "tf_usage_bad.R:22" "tf_usage_bad.R:25"
+#> [7] "tf_usage_bad.R:29"
 issues(checktor(pkg_path, verbose = FALSE, progress = FALSE))
-#>      category    check   severity           file line
-#> 1        code tf_usage robustness tf_usage_bad.R    8
-#> 2        code tf_usage robustness tf_usage_bad.R   11
-#> 3        code tf_usage robustness tf_usage_bad.R   15
-#> 4        code tf_usage robustness tf_usage_bad.R   18
-#> 5        code tf_usage robustness tf_usage_bad.R   22
-#> 6        code tf_usage robustness tf_usage_bad.R   25
-#> 7        code tf_usage robustness tf_usage_bad.R   29
-#> 8 description cph_role    opinion           <NA>   NA
-#>                                            location         message
-#> 1                                  tf_usage_bad.R:8 T/F usage check
-#> 2                                 tf_usage_bad.R:11 T/F usage check
-#> 3                                 tf_usage_bad.R:15 T/F usage check
-#> 4                                 tf_usage_bad.R:18 T/F usage check
-#> 5                                 tf_usage_bad.R:22 T/F usage check
-#> 6                                 tf_usage_bad.R:25 T/F usage check
-#> 7                                 tf_usage_bad.R:29 T/F usage check
-#> 8 Authors@R lacks any [cph] (copyright holder) role  cph role check
-
-# Create scenario without showing file content
-pkg_path <- example_diagnose_scenario("code_examples/seed_setting_bad.R",
-                                      show_content = FALSE)
-
-# Create scenario with problematic DESCRIPTION file
-pkg_path <- example_diagnose_scenario("description_examples/bad_description.txt",
-                                      description_type = "bad")
-#> === Example file: bad_description.txt ===
-#> Package: badexample
-#> Title: example package for data analysis
-#> Version: 0.1.0
-#> Author: John Doe <john@example.com>
-#> Maintainer: John Doe <john@example.com>
-#> Description: This package works with ggplot2 and provides API access.
-#>     It uses ML algorithms for data processing.
-#> License: MIT + file LICENSE
-#> Encoding: UTF-8
-#> URL: http://example.com
-#> BugReports: https://github.com/user/pkg/issues
-#> 
-#> === End of example ===
-#> 
-desc_result <- diagnose_description_issues(pkg_path)
-#> 
-#> ── DESCRIPTION File Health Check ──
-#> 
-#> ! Potential software name formatting issues
-#> • Description: ggplot2 should be in single quotes
-#> ✔ Programming-language names appear properly formatted
-#> ! Potential unexplained acronyms: "ML"
-#> Treatment: Consider explaining these acronyms
-#> ✖ License field problems
-#> • License points at a LICENSE file that does not exist
-#> Treatment: Use a standardizable license, and add '+ file LICENSE' for MIT/BSD
-#> ! Title is not in title case
-#> • Title is not in title case. R would write it as: Example Package for Data
-#> Analysis
-#> Treatment: Use the capitalisation tools::toTitleCase() proposes
-#> ✔ Title fits the 65 characters a listing may truncate to
-#> ✔ Title is free of redundant phrases
-#> ✖ Problems in the author fields
-#> • Missing Authors@R field
-#> Treatment: Add Authors@R, replace any usethis template placeholder with the
-#> real name and email, and give every person a name and role with one maintainer
-#> (cre)
-#> ✔ Author identifiers are well formed
-#> ℹ No references found in Description
-#> ✔ Date field is absent or current
-#> ✔ Encoding is portable or unset
-#> ✔ Version is well formed
-#> ✔ Description length appears adequate
-#> ! Description opening needs work
-#> • Description should not start with "This package"; describe what it does
-#> instead
-#> Treatment: Start with a capital letter and say what the package does
-
-# Manual cleanup when done
+#>   category    check   severity           file line          location
+#> 1     code tf_usage robustness tf_usage_bad.R    8  tf_usage_bad.R:8
+#> 2     code tf_usage robustness tf_usage_bad.R   11 tf_usage_bad.R:11
+#> 3     code tf_usage robustness tf_usage_bad.R   15 tf_usage_bad.R:15
+#> 4     code tf_usage robustness tf_usage_bad.R   18 tf_usage_bad.R:18
+#> 5     code tf_usage robustness tf_usage_bad.R   22 tf_usage_bad.R:22
+#> 6     code tf_usage robustness tf_usage_bad.R   25 tf_usage_bad.R:25
+#> 7     code tf_usage robustness tf_usage_bad.R   29 tf_usage_bad.R:29
+#>           message
+#> 1 T/F usage check
+#> 2 T/F usage check
+#> 3 T/F usage check
+#> 4 T/F usage check
+#> 5 T/F usage check
+#> 6 T/F usage check
+#> 7 T/F usage check
 unlink(pkg_path, recursive = TRUE)
 
-# Or use with automatic cleanup
-pkg_path <- example_diagnose_scenario("code_examples/browser_calls_bad.R",
-                                      cleanup = TRUE)
-#> === Example file: browser_calls_bad.R ===
-#> # Example file showing browser() calls (debugging code)
-#> 
-#> #' Debug Function
-#> #' @param data Input data
-#> debug_function <- function(data) {
-#>   browser() # Issue: debugging call left in code
-#> 
-#>   processed <- process_data(data)
-#> 
-#>   if (is.null(processed)) {
-#>     browser() # Issue: another debugging call
-#>     stop("Processing failed")
-#>   }
-#> 
-#>   return(processed)
-#> }
-#> 
-#> #' Analysis with Debug
-#> analyze_with_debug <- function(x) {
-#>   result <- mean(x, na.rm = TRUE)
-#> 
-#>   if (is.na(result)) {
-#>     browser() # Issue: debugging call for troubleshooting
-#>   }
-#> 
-#>   return(result)
-#> }
-#> 
-#> === End of example ===
-#> 
-# Cleanup happens automatically when R session ends
+# A .txt scenario is the DESCRIPTION, so it needs no description_type
+pkg_path <- example_diagnose_scenario("description_examples/bad_description.txt",
+                                      show_content = FALSE)
+issues(diagnose_description_issues(pkg_path, verbose = FALSE))
+#>                     check severity file line
+#> 1          software_names   policy <NA>   NA
+#> 2                acronyms  opinion <NA>   NA
+#> 3                 license   policy <NA>   NA
+#> 4              title_case   policy <NA>   NA
+#> 5                 authors   policy <NA>   NA
+#> 6 description_starts_with   policy <NA>   NA
+#>                                                                             location
+#> 1                                    Description: ggplot2 should be in single quotes
+#> 2                                                                                 ML
+#> 3                               License points at a LICENSE file that does not exist
+#> 4 Title is not in title case. R would write it as: Example Package for Data Analysis
+#> 5                                                            Missing Authors@R field
+#> 6    Description should not start with "This package"; describe what it does instead
+#>                     message
+#> 1      Software names check
+#> 2            Acronyms check
+#> 3             License check
+#> 4          Title case check
+#> 5     Authors@R field check
+#> 6 Description opening check
+unlink(pkg_path, recursive = TRUE)
+
+# With cleanup = TRUE the package is deleted when the calling function returns
+count_tf <- function() {
+  pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+                                        show_content = FALSE, cleanup = TRUE)
+  length(lab_tf_usage(pkg_path, verbose = FALSE)$issues)
+}
+count_tf()
+#> [1] 7
 ```

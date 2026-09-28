@@ -15,7 +15,8 @@ describe.
 Everything in this article rests on a single function.
 [`checkup()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checkup.md)
 runs the full diagnosis and collapses it to one verdict: `TRUE` if the
-package is clean, `FALSE` if anything wants attention.
+package is clean, `FALSE` if a policy or robustness finding wants
+attention. Opinion findings are still reported, but they do not fail it.
 
 ``` r
 
@@ -57,7 +58,7 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: coatless-rpkg/checktor
+          extra-packages: any::checktor
 
       - name: Run extra-CRAN checks
         run: if (!checktor::checkup()) quit(status = 1)
@@ -69,8 +70,9 @@ the moment
 [`checkup()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checkup.md)
 disagrees with you.
 
-> **Once `checktor` is on CRAN**, swap the `extra-packages:` line for
-> `any::checktor`, which needs no GitHub remote.
+> `any::checktor` installs the release from CRAN. To run the development
+> version instead, use `coatless-rpkg/checktor`, which installs from
+> GitHub.
 
 ## Failing loudly, not silently
 
@@ -116,11 +118,19 @@ single check the same way through its `lab_*()` function:
 ``` r
 
 # Gate only on DESCRIPTION-field problems
-desc <- checktor::diagnose_description_issues(".")
+desc <- checktor::diagnose_description_issues(".", verbose = FALSE)
+if (!checktor::is_healthy(desc)) quit(status = 1)
 
-# Or one check on its own
-tf <- checktor::lab_tf_usage(".")
+# Or on one check on its own
+tf <- checktor::lab_tf_usage(".", verbose = FALSE)
+if (!checktor::is_healthy(tf)) quit(status = 1)
 ```
+
+A category or a single check has no verdict tiers to filter by, so
+[`is_healthy()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/predicates.md)
+on one fails on any finding, opinion included. Use
+[`checkup()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checkup.md)
+when the tiers matter.
 
 ## Findings on the diff, not in the log
 
@@ -138,11 +148,16 @@ checktor::ci_report()
 On GitHub Actions that prints workflow commands, and each finding
 appears on the pull request diff:
 
-    ::error file=R/plot.R,line=42,title=checktor: option_changes::Option changes check: plot.R:42
+    ::error file=R/plot.R,line=42,title=checktor%3A option_changes::Option changes check: plot.R:42
 
-Gitea and Forgejo Actions read the same commands, so the same call
-covers them. Elsewhere, name the format and the file your configuration
-expects:
+The colon in the title is written as `%3A`, the escape GitHub expects
+there. Gitea and Forgejo Actions read the same commands, so the same
+call covers them.
+[`ci_report()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/ci_report.md)
+also recognises GitLab, Azure Pipelines and Jenkins from the variables
+they set. Name the format when you want a different one, such as SARIF
+for GitHub code scanning, or when the build runs somewhere it does not
+recognise:
 
 | Forge | Format | What to do with it |
 |----|----|----|
@@ -170,14 +185,15 @@ verdict. Keep
 [`checkup()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checkup.md)
 for the verdict, so what fails a build stays a separate decision from
 what gets pointed at. If you want an opinion to fail a build, that is
-`checkup(severity = SEVERITY_LEVELS)`, and the threshold stays in one
-place rather than being spelled two ways that can disagree.
+`checkup(severity = c("policy", "robustness", "opinion"))`, and the
+threshold stays in one place rather than being spelled two ways that can
+disagree.
 
 Checks that did not run are named once at the end, rather than one
 annotation each, because a check that never happened should not compete
 for space with a finding:
 
-    ::notice title=checktor: skipped::2 checks did not run: spelling, url_liveness
+    ::notice title=checktor%3A skipped::2 checks did not run: spelling, url_liveness
 
 For the report formats that note goes to the job log instead, keeping
 the artifact a clean document. Pass `skipped = FALSE` if you would
@@ -187,9 +203,17 @@ rather not hear about it.
 
 [`health_report()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/health_report.md)
 writes the whole consultation to a file, which an artifact step can keep
-for later:
+for later. Write the report in the step that runs the gate, before the
+gate decides:
 
 ``` yaml
+      - name: Run extra-CRAN checks
+        shell: Rscript {0}
+        run: |
+          results <- checktor::checktor(verbose = FALSE, progress = FALSE)
+          invisible(checktor::health_report(results, file = "checktor-report.md"))
+          if (!checktor::is_healthy(results)) quit(status = 1)
+
       - name: Upload checktor report
         if: always()
         uses: actions/upload-artifact@v7
@@ -231,8 +255,8 @@ problem before it reaches a pull request, the same one-liner works as a
 local Git pre-commit hook:
 
 ``` bash
-# .git/hooks/pre-commit  (make it executable: chmod +x)
 #!/usr/bin/env bash
+# .git/hooks/pre-commit  (make it executable: chmod +x .git/hooks/pre-commit)
 Rscript -e 'if (!checktor::checkup()) quit(status = 1)'
 ```
 

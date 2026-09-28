@@ -57,7 +57,7 @@ pkg_path <- example_diagnose_scenario("documentation_examples/missing_value_tag.
 doc_results <- diagnose_documentation_issues(pkg_path, verbose = FALSE)
 summary(doc_results)
 #>   checks passed failed skipped issues
-#> 1     13     12      1       0      1
+#> 1     17     16      1       0      1
 issues(doc_results)
 #>        check severity file line             location          message
 #> 1 value_tags  opinion <NA>   NA missing_value_tag.Rd Value tags check

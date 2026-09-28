@@ -44,8 +44,9 @@ which runs this and every other check.
 ## Examples
 
 ``` r
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("description_examples/title_starts_with_article_bad.txt",
                                  show_content = FALSE)
-lab_title_starts_with_article(pkg, verbose = FALSE)$passed
-#> [1] TRUE
+lab_title_starts_with_article(pkg, verbose = FALSE)$issues
+#> [1] "Title starts with an article (A/An/The)"
+unlink(pkg, recursive = TRUE)
 ```

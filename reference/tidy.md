@@ -32,8 +32,15 @@ as.data.frame(x, ...)
 
 A `data.frame` with one row per check: `category` (results level only),
 `check`, `severity`, `passed`, `skipped`, `n_issues`, `message`.
-`skipped` marks a check that did not run, such as the URL fetch away
-from the console, so it never reads as one that passed.
+`passed` is `TRUE` for a check that ran and found nothing. `skipped`
+marks a check that did not run, such as the URL fetch away from the
+console, and such a check is never `passed`. A check that failed is
+neither, so `!passed & !skipped` picks out the failures, and the three
+counts match
+[summary()](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor-summary.md).
+[`passed()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/predicates.md)
+asks only whether a check failed, so it is `TRUE` for a skipped check
+that is `FALSE` here.
 
 ## Examples
 
@@ -59,47 +66,57 @@ tidy(results)
 #> 14          code                sys_setenv     policy   TRUE   FALSE        0
 #> 15          code               internal_ns robustness   TRUE   FALSE        0
 #> 16          code     hardcoded_credentials robustness   TRUE   FALSE        0
-#> 17   description            software_names     policy   TRUE   FALSE        0
-#> 18   description            language_names     policy   TRUE   FALSE        0
-#> 19   description                  acronyms    opinion   TRUE   FALSE        0
-#> 20   description                   license     policy   TRUE   FALSE        0
-#> 21   description                title_case     policy   TRUE   FALSE        0
-#> 22   description              title_length    opinion   TRUE   FALSE        0
-#> 23   description   title_redundant_phrases    opinion   TRUE   FALSE        0
-#> 24   description                   authors     policy   TRUE   FALSE        0
-#> 25   description         identifier_format     policy   TRUE   FALSE        0
-#> 26   description                  cph_role    opinion  FALSE   FALSE        1
-#> 27   description                references     policy   TRUE   FALSE        0
-#> 28   description               date_format     policy   TRUE   FALSE        0
-#> 29   description             encoding_utf8     policy   TRUE   FALSE        0
-#> 30   description            version_format     policy   TRUE   FALSE        0
-#> 31   description                  spelling    opinion   TRUE    TRUE        0
-#> 32   description        description_length    opinion   TRUE   FALSE        0
-#> 33   description   description_starts_with     policy   TRUE   FALSE        0
-#> 34   description description_quoted_quotes     policy   TRUE   FALSE        0
-#> 35   description              license_year robustness   TRUE   FALSE        0
-#> 36 documentation                value_tags    opinion   TRUE   FALSE        0
-#> 37 documentation          missing_examples    opinion   TRUE   FALSE        0
-#> 38 documentation             roxygen_usage robustness   TRUE   FALSE        0
-#> 39 documentation         example_structure    opinion   TRUE   FALSE        0
-#> 40 documentation        commented_examples    opinion   TRUE   FALSE        0
-#> 41 documentation       donttest_vs_dontrun    opinion   TRUE   FALSE        0
-#> 42 documentation     unexported_example_ns robustness   TRUE   FALSE        0
-#> 43 documentation     suggested_in_examples     policy   TRUE   FALSE        0
-#> 44 documentation       example_interactive     policy   TRUE   FALSE        0
-#> 45 documentation          example_installs     policy   TRUE   FALSE        0
-#> 46 documentation            example_writes     policy   TRUE   FALSE        0
-#> 47 documentation             example_state     policy   TRUE   FALSE        0
-#> 48 documentation       example_internal_ns     policy   TRUE   FALSE        0
-#> 49       general              package_size     policy   TRUE   FALSE        0
-#> 50       general                      urls    opinion   TRUE   FALSE        0
-#> 51       general              url_liveness robustness   TRUE    TRUE        0
-#> 52       general                 news_file    opinion   TRUE   FALSE        0
-#> 53       general              readme_links robustness   TRUE   FALSE        0
-#> 54        policy             browser_calls     policy   TRUE   FALSE        0
-#> 55        policy              system_calls robustness   TRUE   FALSE        0
-#> 56        policy           file_operations     policy   TRUE   FALSE        0
-#> 57        policy        network_operations     policy   TRUE   FALSE        0
+#> 17   description          description_file     policy   TRUE   FALSE        0
+#> 18   description        description_fields     policy   TRUE   FALSE        0
+#> 19   description  description_placeholders     policy   TRUE   FALSE        0
+#> 20   description            software_names     policy   TRUE   FALSE        0
+#> 21   description            language_names     policy   TRUE   FALSE        0
+#> 22   description                  acronyms    opinion   TRUE   FALSE        0
+#> 23   description                   license     policy   TRUE   FALSE        0
+#> 24   description     license_file_unneeded     policy   TRUE   FALSE        0
+#> 25   description                title_case     policy   TRUE   FALSE        0
+#> 26   description              title_length    opinion   TRUE   FALSE        0
+#> 27   description        title_package_name     policy   TRUE   FALSE        0
+#> 28   description   title_redundant_phrases    opinion   TRUE   FALSE        0
+#> 29   description                   authors     policy   TRUE   FALSE        0
+#> 30   description         identifier_format     policy   TRUE   FALSE        0
+#> 31   description                references     policy   TRUE   FALSE        0
+#> 32   description               date_format     policy   TRUE   FALSE        0
+#> 33   description             encoding_utf8     policy   TRUE   FALSE        0
+#> 34   description            version_format     policy   TRUE   FALSE        0
+#> 35   description                  spelling    opinion  FALSE    TRUE        0
+#> 36   description        description_length    opinion   TRUE   FALSE        0
+#> 37   description   description_starts_with     policy   TRUE   FALSE        0
+#> 38   description description_quoted_quotes     policy   TRUE   FALSE        0
+#> 39   description              license_year robustness   TRUE   FALSE        0
+#> 40 documentation                value_tags    opinion   TRUE   FALSE        0
+#> 41 documentation          missing_examples    opinion   TRUE   FALSE        0
+#> 42 documentation             roxygen_usage robustness   TRUE   FALSE        0
+#> 43 documentation         example_structure    opinion   TRUE   FALSE        0
+#> 44 documentation        commented_examples    opinion   TRUE   FALSE        0
+#> 45 documentation       donttest_vs_dontrun    opinion   TRUE   FALSE        0
+#> 46 documentation     unexported_example_ns robustness   TRUE   FALSE        0
+#> 47 documentation     suggested_in_examples     policy   TRUE   FALSE        0
+#> 48 documentation           rd_bibliography     policy   TRUE   FALSE        0
+#> 49 documentation     rd_bibliography_files robustness   TRUE   FALSE        0
+#> 50 documentation       example_interactive     policy   TRUE   FALSE        0
+#> 51 documentation          example_installs     policy   TRUE   FALSE        0
+#> 52 documentation            example_writes     policy   TRUE   FALSE        0
+#> 53 documentation             example_state     policy   TRUE   FALSE        0
+#> 54 documentation          example_tf_usage robustness   TRUE   FALSE        0
+#> 55 documentation       example_unparseable robustness   TRUE   FALSE        0
+#> 56 documentation       example_internal_ns     policy   TRUE   FALSE        0
+#> 57       general              package_size     policy   TRUE   FALSE        0
+#> 58       general                      urls    opinion   TRUE   FALSE        0
+#> 59       general              url_liveness robustness  FALSE    TRUE        0
+#> 60       general                 news_file    opinion   TRUE   FALSE        0
+#> 61       general              readme_links robustness   TRUE   FALSE        0
+#> 62       general            code_exercised     policy   TRUE   FALSE        0
+#> 63       general             citation_file     policy   TRUE   FALSE        0
+#> 64        policy             browser_calls     policy   TRUE   FALSE        0
+#> 65        policy              system_calls robustness   TRUE   FALSE        0
+#> 66        policy           file_operations     policy   TRUE   FALSE        0
+#> 67        policy        network_operations     policy   TRUE   FALSE        0
 #>                               message
 #> 1                     T/F usage check
 #> 2                  Seed setting check
@@ -117,45 +134,55 @@ tidy(results)
 #> 14             Sys.setenv reset check
 #> 15           Internal namespace check
 #> 16         Hardcoded credential check
-#> 17               Software names check
-#> 18               Language names check
-#> 19                     Acronyms check
-#> 20                      License check
-#> 21                   Title case check
-#> 22                 Title length check
-#> 23      Title redundant-phrases check
-#> 24              Authors@R field check
-#> 25            Author identifier check
-#> 26                     cph role check
-#> 27                   References check
-#> 28                   Date field check
-#> 29               Encoding field check
-#> 30                Version field check
-#> 31                     Spelling check
-#> 32           Description length check
-#> 33          Description opening check
-#> 34    Description double-quotes check
-#> 35                 License file check
-#> 36                   Value tags check
-#> 37             Missing examples check
-#> 38            Roxygen freshness check
-#> 39            Example structure check
-#> 40       Commented-out examples check
-#> 41          donttest vs dontrun check
-#> 42 Unexported example-namespace check
-#> 43   Suggested-package examples check
-#> 44          Interactive example check
-#> 45             Example installs check
-#> 46               Example writes check
-#> 47                Example state check
-#> 48                  Example ::: check
-#> 49                 Package size check
-#> 50                         URLs check
-#> 51                 URL liveness check
-#> 52                    NEWS file check
-#> 53        README relative-links check
-#> 54                Browser calls check
-#> 55                 System calls check
-#> 56              File operations check
-#> 57           Network operations check
+#> 17             DESCRIPTION file check
+#> 18           DESCRIPTION fields check
+#> 19     DESCRIPTION placeholders check
+#> 20               Software names check
+#> 21               Language names check
+#> 22                     Acronyms check
+#> 23                      License check
+#> 24         License file pointer check
+#> 25                   Title case check
+#> 26                 Title length check
+#> 27           Title package-name check
+#> 28      Title redundant-phrases check
+#> 29              Authors@R field check
+#> 30            Author identifier check
+#> 31                   References check
+#> 32                   Date field check
+#> 33               Encoding field check
+#> 34                Version field check
+#> 35                     Spelling check
+#> 36           Description length check
+#> 37          Description opening check
+#> 38    Description double-quotes check
+#> 39                 License file check
+#> 40                   Value tags check
+#> 41             Missing examples check
+#> 42            Roxygen freshness check
+#> 43            Example structure check
+#> 44       Commented-out examples check
+#> 45          donttest vs dontrun check
+#> 46 Unexported example-namespace check
+#> 47   Suggested-package examples check
+#> 48              Rd bibliography check
+#> 49        Rd bibliography files check
+#> 50          Interactive example check
+#> 51             Example installs check
+#> 52               Example writes check
+#> 53                Example state check
+#> 54            Example T/F usage check
+#> 55                Example parse check
+#> 56                  Example ::: check
+#> 57                 Package size check
+#> 58                         URLs check
+#> 59                 URL liveness check
+#> 60                    NEWS file check
+#> 61        README relative-links check
+#> 62               Code exercised check
+#> 63                CITATION file check
+#> 64                Browser calls check
+#> 65                 System calls check
+#> 66              File operations check
+#> 67           Network operations check
 ```

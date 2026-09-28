@@ -7,7 +7,7 @@ and BiocParallel.
 ## Usage
 
 ``` r
-lab_core_usage(path, verbose = TRUE, parsed = NULL)
+lab_core_usage(path = ".", verbose = TRUE, parsed = NULL)
 ```
 
 ## Arguments
@@ -47,8 +47,9 @@ which runs this and every other check.
 ## Examples
 
 ``` r
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("code_examples/core_usage_bad.R",
                                  show_content = FALSE)
-lab_core_usage(pkg, verbose = FALSE)$passed
-#> [1] TRUE
+lab_core_usage(pkg, verbose = FALSE)$issues
+#> [1] "core_usage_bad.R:19 (mclapply() worker count is unbounded)"
+unlink(pkg, recursive = TRUE)
 ```

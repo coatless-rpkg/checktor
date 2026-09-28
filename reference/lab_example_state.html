@@ -47,7 +47,7 @@ with a session that behaves differently afterwards."><meta name="twitter:card" c
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Diagnose Session State Left Changed by Examples</h1>
-      <small class="dont-index">Source: <a href="https://github.com/coatless-rpkg/checktor/blob/main/R/diagnostics-examples.R" class="external-link"><code>R/diagnostics-examples.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/coatless-rpkg/checktor/blob/main/R/diagnostics-examples-state.R" class="external-link"><code>R/diagnostics-examples-state.R</code></a></small>
       <div class="d-none name"><code>lab_example_state.Rd</code></div>
     </div>
 
@@ -96,10 +96,11 @@ maps to its source.</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">pkg</span> <span class="op">&lt;-</span> <span class="fu"><a href="example_diagnose_scenario.html">example_diagnose_scenario</a></span><span class="op">(</span><span class="st">"code_examples/tf_usage_bad.R"</span>,</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">pkg</span> <span class="op">&lt;-</span> <span class="fu"><a href="example_diagnose_scenario.html">example_diagnose_scenario</a></span><span class="op">(</span><span class="st">"documentation_examples/example_state_bad.Rmd"</span>,</span></span>
 <span class="r-in"><span>                                 show_content <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">lab_example_state</span><span class="op">(</span><span class="va">pkg</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">$</span><span class="va">passed</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
+<span class="r-in"><span><span class="fu">lab_example_state</span><span class="op">(</span><span class="va">pkg</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">$</span><span class="va">issues</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "vignette example_state_bad.Rmd:9 (never restored)"</span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/unlink.html" class="external-link">unlink</a></span><span class="op">(</span><span class="va">pkg</span>, recursive <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

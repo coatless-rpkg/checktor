@@ -51,8 +51,9 @@ which runs this and every other check.
 ## Examples
 
 ``` r
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("description_examples/title_case_bad.txt",
                                  show_content = FALSE)
-lab_title_case(pkg, verbose = FALSE)$passed
-#> [1] TRUE
+lab_title_case(pkg, verbose = FALSE)$issues
+#> [1] "Title is not in title case. R would write it as: Summaries of Survey Weights"
+unlink(pkg, recursive = TRUE)
 ```

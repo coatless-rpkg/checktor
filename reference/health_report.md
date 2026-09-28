@@ -1,6 +1,9 @@
 # Comprehensive Health Report
 
-Creates a comprehensive report with specific treatment instructions
+Creates a report of every failing check, whatever its severity tier,
+with the treatment
+[`prescribe()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/prescribe.md)
+gives for it. Every format carries the same treatment text.
 
 ## Usage
 
@@ -12,19 +15,24 @@ health_report(results, file = NULL, format = "markdown")
 
 - results:
 
-  List. Results from checktor()
+  A `checktor_results` object from
+  [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md).
 
 - file:
 
-  Character. Output file path (optional)
+  Character. A path to write the report to, or `NULL` (the default) to
+  only return it.
 
 - format:
 
-  Character. Report format: "markdown", "html", or "text"
+  Character. Report format: `"markdown"` (the default), `"html"`, or
+  `"text"`. Any other value gives the text format.
 
 ## Value
 
-Character vector with report content
+The report as a character vector, one element per line. It is returned
+visibly even when `file` is given, so assign it to keep a console call
+from printing it.
 
 ## Examples
 
@@ -34,10 +42,10 @@ pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 results <- checktor(pkg, verbose = FALSE, progress = FALSE)
 report <- health_report(results, format = "text")
 head(report)
-#> [1] "Package Doctor - Health Report"                                
-#> [2] "Generated on: 2026-08-23 06:06:01.453111"                      
-#> [3] "Patient: /tmp/RtmplTKXG2/checktor_example_20260823_060601_4331"
-#> [4] ""                                                              
-#> [5] "Summary:"                                                      
-#> [6] "Total Issues: 7"                                               
+#> [1] "Package Doctor - Health Report"                        
+#> [2] "Generated on: 2026-09-28 22:00:15.150942"              
+#> [3] "Patient: /tmp/Rtmp9yQlCj/checktor_example_1ab53975f2a6"
+#> [4] ""                                                      
+#> [5] "Summary:"                                              
+#> [6] "Total Issues: 7"                                       
 ```

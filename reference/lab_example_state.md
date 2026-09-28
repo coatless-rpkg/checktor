@@ -47,8 +47,9 @@ for the same rule in `R/`.
 ## Examples
 
 ``` r
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("documentation_examples/example_state_bad.Rmd",
                                  show_content = FALSE)
-lab_example_state(pkg, verbose = FALSE)$passed
-#> [1] TRUE
+lab_example_state(pkg, verbose = FALSE)$issues
+#> [1] "vignette example_state_bad.Rmd:9 (never restored)"
+unlink(pkg, recursive = TRUE)
 ```

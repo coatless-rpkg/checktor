@@ -41,8 +41,9 @@ for how every check maps to its source.
 ## Examples
 
 ``` r
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("documentation_examples/example_internal_ns_bad.Rd",
                                  show_content = FALSE)
-lab_example_internal_ns(pkg, verbose = FALSE)$passed
-#> [1] TRUE
+lab_example_internal_ns(pkg, verbose = FALSE)$issues
+#> [1] "example example_internal_ns_bad.Rd:18 (uses :::)"
+unlink(pkg, recursive = TRUE)
 ```

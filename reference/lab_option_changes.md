@@ -8,7 +8,7 @@ session state without restoring it.
 ## Usage
 
 ``` r
-lab_option_changes(path, verbose = TRUE, parsed = NULL)
+lab_option_changes(path = ".", verbose = TRUE, parsed = NULL)
 ```
 
 ## Arguments
@@ -69,8 +69,9 @@ which runs this and every other check.
 ## Examples
 
 ``` r
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("code_examples/option_changes_bad.R",
                                  show_content = FALSE)
-lab_option_changes(pkg, verbose = FALSE)$passed
-#> [1] TRUE
+lab_option_changes(pkg, verbose = FALSE)$issues
+#> [1] "option_changes_bad.R:9"  "option_changes_bad.R:23"
+unlink(pkg, recursive = TRUE)
 ```

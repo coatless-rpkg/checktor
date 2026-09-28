@@ -7,7 +7,7 @@ like `.git`, `.Rproj.user`, are excluded). Warns at the 5 MB threshold.
 ## Usage
 
 ``` r
-lab_package_size(path, verbose = TRUE)
+lab_package_size(path = ".", verbose = TRUE)
 ```
 
 ## Arguments
@@ -36,8 +36,12 @@ for how every check maps to its source.
 ## Examples
 
 ``` r
-pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
-                                      show_content = FALSE)
-lab_package_size(pkg_path, verbose = FALSE)$size_mb
-#> [1] 0.0006465912
+pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+                                 show_content = FALSE)
+# About 7 MB of data that gzip cannot shrink much
+dir.create(file.path(pkg, "inst", "extdata"), recursive = TRUE)
+writeBin(sin(seq_len(1e6) * 1.1), file.path(pkg, "inst", "extdata", "series.bin"))
+lab_package_size(pkg, verbose = FALSE)$issues
+#> [1] "Package size 7.27 MB (compressed) exceeds 5 MB"
+unlink(pkg, recursive = TRUE)
 ```

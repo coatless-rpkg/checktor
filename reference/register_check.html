@@ -85,7 +85,9 @@ consistent with the built-in checks, where the two always match.</p></dd>
 any <code>lab_*</code> check. It is called as <code>fn(path, verbose)</code>. If it also
 declares a <code>parsed</code> argument (for <code>code</code> and <code>policy</code> checks) or a <code>desc</code>
 argument (for <code>description</code> checks), checktor forwards its shared parse cache
-so the check does not re-read the sources.</p></dd>
+so the check does not re-read the sources. A check that cannot run where it
+is returns a skipped result, as <code><a href="checktor_check_result.html">checktor_check_result()</a></code> describes, so it is
+reported as not run rather than as passing.</p></dd>
 
 
 <dt id="arg-category">category<a class="anchor" aria-label="anchor" href="#arg-category"></a></dt>

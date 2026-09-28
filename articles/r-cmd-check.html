@@ -296,7 +296,7 @@
 </tr>
 <tr class="odd">
 <td><code>checking Rd line widths</code></td>
-<td>(<code>--as-cran</code>) Flags <code>\usage</code> and <code>\examples</code> lines wider than 100 characters.</td>
+<td>(<code>--as-cran</code>) Flags <code>\usage</code> lines wider than 90 characters and <code>\examples</code> lines wider than 100.</td>
 </tr>
 <tr class="even">
 <td><code>checking Rd cross-references</code></td>
@@ -338,33 +338,37 @@
 </tr>
 <tr class="even">
 <td><code>checking examples</code></td>
-<td>Every <code>\examples{}</code> block runs without error (<code>\dontrun{}</code> is skipped).</td>
+<td>Every <code>\examples{}</code> block runs without error. <code>\dontrun{}</code> and <code>\donttest{}</code> code is skipped.</td>
 </tr>
 <tr class="odd">
+<td><code>checking examples with --run-donttest</code></td>
+<td>(<code>--as-cran</code>) When the examples contain <code>\donttest{}</code>, they run again with that code included, so it must run without error too.</td>
+</tr>
+<tr class="even">
 <td><code>checking installed files from 'inst/doc'</code></td>
 <td>Files under <code>inst/doc</code> are consistent with the vignettes.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>checking files in 'vignettes'</code></td>
 <td>The <code>vignettes/</code> sources are well-formed.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>checking for unstated dependencies in 'tests'</code></td>
 <td>Tests use only declared packages.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>checking tests</code></td>
 <td>The test suite runs; any failure is an ERROR.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>checking for unstated dependencies in vignettes</code></td>
 <td>Vignettes use only declared packages.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>checking package vignettes</code></td>
 <td>Vignette metadata and index entries are present and consistent.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>checking re-building of vignette outputs</code></td>
 <td>Every vignette rebuilds from source without error.</td>
 </tr>

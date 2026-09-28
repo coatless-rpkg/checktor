@@ -76,7 +76,9 @@ used by all individual diagnostic functions.</p>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Additional named elements specific to the particular check.</p></dd>
+<dd><p>Additional named elements specific to the particular check. Two
+are read by checktor itself: <code>skipped = TRUE</code> marks a check that could not
+run, and <code>skip_reason</code> says why. See Details.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -86,6 +88,17 @@ used by all individual diagnostic functions.</p>
 <li><p><code>message</code>: Description of the check</p></li>
 <li><p>Additional elements passed via <code>...</code></p></li>
 </ul></div>
+    <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>A check that could not run where it is, because it needs a network, a tool
+or a file that is not there, should say so rather than pass. Return
+<code>checktor_check_result(TRUE, character(0), "&lt;message&gt;", skipped = TRUE, skip_reason = "&lt;why&gt;")</code>. <code>passed</code> stays <code>TRUE</code> so the skip cannot fail a
+verdict, and <code>skipped</code> makes <a href="tidy.html">tidy()</a>,
+<a href="checktor-summary.html">summary()</a>, <code>metadata$skipped_checks</code>, the printed
+report, <code><a href="health_report.html">health_report()</a></code> and <code><a href="ci_report.html">ci_report()</a></code> report it as a check that did not
+run rather than one that passed. A result with <code>passed = FALSE</code> reads as
+failed whatever <code>skipped</code> says.</p>
+    </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p>Individual diagnostic functions like <code><a href="lab_tf_usage.html">lab_tf_usage()</a></code>, <code><a href="lab_seed_setting.html">lab_seed_setting()</a></code></p></div>
@@ -114,6 +127,17 @@ used by all individual diagnostic functions.</p>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Issues found:</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> • file1.R:5</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> • file2.R:10</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Report a check that could not run where it is</span></span></span>
+<span class="r-in"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu">checktor_check_result</span><span class="op">(</span></span></span>
+<span class="r-in"><span>  passed <span class="op">=</span> <span class="cn">TRUE</span>,</span></span>
+<span class="r-in"><span>  issues <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  message <span class="op">=</span> <span class="st">"License server check"</span>,</span></span>
+<span class="r-in"><span>  skipped <span class="op">=</span> <span class="cn">TRUE</span>,</span></span>
+<span class="r-in"><span>  skip_reason <span class="op">=</span> <span class="st">"no license server configured"</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> License server check: SKIPPED (no license server configured)</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

@@ -65,7 +65,7 @@ can be used with <code><a href="example_diagnose_scenario.html">example_diagnose
 
 <dl><dt id="arg-category">category<a class="anchor" aria-label="anchor" href="#arg-category"></a></dt>
 <dd><p>Character. Optional category filter. One of "code",
-"description", "documentation", "network", "temp", or "all".
+"description", "documentation", "general", "network", "temp", or "all".
 Default: "all".</p></dd>
 
 
@@ -88,80 +88,167 @@ with <code><a href="example_diagnose_scenario.html">example_diagnose_scenario()<
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># List all available examples</span></span></span>
 <span class="r-in"><span><span class="fu">show_example_files</span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] "code_examples/browser_calls_bad.R"                  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [2] "code_examples/core_usage_bad.R"                     </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [3] "code_examples/credentials_bad.R"                    </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [4] "code_examples/globalenv_bad.R"                      </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [5] "code_examples/option_changes_bad.R"                 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [6] "code_examples/print_cat_bad.R"                      </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7] "code_examples/seed_setting_bad.R"                   </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [8] "code_examples/tf_usage_bad.R"                       </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [9] "description_examples/bad_description.txt"           </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [10] "description_examples/good_description.txt"          </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [11] "documentation_examples/good_documentation.Rd"       </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [12] "documentation_examples/missing_examples_bad.Rd"     </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [13] "documentation_examples/missing_value_tag.Rd"        </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [14] "documentation_examples/suggested_in_examples_bad.Rd"</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [15] "network_examples/bad_network_example.Rd"            </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [16] "temp_examples/bad_temp_usage.R"                     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] "code_examples/browser_calls_bad.R"                       </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [2] "code_examples/core_usage_bad.R"                          </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [3] "code_examples/credentials_bad.R"                         </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [4] "code_examples/detect_cores_bad.R"                        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [5] "code_examples/file_operations_bad.R"                     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [6] "code_examples/globalenv_bad.R"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7] "code_examples/home_writing_bad.R"                        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [8] "code_examples/installed_packages_bad.R"                  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [9] "code_examples/internal_ns_bad.R"                         </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [10] "code_examples/library_in_pkg_bad.R"                      </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [11] "code_examples/option_changes_bad.R"                      </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [12] "code_examples/print_cat_bad.R"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [13] "code_examples/roxygen_usage_bad.R"                       </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [14] "code_examples/seed_setting_bad.R"                        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [15] "code_examples/software_install_bad.R"                    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [16] "code_examples/sys_setenv_bad.R"                          </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [17] "code_examples/system_calls_bad.R"                        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [18] "code_examples/tf_usage_bad.R"                            </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [19] "description_examples/acronyms_bad.txt"                   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [20] "description_examples/authors_bad.txt"                    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [21] "description_examples/bad_description.txt"                </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [22] "description_examples/cph_role_bad.txt"                   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [23] "description_examples/date_format_bad.txt"                </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [24] "description_examples/description_fields_bad.txt"         </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [25] "description_examples/description_function_quotes_bad.txt"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [26] "description_examples/description_length_bad.txt"         </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [27] "description_examples/description_placeholders_bad.txt"   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [28] "description_examples/description_quoted_quotes_bad.txt"  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [29] "description_examples/description_starts_with_bad.txt"    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [30] "description_examples/encoding_utf8_bad.txt"              </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [31] "description_examples/format_names_bad.txt"               </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [32] "description_examples/good_description.txt"               </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [33] "description_examples/identifier_format_bad.txt"          </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [34] "description_examples/language_names_bad.txt"             </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [35] "description_examples/license_bad.txt"                    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [36] "description_examples/license_file_unneeded_bad.txt"      </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [37] "description_examples/license_year_bad.LICENSE"           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [38] "description_examples/references_bad.txt"                 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [39] "description_examples/software_names_bad.txt"             </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [40] "description_examples/spelling_bad.txt"                   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [41] "description_examples/title_case_bad.txt"                 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [42] "description_examples/title_length_bad.txt"               </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [43] "description_examples/title_package_name_bad.txt"         </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [44] "description_examples/title_redundant_phrases_bad.txt"    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [45] "description_examples/title_starts_with_article_bad.txt"  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [46] "description_examples/unparseable_description.txt"        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [47] "description_examples/version_format_bad.txt"             </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [48] "documentation_examples/commented_examples_bad.Rd"        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [49] "documentation_examples/donttest_vs_dontrun_bad.Rd"       </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [50] "documentation_examples/example_installs_bad.Rd"          </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [51] "documentation_examples/example_interactive_bad.Rd"       </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [52] "documentation_examples/example_internal_ns_bad.Rd"       </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [53] "documentation_examples/example_state_bad.Rmd"            </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [54] "documentation_examples/example_structure_bad.Rd"         </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [55] "documentation_examples/example_tf_usage_bad.Rd"          </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [56] "documentation_examples/example_unparseable_bad.Rd"       </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [57] "documentation_examples/example_writes_bad.Rd"            </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [58] "documentation_examples/good_documentation.Rd"            </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [59] "documentation_examples/missing_examples_bad.Rd"          </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [60] "documentation_examples/missing_value_tag.Rd"             </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [61] "documentation_examples/rd_bibliography_bad.Rd"           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [62] "documentation_examples/suggested_in_examples_bad.Rd"     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [63] "documentation_examples/unexported_example_ns_bad.Rd"     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [64] "general_examples/citation_file_bad.CITATION"             </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [65] "general_examples/code_exercised_bad.R"                   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [66] "general_examples/url_liveness_bad.txt"                   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [67] "network_examples/bad_network_example.Rd"                 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [68] "temp_examples/bad_temp_usage.R"                          </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># List only code examples</span></span></span>
 <span class="r-in"><span><span class="fu">show_example_files</span><span class="op">(</span><span class="st">"code"</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "code_examples/browser_calls_bad.R"  "code_examples/core_usage_bad.R"    </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [3] "code_examples/credentials_bad.R"    "code_examples/globalenv_bad.R"     </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [5] "code_examples/option_changes_bad.R" "code_examples/print_cat_bad.R"     </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [7] "code_examples/seed_setting_bad.R"   "code_examples/tf_usage_bad.R"      </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] "code_examples/browser_calls_bad.R"     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [2] "code_examples/core_usage_bad.R"        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [3] "code_examples/credentials_bad.R"       </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [4] "code_examples/detect_cores_bad.R"      </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [5] "code_examples/file_operations_bad.R"   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [6] "code_examples/globalenv_bad.R"         </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7] "code_examples/home_writing_bad.R"      </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [8] "code_examples/installed_packages_bad.R"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [9] "code_examples/internal_ns_bad.R"       </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [10] "code_examples/library_in_pkg_bad.R"    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [11] "code_examples/option_changes_bad.R"    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [12] "code_examples/print_cat_bad.R"         </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [13] "code_examples/roxygen_usage_bad.R"     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [14] "code_examples/seed_setting_bad.R"      </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [15] "code_examples/software_install_bad.R"  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [16] "code_examples/sys_setenv_bad.R"        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [17] "code_examples/system_calls_bad.R"      </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [18] "code_examples/tf_usage_bad.R"          </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># List files matching a pattern</span></span></span>
 <span class="r-in"><span><span class="fu">show_example_files</span><span class="op">(</span>pattern <span class="op">=</span> <span class="st">"bad"</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] "code_examples/browser_calls_bad.R"                  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [2] "code_examples/core_usage_bad.R"                     </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [3] "code_examples/credentials_bad.R"                    </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [4] "code_examples/globalenv_bad.R"                      </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [5] "code_examples/option_changes_bad.R"                 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [6] "code_examples/print_cat_bad.R"                      </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7] "code_examples/seed_setting_bad.R"                   </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [8] "code_examples/tf_usage_bad.R"                       </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [9] "description_examples/bad_description.txt"           </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [10] "documentation_examples/missing_examples_bad.Rd"     </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [11] "documentation_examples/suggested_in_examples_bad.Rd"</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [12] "network_examples/bad_network_example.Rd"            </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [13] "temp_examples/bad_temp_usage.R"                     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] "code_examples/browser_calls_bad.R"                       </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [2] "code_examples/core_usage_bad.R"                          </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [3] "code_examples/credentials_bad.R"                         </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [4] "code_examples/detect_cores_bad.R"                        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [5] "code_examples/file_operations_bad.R"                     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [6] "code_examples/globalenv_bad.R"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7] "code_examples/home_writing_bad.R"                        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [8] "code_examples/installed_packages_bad.R"                  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [9] "code_examples/internal_ns_bad.R"                         </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [10] "code_examples/library_in_pkg_bad.R"                      </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [11] "code_examples/option_changes_bad.R"                      </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [12] "code_examples/print_cat_bad.R"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [13] "code_examples/roxygen_usage_bad.R"                       </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [14] "code_examples/seed_setting_bad.R"                        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [15] "code_examples/software_install_bad.R"                    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [16] "code_examples/sys_setenv_bad.R"                          </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [17] "code_examples/system_calls_bad.R"                        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [18] "code_examples/tf_usage_bad.R"                            </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [19] "description_examples/acronyms_bad.txt"                   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [20] "description_examples/authors_bad.txt"                    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [21] "description_examples/bad_description.txt"                </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [22] "description_examples/cph_role_bad.txt"                   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [23] "description_examples/date_format_bad.txt"                </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [24] "description_examples/description_fields_bad.txt"         </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [25] "description_examples/description_function_quotes_bad.txt"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [26] "description_examples/description_length_bad.txt"         </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [27] "description_examples/description_placeholders_bad.txt"   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [28] "description_examples/description_quoted_quotes_bad.txt"  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [29] "description_examples/description_starts_with_bad.txt"    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [30] "description_examples/encoding_utf8_bad.txt"              </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [31] "description_examples/format_names_bad.txt"               </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [32] "description_examples/identifier_format_bad.txt"          </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [33] "description_examples/language_names_bad.txt"             </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [34] "description_examples/license_bad.txt"                    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [35] "description_examples/license_file_unneeded_bad.txt"      </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [36] "description_examples/license_year_bad.LICENSE"           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [37] "description_examples/references_bad.txt"                 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [38] "description_examples/software_names_bad.txt"             </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [39] "description_examples/spelling_bad.txt"                   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [40] "description_examples/title_case_bad.txt"                 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [41] "description_examples/title_length_bad.txt"               </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [42] "description_examples/title_package_name_bad.txt"         </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [43] "description_examples/title_redundant_phrases_bad.txt"    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [44] "description_examples/title_starts_with_article_bad.txt"  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [45] "description_examples/version_format_bad.txt"             </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [46] "documentation_examples/commented_examples_bad.Rd"        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [47] "documentation_examples/donttest_vs_dontrun_bad.Rd"       </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [48] "documentation_examples/example_installs_bad.Rd"          </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [49] "documentation_examples/example_interactive_bad.Rd"       </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [50] "documentation_examples/example_internal_ns_bad.Rd"       </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [51] "documentation_examples/example_state_bad.Rmd"            </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [52] "documentation_examples/example_structure_bad.Rd"         </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [53] "documentation_examples/example_tf_usage_bad.Rd"          </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [54] "documentation_examples/example_unparseable_bad.Rd"       </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [55] "documentation_examples/example_writes_bad.Rd"            </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [56] "documentation_examples/missing_examples_bad.Rd"          </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [57] "documentation_examples/rd_bibliography_bad.Rd"           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [58] "documentation_examples/suggested_in_examples_bad.Rd"     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [59] "documentation_examples/unexported_example_ns_bad.Rd"     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [60] "general_examples/citation_file_bad.CITATION"             </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [61] "general_examples/code_exercised_bad.R"                   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [62] "general_examples/url_liveness_bad.txt"                   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [63] "network_examples/bad_network_example.Rd"                 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [64] "temp_examples/bad_temp_usage.R"                          </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Use with example_diagnose_scenario</span></span></span>
 <span class="r-in"><span><span class="va">examples</span> <span class="op">&lt;-</span> <span class="fu">show_example_files</span><span class="op">(</span><span class="st">"code"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">pkg_path</span> <span class="op">&lt;-</span> <span class="fu"><a href="example_diagnose_scenario.html">example_diagnose_scenario</a></span><span class="op">(</span><span class="va">examples</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> === Example file: browser_calls_bad.R ===</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> # Example file showing browser() calls (debugging code)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> #' Debug Function</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> #' @param data Input data</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> debug_function &lt;- function(data) {</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   browser() # Issue: debugging call left in code</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   processed &lt;- process_data(data)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   if (is.null(processed)) {</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     browser() # Issue: another debugging call</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     stop("Processing failed")</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   }</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   return(processed)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> #' Analysis with Debug</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> analyze_with_debug &lt;- function(x) {</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   result &lt;- mean(x, na.rm = TRUE)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   if (is.na(result)) {</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     browser() # Issue: debugging call for troubleshooting</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   }</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   return(result)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> === End of example ===</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-in"><span><span class="va">pkg_path</span> <span class="op">&lt;-</span> <span class="fu"><a href="example_diagnose_scenario.html">example_diagnose_scenario</a></span><span class="op">(</span><span class="va">examples</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>, show_content <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/unlink.html" class="external-link">unlink</a></span><span class="op">(</span><span class="va">pkg_path</span>, recursive <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

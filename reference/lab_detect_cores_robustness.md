@@ -7,7 +7,7 @@ call whose result is used without an `NA` guard.
 ## Usage
 
 ``` r
-lab_detect_cores_robustness(path, verbose = TRUE, parsed = NULL)
+lab_detect_cores_robustness(path = ".", verbose = TRUE, parsed = NULL)
 ```
 
 ## Arguments
@@ -63,8 +63,9 @@ for how every check maps to its source.
 ## Examples
 
 ``` r
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("code_examples/detect_cores_bad.R",
                                  show_content = FALSE)
-lab_detect_cores_robustness(pkg, verbose = FALSE)$passed
-#> [1] TRUE
+lab_detect_cores_robustness(pkg, verbose = FALSE)$issues
+#> [1] "detect_cores_bad.R:7 (detectCores() may return NA)"
+unlink(pkg, recursive = TRUE)
 ```

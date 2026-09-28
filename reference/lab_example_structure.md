@@ -8,7 +8,7 @@ Walks `\examples{}` sections via
 ## Usage
 
 ``` r
-lab_example_structure(path, verbose = TRUE)
+lab_example_structure(path = ".", verbose = TRUE)
 ```
 
 ## Arguments
@@ -39,8 +39,9 @@ for how every check maps to its source.
 ## Examples
 
 ``` r
-pkg_path <- example_diagnose_scenario("network_examples/bad_network_example.Rd",
-                                      show_content = FALSE)
-lab_example_structure(pkg_path, verbose = FALSE)
-#> ✔ Example structure check: PASSED
+pkg <- example_diagnose_scenario("documentation_examples/example_structure_bad.Rd",
+                                 show_content = FALSE)
+lab_example_structure(pkg, verbose = FALSE)$issues
+#> [1] "example_structure_bad.Rd: potential unnecessary \\dontrun{}"
+unlink(pkg, recursive = TRUE)
 ```

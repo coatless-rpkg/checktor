@@ -1,6 +1,10 @@
 # Status predicates for checktor results
 
-Status predicates for checktor results
+These ask the question a verdict asks: did a check fail? `passed()`
+means "did not fail", so a check that did not run, such as
+`url_liveness` away from the console, is `TRUE` there. A skipped check
+cannot fail a verdict, and `is_healthy()`, `failed_checks()` and
+`n_failed_checks()` treat it the same way.
 
 ## Usage
 
@@ -68,11 +72,31 @@ failed_checks(x, ...)
 
 ## Value
 
-`passed()`: logical — a single value for a check, a named logical by
-check for a category, and a named logical by category for results.
-`is_healthy()`: a single logical. `n_issues()` / `n_failed_checks()`:
-integer counts. `failed_checks()`: character vector of failing check
-names (qualified `"category.check"` at the results level).
+`passed()`: logical, `TRUE` for a check that did not fail, a skipped one
+included. It is a single value for a check, a named logical by check for
+a category, and a named logical by category for results. `is_healthy()`:
+a single logical. `n_issues()` / `n_failed_checks()`: integer counts.
+`failed_checks()`: character vector of failing check names (qualified
+`"category.check"` at the results level).
+
+On a `checktor_results`, `is_healthy()`, `n_issues()` and
+`n_failed_checks()` count only the tiers named in
+[`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md)'s
+`severity` (they read `metadata$total_issues` and
+`metadata$failed_checks`), so they agree with
+[`checkup()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checkup.md).
+`failed_checks()`, and every predicate on a category or a check, count
+every tier, so an `opinion` finding can appear in `failed_checks()` and
+in `nrow(issues(x))` without changing `n_issues()`.
+
+## Details
+
+[tidy()](https://r-pkg.thecoatlessprofessor.com/checktor/reference/tidy.md)
+answers a different question. It gives each check one state, so the same
+skipped check has `passed = FALSE` and `skipped = TRUE` there. To tell a
+pass from a skip, use
+[`tidy()`](https://generics.r-lib.org/reference/tidy.html) or
+[summary()](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor-summary.md).
 
 ## Examples
 
@@ -83,5 +107,5 @@ results <- checktor(pkg, verbose = FALSE, progress = FALSE)
 is_healthy(results)
 #> [1] FALSE
 failed_checks(results)
-#> [1] "code.tf_usage"        "description.cph_role"
+#> [1] "code.tf_usage"
 ```

@@ -45,8 +45,9 @@ which runs this and every other check.
 ## Examples
 
 ``` r
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("description_examples/title_redundant_phrases_bad.txt",
                                  show_content = FALSE)
-lab_title_redundant_phrases(pkg, verbose = FALSE)$passed
-#> [1] TRUE
+lab_title_redundant_phrases(pkg, verbose = FALSE)$issues
+#> [1] "Title contains redundant phrase: 'for R'"
+unlink(pkg, recursive = TRUE)
 ```

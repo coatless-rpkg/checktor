@@ -9,7 +9,7 @@ must be revoked.
 ## Usage
 
 ``` r
-lab_hardcoded_credentials(path, verbose = TRUE, parsed = NULL)
+lab_hardcoded_credentials(path = ".", verbose = TRUE, parsed = NULL)
 ```
 
 ## Arguments
@@ -89,6 +89,8 @@ Provider token formats and the gitleaks ruleset:
 ``` r
 pkg <- example_diagnose_scenario("code_examples/credentials_bad.R",
                                  show_content = FALSE)
-lab_hardcoded_credentials(pkg, verbose = FALSE)$passed
-#> [1] FALSE
+lab_hardcoded_credentials(pkg, verbose = FALSE)$issues
+#> [1] "credentials_bad.R:10 (AWS access key)"
+#> [2] "credentials_bad.R:12 (private key)"   
+unlink(pkg, recursive = TRUE)
 ```

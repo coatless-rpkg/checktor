@@ -7,7 +7,7 @@ need review for portability and for shell-injection risk.
 ## Usage
 
 ``` r
-lab_system_calls(path, verbose = TRUE, parsed = NULL)
+lab_system_calls(path = ".", verbose = TRUE, parsed = NULL)
 ```
 
 ## Arguments
@@ -47,8 +47,9 @@ which runs this and every other check.
 ## Examples
 
 ``` r
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("code_examples/system_calls_bad.R",
                                  show_content = FALSE)
-lab_system_calls(pkg, verbose = FALSE)$passed
-#> [1] TRUE
+lab_system_calls(pkg, verbose = FALSE)$issues
+#> [1] "system_calls_bad.R:8 (system())"   "system_calls_bad.R:13 (system2())"
+unlink(pkg, recursive = TRUE)
 ```

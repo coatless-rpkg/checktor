@@ -49,8 +49,9 @@ which runs this and every other check.
 ## Examples
 
 ``` r
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("description_examples/description_starts_with_bad.txt",
                                  show_content = FALSE)
-lab_description_starts_with(pkg, verbose = FALSE)$passed
-#> [1] TRUE
+lab_description_starts_with(pkg, verbose = FALSE)$issues
+#> [1] "Description should not start with \"This package\"; describe what it does instead"
+unlink(pkg, recursive = TRUE)
 ```

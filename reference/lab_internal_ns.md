@@ -8,7 +8,7 @@ package without warning.
 ## Usage
 
 ``` r
-lab_internal_ns(path, verbose = TRUE, parsed = NULL)
+lab_internal_ns(path = ".", verbose = TRUE, parsed = NULL)
 ```
 
 ## Arguments
@@ -55,8 +55,9 @@ for the same rule in examples.
 ## Examples
 
 ``` r
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("code_examples/internal_ns_bad.R",
                                  show_content = FALSE)
-lab_internal_ns(pkg, verbose = FALSE)$passed
-#> [1] TRUE
+lab_internal_ns(pkg, verbose = FALSE)$issues
+#> [1] "internal_ns_bad.R:9 (utils:::format.object_size)"
+unlink(pkg, recursive = TRUE)
 ```

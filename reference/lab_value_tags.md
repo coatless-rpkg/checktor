@@ -9,7 +9,7 @@ package-level, and re-export topics are skipped (they don't need
 ## Usage
 
 ``` r
-lab_value_tags(path, verbose = TRUE)
+lab_value_tags(path = ".", verbose = TRUE)
 ```
 
 ## Arguments
@@ -42,9 +42,9 @@ for how every check maps to its source.
 ## Examples
 
 ``` r
-pkg_path <- example_diagnose_scenario("documentation_examples/missing_value_tag.Rd",
-                                      show_content = FALSE)
-issues(lab_value_tags(pkg_path, verbose = FALSE))
-#>   file line             location          message
-#> 1 <NA>   NA missing_value_tag.Rd Value tags check
+pkg <- example_diagnose_scenario("documentation_examples/missing_value_tag.Rd",
+                                 show_content = FALSE)
+lab_value_tags(pkg, verbose = FALSE)$issues
+#> [1] "missing_value_tag.Rd"
+unlink(pkg, recursive = TRUE)
 ```

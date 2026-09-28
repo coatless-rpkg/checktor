@@ -13,7 +13,7 @@ use your judgement.
 ## Usage
 
 ``` r
-lab_missing_examples(path, verbose = TRUE)
+lab_missing_examples(path = ".", verbose = TRUE)
 ```
 
 ## Arguments
@@ -44,11 +44,10 @@ for how every check maps to its source.
 ## Examples
 
 ``` r
-pkg_path <- example_diagnose_scenario(
-  "documentation_examples/missing_examples_bad.Rd", show_content = FALSE)
-writeLines("export(undocumented_fn)", file.path(pkg_path, "NAMESPACE"))
-issues(lab_missing_examples(pkg_path, verbose = FALSE))
-#> Warning: /tmp/RtmplTKXG2/checktor_example_20260823_060605_2832/man/missing_examples_bad.Rd:5: unexpected section header '\examples'
-#>   file line                location                message
-#> 1 <NA>   NA missing_examples_bad.Rd Missing examples check
+pkg <- example_diagnose_scenario("documentation_examples/missing_examples_bad.Rd",
+                                 show_content = FALSE)
+writeLines("export(undocumented_fn)", file.path(pkg, "NAMESPACE"))
+lab_missing_examples(pkg, verbose = FALSE)$issues
+#> [1] "missing_examples_bad.Rd"
+unlink(pkg, recursive = TRUE)
 ```

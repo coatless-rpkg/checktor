@@ -5,7 +5,7 @@ Flags a change to `options(warn = )` that is not restored.
 ## Usage
 
 ``` r
-lab_warn_option(path, verbose = TRUE, parsed = NULL)
+lab_warn_option(path = ".", verbose = TRUE, parsed = NULL)
 ```
 
 ## Arguments
@@ -46,8 +46,9 @@ which runs this and every other check.
 ## Examples
 
 ``` r
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("code_examples/option_changes_bad.R",
                                  show_content = FALSE)
-lab_warn_option(pkg, verbose = FALSE)$passed
-#> [1] TRUE
+lab_warn_option(pkg, verbose = FALSE)$issues
+#> [1] "option_changes_bad.R:9"
+unlink(pkg, recursive = TRUE)
 ```

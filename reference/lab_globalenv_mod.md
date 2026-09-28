@@ -7,7 +7,7 @@ or a package-level cache, is not flagged.
 ## Usage
 
 ``` r
-lab_globalenv_mod(path, verbose = TRUE, parsed = NULL)
+lab_globalenv_mod(path = ".", verbose = TRUE, parsed = NULL)
 ```
 
 ## Arguments
@@ -47,8 +47,10 @@ which runs this and every other check.
 ## Examples
 
 ``` r
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("code_examples/globalenv_bad.R",
                                  show_content = FALSE)
-lab_globalenv_mod(pkg, verbose = FALSE)$passed
-#> [1] TRUE
+lab_globalenv_mod(pkg, verbose = FALSE)$issues
+#> [1] "globalenv_bad.R:5 (GLOBAL_CONFIG)" "globalenv_bad.R:18 (COUNTER)"     
+#> [3] "globalenv_bad.R:20 (COUNTER)"     
+unlink(pkg, recursive = TRUE)
 ```

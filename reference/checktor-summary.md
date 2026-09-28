@@ -26,9 +26,9 @@ summary(object, ...)
 
 For results: a 5-row `data.frame`
 (`category, checks, passed, failed, skipped, issues`). For a category: a
-1-row `data.frame` (`checks, passed, failed, skipped, issues`).
-`skipped` counts the checks that did not run, which are not counted as
-passing.
+1-row `data.frame` (`checks, passed, failed, skipped, issues`). Each
+check is counted once, so `passed`, `failed` and `skipped` add up to
+`checks`, and a check that did not run is `skipped`, never `passed`.
 
 ## Examples
 
@@ -39,8 +39,8 @@ results <- checktor(pkg, verbose = FALSE, progress = FALSE)
 summary(results)
 #>        category checks passed failed skipped issues
 #> 1          code     16     15      1       0      7
-#> 2   description     19     18      1       1      1
-#> 3 documentation     13     13      0       0      0
-#> 4       general      5      5      0       1      0
+#> 2   description     23     22      0       1      0
+#> 3 documentation     17     17      0       0      0
+#> 4       general      7      6      0       1      0
 #> 5        policy      4      4      0       0      0
 ```

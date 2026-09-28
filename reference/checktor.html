@@ -69,7 +69,7 @@ that could cause CRAN submission delays or rejections.</p>
 <span>  path <span class="op">=</span> <span class="st">"."</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"checktor.verbose"</span>, <span class="cn">TRUE</span><span class="op">)</span>,</span>
 <span>  progress <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"checktor.progress"</span>, <span class="va">verbose</span><span class="op">)</span>,</span>
-<span>  severity <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"checktor.severity"</span>, <span class="va">DEFAULT_SEVERITY</span><span class="op">)</span></span>
+<span>  severity <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"checktor.severity"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"policy"</span>, <span class="st">"robustness"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -116,10 +116,16 @@ yourself to the conventions as well.</p></dd>
 <li><p><code>documentation_issues</code>: Results from documentation diagnostics</p></li>
 <li><p><code>general_issues</code>: Results from general package diagnostics</p></li>
 <li><p><code>policy_issues</code>: Results from CRAN policy violation diagnostics</p></li>
-<li><p><code>metadata</code>: List with package path, diagnosis time, total issue count,
-total failed-check count, and checktor version</p></li>
+<li><p><code>metadata</code>: List with the package path, the diagnosis time, the issue and
+failed-check counts (<code>total_issues</code>, <code>failed_checks</code>), the <code>severity</code> tiers
+they count, the findings outside those tiers (<code>advisory_issues</code>), the
+findings muted by <code>Config/checktor/allow</code> (<code>suppressed</code>), the checks that
+did not run (<code>skipped_checks</code>), the checks that run only when called
+(<code>on_request_checks</code>), and the checktor version (<code>checktor_version</code>)</p></li>
 </ul><p>Each diagnostic category contains a <code>passed</code> element showing which individual
-checks passed/failed, plus detailed results for each check.</p>
+checks did not fail, plus detailed results for each check. A check that did
+not run is <code>TRUE</code> there, and its own <code>skipped</code> element records that it did
+not run.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -128,20 +134,43 @@ checks passed/failed, plus detailed results for each check.</p>
 <code><a href="diagnose_description_issues.html">diagnose_description_issues()</a></code>, <code><a href="diagnose_documentation_issues.html">diagnose_documentation_issues()</a></code>,
 <code><a href="diagnose_general_issues.html">diagnose_general_issues()</a></code>, and <code><a href="diagnose_policy_violations.html">diagnose_policy_violations()</a></code> for the
 specific checks within each category.</p>
-<p>The <code>metadata$total_issues</code> figure counts the total number of distinct
-issues found across all checks (e.g., 80 lines using <code>T</code>/<code>F</code> count as 80,
-not 1). The <code>metadata$failed_checks</code> figure counts how many individual
-checks reported any issue at all.</p>
+<p>The <code>metadata$total_issues</code> figure counts the individual findings of the
+checks in the <code>severity</code> tiers (e.g., 80 lines using <code>T</code>/<code>F</code> count as 80,
+not 1), and <code>metadata$failed_checks</code> counts how many of those checks
+reported anything. Findings in the other tiers are still in the result and
+are counted in <code>metadata$advisory_issues</code> instead.</p>
+<p>A few checks never join a run, because no authority backs them or they ask
+about a submission workflow rather than the package. They are not skipped,
+since nothing tried to run them. <code>metadata$on_request_checks</code> names them;
+call <code>lab_&lt;name&gt;()</code> to run one.</p>
 <p>A package can configure checktor from <code>Config/checktor/*</code> fields in its own
-<code>DESCRIPTION</code> (comma-separated lists):</p><ul><li><p><code>Config/checktor/disable</code>: check names to skip entirely. A disabled check
-does not run and is not counted anywhere in the results.</p></li>
+<code>DESCRIPTION</code> (comma-separated lists; <code>DESCRIPTION</code> has no comment syntax, so
+anything after the last name becomes part of it):</p><ul><li><p><code>Config/checktor/disable</code>: check names to skip entirely. A disabled check
+does not run and is not counted anywhere in the results. To turn a check
+off in every package, set <code>options(checktor.disable = "news_file")</code> once,
+for example in <code>.Rprofile</code>; the two lists are combined.</p></li>
 <li><p><code>Config/checktor/allow</code>: <code>check</code> to mute a whole check, or <code>check:substring</code>
 to mute only findings whose text contains <code>substring</code>. The check still
 runs; muted findings are dropped from the results and tallied in
 <code>metadata$suppressed</code>, while a <code>disable</code>d check is removed entirely and
 never counted there.</p></li>
 <li><p><code>Config/checktor/software_names</code>, <code>Config/checktor/language_names</code>,
-<code>Config/checktor/acronyms</code>: names appended to those checks' vocabularies.</p></li>
+<code>Config/checktor/format_names</code>, <code>Config/checktor/acronyms</code>: names appended
+to those checks' vocabularies.</p></li>
+</ul></div>
+    <div class="section level2">
+    <h2 id="options">Options<a class="anchor" aria-label="anchor" href="#options"></a></h2>
+
+
+<ul><li><p><code>checktor.verbose</code>, <code>checktor.progress</code>: the defaults for <code>verbose</code> and
+<code>progress</code>. <code><a href="configure_doctor.html">configure_doctor()</a></code> sets both.</p></li>
+<li><p><code>checktor.severity</code>: the default tiers for <code>checktor()</code> and <code><a href="checkup.html">checkup()</a></code>.</p></li>
+<li><p><code>checktor.disable</code>: checks to leave out of every run, combined with
+<code>Config/checktor/disable</code>.</p></li>
+<li><p><code>checktor.url_check</code>: <code>TRUE</code> or <code>FALSE</code> to run or skip <code><a href="lab_url_liveness.html">lab_url_liveness()</a></code>
+wherever you are. It defaults to <code><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive()</a></code>.</p></li>
+<li><p><code>checktor.spelling</code>: <code>FALSE</code> turns off <code><a href="lab_spelling.html">lab_spelling()</a></code>, which is then
+reported as skipped.</p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -159,11 +188,11 @@ recommendations, <code><a href="checkup.html">checkup()</a></code> for quick hea
 <span class="r-in"><span><span class="va">results</span>              <span class="co"># the diagnosis summary</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> ── Package Doctor - Diagnosis Summary ──────────────────────────────────────────</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Patient: <span style="color: #0000BB;">examplepackage</span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> Examined: 2026-08-23 06:05:58.44262</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> Examined: 2026-09-28 22:00:12.239495</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Doctor version: 0.2.0</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">CODE ISSUES</span>: 1 failing check</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">DESCRIPTION ISSUES</span>: 1 failing check</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">DESCRIPTION ISSUES</span>: HEALTHY</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">DOCUMENTATION ISSUES</span>: HEALTHY</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">GENERAL ISSUES</span>: HEALTHY</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">POLICY ISSUES</span>: HEALTHY</span>
@@ -174,29 +203,27 @@ recommendations, <code><a href="checkup.html">checkup()</a></code> for quick hea
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span>     <span class="co"># per-category overview</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>        category checks passed failed skipped issues</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1          code     16     15      1       0      7</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2   description     19     18      1       1      1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3 documentation     13     13      0       0      0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4       general      5      5      0       1      0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2   description     23     22      0       1      0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 documentation     17     17      0       0      0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4       general      7      6      0       1      0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 5        policy      4      4      0       0      0</span>
 <span class="r-in"><span><span class="fu"><a href="issues.html">issues</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span>      <span class="co"># every issue as a tidy data frame</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>      category    check   severity           file line</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1        code tf_usage robustness tf_usage_bad.R    8</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2        code tf_usage robustness tf_usage_bad.R   11</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3        code tf_usage robustness tf_usage_bad.R   15</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4        code tf_usage robustness tf_usage_bad.R   18</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5        code tf_usage robustness tf_usage_bad.R   22</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6        code tf_usage robustness tf_usage_bad.R   25</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7        code tf_usage robustness tf_usage_bad.R   29</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 8 description cph_role    opinion           &lt;NA&gt;   NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                                            location         message</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1                                  tf_usage_bad.R:8 T/F usage check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2                                 tf_usage_bad.R:11 T/F usage check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3                                 tf_usage_bad.R:15 T/F usage check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4                                 tf_usage_bad.R:18 T/F usage check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5                                 tf_usage_bad.R:22 T/F usage check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6                                 tf_usage_bad.R:25 T/F usage check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7                                 tf_usage_bad.R:29 T/F usage check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 8 Authors@R lacks any [cph] (copyright holder) role  cph role check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   category    check   severity           file line          location</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1     code tf_usage robustness tf_usage_bad.R    8  tf_usage_bad.R:8</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2     code tf_usage robustness tf_usage_bad.R   11 tf_usage_bad.R:11</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3     code tf_usage robustness tf_usage_bad.R   15 tf_usage_bad.R:15</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4     code tf_usage robustness tf_usage_bad.R   18 tf_usage_bad.R:18</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5     code tf_usage robustness tf_usage_bad.R   22 tf_usage_bad.R:22</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6     code tf_usage robustness tf_usage_bad.R   25 tf_usage_bad.R:25</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7     code tf_usage robustness tf_usage_bad.R   29 tf_usage_bad.R:29</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>           message</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 T/F usage check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2 T/F usage check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 T/F usage check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4 T/F usage check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5 T/F usage check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6 T/F usage check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7 T/F usage check</span>
 <span class="r-in"><span><span class="fu"><a href="predicates.html">is_healthy</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span>  <span class="co"># FALSE</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] FALSE</span>
 </code></pre></div>

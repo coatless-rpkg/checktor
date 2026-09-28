@@ -71,7 +71,9 @@ representing individual checks within the category.</p></dd>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>An object of class <code>checktor_category_result</code> containing:</p><ul><li><p>Individual <a href="checktor_check_result.html">checktor_check_result</a> objects for each check</p></li>
-<li><p><code>passed</code>: Named logical vector showing which individual checks passed</p></li>
+<li><p><code>passed</code>: Named logical vector showing which individual checks did not
+fail. A check that did not run is <code>TRUE</code> here, since it cannot fail a
+verdict; its own <code>skipped</code> element records that it did not run.</p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

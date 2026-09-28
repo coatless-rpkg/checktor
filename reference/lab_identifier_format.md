@@ -32,6 +32,13 @@ lab_identifier_format(path = ".", verbose = TRUE, desc = NULL)
 [`checktor_check_result()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor_check_result.md)
 with `passed`, `issues`, `message`.
 
+## Details
+
+An `Authors@R` that cannot be read has no identifiers to judge, so the
+check is reported as skipped and
+[`lab_authors()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_authors.md)
+reports the field.
+
 ## Source
 
 The [CRAN incoming
@@ -49,8 +56,9 @@ which runs this and every other check.
 ## Examples
 
 ``` r
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("description_examples/identifier_format_bad.txt",
                                  show_content = FALSE)
-lab_identifier_format(pkg, verbose = FALSE)$passed
-#> [1] TRUE
+lab_identifier_format(pkg, verbose = FALSE)$issues
+#> [1] "Invalid ORCID iD in Authors@R: 0000-0002-1825-0098"
+unlink(pkg, recursive = TRUE)
 ```

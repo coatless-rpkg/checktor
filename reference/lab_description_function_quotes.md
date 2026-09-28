@@ -45,8 +45,10 @@ which runs this and every other check.
 ## Examples
 
 ``` r
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("description_examples/description_function_quotes_bad.txt",
                                  show_content = FALSE)
-lab_description_function_quotes(pkg, verbose = FALSE)$passed
-#> [1] TRUE
+lab_description_function_quotes(pkg, verbose = FALSE)$issues
+#> [1] "Description: function name 'deff()' should not be quoted"
+#> [2] "Description: function name 'ess()' should not be quoted" 
+unlink(pkg, recursive = TRUE)
 ```

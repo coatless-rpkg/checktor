@@ -8,7 +8,7 @@ is exempt, since a daemon starts with an empty search path.
 ## Usage
 
 ``` r
-lab_library_in_pkg(path, verbose = TRUE, parsed = NULL)
+lab_library_in_pkg(path = ".", verbose = TRUE, parsed = NULL)
 ```
 
 ## Arguments
@@ -49,8 +49,9 @@ which runs this and every other check.
 ## Examples
 
 ``` r
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("code_examples/library_in_pkg_bad.R",
                                  show_content = FALSE)
-lab_library_in_pkg(pkg, verbose = FALSE)$passed
-#> [1] TRUE
+lab_library_in_pkg(pkg, verbose = FALSE)$issues
+#> [1] "library_in_pkg_bad.R:6 (library())"  "library_in_pkg_bad.R:13 (require())"
+unlink(pkg, recursive = TRUE)
 ```

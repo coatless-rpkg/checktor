@@ -5,7 +5,7 @@ Flags a write whose destination resolves to `~` or `$HOME`.
 ## Usage
 
 ``` r
-lab_home_writing(path, verbose = TRUE, parsed = NULL)
+lab_home_writing(path = ".", verbose = TRUE, parsed = NULL)
 ```
 
 ## Arguments
@@ -46,8 +46,10 @@ which runs this and every other check.
 ## Examples
 
 ``` r
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("code_examples/home_writing_bad.R",
                                  show_content = FALSE)
-lab_home_writing(pkg, verbose = FALSE)$passed
-#> [1] TRUE
+lab_home_writing(pkg, verbose = FALSE)$issues
+#> [1] "home_writing_bad.R:8 (write.csv() writes under the home directory)"
+#> [2] "home_writing_bad.R:16 (saveRDS() writes under the home directory)" 
+unlink(pkg, recursive = TRUE)
 ```

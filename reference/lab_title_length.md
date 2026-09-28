@@ -47,8 +47,9 @@ which runs this and every other check.
 ## Examples
 
 ``` r
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("description_examples/title_length_bad.txt",
                                  show_content = FALSE)
-lab_title_length(pkg, verbose = FALSE)$passed
-#> [1] TRUE
+lab_title_length(pkg, verbose = FALSE)$issues
+#> [1] "Title is 81 characters, so a listing that truncates at 65 would cut the last 16 characters"
+unlink(pkg, recursive = TRUE)
 ```

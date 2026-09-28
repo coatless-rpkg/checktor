@@ -83,10 +83,11 @@ diagnose_*_issues() functions, so you never navigate nested sublists."><meta nam
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code>issues()</code> returns a <code>data.frame</code> with one row per issue. At the
-results level the columns are <code>category</code>, <code>check</code>, <code>file</code>, <code>line</code>,
-<code>location</code>, <code>message</code>; a single category drops <code>category</code>; a single check
-drops <code>category</code> and <code>check</code>. A healthy object yields a 0-row frame.</p>
+    <p><code>issues()</code> returns a <code>data.frame</code> with one row per issue, whatever
+its severity tier. At the results level the columns are <code>category</code>,
+<code>check</code>, <code>severity</code>, <code>file</code>, <code>line</code>, <code>location</code>, <code>message</code>; a single
+category drops <code>category</code>; a single check drops <code>category</code>, <code>check</code> and
+<code>severity</code>. A healthy object yields a 0-row frame.</p>
     </div>
 
     <div class="section level2">
@@ -95,24 +96,22 @@ drops <code>category</code> and <code>check</code>. A healthy object yields a 0-
 <span class="r-in"><span>                                 show_content <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="checktor.html">checktor</a></span><span class="op">(</span><span class="va">pkg</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span>, progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">issues</span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>      category    check   severity           file line</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1        code tf_usage robustness tf_usage_bad.R    8</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2        code tf_usage robustness tf_usage_bad.R   11</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3        code tf_usage robustness tf_usage_bad.R   15</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4        code tf_usage robustness tf_usage_bad.R   18</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5        code tf_usage robustness tf_usage_bad.R   22</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6        code tf_usage robustness tf_usage_bad.R   25</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7        code tf_usage robustness tf_usage_bad.R   29</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 8 description cph_role    opinion           &lt;NA&gt;   NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                                            location         message</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1                                  tf_usage_bad.R:8 T/F usage check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2                                 tf_usage_bad.R:11 T/F usage check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3                                 tf_usage_bad.R:15 T/F usage check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4                                 tf_usage_bad.R:18 T/F usage check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5                                 tf_usage_bad.R:22 T/F usage check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6                                 tf_usage_bad.R:25 T/F usage check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7                                 tf_usage_bad.R:29 T/F usage check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 8 Authors@R lacks any [cph] (copyright holder) role  cph role check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   category    check   severity           file line          location</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1     code tf_usage robustness tf_usage_bad.R    8  tf_usage_bad.R:8</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2     code tf_usage robustness tf_usage_bad.R   11 tf_usage_bad.R:11</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3     code tf_usage robustness tf_usage_bad.R   15 tf_usage_bad.R:15</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4     code tf_usage robustness tf_usage_bad.R   18 tf_usage_bad.R:18</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5     code tf_usage robustness tf_usage_bad.R   22 tf_usage_bad.R:22</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6     code tf_usage robustness tf_usage_bad.R   25 tf_usage_bad.R:25</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7     code tf_usage robustness tf_usage_bad.R   29 tf_usage_bad.R:29</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>           message</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 T/F usage check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2 T/F usage check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 T/F usage check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4 T/F usage check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5 T/F usage check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6 T/F usage check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7 T/F usage check</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

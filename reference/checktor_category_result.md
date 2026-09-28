@@ -26,7 +26,9 @@ An object of class `checktor_category_result` containing:
   [checktor_check_result](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor_check_result.md)
   objects for each check
 
-- `passed`: Named logical vector showing which individual checks passed
+- `passed`: Named logical vector showing which individual checks did not
+  fail. A check that did not run is `TRUE` here, since it cannot fail a
+  verdict; its own `skipped` element records that it did not run.
 
 ## See also
 

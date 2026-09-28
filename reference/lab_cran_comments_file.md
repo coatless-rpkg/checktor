@@ -7,7 +7,7 @@ notes). Its absence is flagged so it can be added before submission.
 ## Usage
 
 ``` r
-lab_cran_comments_file(path, verbose = TRUE)
+lab_cran_comments_file(path = ".", verbose = TRUE)
 ```
 
 ## Arguments
@@ -45,13 +45,10 @@ for how every check maps to its source.
 ## Examples
 
 ``` r
-pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
-                                      show_content = FALSE)
-file.remove(file.path(pkg_path, "cran-comments.md"))  # failing case
-#> [1] TRUE
-issues(lab_cran_comments_file(pkg_path, verbose = FALSE))
-#>   file line                                       location
-#> 1 <NA>   NA No cran-comments.md file with submission notes
-#>                    message
-#> 1 cran-comments file check
+pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+                                 show_content = FALSE)
+invisible(file.remove(file.path(pkg, "cran-comments.md")))
+lab_cran_comments_file(pkg, verbose = FALSE)$issues
+#> [1] "No cran-comments.md file with submission notes"
+unlink(pkg, recursive = TRUE)
 ```

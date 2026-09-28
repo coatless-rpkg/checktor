@@ -13,7 +13,7 @@ ci_report(
   results = NULL,
   format = c("auto", "github", "gitlab", "checkstyle", "sarif", "azure", "text"),
   file = NULL,
-  severity = SEVERITY_LEVELS,
+  severity = c("policy", "robustness", "opinion"),
   skipped = TRUE,
   path = "."
 )
@@ -31,15 +31,19 @@ ci_report(
 
   Character. One of `"auto"`, `"github"`, `"gitlab"`, `"checkstyle"`,
   `"sarif"`, `"azure"` or `"text"`. `"auto"` reads the environment
-  variables each forge sets.
+  variables each forge sets: `"github"` when `GITHUB_ACTIONS` is set,
+  `"gitlab"` for `GITLAB_CI`, `"azure"` for `TF_BUILD`, `"checkstyle"`
+  for `JENKINS_URL`, and `"text"` anywhere else.
 
 - file:
 
-  Character. Where to write. Omit it for the format's natural
-  destination, standard output for the comment styles and a conventional
-  file name for the report styles. Pass `NULL` to emit nothing and only
-  return the lines, which is what you want when testing or
-  post-processing a report rather than handing it to a build. Pass
+  Character. Where to write. Leave it out for the format's natural
+  destination: standard output for `"github"`, `"azure"` and `"text"`,
+  and `gl-code-quality-report.json`, `checktor-checkstyle.xml` or
+  `checktor.sarif` for the report styles. Passing `file = NULL` is not
+  the same as leaving it out: nothing is written and the lines are only
+  returned, which is what you want when testing or post-processing a
+  report rather than handing it to a build. Pass
   [`stdout()`](https://rdrr.io/r/base/showConnections.html) to print
   regardless of format.
 

@@ -77,7 +77,11 @@ with <code><a href="https://rdrr.io/r/base/dcf.html" class="external-link">base:
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>List containing one named element per check. Each element is a list with at
-least <code>passed</code>, <code>issues</code>, and <code>message</code> (see <code><a href="checktor_check_result.html">checktor_check_result()</a></code>).</p>
+least <code>passed</code>, <code>issues</code>, and <code>message</code> (see <code><a href="checktor_check_result.html">checktor_check_result()</a></code>).
+When the <code>DESCRIPTION</code> is missing or R cannot read it, <code>description_file</code>
+fails, and every check that reads the parsed fields, registered ones
+included, is reported as skipped with the reason "DESCRIPTION could not be
+read", since it has nothing to examine.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -96,24 +100,21 @@ least <code>passed</code>, <code>issues</code>, and <code>message</code> (see <c
 <span class="r-out co"><span class="r-pr">#&gt;</span> 3                 license   policy &lt;NA&gt;   NA</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 4              title_case   policy &lt;NA&gt;   NA</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 5                 authors   policy &lt;NA&gt;   NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6                cph_role  opinion &lt;NA&gt;   NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7 description_starts_with   policy &lt;NA&gt;   NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6 description_starts_with   policy &lt;NA&gt;   NA</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                                                                             location</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1                                    Description: ggplot2 should be in single quotes</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 2                                                                                 ML</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 3                               License points at a LICENSE file that does not exist</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 4 Title is not in title case. R would write it as: Example Package for Data Analysis</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 5                                                            Missing Authors@R field</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6                                                                  Authors@R missing</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7    Description should not start with "This package"; describe what it does instead</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6    Description should not start with "This package"; describe what it does instead</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                     message</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1      Software names check</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 2            Acronyms check</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 3             License check</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 4          Title case check</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 5     Authors@R field check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6            cph role check</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7 Description opening check</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6 Description opening check</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

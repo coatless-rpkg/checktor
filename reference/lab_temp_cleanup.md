@@ -5,7 +5,7 @@ Flags a temporary file created without a matching cleanup.
 ## Usage
 
 ``` r
-lab_temp_cleanup(path, verbose = TRUE, parsed = NULL)
+lab_temp_cleanup(path = ".", verbose = TRUE, parsed = NULL)
 ```
 
 ## Arguments
@@ -47,8 +47,9 @@ which runs this and every other check.
 ## Examples
 
 ``` r
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("temp_examples/bad_temp_usage.R",
                                  show_content = FALSE)
-lab_temp_cleanup(pkg, verbose = FALSE)$passed
-#> [1] TRUE
+lab_temp_cleanup(pkg, verbose = FALSE)$issues
+#> [1] "bad_temp_usage.R:7"
+unlink(pkg, recursive = TRUE)
 ```

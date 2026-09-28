@@ -50,8 +50,9 @@ which runs this and every other check.
 ## Examples
 
 ``` r
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("description_examples/date_format_bad.txt",
                                  show_content = FALSE)
-lab_date_format(pkg, verbose = FALSE)$passed
-#> [1] TRUE
+lab_date_format(pkg, verbose = FALSE)$issues
+#> [1] "Date is not in ISO 8601 yyyy-mm-dd format: 24/09/2019"
+unlink(pkg, recursive = TRUE)
 ```

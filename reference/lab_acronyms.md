@@ -30,6 +30,17 @@ lab_acronyms(path = ".", verbose = TRUE, desc = NULL)
 [`checktor_check_result()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor_check_result.md)
 with `passed`, `issues`, `message`.
 
+## Details
+
+A name in single quotes, straight or typographic, is not read as an
+acronym, so `'YAML'` or `'MATLAB'` written as
+[`lab_language_names()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_language_names.md)
+and
+[`lab_format_names()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_format_names.md)
+ask is not reported here. Nor is anything inside a web address, a
+`<doi:...>`, a function call or a quotation in double quotes, straight
+or typographic, such as the title of an article.
+
 ## Source
 
 The CRAN Cookbook covers this under [Explaining
@@ -47,8 +58,9 @@ which runs this and every other check.
 ## Examples
 
 ``` r
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("description_examples/acronyms_bad.txt",
                                  show_content = FALSE)
-lab_acronyms(pkg, verbose = FALSE)$passed
-#> [1] TRUE
+lab_acronyms(pkg, verbose = FALSE)$issues
+#> [1] "DEFF" "ESS" 
+unlink(pkg, recursive = TRUE)
 ```

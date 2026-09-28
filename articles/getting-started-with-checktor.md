@@ -13,10 +13,11 @@ standard toolchain says a word about any of them.
 
 ![Seven failure modes against the three tools that might catch them. R
 CMD check alone catches undocumented arguments. lintr alone catches a
-line over 80 characters, which checktor does not check. Both catch a
-bare T, and R CMD check also flags a Title that is not in title case.
-The last three rows, a set.seed() left in a function, a one-line
-Description, and a missing \value{} tag, are caught only by
+line over 80 characters, which checktor does not check. lintr and
+checktor both catch a bare T in package code, and R CMD check and
+checktor both flag a Title that is not in title case. The last three
+rows, a set.seed() left in a function, a one-line Description, and a
+missing \value{} tag, are caught only by
 checktor.](figures/coverage-light.svg)![](figures/coverage-dark.svg)
 
 `checktor` is the specialist your build refers you to before that
@@ -119,11 +120,11 @@ results <- checktor(pkg, verbose = FALSE, progress = FALSE)
 results
 #> ── Package Doctor - Diagnosis Summary ──────────────────────────────────────────
 #> Patient: examplepackage
-#> Examined: 2026-08-23 06:06:17.563903
+#> Examined: 2026-09-28 22:00:35.012992
 #> Doctor version: 0.2.0
 #> 
 #> CODE ISSUES: 1 failing check
-#> DESCRIPTION ISSUES: 1 failing check
+#> DESCRIPTION ISSUES: HEALTHY
 #> DOCUMENTATION ISSUES: HEALTHY
 #> GENERAL ISSUES: HEALTHY
 #> POLICY ISSUES: HEALTHY
@@ -153,51 +154,52 @@ reach for the accessors. They return plain data frames, so you never
 spelunk through nested lists.
 
 ![The one checktor_results object fans out into three plain data frames.
-summary() gives 5 rows, one per category. issues() gives 8 rows, one per
-issue, carrying the file and line. tidy() gives 51 rows, one per check,
-whether it passed or
-not.](figures/result-shapes-light.svg)![](figures/result-shapes-dark.svg)
+summary() gives 5 rows, one per category, counting the checks that
+passed, failed and were skipped. issues() gives 7 rows, one per issue,
+carrying its severity, file and line. tidy() gives 57 rows, one per
+check, with its severity and whether it passed or was
+skipped.](figures/result-shapes-light.svg)![](figures/result-shapes-dark.svg)
 
 ``` r
 
 summary(results)   # one row per category
 #>        category checks passed failed skipped issues
 #> 1          code     16     15      1       0      7
-#> 2   description     19     18      1       1      1
-#> 3 documentation     13     13      0       0      0
-#> 4       general      5      5      0       1      0
+#> 2   description     23     22      0       1      0
+#> 3 documentation     17     17      0       0      0
+#> 4       general      7      6      0       1      0
 #> 5        policy      4      4      0       0      0
 ```
 
 ``` r
 
 issues(results)    # one row per issue, with file and line
-#>      category    check   severity           file line
-#> 1        code tf_usage robustness tf_usage_bad.R    8
-#> 2        code tf_usage robustness tf_usage_bad.R   11
-#> 3        code tf_usage robustness tf_usage_bad.R   15
-#> 4        code tf_usage robustness tf_usage_bad.R   18
-#> 5        code tf_usage robustness tf_usage_bad.R   22
-#> 6        code tf_usage robustness tf_usage_bad.R   25
-#> 7        code tf_usage robustness tf_usage_bad.R   29
-#> 8 description cph_role    opinion           <NA>   NA
-#>                                            location         message
-#> 1                                  tf_usage_bad.R:8 T/F usage check
-#> 2                                 tf_usage_bad.R:11 T/F usage check
-#> 3                                 tf_usage_bad.R:15 T/F usage check
-#> 4                                 tf_usage_bad.R:18 T/F usage check
-#> 5                                 tf_usage_bad.R:22 T/F usage check
-#> 6                                 tf_usage_bad.R:25 T/F usage check
-#> 7                                 tf_usage_bad.R:29 T/F usage check
-#> 8 Authors@R lacks any [cph] (copyright holder) role  cph role check
+#>   category    check   severity           file line          location
+#> 1     code tf_usage robustness tf_usage_bad.R    8  tf_usage_bad.R:8
+#> 2     code tf_usage robustness tf_usage_bad.R   11 tf_usage_bad.R:11
+#> 3     code tf_usage robustness tf_usage_bad.R   15 tf_usage_bad.R:15
+#> 4     code tf_usage robustness tf_usage_bad.R   18 tf_usage_bad.R:18
+#> 5     code tf_usage robustness tf_usage_bad.R   22 tf_usage_bad.R:22
+#> 6     code tf_usage robustness tf_usage_bad.R   25 tf_usage_bad.R:25
+#> 7     code tf_usage robustness tf_usage_bad.R   29 tf_usage_bad.R:29
+#>           message
+#> 1 T/F usage check
+#> 2 T/F usage check
+#> 3 T/F usage check
+#> 4 T/F usage check
+#> 5 T/F usage check
+#> 6 T/F usage check
+#> 7 T/F usage check
 ```
 
 `tidy(results)` gives one row per check, passed or not, and
 [`as.data.frame()`](https://rdrr.io/r/base/as.data.frame.html) is its
 alias. Its `skipped` column marks any check that did not run, such as
 the URL fetch when you are not at the console, so a check that sat out
-never reads as one that passed. Three predicates answer the yes/no
-questions directly:
+never reads as one that passed.
+[`summary()`](https://rdrr.io/r/base/summary.html) counts such a check
+under `skipped`, so `passed`, `failed` and `skipped` add up to `checks`.
+Three helpers answer the common questions directly:
 
 ``` r
 
@@ -206,11 +208,18 @@ is_healthy(results)
 n_issues(results)
 #> [1] 7
 failed_checks(results)
-#> [1] "code.tf_usage"        "description.cph_role"
+#> [1] "code.tf_usage"
 ```
 
-Each accessor also works on a single category, as in
-`issues(results$code_issues)`, or on a single check.
+[`is_healthy()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/predicates.md)
+and
+[`n_issues()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/predicates.md)
+follow the verdict, counting only the policy and robustness tiers, while
+[`issues()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/issues.md)
+and
+[`failed_checks()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/predicates.md)
+list every tier, opinion included. Each accessor also works on a single
+category, as in `issues(results$code_issues)`, or on a single check.
 
 ## The one-line gate
 
@@ -243,17 +252,18 @@ prescribe(results)
 #> ── Treatment Recommendations ───────────────────────────────────────────────────
 #> 
 #> ── T/F Usage Issues
+#> Issues found:
+#> • tf_usage_bad.R:8
+#> • tf_usage_bad.R:11
+#> • tf_usage_bad.R:15
+#> • tf_usage_bad.R:18
+#> • tf_usage_bad.R:22
+#> ... and 2 more
 #> Treatment: Replace `T` with `TRUE` and `F` with `FALSE`
 #> # Before
 #> result <- T
 #> # After
 #> result <- TRUE
-#> 
-#> ── cph role check
-#> Issues found:
-#> • Authors@R lacks any [cph] (copyright holder) role
-#> Treatment: Review the detailed diagnosis above; re-run `checktor(verbose =
-#> TRUE)` for specifics.
 #> 
 ```
 
@@ -276,8 +286,8 @@ and would rather not hear about the others:
 
 diagnose_code_issues()           # just the R sources
 diagnose_description_issues()    # just DESCRIPTION
-diagnose_documentation_issues()  # just the .Rd files
-diagnose_general_issues()        # size, URLs
+diagnose_documentation_issues()  # help pages, examples, vignettes, demos
+diagnose_general_issues()        # size, URLs, NEWS, README links
 diagnose_policy_violations()     # CRAN policy
 ```
 
@@ -312,6 +322,45 @@ configure_doctor(verbose_default = FALSE, progress_default = FALSE)
 results <- checktor(verbose = FALSE, progress = FALSE)
 ```
 
+## Checks you ask for, and checks you turn off
+
+A few checks never join a run, because no authority backs them or they
+ask about your submission workflow rather than the package itself. They
+are not skipped, since nothing tried to run them. A quiet run does not
+mention them, but the results name them:
+
+``` r
+
+results$metadata$on_request_checks
+#> [1] "cph_role"                    "cran_comments_file"         
+#> [3] "description_function_quotes" "format_names"               
+#> [5] "title_starts_with_article"
+```
+
+Each one is a `lab_*()` function like any other check, so running it is
+one call:
+
+``` r
+
+lab_cran_comments_file(pkg, verbose = FALSE)
+#> ✔ cran-comments file check: PASSED
+```
+
+Going the other way, a check you have decided against can be turned off.
+For one package, name it in that package’s `DESCRIPTION`:
+
+    Config/checktor/disable: news_file
+
+For every package, set the option once, for example in `.Rprofile`:
+
+``` r
+
+options(checktor.disable = "news_file")
+```
+
+A disabled check does not run and is not counted anywhere. That is the
+difference from a skipped check, which was meant to run and could not.
+
 ## Where it fits
 
 Run `checktor` in the gap between writing code and `R CMD check`:
@@ -322,7 +371,7 @@ devtools::document()
 devtools::test()
 
 results <- checktor()  # the extra-CRAN checkup
-prescribe(results)     # apply the remedies
+prescribe(results)     # read the remedies
 
 devtools::check()      # the standard checks
 ```
@@ -344,6 +393,9 @@ That is the entire point.
   From](https://r-pkg.thecoatlessprofessor.com/checktor/articles/check-sources.md):
   the source and severity tier behind every check, from CRAN policy to
   convention.
+- [What R CMD check
+  Checks](https://r-pkg.thecoatlessprofessor.com/checktor/articles/r-cmd-check.md):
+  every step `R CMD check` takes, so you can see where checktor begins.
 - [checktor in Continuous
   Integration](https://r-pkg.thecoatlessprofessor.com/checktor/articles/checktor-in-ci.md):
   put

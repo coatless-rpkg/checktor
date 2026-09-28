@@ -3,7 +3,10 @@
 Flags a `License` that
 [`tools::analyze_license()`](https://rdrr.io/r/tools/licensetools.html)
 cannot standardize, and a `+ file LICENSE` pointing at a file that does
-not exist.
+not exist. For MIT and the BSD licenses it also reads that file as
+`R CMD check` does: it must be the stub of `YEAR` and `COPYRIGHT HOLDER`
+fields (and `ORGANIZATION` for BSD 3-clause), so the full license text
+in its place is reported, as R's "License stub is invalid DCF" NOTE.
 
 ## Usage
 
@@ -48,8 +51,9 @@ which runs this and every other check.
 ## Examples
 
 ``` r
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("description_examples/license_bad.txt",
                                  show_content = FALSE)
-lab_license(pkg, verbose = FALSE)$passed
-#> [1] TRUE
+lab_license(pkg, verbose = FALSE)$issues
+#> [1] "License 'Free to use' is not a standardizable CRAN license"
+unlink(pkg, recursive = TRUE)
 ```

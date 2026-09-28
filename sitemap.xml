@@ -33,13 +33,18 @@
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_acronyms.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_authors.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_browser_calls.html</loc></url>
+<url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_citation_file.html</loc></url>
+<url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_code_exercised.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_commented_examples.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_core_usage.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_cph_role.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_cran_comments_file.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_date_format.html</loc></url>
+<url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_description_fields.html</loc></url>
+<url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_description_file.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_description_function_quotes.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_description_length.html</loc></url>
+<url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_description_placeholders.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_description_quoted_quotes.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_description_starts_with.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_detect_cores_robustness.html</loc></url>
@@ -50,8 +55,11 @@
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_example_internal_ns.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_example_state.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_example_structure.html</loc></url>
+<url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_example_tf_usage.html</loc></url>
+<url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_example_unparseable.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_example_writes.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_file_operations.html</loc></url>
+<url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_format_names.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_globalenv_mod.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_hardcoded_credentials.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_home_writing.html</loc></url>
@@ -61,6 +69,7 @@
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_language_names.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_library_in_pkg.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_license.html</loc></url>
+<url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_license_file_unneeded.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_license_year.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_missing_examples.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_network_operations.html</loc></url>
@@ -68,6 +77,8 @@
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_option_changes.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_package_size.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_print_cat_usage.html</loc></url>
+<url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_rd_bibliography.html</loc></url>
+<url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_rd_bibliography_files.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_readme_links.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_references.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_roxygen_usage.html</loc></url>
@@ -82,6 +93,7 @@
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_tf_usage.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_title_case.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_title_length.html</loc></url>
+<url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_title_package_name.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_title_redundant_phrases.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_title_starts_with_article.html</loc></url>
 <url><loc>https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_unexported_example_ns.html</loc></url>

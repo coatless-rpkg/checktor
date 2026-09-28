@@ -41,6 +41,16 @@ This function checks:
 
 - Relative links in the `README` that would break on CRAN.
 
+- A package that exports code but has no examples, no tests and no
+  vignettes to exercise it.
+
+- An `inst/CITATION` that uses the old-style
+  [`citEntry()`](https://rdrr.io/r/utils/citEntry.html) or
+  [`personList()`](https://rdrr.io/r/utils/personList.html), or calls
+  [`packageDescription()`](https://rdrr.io/r/utils/packageDescription.html),
+  [`library()`](https://rdrr.io/r/base/library.html) or
+  [`require()`](https://rdrr.io/r/base/library.html).
+
 [`lab_cran_comments_file()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_cran_comments_file.md)
 is intentionally not part of this default run, since a
 `cran-comments.md` is a workflow convention rather than a CRAN
@@ -58,5 +68,5 @@ pkg_path <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
                                       show_content = FALSE)
 general_results <- diagnose_general_issues(pkg_path, verbose = FALSE)
 general_results$package_size$size_mb
-#> [1] 0.0006465912
+#> [1] 0.0006427765
 ```

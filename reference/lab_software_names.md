@@ -30,6 +30,19 @@ lab_software_names(path = ".", verbose = TRUE, desc = NULL)
 [`checktor_check_result()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor_check_result.md)
 with `passed`, `issues`, `message`.
 
+## Details
+
+Each occurrence is judged on its own, so one quoted mention does not
+excuse a bare one elsewhere. A name is not bare inside a single-quoted
+span such as `'shiny.semantic'`, a `<https://...>` or `<doi:...>`, or a
+function call such as
+[`purrr::map()`](https://purrr.tidyverse.org/reference/map.html), which
+are the spans CRAN's own incoming spell check skips. Nor is it bare in a
+plain web address, or in a double-quoted quotation such as the title of
+a book. A name alone in double quotes, in either field, is reported by
+[`lab_description_quoted_quotes()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/lab_description_quoted_quotes.md)
+instead.
+
 ## Source
 
 [Writing R
@@ -47,8 +60,9 @@ which runs this and every other check.
 ## Examples
 
 ``` r
-pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+pkg <- example_diagnose_scenario("description_examples/software_names_bad.txt",
                                  show_content = FALSE)
-lab_software_names(pkg, verbose = FALSE)$passed
-#> [1] TRUE
+lab_software_names(pkg, verbose = FALSE)$issues
+#> [1] "Description: ggplot2 should be in single quotes"
+unlink(pkg, recursive = TRUE)
 ```

@@ -26,6 +26,10 @@ diagnose_description_issues(path = ".", verbose = TRUE)
 List containing one named element per check. Each element is a list with
 at least `passed`, `issues`, and `message` (see
 [`checktor_check_result()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor_check_result.md)).
+When the `DESCRIPTION` is missing or R cannot read it,
+`description_file` fails, and every check that reads the parsed fields,
+registered ones included, is reported as skipped with the reason
+"DESCRIPTION could not be read", since it has nothing to examine.
 
 ## See also
 
@@ -45,22 +49,19 @@ issues(results)     # description-field problems, if any
 #> 3                 license   policy <NA>   NA
 #> 4              title_case   policy <NA>   NA
 #> 5                 authors   policy <NA>   NA
-#> 6                cph_role  opinion <NA>   NA
-#> 7 description_starts_with   policy <NA>   NA
+#> 6 description_starts_with   policy <NA>   NA
 #>                                                                             location
 #> 1                                    Description: ggplot2 should be in single quotes
 #> 2                                                                                 ML
 #> 3                               License points at a LICENSE file that does not exist
 #> 4 Title is not in title case. R would write it as: Example Package for Data Analysis
 #> 5                                                            Missing Authors@R field
-#> 6                                                                  Authors@R missing
-#> 7    Description should not start with "This package"; describe what it does instead
+#> 6    Description should not start with "This package"; describe what it does instead
 #>                     message
 #> 1      Software names check
 #> 2            Acronyms check
 #> 3             License check
 #> 4          Title case check
 #> 5     Authors@R field check
-#> 6            cph role check
-#> 7 Description opening check
+#> 6 Description opening check
 ```
