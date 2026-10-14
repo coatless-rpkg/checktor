@@ -48,6 +48,20 @@ test_that("health_report(): a clean package reads clean in every format", {
   }
 })
 
+test_that("health_report(): names the package as print() does, whatever path it was given", {
+  # Run from inside a package, checktor() is given ".", and every format used to
+  # print that as the patient.
+  pkg <- make_temp_dir()
+  write_pkg(pkg, package = "dicepkg")
+  withr::local_dir(pkg)
+  r <- checktor(verbose = FALSE, progress = FALSE)
+  for (fmt in c("markdown", "text", "html")) {
+    txt <- paste(health_report(r, format = fmt), collapse = "\n")
+    expect_match(txt, "Patient:[^\n]*dicepkg", info = fmt)
+    expect_no_match(txt, "Patient:[^\n]*[`> ]\\.[`< ]", info = fmt)
+  }
+})
+
 test_that("health_report(): the HTML format escapes markup in a finding", {
   pkg <- make_temp_dir()
   write_pkg(pkg)

@@ -66,8 +66,10 @@ its own.
 
 Findings carry a file name rather than a path, so the path is recovered by
 looking for the file under \verb{R/}, \verb{man/}, \verb{vignettes/} and the other places a
-package keeps code. A finding with no location at all, such as a \code{DESCRIPTION}
-field problem, is reported against \code{DESCRIPTION} so it still appears.
+package keeps code. A finding that names a file and no line, such as a help
+page with no \verb{\\value}, is reported on that file's first line. A finding with
+no location at all, such as a \code{DESCRIPTION} field problem, is reported against
+\code{DESCRIPTION} so it still appears.
 }
 \examples{
 pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",

@@ -232,6 +232,27 @@ test_that("ci_report(): a finding with no location is still openable", {
   expect_snapshot(writeLines(text_report))
 })
 
+test_that("ci_report(): a finding that names a file but no line is reported against that file", {
+  # A help page with no \value is reported as "f.Rd". It used to land on
+  # DESCRIPTION, with every other finding that carries a file and no line.
+  pkg <- make_temp_dir()
+  write_pkg(
+    pkg,
+    rd_files = list(
+      "f.Rd" = c("\\name{f}", "\\alias{f}", "\\title{F}", "\\description{d}", "\\usage{f(x)}")
+    )
+  )
+  r <- checktor(pkg, verbose = FALSE, progress = FALSE)
+  expect_identical(issues(r$documentation_issues$value_tags)$file, "f.Rd")
+  out <- ci_report(
+    r,
+    format = "text", file = NULL, skipped = FALSE,
+    severity = c("policy", "robustness", "opinion")
+  )
+  expect_true(any(grepl("^man/f\\.Rd:1 \\[opinion\\] value_tags - ", out)))
+  expect_false(any(grepl("^DESCRIPTION:1 .* value_tags - ", out)))
+})
+
 test_that("ci_report(): a DESCRIPTION R cannot read is reported against it", {
   r <- checktor(unparseable_pkg(), verbose = FALSE, progress = FALSE)
   out <- ci_report(r, format = "text", file = NULL, skipped = FALSE)

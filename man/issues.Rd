@@ -26,7 +26,11 @@ issues(x, ...)
 its severity tier. At the results level the columns are \code{category},
 \code{check}, \code{severity}, \code{file}, \code{line}, \code{location}, \code{message}; a single
 category drops \code{category}; a single check drops \code{category}, \code{check} and
-\code{severity}. A healthy object yields a 0-row frame.
+\code{severity}. A healthy object yields a 0-row frame. \code{file} and \code{line} are
+read from \code{location}: a finding that names a file and no line, such as a
+help page with no \verb{\\value}, has the file and an \code{NA} line, and a finding
+that names no file, such as one about a \code{DESCRIPTION} field, has \code{NA} for
+both.
 }
 \description{
 Plain accessors over the objects returned by \code{\link[=checktor]{checktor()}} and the

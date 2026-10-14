@@ -109,7 +109,7 @@ generate_markdown_report <- function(results) {
   report <- c(
     "# Package Doctor - Health Report",
     "",
-    paste("**Patient:** `", results$metadata$package_path, "`", sep = ""),
+    paste("**Patient:** `", package_label(results$metadata$package_path), "`", sep = ""),
     paste("**Examination Date:** ", results$metadata$diagnosis_time),
     paste("**Doctor Version:** ", results$metadata$checktor_version),
     "",
@@ -211,7 +211,7 @@ generate_text_report <- function(results) {
   report <- c(
     "Package Doctor - Health Report",
     paste("Generated on:", results$metadata$diagnosis_time),
-    paste("Patient:", results$metadata$package_path),
+    paste("Patient:", package_label(results$metadata$package_path)),
     "",
     "Summary:",
     paste("Total Issues:", results$metadata$total_issues)
@@ -279,7 +279,7 @@ generate_html_report <- function(results) {
     "<h1 class='header'>Package Doctor - Health Report</h1>",
     paste(
       "<p><strong>Patient:</strong>",
-      results$metadata$package_path,
+      escape_html(package_label(results$metadata$package_path)),
       "</p>"
     ),
     paste(

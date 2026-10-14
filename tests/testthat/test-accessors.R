@@ -76,6 +76,57 @@ test_that("issues(): carries the tier, as does tidy()", {
   expect_identical(td$severity[td$check == "seed_setting"], "policy")
 })
 
+# Test .split_issue() ----
+
+test_that(".split_issue(): a finding that names a file but no line keeps the file", {
+  # Each is a shape a check reports. The file used to be lost, so issues() gave
+  # NA and a report could not point at the finding.
+  cases <- list(
+    "a file alone" = "check.outlier.Rd",
+    "a file and what is wrong" = "knit_rd.Rd: uses \\dontrun{} for slow code; prefer \\donttest{}",
+    "a file and a label" = "handle_cookies.Rd (unwrapped network call in \\examples)",
+    "a file and a sentence" = "check.outlier.Rd documents R/diag.out.R, which no longer exists",
+    "an R file that does not parse" = "internal_PIOS_gumbel.R: parse error: Excessive depth in document",
+    "a README" = "README.md: relative link to missing file 'assets/aisdk_infographic.png'",
+    "a vignette with an address in it" = "intro.Rmd: http://www.cookiecentral.com/faq/#3.5 (use https://)",
+    "a Quarto vignette" = "intro.qmd: unguarded network access in a code chunk (curl_download)",
+    "a Sweave vignette" = "intro.Rnw: http://www.example.org/ (use https://)"
+  )
+  files <- c(
+    "check.outlier.Rd", "knit_rd.Rd", "handle_cookies.Rd", "check.outlier.Rd",
+    "internal_PIOS_gumbel.R", "README.md", "intro.Rmd", "intro.qmd", "intro.Rnw"
+  )
+  for (i in seq_along(cases)) {
+    got <- .split_issue(cases[[i]])
+    expect_identical(got$file, files[[i]], label = names(cases)[[i]])
+    expect_identical(got$line, NA_integer_, label = names(cases)[[i]])
+    expect_identical(got$location, cases[[i]], label = names(cases)[[i]])
+  }
+})
+
+test_that(".split_issue(): a finding with a line still gives its file and line", {
+  got <- .split_issue(c("a.R:12", "a.R:12 (writeLines())", "example f.Rd:3 (installs)"))
+  expect_identical(got$file, c("a.R", "a.R", "f.Rd"))
+  expect_identical(got$line, c(12L, 12L, 3L))
+})
+
+test_that(".split_issue(): a finding that names no file has none", {
+  none <- c(
+    "AI",
+    "Title: JavaScript should be in single quotes",
+    "Description: tibble should be in single quotes",
+    "Date is over a month old: 2026-01-14",
+    "No NEWS file found (add NEWS.md to document user-facing changes)",
+    "Package size 6.81 MB (compressed) exceeds 5 MB",
+    "DESCRIPTION: http://www.openreliability.org (use https://)",
+    "data.frame is not a file"
+  )
+  got <- .split_issue(none)
+  expect_identical(got$file, rep(NA_character_, length(none)))
+  expect_identical(got$line, rep(NA_integer_, length(none)))
+  expect_identical(got$location, none)
+})
+
 # Test is_healthy() ----
 
 test_that("is_healthy(): predicates report status without sublist navigation", {

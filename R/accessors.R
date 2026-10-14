@@ -52,34 +52,55 @@ empty_issue_df <- function(with_category = FALSE) {
 }
 
 # Pull the file and line out of a finding, whatever shape it carries. Checks
-# report locations three ways, and all of them are locations:
+# report locations five ways, and all of them are locations:
 #
 #   a.R:12                          the plain form
 #   a.R:12 (writeLines())           with a label naming what was found
 #   example f.Rd:3 (installs)       with the kind of source it came from
+#   f.Rd                            a file and no line, as for a missing \value
+#   f.Rd: uses \dontrun{} ...       a file, no line, and what is wrong with it
 #
-# Only the first used to parse, so a finding with a label lost its file and line
-# and could not be pointed at. Anything with no location at all keeps the raw
-# string and reports NA, as before.
+# Only the forms with a line used to parse, so a finding that named a file and
+# nothing more lost the file, and a report could not point at it: half of the
+# findings over 463 CRAN packages. A file with no line is known by its
+# extension, because "Title: ..." and "Date is ..." begin with a word too.
+# Anything with no location at all keeps the raw string and reports NA.
+SOURCE_KIND_PREFIX <- "^(?:(?:example|vignette|demo|test)[[:space:]]+)?"
+LINELESS_FILE_EXTENSIONS <- c("R", "Rd", "Rmd", "qmd", "Rnw", "md")
+
 .split_issue <- function(issues) {
   issues <- as.character(issues)
-  pattern <- paste0(
-    "^(?:(?:example|vignette|demo|test)[[:space:]]+)?", # optional source kind
+  first_group <- function(matches, n) {
+    vapply(
+      matches,
+      function(g) if (length(g) == n) g[[2]] else NA_character_,
+      character(1)
+    )
+  }
+  with_line <- paste0(
+    SOURCE_KIND_PREFIX,
     "([^:[:space:]]+)", # file
     ":([0-9]+)", # line
     "(?:[[:space:]]+\\(.*\\))?$" # optional trailing label
   )
-  m <- regmatches(issues, regexec(pattern, issues))
-  file <- vapply(
-    m,
-    function(g) if (length(g) == 3L) g[[2]] else NA_character_,
-    character(1)
-  )
+  m <- regmatches(issues, regexec(with_line, issues))
+  file <- first_group(m, 3L)
   line <- vapply(
     m,
     function(g) if (length(g) == 3L) as.integer(g[[3]]) else NA_integer_,
     integer(1)
   )
+  # A file and no line: the name, then the end, a colon or a space.
+  lineless <- paste0(
+    SOURCE_KIND_PREFIX,
+    "([^:[:space:]]+\\.(?:", paste(LINELESS_FILE_EXTENSIONS, collapse = "|"), "))",
+    "(?:$|:|[[:space:]])"
+  )
+  named <- first_group(
+    regmatches(issues, regexec(lineless, issues, ignore.case = TRUE)),
+    2L
+  )
+  file[is.na(file)] <- named[is.na(file)]
   data.frame(
     file = file,
     line = line,
@@ -140,7 +161,11 @@ empty_issue_df <- function(with_category = FALSE) {
 #'   its severity tier. At the results level the columns are `category`,
 #'   `check`, `severity`, `file`, `line`, `location`, `message`; a single
 #'   category drops `category`; a single check drops `category`, `check` and
-#'   `severity`. A healthy object yields a 0-row frame.
+#'   `severity`. A healthy object yields a 0-row frame. `file` and `line` are
+#'   read from `location`: a finding that names a file and no line, such as a
+#'   help page with no `\value`, has the file and an `NA` line, and a finding
+#'   that names no file, such as one about a `DESCRIPTION` field, has `NA` for
+#'   both.
 #'
 #' @examples
 #' pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
