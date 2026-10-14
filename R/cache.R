@@ -1,9 +1,9 @@
 # A cache that lasts one checktor() run.
 #
-# Several checks read the same sources: a dozen walk every .Rd file, three
-# categories parse R/, and five checks parse the code in examples and vignettes.
-# Each used to parse its own copy, so a package's help pages were parsed a dozen
-# times over and parse_Rd() was nearly half the run. Within a run the sources do
+# Several checks read the same sources: many walk every .Rd file, more than one
+# category parses R/, and the example checks parse the code in examples and
+# vignettes. Each used to parse its own copy, so a package's help pages were
+# parsed once per check and parse_Rd() was nearly half the run. Within a run the sources do
 # not change, so the first parse is kept and handed to every later reader.
 #
 # The cache is on only while checktor() or a diagnose_*() category function is

@@ -8,42 +8,44 @@ knitr:
   opts_chunk:
     collapse: true
     comment: '#>'
+format:
+  html:
+    include-in-header: include/color-mode.html
 ---
 
-`R CMD check` is a pipeline. It builds your package, installs it, and then runs
-roughly fifty separate checks, each of which prints a line beginning `* checking
-...` and ends with a verdict. R itself parses those lines back out of the log with a
-single [regular expression][checktools], and this page walks through what each one
-is actually looking at. The checks themselves are defined in R's own `tools` package
-([`check.R`][check-src]), and the manual describes the process in [Writing R
-Extensions, "Checking packages"][wre-check].
+`R CMD check` is a pipeline. It builds your package, installs it and then runs
+a long series of checks. Each one prints a line that begins `* checking ...` and
+ends with its result. R reads those lines back out of the log with a single
+[regular expression][checktools]. The checks themselves live in R's `tools`
+package ([`check.R`][check-src]), and Writing R Extensions describes the process
+under ["Checking packages"][wre-check]. This page sets out what each step looks
+at.
 
-checktor is deliberately the other half of this story: it runs the extra-CRAN checks
-that a human reviewer applies but that `R CMD check` never will. Knowing exactly
-where `R CMD check` stops is the fastest way to see where checktor begins, so this
-page is a map of the territory `R CMD check` already covers. For the map of
-checktor's own checks, see [Where the Checks Come From](check-sources.html).
+checktor covers the other half. It runs the checks a CRAN reviewer applies by
+hand and `R CMD check` does not. Knowing where `R CMD check` stops shows where
+checktor begins, so this page maps the ground `R CMD check` already covers.
+[Where the Checks Come From](check-sources.html) maps checktor's own checks.
 
-## The four verdicts
+## Read the four outcomes
 
-Every step ends in one of four states, and only the last three matter.
+Every step ends in one of four states, and only the last three need attention.
 
 - `OK` means nothing to report.
-- `NOTE` means something a reviewer will likely ask about. A submission with NOTEs
-  can still be accepted, but each one needs a reason.
+- `NOTE` flags something a reviewer will likely ask about. CRAN can still
+  accept a submission with NOTEs, but each one needs an explanation.
 - `WARNING` means a real problem. CRAN will not accept a package with a WARNING.
-- `ERROR` means the check could not complete, usually because code or a test failed
-  outright.
+- `ERROR` means the check could not complete, usually because code or a test
+  failed outright.
 
-A clean `R CMD check` is the floor for a CRAN submission, not the ceiling. Many of
-its steps are structural ("is this a well-formed package?") rather than editorial
-("is this package good?"), which is exactly the gap a reviewer fills in, and the gap
-checktor is built for.
+Passing `R CMD check` cleanly is the minimum for a CRAN submission. Most of its
+steps ask whether the package is well formed, and few ask whether it is written
+the way a reviewer wants. Reviewers fill that gap by hand, and checktor is built for the
+same gap.
 
-## Packaging and installation
+## Build and install
 
-These run first and decide whether the package is even well-formed enough to
-install. A failure here stops everything else.
+These steps run first and decide whether the package is well formed enough to
+install. Failure here stops everything else.
 
 | Step | What it checks |
 |---|---|
@@ -51,51 +53,54 @@ install. A failure here stops everything else.
 | `checking package namespace information` | `NAMESPACE` exists and parses. |
 | `checking package dependencies` | Every package in `Depends`, `Imports`, `LinkingTo`, and `Suggests` is installed and available. |
 | `checking if this is a source package` | The tree looks like a source package, not an already-built binary. |
-| `checking if there is a namespace` | A `NAMESPACE` file is present. |
+| `checking if there is a namespace` | The package has a `NAMESPACE` file. |
 | `checking for executable files` | No stray executables are present in the sources. |
-| `checking for hidden files and directories` | Flags hidden files (`.foo`) that are usually build detritus. |
-| `checking for portable file names` | File names are ASCII, case-insensitively unique, and free of characters that break on other platforms. |
+| `checking for hidden files and directories` | Flags hidden files (`.foo`) that are usually build debris. |
+| `checking for portable file names` | File names are ASCII, unique when case is ignored, and free of characters that break on other platforms. |
 | `checking for sufficient/correct file permissions` | Every file is readable, and nothing is unexpectedly executable. |
-| `checking whether package can be installed` | The package installs cleanly with `R CMD INSTALL`; the install log is scanned for warnings. |
+| `checking whether package can be installed` | The package installs cleanly with `R CMD INSTALL`, and the install log is scanned for warnings. |
 | `checking installed package size` | Flags an installed package that is large (a NOTE above ~5 MB). |
 | `checking package directory` | The installed layout has the directories R expects. |
 | `checking 'build' directory` | The `build/` metadata (from `R CMD build`) is consistent. |
-| `checking index information` | `INDEX` and demo/vignette indices are present and consistent. |
+| `checking index information` | `INDEX` and the demo and vignette indices are present and consistent. |
 | `checking package subdirectories` | Subdirectories are named and cased as R requires, with no empty ones. |
-| `checking top-level files` | Only recognised files sit at the package root. |
+| `checking top-level files` | Only recognized files sit at the package root. |
 | `checking for left-over files` | No editor backups or merge-conflict leftovers are present. |
 
-## DESCRIPTION and metadata
+## Read the metadata
+
+One step covers `DESCRIPTION` as a whole.
 
 | Step | What it checks |
 |---|---|
-| `checking DESCRIPTION meta-information` | `DESCRIPTION` parses, the `License` is recognised, `Authors@R` is valid, the encoding is declared, and the dependency fields are well-formed. |
+| `checking DESCRIPTION meta-information` | `DESCRIPTION` parses, the `License` is recognized, `Authors@R` is valid, the encoding is declared, and the dependency fields are well formed. |
 
-## R code
+## Check the R code
 
-The heart of the static analysis. `checking R code for possible problems` is R's
-own linter (`codetools`), and it catches a great deal on its own.
+Most of the static analysis happens here. `checking R code for possible
+problems` runs codetools, the code analyzer that comes with R, and it catches a
+great deal by itself.
 
 | Step | What it checks |
 |---|---|
 | `checking code files for non-ASCII characters` | R sources are ASCII, or their non-ASCII content is declared. |
 | `checking R files for syntax errors` | Every `.R` file parses. |
 | `checking whether the package can be loaded` | The package loads without error. |
-| `checking whether the package can be loaded with stated dependencies` | It loads using only the declared dependencies, catching an undeclared `Depends`. |
+| `checking whether the package can be loaded with stated dependencies` | It loads using only the declared dependencies, which catches an undeclared `Depends`. |
 | `checking whether the package can be unloaded cleanly` | Unloading raises no error. |
 | `checking whether the namespace can be loaded with stated dependencies` | The namespace imports resolve against the declared dependencies. |
 | `checking whether the namespace can be unloaded cleanly` | The namespace unloads without error. |
 | `checking use of S3 registration` | S3 methods are registered through `NAMESPACE`, not attached by hand. |
 | `checking dependencies in R code` | Every `pkg::fn` and imported symbol traces to a declared dependency. |
-| `checking S3 generic/method consistency` | An S3 method's arguments are compatible with its generic. |
-| `checking replacement functions` | A `foo<-` function takes `value` as its final argument. |
-| `checking foreign function calls` | `.C`, `.Call`, and friends name registered, correctly-shaped native routines. |
-| `checking R code for possible problems` | `codetools` flags undefined globals, unused arguments, questionable `.Internal` use, and similar issues across all R code. |
+| `checking S3 generic/method consistency` | S3 methods take arguments compatible with their generics. |
+| `checking replacement functions` | Replacement functions such as `foo<-` take `value` as their final argument. |
+| `checking foreign function calls` | `.C`, `.Call` and the other foreign-function interfaces name registered native routines of the right shape. |
+| `checking R code for possible problems` | codetools flags undefined globals, unused arguments, questionable `.Internal` use and similar issues across all R code. |
 
-## Documentation
+## Check the documentation
 
-Everything here works on the `.Rd` files, whether written by hand or generated by
-roxygen2.
+Every step here reads the `.Rd` files, whether you wrote them by hand or roxygen2
+generated them.
 
 | Step | What it checks |
 |---|---|
@@ -104,13 +109,13 @@ roxygen2.
 | `checking Rd line widths` | (`--as-cran`) Flags `\usage` lines wider than 90 characters and `\examples` lines wider than 100. |
 | `checking Rd cross-references` | Every `\link{}` points at a topic that exists. |
 | `checking for missing documentation entries` | Every exported object has a documented `\alias`. |
-| `checking for code/documentation mismatches` | Argument names in `\usage`, `\arguments`, and function signatures agree. |
+| `checking for code/documentation mismatches` | Argument names in `\usage`, `\arguments` and function signatures agree. |
 | `checking Rd \usage sections` | Each `\usage` block matches the object it documents. |
 | `checking Rd contents` | Flags placeholder or empty sections left in a documentation template. |
 
-## Examples, tests, and vignettes
+## Run the examples, tests and vignettes
 
-The dynamic checks: R actually runs your code and fails on any error.
+These steps run your code and fail on any error.
 
 | Step | What it checks |
 |---|---|
@@ -118,62 +123,64 @@ The dynamic checks: R actually runs your code and fails on any error.
 | `checking examples` | Every `\examples{}` block runs without error. `\dontrun{}` and `\donttest{}` code is skipped. |
 | `checking examples with --run-donttest` | (`--as-cran`) When the examples contain `\donttest{}`, they run again with that code included, so it must run without error too. |
 | `checking installed files from 'inst/doc'` | Files under `inst/doc` are consistent with the vignettes. |
-| `checking files in 'vignettes'` | The `vignettes/` sources are well-formed. |
+| `checking files in 'vignettes'` | The `vignettes/` sources are well formed. |
 | `checking for unstated dependencies in 'tests'` | Tests use only declared packages. |
-| `checking tests` | The test suite runs; any failure is an ERROR. |
+| `checking tests` | The test suite runs, and any failure is an ERROR. |
 | `checking for unstated dependencies in vignettes` | Vignettes use only declared packages. |
 | `checking package vignettes` | Vignette metadata and index entries are present and consistent. |
 | `checking re-building of vignette outputs` | Every vignette rebuilds from source without error. |
 
-## The CRAN incoming checks (`--as-cran`)
+## Add the CRAN incoming checks
 
-With `--as-cran`, the checks people actually mean by "the CRAN checks" are added.
-Most of a maintainer's NOTEs come from the first line here.
+`--as-cran` adds the steps people mean when they say "the CRAN checks". Most of
+the NOTEs a maintainer sees come from the first one.
 
 | Step | What it checks |
 |---|---|
-| `checking CRAN incoming feasibility` | The submission-readiness pass: the `Title` case, `Version`, `Date`, `Description`, `Authors@R`, `License`, URLs, and DOIs, plus a spell-check and a look for prior versions and problematic dependencies. |
+| `checking CRAN incoming feasibility` | The submission-readiness pass. It looks at the `Title` case, `Version`, `Date`, `Description`, `Authors@R`, `License`, URLs and DOIs, runs a spell check, and looks for prior versions and problematic dependencies. |
 | `checking for future file timestamps` | No file is dated in the future. |
 | `checking serialization versions` | No saved object uses a serialization format newer than the package's stated R dependency. |
 
-## Cleanup
+## Clean up
 
-The last two steps confirm the check itself left nothing behind.
+The last two steps confirm that the check left nothing behind.
 
 | Step | What it checks |
 |---|---|
 | `checking for non-standard things in the check directory` | No unexpected files were produced during the check. |
 | `checking for detritus in the temp directory` | The package cleaned up after itself in `tempdir()`. |
 
-## Steps you will only see sometimes
+## Expect a few extra steps
 
-Several checks run only when the package has the matching content.
+Several steps run only when the package has the matching content.
 
 | Step | Runs when |
 |---|---|
 | `checking contents of 'data' directory` | The package includes a `data/` directory. |
 | `checking data for non-ASCII characters` | The package includes data. |
 | `checking data for ASCII and uncompressed saves` | The package includes data, and efficient compression is preferred. |
-| `checking line endings in ... sources and headers` | The package includes C, C++, or Fortran code. |
+| `checking line endings in ... sources and headers` | The package includes C, C++ or Fortran code. |
 | `checking compilation flags in Makevars` | The package includes a `src/Makevars`. |
 | `checking compiled code` | The package includes compiled code, and calls to disallowed entry points are reported. |
 | `checking PDF version of manual` | The manual is built (skipped by `--no-manual`). |
 
-## Where checktor fits
+## Pick up where it stops
 
-Read the tables above and a pattern emerges. `R CMD check` asks, thoroughly,
-*is this a well-formed package that builds, installs, and runs?* What it almost never
-asks is *is this the way a CRAN reviewer wants it written?* It will not object to a
-bare `T` in place of `TRUE`, a `set.seed()` buried in a function, an unquoted package
-name in the `Title`, an exported function with no `\value{}` tag, or a one-line
-`Description`. Those are judgement calls a human makes, and they are where a passing
-check and a passing review part ways.
+Read down the tables and a pattern appears. `R CMD check` asks, thoroughly,
+whether this is a well-formed package that builds, installs and runs. It rarely
+asks whether the package is written the way a CRAN reviewer wants. It will not
+object to a bare `T` in place of `TRUE`, a `set.seed()` buried in a function, an
+unquoted package name in the `Title`, an exported function with no `\value{}`
+tag or a one-line `Description`. People make those calls, and they are where a
+passing check and a passing review part ways.
 
-That gap is checktor's whole job. It runs the extra-CRAN checks that live in the
-Repository Policy and reviewers' habits but nowhere in `R CMD check`. Run the two
-together: `R CMD check` for the structure, checktor for the review. See [Where the
-Checks Come From](check-sources.html) for the source and severity behind each one
-checktor adds.
+Those cases are checktor's job. It runs the extra-CRAN checks drawn from the
+Repository Policy and from reviewers' habits, none of which `R CMD check` runs.
+Use the two together, `R CMD check` for structure and checktor for the review.
+The rcmdcheck package runs `R CMD check` from R and returns its NOTEs, WARNINGs
+and ERRORs as data, and `devtools::check()` uses it. [Where the Checks Come
+From](check-sources.html) gives the source and severity of each check checktor
+adds.
 
 [checktools]: https://github.com/wch/r-source/blob/trunk/src/library/tools/R/checktools.R
 [check-src]: https://github.com/wch/r-source/blob/trunk/src/library/tools/R/check.R

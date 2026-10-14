@@ -1,0 +1,134 @@
+<style>
+/* Color modes for the vignettes as R builds them (the quarto::html engine, the
+   pages CRAN serves). A switch offers Auto, Light and Dark. Auto follows the
+   reader's system and is the default. pkgdown sets data-bs-theme on <html> and
+   styles its own pages, so every page rule here stays off there. Without
+   JavaScript a page stays light and shows the light figures. */
+
+/* Figures: no frame, and the dark variant only on a dark page. */
+html:not([data-bs-theme]) img.ct-fig { margin: 1.5rem auto; max-width: 100%; height: auto;
+  border: 0; padding: 0; border-radius: 0; background: transparent; }
+html:not([data-bs-theme]) img.ct-fig.ct-light { display: block; }
+html:not([data-bs-theme]) img.ct-fig.ct-dark { display: none; }
+html[data-ct-mode="dark"]:not([data-bs-theme]) img.ct-fig.ct-light { display: none; }
+html[data-ct-mode="dark"]:not([data-bs-theme]) img.ct-fig.ct-dark { display: block; }
+
+/* Palettes. Light keeps the page as R draws it, with the package's navy and
+   green. Dark matches the pkgdown site's dark mode. */
+html:not([data-bs-theme]) {
+  --ct-bg: #ffffff; --ct-fg: #1b2430; --ct-heading: #0E2A47; --ct-muted: #5F7189;
+  --ct-code-bg: #f5f7f9; --ct-code-fg: #1b2430; --ct-rule: #e3e9ef;
+  --ct-link: #127A45; --ct-link-hover: #0d5f36;
+  --ct-accent: #1FA45C; --ct-accent-bg: #1FA45C; --ct-accent-fg: #ffffff;
+  --ct-quote-bg: rgba(47, 191, 113, 0.06);
+  color-scheme: light;
+}
+html[data-ct-mode="dark"]:not([data-bs-theme]) {
+  --ct-bg: #212529; --ct-fg: #dee2e6; --ct-heading: #e7eef5; --ct-muted: #adb5bd;
+  --ct-code-bg: #2b3035; --ct-code-fg: #e9ecef; --ct-rule: #3a4148;
+  --ct-link: #4ade8a; --ct-link-hover: #74e6a3;
+  --ct-accent: #2FBF71; --ct-accent-bg: #2FBF71; --ct-accent-fg: #0E1A2B;
+  --ct-quote-bg: rgba(47, 191, 113, 0.10);
+  color-scheme: dark;
+}
+
+html:not([data-bs-theme]) body { background: var(--ct-bg); color: var(--ct-fg); }
+html:not([data-bs-theme]) h1, html:not([data-bs-theme]) h2, html:not([data-bs-theme]) h3,
+html:not([data-bs-theme]) h4 { color: var(--ct-heading); border-bottom-color: var(--ct-rule); }
+html:not([data-bs-theme]) a, html:not([data-bs-theme]) a:visited { color: var(--ct-link); }
+html:not([data-bs-theme]) a:hover, html:not([data-bs-theme]) a:visited:hover { color: var(--ct-link-hover); }
+html:not([data-bs-theme]) pre, html:not([data-bs-theme]) code,
+html:not([data-bs-theme]) pre:not([class]) { background-color: var(--ct-code-bg); color: var(--ct-code-fg); }
+html:not([data-bs-theme]) pre code { background: transparent; }
+html:not([data-bs-theme]) blockquote { background: var(--ct-quote-bg); border-left: 0.3rem solid var(--ct-accent);
+  border-radius: 0 0.375rem 0.375rem 0; padding: 0.75rem 1rem; margin: 1.25rem 0; }
+html:not([data-bs-theme]) table, html:not([data-bs-theme]) table th,
+html:not([data-bs-theme]) table td { border-color: var(--ct-rule); }
+html:not([data-bs-theme]) table thead, html:not([data-bs-theme]) table tr.even { background-color: var(--ct-code-bg); }
+html:not([data-bs-theme]) hr { border-top-color: var(--ct-rule); }
+/* A wide table or a long line of code scrolls inside itself, not the page. */
+html:not([data-bs-theme]) table { display: block; max-width: 100%; overflow-x: auto; }
+html:not([data-bs-theme]) pre, html:not([data-bs-theme]) div.sourceCode { max-width: 100%; overflow-x: auto; }
+
+/* The switch. */
+.ct-mode { display: flex; justify-content: flex-end; margin: 0 0 0.75rem; }
+.ct-mode-group { display: inline-flex; border: 1px solid var(--ct-rule); border-radius: 999px; overflow: hidden; }
+.ct-mode-group button { appearance: none; background: transparent; border: 0; margin: 0;
+  padding: 0.3rem 0.8rem; font: inherit; font-size: 12px; line-height: 1.2;
+  color: var(--ct-muted); cursor: pointer; }
+.ct-mode-group button + button { border-left: 1px solid var(--ct-rule); }
+.ct-mode-group button:hover { color: var(--ct-fg); }
+.ct-mode-group button[aria-pressed="true"] { background: var(--ct-accent-bg); color: var(--ct-accent-fg); }
+.ct-mode-group button:focus-visible { outline: 2px solid var(--ct-accent); outline-offset: -2px; }
+
+/* Paper is light: print the light page and figures, without the switch. */
+@media print {
+  .ct-mode { display: none; }
+  html[data-ct-mode="dark"]:not([data-bs-theme]) {
+    --ct-bg: #ffffff; --ct-fg: #1b2430; --ct-heading: #0E2A47; --ct-code-bg: #f5f7f9;
+    --ct-code-fg: #1b2430; --ct-rule: #e3e9ef; --ct-link: #127A45; color-scheme: light;
+  }
+  html[data-ct-mode="dark"]:not([data-bs-theme]) img.ct-fig.ct-light { display: block; }
+  html[data-ct-mode="dark"]:not([data-bs-theme]) img.ct-fig.ct-dark { display: none; }
+}
+</style>
+<script>
+(function () {
+  var root = document.documentElement;
+  if (root.hasAttribute("data-bs-theme")) return; // a pkgdown page: it has its own switch
+  var KEY = "checktor-vignette-color-mode";
+  var media = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+  var choice = "auto";
+  try {
+    var saved = window.localStorage.getItem(KEY);
+    if (saved === "light" || saved === "dark") choice = saved;
+  } catch (e) {}
+  function apply() {
+    var dark = choice === "dark" || (choice === "auto" && media !== null && media.matches);
+    root.setAttribute("data-ct-mode", dark ? "dark" : "light");
+  }
+  apply();
+  if (media !== null) {
+    if (media.addEventListener) media.addEventListener("change", apply);
+    else if (media.addListener) media.addListener(apply);
+  }
+  document.addEventListener("DOMContentLoaded", function () {
+    if (root.hasAttribute("data-bs-theme") || document.querySelector(".navbar")) {
+      root.removeAttribute("data-ct-mode");
+      return;
+    }
+    var options = [["auto", "Auto", "Follow your system setting"],
+                   ["light", "Light", "Always light"],
+                   ["dark", "Dark", "Always dark"]];
+    var bar = document.createElement("div");
+    bar.className = "ct-mode";
+    var group = document.createElement("div");
+    group.className = "ct-mode-group";
+    group.setAttribute("role", "group");
+    group.setAttribute("aria-label", "Color mode");
+    var buttons = options.map(function (o) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = o[1];
+      b.title = o[2];
+      b.addEventListener("click", function () {
+        choice = o[0];
+        try {
+          if (choice === "auto") window.localStorage.removeItem(KEY);
+          else window.localStorage.setItem(KEY, choice);
+        } catch (e) {}
+        apply();
+        sync();
+      });
+      group.appendChild(b);
+      return [o[0], b];
+    });
+    function sync() {
+      buttons.forEach(function (pair) { pair[1].setAttribute("aria-pressed", String(pair[0] === choice)); });
+    }
+    sync();
+    bar.appendChild(group);
+    document.body.insertBefore(bar, document.body.firstChild);
+  });
+})();
+</script>
