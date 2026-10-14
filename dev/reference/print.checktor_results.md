@@ -1,0 +1,57 @@
+# Print Method for checktor_results Objects
+
+Provides a clean, formatted summary of diagnostic results from
+[`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/dev/reference/checktor.md).
+
+## Usage
+
+``` r
+# S3 method for class 'checktor_results'
+print(x, ...)
+```
+
+## Arguments
+
+- x:
+
+  A `checktor_results` object from
+  [`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/dev/reference/checktor.md)
+
+- ...:
+
+  Additional arguments passed to print methods (currently unused)
+
+## Value
+
+Returns `x` invisibly. Called primarily for its side effect of printing
+a formatted summary to the console.
+
+## See also
+
+[`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/dev/reference/checktor.md)
+to generate results,
+[`health_report()`](https://r-pkg.thecoatlessprofessor.com/checktor/dev/reference/health_report.md)
+for detailed reports
+
+## Examples
+
+``` r
+pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
+                                 show_content = FALSE)
+results <- checktor(pkg, verbose = FALSE, progress = FALSE)
+print(results)
+#> ── Package Doctor - Diagnosis Summary ──────────────────────────────────────────
+#> Patient: examplepackage
+#> Examined: 2026-10-14 21:09:08.105002
+#> Doctor version: 0.2.0.9000
+#> 
+#> CODE ISSUES: 1 failing check
+#> DESCRIPTION ISSUES: HEALTHY
+#> DOCUMENTATION ISSUES: HEALTHY
+#> GENERAL ISSUES: HEALTHY
+#> POLICY ISSUES: HEALTHY
+#> 
+#> ℹ 2 checks did not run: "spelling" and "url_liveness".
+#> ! Overall health: NEEDS ATTENTION (7 issues)
+#> Run `summary()`, `issues()`, or `prescribe()` for details
+```

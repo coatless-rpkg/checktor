@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 173.2 200" width="173.2" height="200" role="img" aria-label="checktor logo">
+  <polygon points="86.6,2 171.4,51 171.4,149 86.6,198 1.8,149 1.8,51" fill="#F6FAF9"/>
+  <polygon points="86.6,13 161.9,57 161.9,143 86.6,187 11.3,143 11.3,57" fill="none" stroke="#1FA45C" stroke-width="3.5"/>
+
+  <g fill="none" stroke="#0E2A47" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M64,44 C61,62 71,72 80,79"/>
+    <path d="M98,42 C101,60 91,72 80,79"/>
+    <path d="M80,79 C79,98 96,100 105,110"/>
+  </g>
+  <circle cx="64" cy="44" r="4.8" fill="#0E2A47"/>
+  <circle cx="98" cy="42" r="4.8" fill="#0E2A47"/>
+
+  <circle cx="113" cy="118" r="22" fill="#2FBF71"/>
+  <polyline points="102,118 110,127 125,108" fill="none" stroke="#F6FAF9" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
+
+  <text x="86.6" y="156" text-anchor="middle" font-size="18" fill="#0E2A47" font-weight="800" letter-spacing="0.5" font-family="Helvetica Neue, Arial, sans-serif">checktor</text>
+</svg>

@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="16 6 706 302" width="706" height="302"
+     role="img" aria-labelledby="axes-t">
+  <title id="axes-t">Anchoring on SYMBOL_FUNCTION_CALL</title>
+  <defs>
+    <clipPath id="cp-a"><rect x="348" y="40" width="372" height="48" rx="7"/></clipPath>
+    <clipPath id="cp-b"><rect x="348" y="104" width="372" height="72" rx="7"/></clipPath>
+    <clipPath id="cp-c"><rect x="348" y="194" width="372" height="48" rx="7"/></clipPath>
+  </defs>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+
+    <text x="24" y="20" font-size="9" letter-spacing="1.2" font-weight="600"
+          font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+          fill="#E7EEF5" fill-opacity="0.55">THE PARSE TREE FOR</text>
+    <text x="150" y="21" font-size="11.5" fill="#E7EEF5">fn(a, b = 1)</text>
+
+    <!-- nesting guides -->
+    <g stroke="#E7EEF5" stroke-opacity="0.12">
+      <path d="M28 62 V282"/>
+      <path d="M44 90 V120"/>
+    </g>
+
+    <!-- the anchor row -->
+    <rect x="52" y="102" width="152" height="17" rx="3" fill="#1FA45C" fill-opacity="0.16"/>
+    <rect x="212" y="102" width="52" height="17" rx="3" fill="#157F49"/>
+    <text x="220" y="114" font-size="7.5" letter-spacing="0.8" fill="#FFFFFF"
+          font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif" font-weight="700">ANCHOR</text>
+
+    <!-- all eight children of the call expr, in source order -->
+    <g font-size="9.5" fill="#E7EEF5">
+      <text x="24" y="56">&lt;expr&gt;</text>
+      <text x="40" y="84">&lt;expr&gt;</text>
+      <text x="56" y="115">SYMBOL_FUNCTION_CALL  fn</text>
+      <text x="40" y="142" fill-opacity="0.45">OP-LEFT-PAREN  (</text>
+      <text x="40" y="170">&lt;expr&gt; &#8250; SYMBOL  a</text>
+      <text x="40" y="196" fill-opacity="0.45">OP-COMMA  ,</text>
+      <text x="40" y="222" fill-opacity="0.45">SYMBOL_SUB  b</text>
+      <text x="40" y="248" fill-opacity="0.45">EQ_SUB  =</text>
+      <text x="40" y="274" fill-opacity="0.45">&lt;expr&gt; &#8250; NUM_CONST  1</text>
+    </g>
+
+    <!-- leads out to the connector dots -->
+    <g stroke="#E7EEF5" stroke-opacity="0.18" stroke-dasharray="2 3">
+      <path d="M96 52 H296"/>
+      <path d="M96 80 H296"/>
+      <path d="M170 166 H296"/>
+    </g>
+
+    <g fill="none" stroke-width="1.4">
+      <path d="M300 52 C324 52 324 64 348 64"    stroke="#1FA45C"/>
+      <path d="M300 80 C324 80 324 140 348 140"  stroke="#D97A34"/>
+      <path d="M300 166 C324 166 324 218 348 218" stroke="#1FA45C"/>
+    </g>
+    <circle cx="300" cy="52"  r="3.2" fill="#1FA45C"/>
+    <circle cx="300" cy="80"  r="3.2" fill="#D97A34"/>
+    <circle cx="300" cy="166" r="3.2" fill="#1FA45C"/>
+
+    <!-- card A: the call expr -->
+    <rect x="348" y="40" width="372" height="48" rx="7"
+          fill="#E7EEF5" fill-opacity="0.04" stroke="#E7EEF5" stroke-opacity="0.15"/>
+    <rect x="348" y="40" width="4" height="48" fill="#1FA45C" clip-path="url(#cp-a)"/>
+    <text x="364" y="62" font-size="9.5" fill="#E7EEF5">parent::expr/parent::expr</text>
+    <text x="364" y="78" font-size="8" letter-spacing="0.9" fill="#E7EEF5" fill-opacity="0.55"
+          font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif" font-weight="600">THE CALL EXPR, ALL EIGHT CHILDREN</text>
+
+    <!-- card B: the trap -->
+    <rect x="348" y="104" width="372" height="72" rx="7"
+          fill="#D97A34" fill-opacity="0.07" stroke="#D97A34" stroke-opacity="0.5"/>
+    <rect x="348" y="104" width="4" height="72" fill="#D97A34" clip-path="url(#cp-b)"/>
+    <text x="364" y="128" font-size="9.5" fill="#E7EEF5">parent::expr</text>
+    <rect x="456" y="116" width="34" height="15" rx="3" fill="#B4541F"/>
+    <text x="462" y="127" font-size="7.5" letter-spacing="0.8" fill="#FFFFFF"
+          font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif" font-weight="700">TRAP</text>
+    <text x="364" y="146" font-size="8" letter-spacing="0.9" fill="#E7EEF5" fill-opacity="0.65"
+          font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif" font-weight="600">THE FUNCTION-NAME WRAPPER, NOT THE CALL</text>
+    <text x="364" y="164" font-size="9" fill="#E7EEF5" fill-opacity="0.55"
+          font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">It holds the function name and nothing else.</text>
+
+    <!-- card C: the first argument expr -->
+    <rect x="348" y="194" width="372" height="48" rx="7"
+          fill="#E7EEF5" fill-opacity="0.04" stroke="#E7EEF5" stroke-opacity="0.15"/>
+    <rect x="348" y="194" width="4" height="48" fill="#1FA45C" clip-path="url(#cp-c)"/>
+    <text x="364" y="216" font-size="9.5" fill="#E7EEF5">parent::expr/following-sibling::expr[1]</text>
+    <text x="364" y="232" font-size="8" letter-spacing="0.9" fill="#E7EEF5" fill-opacity="0.55"
+          font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif" font-weight="600">THE FIRST ARGUMENT EXPR</text>
+
+    <text x="24" y="300" font-size="9" fill="#E7EEF5" fill-opacity="0.5"
+          font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">It is the first argument, not the first positional one. For fn(b = 1, a) the same axis lands on the value 1.</text>
+  </g>
+</svg>
