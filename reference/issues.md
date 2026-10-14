@@ -37,7 +37,11 @@ issues(x, ...)
 severity tier. At the results level the columns are `category`, `check`,
 `severity`, `file`, `line`, `location`, `message`; a single category
 drops `category`; a single check drops `category`, `check` and
-`severity`. A healthy object yields a 0-row frame.
+`severity`. A healthy object yields a 0-row frame. `file` and `line` are
+read from `location`: a finding that names a file and no line, such as a
+help page with no `\value`, has the file and an `NA` line, and a finding
+that names no file, such as one about a `DESCRIPTION` field, has `NA`
+for both.
 
 ## Examples
 

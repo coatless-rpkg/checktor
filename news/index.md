@@ -685,6 +685,19 @@ run reflects the code you wrote.
 
 ### Bug fixes
 
+- [`ci_report()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/ci_report.md)
+  reports a finding against the file it names, even when the finding has
+  no line. A help page with no `\value`, a broken link in the README and
+  an `http://` address in a vignette each name a file and nothing more,
+  and every one of them was marked on the first line of `DESCRIPTION`.
+  Each is now marked on the first line of its own file, and
+  [`issues()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/issues.md)
+  gives that file with an `NA` line.
+
+- [`health_report()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/health_report.md)
+  names the package, as the printed result does. Run from inside a
+  package it printed the path it was given, so the patient was `.`.
+
 - [`health_report()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/health_report.md)
   reports the CRAN policy findings. It skipped that panel entirely, so
   the citable rejections were missing from every report, and the text

@@ -42,10 +42,10 @@ pkg <- example_diagnose_scenario("code_examples/tf_usage_bad.R",
 results <- checktor(pkg, verbose = FALSE, progress = FALSE)
 report <- health_report(results, format = "text")
 head(report)
-#> [1] "Package Doctor - Health Report"                        
-#> [2] "Generated on: 2026-09-28 22:25:25.66064"               
-#> [3] "Patient: /tmp/RtmpX5ACEV/checktor_example_19e9339c2f09"
-#> [4] ""                                                      
-#> [5] "Summary:"                                              
-#> [6] "Total Issues: 7"                                       
+#> [1] "Package Doctor - Health Report"          
+#> [2] "Generated on: 2026-10-14 02:00:18.741827"
+#> [3] "Patient: examplepackage"                 
+#> [4] ""                                        
+#> [5] "Summary:"                                
+#> [6] "Total Issues: 7"                         
 ```

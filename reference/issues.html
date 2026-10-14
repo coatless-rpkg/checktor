@@ -87,7 +87,11 @@ diagnose_*_issues() functions, so you never navigate nested sublists."><meta nam
 its severity tier. At the results level the columns are <code>category</code>,
 <code>check</code>, <code>severity</code>, <code>file</code>, <code>line</code>, <code>location</code>, <code>message</code>; a single
 category drops <code>category</code>; a single check drops <code>category</code>, <code>check</code> and
-<code>severity</code>. A healthy object yields a 0-row frame.</p>
+<code>severity</code>. A healthy object yields a 0-row frame. <code>file</code> and <code>line</code> are
+read from <code>location</code>: a finding that names a file and no line, such as a
+help page with no <code>\value</code>, has the file and an <code>NA</code> line, and a finding
+that names no file, such as one about a <code>DESCRIPTION</code> field, has <code>NA</code> for
+both.</p>
     </div>
 
     <div class="section level2">

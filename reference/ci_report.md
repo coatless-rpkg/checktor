@@ -91,9 +91,10 @@ Each forge reads a different shape, and `format` picks it:
 
 Findings carry a file name rather than a path, so the path is recovered
 by looking for the file under `R/`, `man/`, `vignettes/` and the other
-places a package keeps code. A finding with no location at all, such as
-a `DESCRIPTION` field problem, is reported against `DESCRIPTION` so it
-still appears.
+places a package keeps code. A finding that names a file and no line,
+such as a help page with no `\value`, is reported on that file's first
+line. A finding with no location at all, such as a `DESCRIPTION` field
+problem, is reported against `DESCRIPTION` so it still appears.
 
 ## See also
 

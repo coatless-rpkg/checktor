@@ -56,5 +56,5 @@ identical(find_package_root(pkg), pkg)
 
 # From a subdirectory, the root is found by walking up
 basename(find_package_root(file.path(pkg, "R")))
-#> [1] "checktor_example_19e97375d17c"
+#> [1] "checktor_example_1a9e5376fc2d"
 ```

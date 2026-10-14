@@ -130,8 +130,10 @@ its own.</p></li>
 <li><p><code>"text"</code> writes one plain line per finding, for a build with no forge at all.</p></li>
 </ul><p>Findings carry a file name rather than a path, so the path is recovered by
 looking for the file under <code>R/</code>, <code>man/</code>, <code>vignettes/</code> and the other places a
-package keeps code. A finding with no location at all, such as a <code>DESCRIPTION</code>
-field problem, is reported against <code>DESCRIPTION</code> so it still appears.</p>
+package keeps code. A finding that names a file and no line, such as a help
+page with no <code>\value</code>, is reported on that file's first line. A finding with
+no location at all, such as a <code>DESCRIPTION</code> field problem, is reported against
+<code>DESCRIPTION</code> so it still appears.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
