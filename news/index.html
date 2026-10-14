@@ -43,11 +43,11 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/coatless-rpkg/checktor/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/coatless-rpkg/checktor/blob/v0.2.0/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.2.0" id="checktor-020">checktor 0.2.0<a class="anchor" aria-label="anchor" href="#checktor-020"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.2.0" id="checktor-020">checktor 0.2.0<a class="anchor" aria-label="anchor" href="#checktor-020"></a></h2><p class="text-muted">CRAN release: 2026-10-14</p>
 <p>Every check now carries a severity tier, so a clean bill of health means something precise rather than merely quiet. Checks read your examples, vignettes and demos as well as <code>R/</code>, which is where several of the most common rejections actually land. New checks bring part of CRAN’s incoming filter offline, covering the <code>Date</code>, <code>Encoding</code> and <code>Version</code> fields, the structure of <code>Authors@R</code>, ORCID and ROR identifiers, a <code>detectCores()</code> that can return <code>NA</code>, and a scan for a leaked credential. Existing checks are sharper and quieter, every check is callable on its own, findings can go straight to your build system, checktor runs from anywhere inside a package tree, and a package can tune checktor through <code>Config/checktor/*</code> fields in its own DESCRIPTION.</p>
 <div class="section level3">
 <h3 id="breaking-changes-0-2-0">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-0-2-0"></a></h3>

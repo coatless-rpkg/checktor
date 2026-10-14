@@ -2,6 +2,8 @@
 
 ## checktor 0.2.0
 
+CRAN release: 2026-10-14
+
 Every check now carries a severity tier, so a clean bill of health means
 something precise rather than merely quiet. Checks read your examples,
 vignettes and demos as well as `R/`, which is where several of the most

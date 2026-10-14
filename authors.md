@@ -8,7 +8,7 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/coatless-rpkg/checktor/blob/main/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/coatless-rpkg/checktor/blob/v0.2.0/DESCRIPTION)
 
 Balamuta J (2026). *checktor: Extra CRAN Submission Checks*. R package
 version 0.2.0, <https://github.com/coatless-rpkg/checktor>.
