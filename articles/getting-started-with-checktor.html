@@ -17,7 +17,66 @@
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><script src="getting-started-with-checktor_files/libs/quarto-html/popper.min.js"></script><script src="getting-started-with-checktor_files/libs/quarto-html/tippy.umd.min.js"></script><link href="getting-started-with-checktor_files/libs/quarto-html/tippy.css" rel="stylesheet">
 <link href="getting-started-with-checktor_files/libs/quarto-html/light-border.css" rel="stylesheet">
-<!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Getting Started with checktor">
+<script>
+  (function () {
+    var root = document.documentElement;
+    if (root.hasAttribute("data-bs-theme")) return; // a pkgdown page: it has its own switch
+    var KEY = "checktor-vignette-color-mode";
+    var media = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+    var choice = "auto";
+    try {
+      var saved = window.localStorage.getItem(KEY);
+      if (saved === "light" || saved === "dark") choice = saved;
+    } catch (e) {}
+    function apply() {
+      var dark = choice === "dark" || (choice === "auto" && media !== null && media.matches);
+      root.setAttribute("data-ct-mode", dark ? "dark" : "light");
+    }
+    apply();
+    if (media !== null) {
+      if (media.addEventListener) media.addEventListener("change", apply);
+      else if (media.addListener) media.addListener(apply);
+    }
+    document.addEventListener("DOMContentLoaded", function () {
+      if (root.hasAttribute("data-bs-theme") || document.querySelector(".navbar")) {
+        root.removeAttribute("data-ct-mode");
+        return;
+      }
+      var options = [["auto", "Auto", "Follow your system setting"],
+                     ["light", "Light", "Always light"],
+                     ["dark", "Dark", "Always dark"]];
+      var bar = document.createElement("div");
+      bar.className = "ct-mode";
+      var group = document.createElement("div");
+      group.className = "ct-mode-group";
+      group.setAttribute("role", "group");
+      group.setAttribute("aria-label", "Color mode");
+      var buttons = options.map(function (o) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.textContent = o[1];
+        b.title = o[2];
+        b.addEventListener("click", function () {
+          choice = o[0];
+          try {
+            if (choice === "auto") window.localStorage.removeItem(KEY);
+            else window.localStorage.setItem(KEY, choice);
+          } catch (e) {}
+          apply();
+          sync();
+        });
+        group.appendChild(b);
+        return [o[0], b];
+      });
+      function sync() {
+        buttons.forEach(function (pair) { pair[1].setAttribute("aria-pressed", String(pair[0] === choice)); });
+      }
+      sync();
+      bar.appendChild(group);
+      document.body.insertBefore(bar, document.body.firstChild);
+    });
+  })();
+  </script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Getting Started with checktor">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:creator" content="@axiomsofxyz">
 <meta name="twitter:site" content="@axiomsofxyz">
@@ -30,7 +89,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">checktor</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -79,7 +138,7 @@
 
 
 
-      <small class="dont-index">Source: <a href="https://github.com/coatless-rpkg/checktor/blob/v0.2.0/vignettes/getting-started-with-checktor.qmd" class="external-link"><code>vignettes/getting-started-with-checktor.qmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/coatless-rpkg/checktor/blob/main/vignettes/getting-started-with-checktor.qmd" class="external-link"><code>vignettes/getting-started-with-checktor.qmd</code></a></small>
       <div class="d-none name"><code></code></div>
     </div>
 
@@ -88,48 +147,38 @@
 
 
 
-    <style>
-.ct-fig{display:block;margin:1.5rem auto;max-width:100%;height:auto}
-.ct-dark{display:none}
-@media (prefers-color-scheme:dark){.ct-light{display:none}.ct-dark{display:block}}
-[data-bs-theme=light] .ct-light{display:block}
-[data-bs-theme=light] .ct-dark{display:none}
-[data-bs-theme=dark] .ct-light{display:none}
-[data-bs-theme=dark] .ct-dark{display:block}
-</style>
-<section class="level2"><h2 id="the-gap-checktor-fills">The gap checktor fills<a class="anchor" aria-label="anchor" href="#the-gap-checktor-fills"></a>
+    <section class="level2"><h2 id="close-the-gap">Close the gap<a class="anchor" aria-label="anchor" href="#close-the-gap"></a>
 </h2>
-<p><code>R CMD check</code> answers one question well, whether this package builds and runs. The question that actually decides your submission goes unasked. Will a CRAN volunteer, reading by hand, send it back? Those are different questions, and the space between them is where afternoons disappear. A missing <code>\value{}</code> tag. A <code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed()</a></code> left inside a function. A Description that never grew past one line. Nothing in the standard toolchain says a word about any of them.</p>
-<p><img src="figures/coverage-light.svg" class="ct-fig ct-light" alt="Seven failure modes against the three tools that might catch them. R CMD check alone catches undocumented arguments. lintr alone catches a line over 80 characters, which checktor does not check. lintr and checktor both catch a bare T in package code, and R CMD check and checktor both flag a Title that is not in title case. The last three rows, a set.seed() left in a function, a one-line Description, and a missing \value{} tag, are caught only by checktor."><img src="figures/coverage-dark.svg" class="ct-fig ct-dark" aria-hidden="true"></p>
-<p><code>checktor</code> is the specialist your build refers you to before that appointment. It runs the extra-CRAN checks that live in the Repository Policy and reviewers’ long memories but nowhere in the standard toolchain, and, true to the name, it gives you a checkup, a diagnosis, and a prescription.</p>
-</section><section class="level2"><h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
+<p><code>R CMD check</code> tells you whether your package builds, installs and runs. CRAN volunteers also read each new package by hand, and they ask for more. They object to a help page with no <code>\value{}</code>, a <code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed()</a></code> buried inside a function and a Description one line long. <code>R CMD check</code> passes all three without a word, and any one of them can send a package back.</p>
+<p><img src="figures/coverage-light.svg" class="ct-fig ct-light" alt="Seven package problems in a grid against R CMD check, lintr and checktor, with a filled dot where each one catches the problem. R CMD check alone catches undocumented arguments, and lintr alone catches a line over 80 characters. lintr and checktor both catch a bare T in place of TRUE, and R CMD check and checktor both catch a Title not in title case. Only checktor catches the last three, a set.seed() left in a function, a one-line Description and a missing \value{} tag."><img src="figures/coverage-dark.svg" class="ct-fig ct-dark" aria-hidden="true"></p>
+<p>checktor holds your package to the rules reviewers apply by hand. They come from the <a href="https://cran.r-project.org/web/packages/policies.html" class="external-link">CRAN Repository Policy</a>, <a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html" class="external-link">Writing R Extensions</a> and the <a href="https://contributor.r-project.org/cran-cookbook/" class="external-link">CRAN Cookbook</a>, the R Contributor guide to the problems that get packages sent back. Use it alongside <code>R CMD check</code>, which remains the authority on whether a package builds and runs, and <a href="https://lintr.r-lib.org" class="external-link">lintr</a>, which is the place for code style.</p>
+</section><section class="level2"><h2 id="install-checktor">Install checktor<a class="anchor" aria-label="anchor" href="#install-checktor"></a>
 </h2>
-<p><code>checktor</code> is on CRAN, so you can install it the usual way.</p>
+<p>Install the release from CRAN.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"checktor"</span><span class="op">)</span></span></code></pre></div>
 </div>
-<p>If you want the cutting-edge development version, with the latest changes before they reach CRAN, install it from GitHub.</p>
+<p>The development version carries changes that have not reached CRAN yet. Install it from GitHub.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># install.packages("pak")</span></span>
 <span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"coatless-rpkg/checktor"</span><span class="op">)</span></span></code></pre></div>
 </div>
-</section><section class="level2"><h2 id="a-first-checkup">A first checkup<a class="anchor" aria-label="anchor" href="#a-first-checkup"></a>
+</section><section class="level2"><h2 id="run-a-first-checkup">Run a first checkup<a class="anchor" aria-label="anchor" href="#run-a-first-checkup"></a>
 </h2>
-<p>Load the package first.</p>
+<p>Load the package.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/coatless-rpkg/checktor" class="external-link">checktor</a></span><span class="op">)</span></span></code></pre></div>
 </div>
-<p>That brings <code><a href="../reference/checktor.html">checktor()</a></code> and its helpers into your session, so from here everything is a single function call, and the natural place to begin is a checkup.</p>
-<p><code><a href="../reference/checktor.html">checktor()</a></code> examines a package directory. So we can watch it work without maiming your own package, we will point it at a throwaway package built around one deliberately bad file.</p>
+<p><code><a href="../reference/checktor.html">checktor()</a></code> examines a package directory. Rather than experiment on your own package, start with a throwaway one. <code><a href="../reference/example_diagnose_scenario.html">example_diagnose_scenario()</a></code> builds a small package around one file of bad habits and returns its path.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">pkg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/example_diagnose_scenario.html">example_diagnose_scenario</a></span><span class="op">(</span><span class="st">"code_examples/tf_usage_bad.R"</span>,</span>
 <span>                                 show_content <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
 </div>
-<p>Here is the file it was built around, bad habits and all.</p>
+<p>The file uses <code>T</code> and <code>F</code> where it means <code>TRUE</code> and <code>FALSE</code>.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Example file showing T/F usage issues</span></span>
 <span></span>
@@ -162,7 +211,7 @@
 <span>  <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="va">valid</span> <span class="op">&amp;&amp;</span> <span class="va">strict</span> <span class="op">==</span> <span class="cn">T</span><span class="op">)</span> <span class="co"># Issue: should be TRUE</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 <blockquote>
-<p>Left to itself, <code><a href="../reference/example_diagnose_scenario.html">example_diagnose_scenario()</a></code> prints that file for you, because <code>show_content</code> defaults to <code>TRUE</code>. We pass <code>FALSE</code> and render it above instead, so it arrives as highlighted R rather than console output.</p>
+<p><code><a href="../reference/example_diagnose_scenario.html">example_diagnose_scenario()</a></code> prints the file itself unless you pass <code>show_content = FALSE</code>. This page passes <code>FALSE</code> and shows the file above as highlighted R instead of console output.</p>
 </blockquote>
 <p>Now the checkup itself.</p>
 <div class="cell">
@@ -172,8 +221,8 @@
 <span><span class="va">results</span></span>
 <span><span class="co">#&gt; ── Package Doctor - Diagnosis Summary ──────────────────────────────────────────</span></span>
 <span><span class="co">#&gt; Patient: examplepackage</span></span>
-<span><span class="co">#&gt; Examined: 2026-10-14 14:37:41.276292</span></span>
-<span><span class="co">#&gt; Doctor version: 0.2.0</span></span>
+<span><span class="co">#&gt; Examined: 2026-10-15 21:53:02.660595</span></span>
+<span><span class="co">#&gt; Doctor version: 0.2.0.9000</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; CODE ISSUES: 1 failing check</span></span>
 <span><span class="co">#&gt; DESCRIPTION ISSUES: HEALTHY</span></span>
@@ -185,14 +234,17 @@
 <span><span class="co">#&gt; ! Overall health: NEEDS ATTENTION (7 issues)</span></span>
 <span><span class="co">#&gt; Run `summary()`, `issues()`, or `prescribe()` for details</span></span></code></pre></div>
 </div>
-<p>That bedside summary names which of the five categories (code, DESCRIPTION, documentation, general, and CRAN policy) need attention, and gives an overall verdict. For the full catalogue of what each category checks, see the <a href="https://r-pkg.thecoatlessprofessor.com/checktor/reference/index.html">function reference</a>.</p>
+<p>The printout marks each of the five categories (code, DESCRIPTION, documentation, general and CRAN policy) as healthy or failing. It lists any check that did not run and ends with the package’s overall health. Here the code category fails on seven uses of <code>T</code> and <code>F</code>. <code>url_liveness</code> did not run, because it fetches URLs only when you are at the console.</p>
+<p>Each check has one of three severities. <code>policy</code> marks a rule CRAN applies, <code>robustness</code> a defect CRAN would still accept, and <code>opinion</code> a convention. By default, overall health counts policy and robustness findings and leaves opinion findings out of the count.</p>
+<p><img src="figures/severity-light.svg" class="ct-fig ct-light" alt="Three severities side by side. Policy breaks a CRAN rule, such as set.seed(42) inside a function. Robustness is a real defect that CRAN still accepts, such as sorted = F. Opinion is a convention with no rule behind it, such as a help page with no \value{}. Under policy and robustness, a bracket reads Counts toward overall health. Under opinion, a dashed bracket reads Listed, not counted."><img src="figures/severity-dark.svg" class="ct-fig ct-dark" aria-hidden="true"></p>
+<p><a href="check-sources.html">Where the Checks Come From</a> gives the source and severity of every check, and the <a href="https://r-pkg.thecoatlessprofessor.com/checktor/reference/index.html">function reference</a> documents each one.</p>
 <blockquote>
-<p><strong>On your own package</strong>, the call is simply <code><a href="../reference/checktor.html">checktor()</a></code>. It works from anywhere inside the package, so calling it with your working directory in <code>R/</code> or <code>tests/testthat/</code> still examines the whole package.</p>
+<p>On your own package, call <code><a href="../reference/checktor.html">checktor()</a></code> with no arguments. It finds the package root from anywhere inside it, so a working directory of <code>R/</code> or <code>tests/testthat/</code> still examines the whole package.</p>
 </blockquote>
-</section><section class="level2"><h2 id="reading-the-results-as-data">Reading the results as data<a class="anchor" aria-label="anchor" href="#reading-the-results-as-data"></a>
+</section><section class="level2"><h2 id="read-the-results-as-data">Read the results as data<a class="anchor" aria-label="anchor" href="#read-the-results-as-data"></a>
 </h2>
-<p>The printed report is for humans. When you want to <em>compute</em> on the findings, filter them, count them, fold them into a report of your own, reach for the accessors. They return plain data frames, so you never spelunk through nested lists.</p>
-<p><img src="figures/result-shapes-light.svg" class="ct-fig ct-light" alt="The one checktor_results object fans out into three plain data frames. summary() gives 5 rows, one per category, counting the checks that passed, failed and were skipped. issues() gives 7 rows, one per issue, carrying its severity, file and line. tidy() gives 57 rows, one per check, with its severity and whether it passed or was skipped."><img src="figures/result-shapes-dark.svg" class="ct-fig ct-dark" aria-hidden="true"></p>
+<p>The printed report is for people. To filter, count or reshape the findings, use the accessors, which return plain data frames.</p>
+<p><img src="figures/result-shapes-light.svg" class="ct-fig ct-light" alt="One checktor_results object feeds three plain data frames. summary() gives one row per category, counting the checks that passed, failed and were skipped. issues() gives one row per issue, with its severity, file and line. tidy() gives one row per check, with its severity and whether it passed or was skipped."><img src="figures/result-shapes-dark.svg" class="ct-fig ct-dark" aria-hidden="true"></p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span>   <span class="co"># one row per category</span></span>
@@ -223,7 +275,8 @@
 <span><span class="co">#&gt; 6 T/F usage check</span></span>
 <span><span class="co">#&gt; 7 T/F usage check</span></span></code></pre></div>
 </div>
-<p><code>tidy(results)</code> gives one row per check, passed or not, and <code><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame()</a></code> is its alias. Its <code>skipped</code> column marks any check that did not run, such as the URL fetch when you are not at the console, so a check that sat out never reads as one that passed. <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> counts such a check under <code>skipped</code>, so <code>passed</code>, <code>failed</code> and <code>skipped</code> add up to <code>checks</code>. Three helpers answer the common questions directly:</p>
+<p><code>tidy(results)</code> gives one row per check, passed or not, and <code><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame()</a></code> returns the same frame. Its <code>skipped</code> column marks a check that did not run, such as the URL fetch above, so a check that sat out never reads as a pass. <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> counts that check as skipped, and its <code>passed</code>, <code>failed</code> and <code>skipped</code> columns add up to <code>checks</code>.</p>
+<p>Three helpers answer the usual questions.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/predicates.html">is_healthy</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span>
@@ -233,19 +286,19 @@
 <span><span class="fu"><a href="../reference/predicates.html">failed_checks</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "code.tf_usage"</span></span></code></pre></div>
 </div>
-<p><code><a href="../reference/predicates.html">is_healthy()</a></code> and <code><a href="../reference/predicates.html">n_issues()</a></code> follow the verdict, counting only the policy and robustness tiers, while <code><a href="../reference/issues.html">issues()</a></code> and <code><a href="../reference/predicates.html">failed_checks()</a></code> list every tier, opinion included. Each accessor also works on a single category, as in <code>issues(results$code_issues)</code>, or on a single check.</p>
-</section><section class="level2"><h2 id="the-one-line-gate">The one-line gate<a class="anchor" aria-label="anchor" href="#the-one-line-gate"></a>
+<p><code><a href="../reference/predicates.html">is_healthy()</a></code> and <code><a href="../reference/predicates.html">n_issues()</a></code> follow the overall health, so by default they count only policy and robustness findings. <code><a href="../reference/issues.html">issues()</a></code> lists findings of every severity, opinion included, and <code><a href="../reference/predicates.html">failed_checks()</a></code> lists every check that failed. Every accessor also works on a single category, as in <code>issues(results$code_issues)</code>. <code><a href="../reference/issues.html">issues()</a></code>, <code><a href="../reference/predicates.html">n_issues()</a></code>, <code><a href="../reference/predicates.html">is_healthy()</a></code> and <code><a href="../reference/predicates.html">passed()</a></code> work on a single check as well.</p>
+</section><section class="level2"><h2 id="gate-a-script-on-one-call">Gate a script on one call<a class="anchor" aria-label="anchor" href="#gate-a-script-on-one-call"></a>
 </h2>
-<p>For scripts and pre-submission checklists, <code><a href="../reference/checkup.html">checkup()</a></code> collapses the whole diagnosis to a single verdict, <code>TRUE</code> when the package is clean:</p>
+<p><code><a href="../reference/checkup.html">checkup()</a></code> runs the same diagnosis without printing and returns one logical, <code>TRUE</code> when the package is in good overall health.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/checkup.html">checkup</a></span><span class="op">(</span><span class="va">pkg</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] FALSE</span></span></code></pre></div>
 </div>
-<p>Built to be the last word in a shell one-liner, it takes charge of a GitHub Actions build in the <a href="checktor-in-ci.html">checktor in Continuous Integration</a> vignette.</p>
-</section><section class="level2"><h2 id="from-diagnosis-to-treatment">From diagnosis to treatment<a class="anchor" aria-label="anchor" href="#from-diagnosis-to-treatment"></a>
+<p>It is built to end a shell one-liner. <a href="checktor-in-ci.html">checktor in Continuous Integration</a> puts it in charge of a GitHub Actions build.</p>
+</section><section class="level2"><h2 id="treat-what-it-finds">Treat what it finds<a class="anchor" aria-label="anchor" href="#treat-what-it-finds"></a>
 </h2>
-<p>A diagnosis you cannot act on is just bad news. <code><a href="../reference/prescribe.html">prescribe()</a></code> turns each finding into a concrete remedy, with the before and after spelled out.</p>
+<p>Diagnosis without treatment is only bad news. <code><a href="../reference/prescribe.html">prescribe()</a></code> takes each failed check in turn and prints its findings, its remedy and a before-and-after example.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/prescribe.html">prescribe</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span>
@@ -266,15 +319,15 @@
 <span><span class="co">#&gt; result &lt;- TRUE</span></span>
 <span><span class="co">#&gt; </span></span></code></pre></div>
 </div>
-<p><code><a href="../reference/health_report.html">health_report()</a></code> writes the whole consultation to a file, as Markdown, HTML, or plain text, to keep alongside your <code>cran-comments.md</code>:</p>
+<p><code><a href="../reference/health_report.html">health_report()</a></code> writes the same findings and remedies to a file, as Markdown, HTML or plain text, to keep beside your <code>cran-comments.md</code>.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/health_report.html">health_report</a></span><span class="op">(</span><span class="va">results</span>, file <span class="op">=</span> <span class="st">"package-health.md"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/health_report.html">health_report</a></span><span class="op">(</span><span class="va">results</span>, file <span class="op">=</span> <span class="st">"package-health.html"</span>, format <span class="op">=</span> <span class="st">"html"</span><span class="op">)</span></span></code></pre></div>
 </div>
-</section><section class="level2"><h2 id="examining-one-system-at-a-time">Examining one system at a time<a class="anchor" aria-label="anchor" href="#examining-one-system-at-a-time"></a>
+</section><section class="level2"><h2 id="examine-one-category-at-a-time">Examine one category at a time<a class="anchor" aria-label="anchor" href="#examine-one-category-at-a-time"></a>
 </h2>
-<p>Each category runs on its own, which helps when you are fixing one thing and would rather not hear about the others:</p>
+<p>Each category also runs on its own. That helps when you are fixing one thing and would rather not hear about the rest.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/diagnose_code_issues.html">diagnose_code_issues</a></span><span class="op">(</span><span class="op">)</span>           <span class="co"># just the R sources</span></span>
@@ -283,14 +336,15 @@
 <span><span class="fu"><a href="../reference/diagnose_general_issues.html">diagnose_general_issues</a></span><span class="op">(</span><span class="op">)</span>        <span class="co"># size, URLs, NEWS, README links</span></span>
 <span><span class="fu"><a href="../reference/diagnose_policy_violations.html">diagnose_policy_violations</a></span><span class="op">(</span><span class="op">)</span>     <span class="co"># CRAN policy</span></span></code></pre></div>
 </div>
-</section><section class="level2"><h2 id="checking-only-what-is-included">Checking only what is included<a class="anchor" aria-label="anchor" href="#checking-only-what-is-included"></a>
+<p>To run one check, call its <code>lab_*()</code> function, such as <code><a href="../reference/lab_tf_usage.html">lab_tf_usage()</a></code>.</p>
+</section><section class="level2"><h2 id="check-only-what-cran-receives">Check only what CRAN receives<a class="anchor" aria-label="anchor" href="#check-only-what-cran-receives"></a>
 </h2>
-<p><code>R CMD build</code> drops whatever <code>.Rbuildignore</code> matches, and checktor drops the same files. A help topic or vignette held back from the tarball is never checked.</p>
-<p>The <a href="https://github.com/moodymudskipper/devtag" class="external-link">devtag</a> package uses this to document unexported functions: <code>@dev</code> writes the help page and adds the <code>.Rd</code> to <code>.Rbuildignore</code>, so contributors see it and users do not. Those examples can call <code>:::</code> and checktor will not object. The pkgdown-only articles <code>usethis::use_article()</code> writes to <code>vignettes/articles/</code> work the same way.</p>
-<p><code>roxygen_usage</code> is the exception. It reads all of <code>man/</code>, since it asks whether your working tree is in sync with roxygen rather than what is included.</p>
-</section><section class="level2"><h2 id="turning-down-the-volume">Turning down the volume<a class="anchor" aria-label="anchor" href="#turning-down-the-volume"></a>
+<p><code>R CMD build</code> leaves out whatever <code>.Rbuildignore</code> matches, and checktor leaves out the same files. Help pages and vignettes that never reach the tarball are never checked.</p>
+<p>The <a href="https://github.com/moodymudskipper/devtag" class="external-link">devtag</a> package uses this to document unexported functions. Its <code>@dev</code> tag writes the help page and adds the <code>.Rd</code> file to <code>.Rbuildignore</code>, so contributors see the page and users do not. Examples on those pages can call <code>:::</code> without an objection from checktor. The pkgdown-only articles that <code>usethis::use_article()</code> writes to <code>vignettes/articles/</code> are left out the same way.</p>
+<p><code>roxygen_usage</code> is the exception. It reads all of <code>man/</code>, because it asks whether your working tree matches roxygen, which is a question about your files rather than the tarball.</p>
+</section><section class="level2"><h2 id="turn-down-the-volume">Turn down the volume<a class="anchor" aria-label="anchor" href="#turn-down-the-volume"></a>
 </h2>
-<p><code><a href="../reference/checktor.html">checktor()</a></code> is chatty by design. In a script, quiet it once and every later call inherits the setting:</p>
+<p><code><a href="../reference/checktor.html">checktor()</a></code> is chatty by design. In a script, quiet it once and every later call inherits the setting.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/configure_doctor.html">configure_doctor</a></span><span class="op">(</span>verbose_default <span class="op">=</span> <span class="cn">FALSE</span>, progress_default <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
@@ -298,9 +352,9 @@
 <span><span class="co"># or per call</span></span>
 <span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/checktor.html">checktor</a></span><span class="op">(</span>verbose <span class="op">=</span> <span class="cn">FALSE</span>, progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
 </div>
-</section><section class="level2"><h2 id="checks-you-ask-for-and-checks-you-turn-off">Checks you ask for, and checks you turn off<a class="anchor" aria-label="anchor" href="#checks-you-ask-for-and-checks-you-turn-off"></a>
+</section><section class="level2"><h2 id="ask-for-a-check-or-turn-one-off">Ask for a check, or turn one off<a class="anchor" aria-label="anchor" href="#ask-for-a-check-or-turn-one-off"></a>
 </h2>
-<p>A few checks never join a run, because no authority backs them or they ask about your submission workflow rather than the package itself. They are not skipped, since nothing tried to run them. A quiet run does not mention them, but the results name them:</p>
+<p>Some checks never join a run. Either no authority backs them, or they concern your submission workflow rather than the package. Nothing tried to run them, so they are not reported as skipped, and a quiet run does not mention them. The results list them.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">results</span><span class="op">$</span><span class="va">metadata</span><span class="op">$</span><span class="va">on_request_checks</span></span>
@@ -308,23 +362,25 @@
 <span><span class="co">#&gt; [3] "description_function_quotes" "format_names"               </span></span>
 <span><span class="co">#&gt; [5] "title_starts_with_article"</span></span></code></pre></div>
 </div>
-<p>Each one is a <code>lab_*()</code> function like any other check, so running it is one call:</p>
+<p>Each is a <code>lab_*()</code> function like any other check, so running one takes one call.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/lab_cran_comments_file.html">lab_cran_comments_file</a></span><span class="op">(</span><span class="va">pkg</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="co">#&gt; ✔ cran-comments file check: PASSED</span></span></code></pre></div>
 </div>
-<p>Going the other way, a check you have decided against can be turned off. For one package, name it in that package’s <code>DESCRIPTION</code>:</p>
-<pre><code><span><span class="va">Config</span><span class="op">/</span><span class="va">checktor</span><span class="op">/</span><span class="va">disable</span><span class="op">:</span> <span class="va">news_file</span></span></code></pre>
-<p>For every package, set the option once, for example in <code>.Rprofile</code>:</p>
+<p>In the other direction, you can turn off a check you have decided against. For one package, list it in that package’s <code>DESCRIPTION</code>.</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="fu">Config/checktor/disable</span><span class="kw">:</span><span class="at"> news_file</span></span></code></pre></div>
+<p>The same <code>DESCRIPTION</code> can mute a finding you have reviewed with <code>Config/checktor/allow</code>, and add words to a check’s list with fields such as <code>Config/checktor/software_names</code>. These settings travel with the package, so they apply wherever it is checked.</p>
+<p><img src="figures/config-fields-light.svg" class="ct-fig ct-light" alt="The DESCRIPTION of mypkg with three Config/checktor lines highlighted, under the note Applies wherever the package is checked. disable: news_file leaves a check out, so news_file never runs. allow: license_file_unneeded mutes a reviewed finding, and the run reports it as muted. software_names: DuckDB adds a software name, so DuckDB should be in single quotes."><img src="figures/config-fields-dark.svg" class="ct-fig ct-dark" aria-hidden="true"></p>
+<p>For every package, set the option once, for example in <code>.Rprofile</code>.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>checktor.disable <span class="op">=</span> <span class="st">"news_file"</span><span class="op">)</span></span></code></pre></div>
 </div>
-<p>A disabled check does not run and is not counted anywhere. That is the difference from a skipped check, which was meant to run and could not.</p>
-</section><section class="level2"><h2 id="where-it-fits">Where it fits<a class="anchor" aria-label="anchor" href="#where-it-fits"></a>
+<p>Disabled checks do not run and are not counted anywhere. That sets them apart from skipped checks, which were meant to run and could not.</p>
+</section><section class="level2"><h2 id="fit-it-into-your-workflow">Fit it into your workflow<a class="anchor" aria-label="anchor" href="#fit-it-into-your-workflow"></a>
 </h2>
-<p>Run <code>checktor</code> in the gap between writing code and <code>R CMD check</code>:</p>
+<p>Run checktor between writing code and running <code>R CMD check</code>.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">document</span><span class="op">(</span><span class="op">)</span></span>
@@ -335,22 +391,20 @@
 <span></span>
 <span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">check</span><span class="op">(</span><span class="op">)</span>      <span class="co"># the standard checks</span></span></code></pre></div>
 </div>
-</section><section class="level2"><h2 id="conclusion">Conclusion<a class="anchor" aria-label="anchor" href="#conclusion"></a>
-</h2>
-<p><code>checktor</code> is a checkup, not a cure-all. It complements <code>R CMD check</code> and <a href="https://lintr.r-lib.org" class="external-link"><code>lintr</code></a> rather than replacing either, and it cannot replace your judgment about whether a package is worth submitting. What it does do is the one thing those tools do not, remembering the hand-enforced CRAN rules so you do not have to. Run the three together, treat the printed report as the conversation and the accessors as the data, and a reviewer should find nothing left to say. That is the entire point.</p>
+<p><code>devtools::check()</code> runs <code>R CMD check</code> through the rcmdcheck package, which also returns the NOTEs, WARNINGs and ERRORs as data you can inspect. checktor’s checkup covers only the rules it knows, so whether the package is worth submitting remains your call.</p>
 </section><section class="level2"><h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a>
 </h2>
 <ul>
 <li>
-<a href="check-sources.html">Where the Checks Come From</a>: the source and severity tier behind every check, from CRAN policy to convention.</li>
+<a href="check-sources.html">Where the Checks Come From</a>: the source and severity behind every check, from CRAN policy to convention.</li>
 <li>
-<a href="r-cmd-check.html">What R CMD check Checks</a>: every step <code>R CMD check</code> takes, so you can see where checktor begins.</li>
+<a href="r-cmd-check.html">What R CMD check Checks</a>: each step <code>R CMD check</code> takes, and where checktor picks up.</li>
 <li>
-<a href="checktor-in-ci.html">checktor in Continuous Integration</a>: put <code><a href="../reference/checkup.html">checkup()</a></code> in charge of a GitHub Actions build as a quality gate.</li>
+<a href="checktor-in-ci.html">checktor in Continuous Integration</a>: <code><a href="../reference/checkup.html">checkup()</a></code> as the gate on a GitHub Actions build.</li>
 <li>
 <a href="writing-checks.html">Writing Your Own Checks</a>: add project-specific checks against the parsed syntax tree.</li>
 <li>
-<a href="https://r-pkg.thecoatlessprofessor.com/checktor/reference/index.html">Function reference</a>: the full catalogue of diagnostics.</li>
+<a href="https://r-pkg.thecoatlessprofessor.com/checktor/reference/index.html">Function reference</a>: every function and check in the package.</li>
 </ul></section><script id="quarto-html-after-body" type="application/javascript">
   window.document.addEventListener("DOMContentLoaded", function (event) {
       var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);

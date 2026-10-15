@@ -1,22 +1,21 @@
 # checktor in Continuous Integration
 
-You already run `checktor` on your package. The trouble with running it
-by hand is that you do it when you remember to, which is not the same as
-every time it matters. A pipeline has no such lapses, running the check
-on every push, for every contributor, whether or not anyone remembered
-to.
-
-Moving the check into continuous integration (CI) turns a good habit
-into an unconditional one, in about as many lines of YAML as it takes to
-describe.
-
-## The one function CI needs
-
-Everything in this article rests on a single function.
+You can run checktor by hand, and you will, whenever you remember to.
+Continuous integration (CI) remembers for you, on every push and pull
+request, for every contributor. CI asks checktor two questions.
 [`checkup()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checkup.md)
-runs the full diagnosis and collapses it to one verdict: `TRUE` if the
-package is clean, `FALSE` if a policy or robustness finding wants
-attention. Opinion findings are still reported, but they do not fail it.
+answers whether the build should pass.
+[`ci_report()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/ci_report.md)
+answers where the problems are, by putting each finding on the line that
+caused it.
+
+## Gate the build on `checkup()`
+
+[`checkup()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checkup.md)
+gives a CI gate its one answer, pass or fail. It runs the full diagnosis
+without printing and returns `TRUE` when the package is in good overall
+health. By default that means no policy or robustness finding remains,
+and opinion findings do not count against it.
 
 ``` r
 
@@ -28,15 +27,101 @@ checkup(bad_pkg)
 #> [1] FALSE
 ```
 
-A healthy package returns `TRUE`. That is the entire contract, and it is
-all a build needs to decide whether to go green or red.
+This package returns `FALSE`, and a healthy one returns `TRUE`. That is
+all a build needs to decide between green and red.
 
-## A GitHub Actions job
+## Annotate the diff with `ci_report()`
 
-[`checkup()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checkup.md)
-is designed to be the last word in a shell one-liner. Drop this file in
-at `.github/workflows/checktor.yaml` and you have an extra-CRAN gate on
-every push and pull request:
+Red tells you that something failed, not what or where.
+[`ci_report()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/ci_report.md)
+turns each finding into the format your forge reads, so it appears
+beside the line that caused it. These are the first three for the
+package above, as GitHub Actions would receive them.
+
+``` r
+
+annotations <- ci_report(path = bad_pkg, format = "github", file = NULL)
+writeLines(head(annotations, 3))
+#> ::error file=R/tf_usage_bad.R,line=8,title=checktor%3A tf_usage::T/F usage check: tf_usage_bad.R:8
+#> ::error file=R/tf_usage_bad.R,line=11,title=checktor%3A tf_usage::T/F usage check: tf_usage_bad.R:11
+#> ::error file=R/tf_usage_bad.R,line=15,title=checktor%3A tf_usage::T/F usage check: tf_usage_bad.R:15
+```
+
+GitHub turns each of these workflow commands into an annotation on the
+pull request diff.
+
+![On the left, a console runs ci_report(), above the build systems it
+writes for: GitHub Actions, GitLab, Azure Pipelines, Jenkins and GitHub
+code scanning. On the right, lines 6 to 9 of R/tf_usage_bad.R as a pull
+request shows them. Under line 8, return(F), an amber annotation reads
+checktor: tf_usage, T/F usage check:
+tf_usage_bad.R:8.](figures/ci-report-light.svg)![](figures/ci-report-dark.svg)
+
+In a job, call it with no arguments. It examines the package in the
+working directory, detects the CI service from the environment variables
+it sets and writes the matching format.
+
+``` r
+
+checktor::ci_report()
+```
+
+GitHub expects the colon in the title escaped as `%3A`. Gitea and
+Forgejo Actions read the same commands, so the same call covers them.
+[`ci_report()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/ci_report.md)
+also detects GitLab, Azure Pipelines and Jenkins from the environment
+variables they set. Pass `format` to choose a different output, such as
+SARIF for GitHub code scanning, or when the build runs on a service
+[`ci_report()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/ci_report.md)
+does not detect.
+
+| Forge | Format | What to do with it |
+|----|----|----|
+| GitHub, Gitea, Forgejo | `"github"` | Printed to the log, shown on the diff |
+| GitLab | `"gitlab"` | Name it in `artifacts:reports:codequality:` |
+| Azure Pipelines | `"azure"` | Printed to the log |
+| Jenkins, reviewdog, review bots | `"checkstyle"` | Read the XML with the warnings plugin |
+| GitHub code scanning | `"sarif"` | Upload with `github/codeql-action/upload-sarif` |
+
+GitLab needs only this job.
+
+``` yaml
+checktor:
+  image: rocker/r-ver:latest
+  script:
+    - Rscript -e 'install.packages("checktor"); checktor::ci_report(format = "gitlab")'
+  artifacts:
+    reports:
+      codequality: gl-code-quality-report.json
+```
+
+[`ci_report()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/ci_report.md)
+reports findings of every severity, because an annotation informs and
+decides nothing. Leave the pass or fail decision to
+[`checkup()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checkup.md),
+so that what fails a build stays separate from what gets annotated. To
+let an opinion finding fail a build, use
+`checkup(severity = c("policy", "robustness", "opinion"))`. The
+threshold then lives in one place rather than in two that can disagree.
+
+Checks that did not run appear once, at the end, rather than as one
+annotation each, so they do not compete for space with the findings.
+
+``` r
+
+writeLines(tail(annotations, 1))
+#> ::notice title=checktor%3A skipped::2 checks did not run: spelling, url_liveness
+```
+
+The report formats (GitLab, Checkstyle and SARIF) send that note to the
+job log instead, which keeps the artifact a clean document. Pass
+`skipped = FALSE` to leave it out.
+
+## Add a GitHub Actions job
+
+Save this file as `.github/workflows/checktor.yaml`. On every push and
+pull request it examines the package once, annotates the diff, then
+passes or fails the build.
 
 ``` yaml
 name: checktor
@@ -61,26 +146,31 @@ jobs:
           extra-packages: any::checktor
 
       - name: Run extra-CRAN checks
-        run: if (!checktor::checkup()) quit(status = 1)
         shell: Rscript {0}
+        run: |
+          results <- checktor::checktor(verbose = FALSE, progress = FALSE)
+          checktor::ci_report(results)
+          if (!checktor::is_healthy(results)) quit(status = 1)
 ```
 
-The job checks out your package, installs `checktor`, and exits non-zero
-the moment
+The job checks out your package and installs R, its dependencies and
+checktor.
+[`ci_report()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/ci_report.md)
+then annotates the diff, and the build fails when the package is not in
+good overall health.
+[`is_healthy()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/predicates.md)
+gives the same answer as
 [`checkup()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checkup.md)
-disagrees with you.
+from the result the job already holds, so the package is examined only
+once.
 
-> `any::checktor` installs the release from CRAN. To run the development
-> version instead, use `coatless-rpkg/checktor`, which installs from
-> GitHub.
+> `any::checktor` installs the CRAN release. For the development
+> version, use `coatless-rpkg/checktor`, which installs from GitHub.
 
-## Failing loudly, not silently
+## Fail loudly
 
-A red X that says only “exit code 1” is a riddle, not a report. When a
-build fails, you want the diagnosis in the log, not a scavenger hunt.
-Run the full
-[`checktor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checktor.md)
-once and print the report before you quit:
+Annotations sit on the diff. To put the whole diagnosis in the log as
+well, print the report before you quit.
 
 ``` r
 
@@ -93,27 +183,25 @@ if (!checktor::is_healthy(results)) {
 ```
 
 [`health_report()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/health_report.md)
-returns the findings as Markdown, so the failing log reads like a chart
-at the foot of a hospital bed, showing what is wrong and where. Point
-its `file =` argument at a path and you can just as easily upload the
-report as a build artifact for the squeamish who prefer not to read CI
-logs.
+returns the findings as Markdown, so a failing log reads like the chart
+at the foot of a hospital bed, with what is wrong and where. Give it a
+`file` and it also writes the report there, ready to upload as a build
+artifact for anyone who would rather not read CI logs.
 
-## Tuning the examination
+## Tune the examination
 
-CI is chatty by nature, so quiet the doctor down.
+CI logs are long enough already.
 [`configure_doctor()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/configure_doctor.md)
-sets the verbosity and progress defaults once, at the top of a script,
-and every later call inherits them:
+sets the default verbosity and progress display once, at the top of a
+script, and every later call inherits them.
 
 ``` r
 
 checktor::configure_doctor(verbose_default = FALSE, progress_default = FALSE)
 ```
 
-You can also run a single category when that is all you care about,
-since each `diagnose_*_issues()` function stands on its own, and a
-single check the same way through its `lab_*()` function:
+To gate on one category, call its `diagnose_*()` function, and to gate
+on one check, call its `lab_*()` function.
 
 ``` r
 
@@ -126,91 +214,24 @@ tf <- checktor::lab_tf_usage(".", verbose = FALSE)
 if (!checktor::is_healthy(tf)) quit(status = 1)
 ```
 
-A category or a single check has no verdict tiers to filter by, so
 [`is_healthy()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/predicates.md)
-on one fails on any finding, opinion included. Use
+on a category or a single check does not filter by severity, so any
+finding fails it, opinion included. Use
 [`checkup()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checkup.md)
-when the tiers matter.
+when severity should decide.
 
-## Findings on the diff, not in the log
-
-A log someone has to scroll is the weakest way to deliver a finding.
-Every forge can put one next to the line that caused it, and
-[`ci_report()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/ci_report.md)
-writes whichever shape yours reads. With no arguments it examines the
-package, works out where it is running, and emits the right thing.
-
-``` r
-
-checktor::ci_report()
-```
-
-On GitHub Actions that prints workflow commands, and each finding
-appears on the pull request diff:
-
-    ::error file=R/plot.R,line=42,title=checktor%3A option_changes::Option changes check: plot.R:42
-
-The colon in the title is written as `%3A`, the escape GitHub expects
-there. Gitea and Forgejo Actions read the same commands, so the same
-call covers them.
-[`ci_report()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/ci_report.md)
-also recognises GitLab, Azure Pipelines and Jenkins from the variables
-they set. Name the format when you want a different one, such as SARIF
-for GitHub code scanning, or when the build runs somewhere it does not
-recognise:
-
-| Forge | Format | What to do with it |
-|----|----|----|
-| GitHub, Gitea, Forgejo | `"github"` | Printed to the log, shown on the diff |
-| GitLab | `"gitlab"` | Name it in `artifacts:reports:codequality:` |
-| Azure Pipelines | `"azure"` | Printed to the log |
-| Jenkins, reviewdog, review bots | `"checkstyle"` | Read the XML with the warnings plugin |
-| GitHub code scanning | `"sarif"` | Upload with `github/codeql-action/upload-sarif` |
-
-A GitLab job needs only this:
-
-``` yaml
-checktor:
-  image: rocker/r-ver:latest
-  script:
-    - Rscript -e 'install.packages("checktor"); checktor::ci_report(format = "gitlab")'
-  artifacts:
-    reports:
-      codequality: gl-code-quality-report.json
-```
-
-[`ci_report()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/ci_report.md)
-reports every tier, since an annotation is information rather than a
-verdict. Keep
-[`checkup()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checkup.md)
-for the verdict, so what fails a build stays a separate decision from
-what gets pointed at. If you want an opinion to fail a build, that is
-`checkup(severity = c("policy", "robustness", "opinion"))`, and the
-threshold stays in one place rather than being spelled two ways that can
-disagree.
-
-Checks that did not run are named once at the end, rather than one
-annotation each, because a check that never happened should not compete
-for space with a finding:
-
-    ::notice title=checktor%3A skipped::2 checks did not run: spelling, url_liveness
-
-For the report formats that note goes to the job log instead, keeping
-the artifact a clean document. Pass `skipped = FALSE` if you would
-rather not hear about it.
-
-## Keeping the report
+## Keep the report
 
 [`health_report()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/health_report.md)
-writes the whole consultation to a file, which an artifact step can keep
-for later. Write the report in the step that runs the gate, before the
-gate decides:
+writes the full report to a file, which an artifact step can keep. Write
+it in the step that runs the gate, before the gate decides.
 
 ``` yaml
       - name: Run extra-CRAN checks
         shell: Rscript {0}
         run: |
           results <- checktor::checktor(verbose = FALSE, progress = FALSE)
+          checktor::ci_report(results)
           invisible(checktor::health_report(results, file = "checktor-report.md"))
           if (!checktor::is_healthy(results)) quit(status = 1)
 
@@ -222,37 +243,35 @@ gate decides:
           path: checktor-report.md
 ```
 
-Writing the report before the gate runs, and uploading it with
-`if: always()`, means a failing build still leaves the findings behind
-after its log has scrolled away. checktor’s own workflow does exactly
-this.
+The first step writes the report before the gate runs. The upload step
+runs with `if: always()`, so a failing build still leaves its findings
+behind after the log has scrolled away. checktor’s own workflow does the
+same.
 
-## What a runner does not check
+## Expect skipped checks
 
-Two checks sit out in CI, because the result would say more about the
-runner than about your package. The URL fetch waits until you are at the
-console, and spelling waits until a spell-check backend is installed.
-Neither is reported as a pass. They come back marked skipped, they are
-named in `metadata$skipped_checks`,
-[`tidy()`](https://generics.r-lib.org/reference/tidy.html) carries a
-`skipped` column, and
+Some checks sit out in CI, because their result would describe the
+runner rather than your package. The URL fetch runs only at the console,
+and spelling runs only where a spell-check backend is installed. Neither
+is reported as a pass. Each comes back marked in the `skipped` column of
+[`tidy()`](https://generics.r-lib.org/reference/tidy.html) and listed in
+`metadata$skipped_checks`, and
 [`ci_report()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/ci_report.md)
-says so on the build itself, so a green build never implies a check that
-never happened.
+adds the notice shown above to the build, so green never implies a check
+that did not happen.
 
-Turn the URL fetch on in a job that should do it, keeping in mind that a
-network hiccup then becomes a red build:
+To fetch URLs in a job, turn the check on, and accept that a network
+hiccup can then turn the build red.
 
 ``` r
 
 options(checktor.url_check = TRUE)
 ```
 
-## Closer to the keyboard
+## Check before you commit
 
-CI is the backstop, not the first line. If you would rather hear about a
-problem before it reaches a pull request, the same one-liner works as a
-local Git pre-commit hook:
+CI is the backstop. To hear about a problem before it reaches a pull
+request, run the same one-liner as a Git pre-commit hook.
 
 ``` bash
 #!/usr/bin/env bash
@@ -260,32 +279,21 @@ local Git pre-commit hook:
 Rscript -e 'if (!checktor::checkup()) quit(status = 1)'
 ```
 
-Now a commit that would have embarrassed you on CRAN never leaves your
-laptop.
+Commits that would have embarrassed you on CRAN then never leave your
+laptop. The call is the same in both places. What changes is how long
+you wait to hear about a problem.
 
-It is the same call in both places, and the only thing that changes is
-how long you wait to hear about it.
-
-![The same checkup() call at three latencies. In a .git/hooks/pre-commit
-hook on your laptop it answers in seconds. In GitHub Actions on the pull
-request it answers in minutes. If you skip both, the same finding
-reaches you from a CRAN reviewer weeks
+![The same checkup() call at three stages. As a .git/hooks/pre-commit
+hook on your laptop, it answers in seconds. In GitHub Actions on the
+pull request, it answers in minutes. Skip both, and a CRAN reviewer
+reports the same finding by hand weeks
 later.](figures/ci-gates-light.svg)![](figures/ci-gates-dark.svg)
-
-## The takeaway
-
-Wire
-[`checkup()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checkup.md)
-into CI once and the rules stop living in your head, where they were
-never safe anyway. The best submission is the one where the reviewer
-finds nothing to say, and the surest way there is to have already said
-it to yourself, automatically, on every push.
 
 ## See also
 
 - [Getting Started with
   checktor](https://r-pkg.thecoatlessprofessor.com/checktor/articles/getting-started-with-checktor.md):
-  the guided tour of the diagnostics.
+  a tour of the diagnostics from a first checkup to a written report.
 - [Writing Your Own
   Checks](https://r-pkg.thecoatlessprofessor.com/checktor/articles/writing-checks.md):
   add project-specific checks against the parsed syntax tree.

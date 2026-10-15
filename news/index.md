@@ -1,5 +1,28 @@
 # Changelog
 
+## checktor (development version)
+
+### Documentation and website
+
+- The vignettes have a light, dark and auto color mode, as the website
+  does. Auto follows your system, and a switch at the top of each
+  vignette picks one. Figures follow the page, so a dark figure no
+  longer lands on a white page in a dark-mode browser. Wide tables and
+  long lines of code scroll in place on a phone.
+
+- The vignettes are rewritten to be shorter and clearer. They also
+  correct a few claims, such as which accessors work on a single check.
+  They no longer count the checks, since the count changes whenever a
+  check is added.
+
+- New figures show the three severities, the three results a check can
+  have, where checktor reads and the settings `DESCRIPTION` takes.
+  checktor in CI now pairs
+  [`checkup()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/checkup.md),
+  which passes or fails the build, with
+  [`ci_report()`](https://r-pkg.thecoatlessprofessor.com/checktor/reference/ci_report.md),
+  which puts each finding on the line that caused it.
+
 ## checktor 0.2.0
 
 CRAN release: 2026-10-14

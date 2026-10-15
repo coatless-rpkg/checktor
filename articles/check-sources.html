@@ -17,7 +17,66 @@
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><script src="check-sources_files/libs/quarto-html/popper.min.js"></script><script src="check-sources_files/libs/quarto-html/tippy.umd.min.js"></script><link href="check-sources_files/libs/quarto-html/tippy.css" rel="stylesheet">
 <link href="check-sources_files/libs/quarto-html/light-border.css" rel="stylesheet">
-<!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Where the Checks Come From">
+<script>
+  (function () {
+    var root = document.documentElement;
+    if (root.hasAttribute("data-bs-theme")) return; // a pkgdown page: it has its own switch
+    var KEY = "checktor-vignette-color-mode";
+    var media = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+    var choice = "auto";
+    try {
+      var saved = window.localStorage.getItem(KEY);
+      if (saved === "light" || saved === "dark") choice = saved;
+    } catch (e) {}
+    function apply() {
+      var dark = choice === "dark" || (choice === "auto" && media !== null && media.matches);
+      root.setAttribute("data-ct-mode", dark ? "dark" : "light");
+    }
+    apply();
+    if (media !== null) {
+      if (media.addEventListener) media.addEventListener("change", apply);
+      else if (media.addListener) media.addListener(apply);
+    }
+    document.addEventListener("DOMContentLoaded", function () {
+      if (root.hasAttribute("data-bs-theme") || document.querySelector(".navbar")) {
+        root.removeAttribute("data-ct-mode");
+        return;
+      }
+      var options = [["auto", "Auto", "Follow your system setting"],
+                     ["light", "Light", "Always light"],
+                     ["dark", "Dark", "Always dark"]];
+      var bar = document.createElement("div");
+      bar.className = "ct-mode";
+      var group = document.createElement("div");
+      group.className = "ct-mode-group";
+      group.setAttribute("role", "group");
+      group.setAttribute("aria-label", "Color mode");
+      var buttons = options.map(function (o) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.textContent = o[1];
+        b.title = o[2];
+        b.addEventListener("click", function () {
+          choice = o[0];
+          try {
+            if (choice === "auto") window.localStorage.removeItem(KEY);
+            else window.localStorage.setItem(KEY, choice);
+          } catch (e) {}
+          apply();
+          sync();
+        });
+        group.appendChild(b);
+        return [o[0], b];
+      });
+      function sync() {
+        buttons.forEach(function (pair) { pair[1].setAttribute("aria-pressed", String(pair[0] === choice)); });
+      }
+      sync();
+      bar.appendChild(group);
+      document.body.insertBefore(bar, document.body.firstChild);
+    });
+  })();
+  </script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Where the Checks Come From">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:creator" content="@axiomsofxyz">
 <meta name="twitter:site" content="@axiomsofxyz">
@@ -30,7 +89,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">checktor</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -79,7 +138,7 @@
 
 
 
-      <small class="dont-index">Source: <a href="https://github.com/coatless-rpkg/checktor/blob/v0.2.0/vignettes/check-sources.qmd" class="external-link"><code>vignettes/check-sources.qmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/coatless-rpkg/checktor/blob/main/vignettes/check-sources.qmd" class="external-link"><code>vignettes/check-sources.qmd</code></a></small>
       <div class="d-none name"><code></code></div>
     </div>
 
@@ -88,22 +147,25 @@
 
 
 
-    <p>Every checktor check exists for a reason, and that reason has a source. This page maps each check to where its authority comes from, linking to the exact section wherever one exists, and to the severity tier that authority earns. For the full argument behind any single check, read its help page (for example <code><a href="../reference/lab_option_changes.html">?lab_option_changes</a></code>), which spells out the reasoning and the exemptions. This page is the map across all of them.</p>
-<section class="level2"><h2 id="the-tiers-and-what-each-one-rests-on">The tiers, and what each one rests on<a class="anchor" aria-label="anchor" href="#the-tiers-and-what-each-one-rests-on"></a>
+    <p>Every checktor check rests on a source, and the source sets its severity. This page maps each check to its authority, links the exact section wherever one exists, and gives the severity that authority earns. For the full argument and the exemptions, read the check’s help page, such as <code><a href="../reference/lab_option_changes.html">?lab_option_changes</a></code>.</p>
+<section class="level2"><h2 id="read-the-severity">Read the severity<a class="anchor" aria-label="anchor" href="#read-the-severity"></a>
 </h2>
-<p>A check’s severity tier tells you what kind of authority stands behind it.</p>
+<p>Severity tells you what kind of authority stands behind a check.</p>
 <ul>
 <li>
-<strong><code>policy</code></strong> is a rule CRAN enforces, so breaking one can get a package rejected and a policy finding counts against a clean bill of health. Most are written in the <a href="https://cran.r-project.org/web/packages/policies.html" class="external-link">CRAN Repository Policy</a> or <a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html" class="external-link">Writing R Extensions</a>, the two documents CRAN treats as binding, and some mirror a <strong>CRAN incoming check</strong>, one of the NOTEs that <a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages" class="external-link"><code>R CMD check --as-cran</code></a> raises against a submission. A handful are long-standing requirements reviewers apply that no clause in either manual actually states, and for those the <a href="https://contributor.r-project.org/cran-cookbook/" class="external-link">CRAN Cookbook</a> is the written record. Restoring <code><a href="https://rdrr.io/r/base/options.html" class="external-link">options()</a></code>, <code><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par()</a></code> and the working directory is the clearest example: it is one of the most common reasons a package is sent back, and neither manual mentions it.</li>
+<code>policy</code> is a rule CRAN enforces. Breaking one can get a package rejected, and a policy finding counts against overall health. Most of these rules are written in the <a href="https://cran.r-project.org/web/packages/policies.html" class="external-link">CRAN Repository Policy</a> or <a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html" class="external-link">Writing R Extensions</a>, the two documents CRAN treats as binding. Some mirror a CRAN incoming check, one of the NOTEs that <a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages" class="external-link"><code>R CMD check --as-cran</code></a> raises against a submission. For a few long-standing reviewer requirements that neither manual states, the <a href="https://contributor.r-project.org/cran-cookbook/" class="external-link">CRAN Cookbook</a> is the written record. Restoring <code><a href="https://rdrr.io/r/base/options.html" class="external-link">options()</a></code>, <code><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par()</a></code> and the working directory is the clearest case. It is among the most common reasons a package is sent back, and neither manual mentions it.</li>
 <li>
-<strong><code>robustness</code></strong> is a real defect that CRAN will still accept, such as a <code>detectCores()</code> that can return <code>NA</code>. It counts toward the verdict too, because it can still crash a user.</li>
+<code>robustness</code> is a real defect that CRAN will still accept, such as a <code>detectCores()</code> that can return <code>NA</code>. It counts toward overall health too, because the defect is real whether or not CRAN objects to it.</li>
 <li>
-<strong><code>opinion</code></strong> is a convention that experienced maintainers and reviewers tend to ask for, with nothing enforcing it. Worth knowing, but it stays outside the default verdict, which is <code>policy</code> and <code>robustness</code> only.</li>
+<code>opinion</code> is a convention that experienced maintainers and reviewers tend to ask for, with nothing enforcing it. checktor reports it but leaves it out of overall health, which by default counts <code>policy</code> and <code>robustness</code> alone.</li>
 </ul>
-<p>The source column names which kind each check is. Many conventions are written down in the <a href="https://contributor.r-project.org/cran-cookbook/" class="external-link">CRAN Cookbook</a>, the R Contributor guide to the problems that get packages sent back, and the column links to the individual recipe wherever there is one. Where a check has no citable source at all, it says so plainly.</p>
+<p><img src="figures/severity-light.svg" class="ct-fig ct-light" alt="Three severities side by side. Policy breaks a CRAN rule, such as set.seed(42) inside a function. Robustness is a real defect that CRAN still accepts, such as sorted = F. Opinion is a convention with no rule behind it, such as a help page with no \value{}. Under policy and robustness, a bracket reads Counts toward overall health. Under opinion, a dashed bracket reads Listed, not counted."><img src="figures/severity-dark.svg" class="ct-fig ct-dark" aria-hidden="true"></p>
+<p>The Source column in each table below gives the authority. Many conventions are written down in the <a href="https://contributor.r-project.org/cran-cookbook/" class="external-link">CRAN Cookbook</a>, the R Contributor guide to the problems that get packages sent back. Where it has a recipe, the column links to it. For checks with no citable source, the column reads “No formal rule”, “No rule” or “Convention only”.</p>
 </section><section class="level2"><h2 id="which-checks-run">Which checks run<a class="anchor" aria-label="anchor" href="#which-checks-run"></a>
 </h2>
-<p>Almost every check runs every time. Two depend on the machine, and when one cannot run <code><a href="../reference/checktor.html">checktor()</a></code> reports it as skipped rather than passed, so a clean bill of health never includes a check that never happened. <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code> carries a <code>skipped</code> column, and the names are in <code>metadata$skipped_checks</code>. The same goes for the checks that read <code>DESCRIPTION</code> fields when R cannot read the file, which <code>description_file</code> reports as a policy finding, and for <code>identifier_format</code> when <code>Authors@R</code> cannot be read. Five more run only when you call them; they were never asked for, so they are not skipped, and <code>metadata$on_request_checks</code> names them so you can find them.</p>
+<p>Most checks run every time. Some depend on the machine. When one of those cannot run, <code><a href="../reference/checktor.html">checktor()</a></code> reports it as skipped rather than passed, so good overall health never rests on a check that did not happen. The <code>skipped</code> column of <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code> marks it, and <code>metadata$skipped_checks</code> lists it. Checks are also skipped when their input cannot be read. If R cannot read <code>DESCRIPTION</code>, every check that reads its fields is skipped, and <code>description_file</code> reports the problem as a policy finding. If <code>Authors@R</code> cannot be read, <code>identifier_format</code> is skipped.</p>
+<p><img src="figures/check-results-light.svg" class="ct-fig ct-light" alt="Three results a check can have. Passed, a green check mark, means it ran and found nothing, as print_cat_usage did. Failed, an amber cross, means it ran and found something to fix, as tf_usage did. Skipped, a dashed empty ring, means it could not run, as url_liveness did, and it never counts as a pass."><img src="figures/check-results-dark.svg" class="ct-fig ct-dark" aria-hidden="true"></p>
+<p>Others run only when you call them. Nothing asked for them, so they are not skipped, and <code>metadata$on_request_checks</code> lists them so you can find them.</p>
 <table class="table caption-top">
 <colgroup>
 <col style="width: 33%">
@@ -124,22 +186,23 @@
 <tr class="even">
 <td><code>spelling</code></td>
 <td>with a backend</td>
-<td>It needs <code>aspell</code> or <code>hunspell</code> installed. <code>options(checktor.spelling = FALSE)</code> turns it off and reports it as skipped; <code>options(checktor.disable = "spelling")</code> or <code>Config/checktor/disable: spelling</code> leaves it out of the run entirely.</td>
+<td>It needs <code>aspell</code> or <code>hunspell</code> installed. <code>options(checktor.spelling = FALSE)</code> turns it off and reports it as skipped. <code>options(checktor.disable = "spelling")</code> or <code>Config/checktor/disable: spelling</code> leaves it out of the run entirely.</td>
 </tr>
 <tr class="odd">
 <td><code>cran_comments_file</code></td>
 <td>when you call it</td>
-<td>A <code>cran-comments.md</code> is a submission workflow rather than a property of the package.</td>
+<td>
+<code>cran-comments.md</code> belongs to the submission workflow rather than to the package.</td>
 </tr>
 <tr class="even">
 <td><code>title_starts_with_article</code></td>
 <td>when you call it</td>
-<td>No authority supports it, so it stays available without being part of a run.</td>
+<td>No authority supports it, so it stays available without joining the run.</td>
 </tr>
 <tr class="odd">
 <td><code>description_function_quotes</code></td>
 <td>when you call it</td>
-<td>The same, and Writing R Extensions reads the other way.</td>
+<td>No authority supports it either, and Writing R Extensions points the other way.</td>
 </tr>
 <tr class="even">
 <td><code>cph_role</code></td>
@@ -154,13 +217,13 @@
 </tr>
 </tbody>
 </table>
-<p>Everything else runs always, and a new check is part of the run unless it says otherwise, so nothing goes missing by being forgotten.</p>
+<p>Every other check runs always, and new checks join the run unless their row in the registry says otherwise. No check goes missing because someone forgot to switch it on.</p>
 </section><section class="level2"><h2 id="code-checks">Code checks<a class="anchor" aria-label="anchor" href="#code-checks"></a>
 </h2>
 <table class="table caption-top">
 <thead><tr class="header">
 <th>Check</th>
-<th>Tier</th>
+<th>Severity</th>
 <th>Source</th>
 </tr></thead>
 <tbody>
@@ -174,13 +237,13 @@
 <td><code>print_cat_usage</code></td>
 <td><code>policy</code></td>
 <td>
-<a href="https://contributor.r-project.org/cran-cookbook/code_issues.html#using-printcat" class="external-link">Cookbook: Using print()/cat()</a>: diagnostic output belongs in <code><a href="https://rdrr.io/r/base/message.html" class="external-link">message()</a></code> or <code><a href="https://rdrr.io/r/base/warning.html" class="external-link">warning()</a></code>, which a user can suppress. A reviewer requirement rather than a clause in the manuals.</td>
+<a href="https://contributor.r-project.org/cran-cookbook/code_issues.html#using-printcat" class="external-link">Cookbook: Using print()/cat()</a>: diagnostic output belongs in <code><a href="https://rdrr.io/r/base/message.html" class="external-link">message()</a></code> or <code><a href="https://rdrr.io/r/base/warning.html" class="external-link">warning()</a></code>, which a user can suppress. Reviewers require it, though neither manual states it.</td>
 </tr>
 <tr class="odd">
 <td><code>option_changes</code></td>
 <td><code>policy</code></td>
 <td>
-<a href="https://contributor.r-project.org/cran-cookbook/code_issues.html#change-of-options-graphical-parameters-and-working-directory" class="external-link">Cookbook: Change of Options, Graphical Parameters and Working Directory</a>: restore anything a function changes, via <code><a href="https://rdrr.io/r/base/on.exit.html" class="external-link">on.exit()</a></code>. Neither manual states this, but it is among the most common reasons a package is sent back.</td>
+<a href="https://contributor.r-project.org/cran-cookbook/code_issues.html#change-of-options-graphical-parameters-and-working-directory" class="external-link">Cookbook: Change of Options, Graphical Parameters and Working Directory</a>: restore anything a function changes, with <code><a href="https://rdrr.io/r/base/on.exit.html" class="external-link">on.exit()</a></code>. Neither manual states this, but it is among the most common reasons a package is sent back.</td>
 </tr>
 <tr class="even">
 <td><code>warn_option</code></td>
@@ -221,12 +284,12 @@
 <tr class="even">
 <td><code>sys_setenv</code></td>
 <td><code>policy</code></td>
-<td>No clause names environment variables, but they are session state exactly as <code><a href="https://rdrr.io/r/base/options.html" class="external-link">options()</a></code> are, and the same restore-on-exit requirement applies. See <a href="https://contributor.r-project.org/cran-cookbook/code_issues.html#change-of-options-graphical-parameters-and-working-directory" class="external-link">Cookbook: Change of Options, Graphical Parameters and Working Directory</a>.</td>
+<td>No clause mentions environment variables, but they are session state in the same way <code><a href="https://rdrr.io/r/base/options.html" class="external-link">options()</a></code> are, so the same restore-on-exit requirement applies. See <a href="https://contributor.r-project.org/cran-cookbook/code_issues.html#change-of-options-graphical-parameters-and-working-directory" class="external-link">Cookbook: Change of Options, Graphical Parameters and Working Directory</a>.</td>
 </tr>
 <tr class="odd">
 <td><code>tf_usage</code></td>
 <td><code>robustness</code></td>
-<td>No binding rule, but a documented one: <a href="https://contributor.r-project.org/cran-cookbook/code_issues.html#tf-instead-of-truefalse" class="external-link">Cookbook: T/F Instead of TRUE/FALSE</a>. <code>T</code> and <code>F</code> are ordinary variables (see <code><a href="https://rdrr.io/r/base/logical.html" class="external-link">?logical</a></code>) that can be rebound, so they are unsafe stand-ins.</td>
+<td>No binding rule, but a documented one in <a href="https://contributor.r-project.org/cran-cookbook/code_issues.html#tf-instead-of-truefalse" class="external-link">Cookbook: T/F Instead of TRUE/FALSE</a>. <code>T</code> and <code>F</code> are ordinary variables (see <code><a href="https://rdrr.io/r/base/logical.html" class="external-link">?logical</a></code>) that code can rebind, so they make unsafe stand-ins.</td>
 </tr>
 <tr class="even">
 <td><code>library_in_pkg</code></td>
@@ -242,7 +305,7 @@
 <tr class="even">
 <td><code>hardcoded_credentials</code></td>
 <td><code>robustness</code></td>
-<td>No formal rule. A token or key committed to a package is public the moment it reaches CRAN and must be revoked.</td>
+<td>No formal rule. Tokens and keys committed to a package are public the moment it reaches CRAN, and must be revoked.</td>
 </tr>
 <tr class="odd">
 <td><code>internal_ns</code></td>
@@ -253,7 +316,7 @@
 <td><code>temp_cleanup</code></td>
 <td><code>opinion</code></td>
 <td>
-<a href="https://contributor.r-project.org/cran-cookbook/code_issues.html#leaving-files-in-the-temporary-directory" class="external-link">Cookbook: Leaving Files in the Temporary Directory</a>. <code><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir()</a></code> is removed at session end, so an un-<code><a href="https://rdrr.io/r/base/unlink.html" class="external-link">unlink()</a></code>ed tempfile breaks no rule, which is why this stays advisory.</td>
+<a href="https://contributor.r-project.org/cran-cookbook/code_issues.html#leaving-files-in-the-temporary-directory" class="external-link">Cookbook: Leaving Files in the Temporary Directory</a>. R removes <code><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir()</a></code> when the session ends, so a temporary file nobody <code><a href="https://rdrr.io/r/base/unlink.html" class="external-link">unlink()</a></code>ed breaks no rule. That keeps this check advisory.</td>
 </tr>
 </tbody>
 </table></section><section class="level2"><h2 id="description-checks">DESCRIPTION checks<a class="anchor" aria-label="anchor" href="#description-checks"></a>
@@ -261,7 +324,7 @@
 <table class="table caption-top">
 <thead><tr class="header">
 <th>Check</th>
-<th>Tier</th>
+<th>Severity</th>
 <th>Source</th>
 </tr></thead>
 <tbody>
@@ -275,7 +338,7 @@
 <td><code>description_fields</code></td>
 <td><code>policy</code></td>
 <td>
-<a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages" class="external-link">CRAN incoming check</a>: it NOTEs “Unknown, possibly misspelled, fields in DESCRIPTION”, allowing <code>Config/</code> and a few other prefixes. <code>Remotes</code> is the usual one; <a href="https://cran.r-project.org/web/packages/policies.html" class="external-link">CRAN Policy</a> wants strong dependencies “available from CRAN or the Bioconductor software repository”.</td>
+<a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages" class="external-link">CRAN incoming check</a>: it NOTEs “Unknown, possibly misspelled, fields in DESCRIPTION”, allowing <code>Config/</code> and a few other prefixes. <code>Remotes</code> is the usual one. <a href="https://cran.r-project.org/web/packages/policies.html" class="external-link">CRAN Policy</a> wants strong dependencies “available from CRAN or the Bioconductor software repository”.</td>
 </tr>
 <tr class="odd">
 <td><code>description_placeholders</code></td>
@@ -299,19 +362,19 @@
 <td><code>description_quoted_quotes</code></td>
 <td><code>policy</code></td>
 <td>
-<a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file" class="external-link">WRE: The DESCRIPTION file</a>: double quotes are for book titles and similar; software names take single quotes. The format names <code>format_names</code> covers are left out, since CRAN accepts them bare. Recipe: <a href="https://contributor.r-project.org/cran-cookbook/description_issues.html#formatting-software-names" class="external-link">Formatting Software Names</a>.</td>
+<a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file" class="external-link">WRE: The DESCRIPTION file</a>: double quotes are for book titles and similar, and software names take single quotes. The format names <code>format_names</code> covers are left out, since CRAN accepts them bare. Recipe: <a href="https://contributor.r-project.org/cran-cookbook/description_issues.html#formatting-software-names" class="external-link">Formatting Software Names</a>.</td>
 </tr>
 <tr class="odd">
 <td><code>license</code></td>
 <td><code>policy</code></td>
 <td>
-<a href="https://cran.r-project.org/web/packages/policies.html" class="external-link">CRAN Policy</a>: an invalid or unrecognised <code>License</code> field is a rejection. Recipe: <a href="https://contributor.r-project.org/cran-cookbook/description_issues.html#license-files" class="external-link">LICENSE files</a>.</td>
+<a href="https://cran.r-project.org/web/packages/policies.html" class="external-link">CRAN Policy</a>: an invalid or unrecognized <code>License</code> field is a rejection. Recipe: <a href="https://contributor.r-project.org/cran-cookbook/description_issues.html#license-files" class="external-link">LICENSE files</a>.</td>
 </tr>
 <tr class="even">
 <td><code>license_file_unneeded</code></td>
 <td><code>policy</code></td>
 <td>
-<a href="https://contributor.r-project.org/cran-cookbook/description_issues.html#license-files" class="external-link">Cookbook: LICENSE files</a>: CRAN does “not need” <code>+ file LICENSE</code> “and the file as these are part of R”, unless the file adds attribution requirements or restrictions. <code>R CMD check</code> NOTEs the pointer on a license that takes no extension, and the <a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages" class="external-link">incoming check</a> on one that does, such as <code>GPL-3</code>.</td>
+<a href="https://contributor.r-project.org/cran-cookbook/description_issues.html#license-files" class="external-link">Cookbook: LICENSE files</a>: CRAN does “not need” <code>+ file LICENSE</code> “and the file as these are part of R”, unless the file adds attribution requirements or restrictions. <code>R CMD check</code> NOTEs the pointer on a license that takes no extension, and the <a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages" class="external-link">incoming check</a> NOTEs it on one that does, such as <code>GPL-3</code>.</td>
 </tr>
 <tr class="odd">
 <td><code>authors</code></td>
@@ -323,7 +386,7 @@
 <td><code>title_case</code></td>
 <td><code>policy</code></td>
 <td>
-<a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file" class="external-link">WRE: The DESCRIPTION file</a>: the <code>Title</code> “should use title case”; the <a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages" class="external-link"><code>--as-cran</code></a> incoming check flags one that does not. Recipe: <a href="https://contributor.r-project.org/cran-cookbook/description_issues.html#title-case" class="external-link">Title Case</a>.</td>
+<a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file" class="external-link">WRE: The DESCRIPTION file</a>: the <code>Title</code> “should use title case”. The <a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages" class="external-link"><code>--as-cran</code></a> incoming check flags one that does not. Recipe: <a href="https://contributor.r-project.org/cran-cookbook/description_issues.html#title-case" class="external-link">Title Case</a>.</td>
 </tr>
 <tr class="odd">
 <td><code>title_package_name</code></td>
@@ -335,25 +398,25 @@
 <td><code>date_format</code></td>
 <td><code>policy</code></td>
 <td>
-<a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file" class="external-link">WRE: The DESCRIPTION file</a>: “the ‘yyyy-mm-dd’ format of the ISO 8601 standard is strongly recommended”; the <a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages" class="external-link">incoming check</a> also flags a stale or future date.</td>
+<a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file" class="external-link">WRE: The DESCRIPTION file</a>: “the ‘yyyy-mm-dd’ format of the ISO 8601 standard is strongly recommended”. The <a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages" class="external-link">incoming check</a> also flags a stale or future date.</td>
 </tr>
 <tr class="odd">
 <td><code>version_format</code></td>
 <td><code>policy</code></td>
 <td>
-<a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file" class="external-link">WRE: The DESCRIPTION file</a>: a <code>Version</code> is “a sequence of at least two … non-negative integers”; the <a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages" class="external-link">incoming check</a> flags a leading zero or an implausible value.</td>
+<a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file" class="external-link">WRE: The DESCRIPTION file</a>: a <code>Version</code> is “a sequence of at least two … non-negative integers”. The <a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages" class="external-link">incoming check</a> flags a leading zero or an implausible value.</td>
 </tr>
 <tr class="even">
 <td><code>encoding_utf8</code></td>
 <td><code>policy</code></td>
 <td>
-<a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file" class="external-link">WRE: The DESCRIPTION file</a>: a non-ASCII DESCRIPTION “should contain an ‘Encoding’ field”; the <a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages" class="external-link">incoming check</a> NOTEs any value but <code>UTF-8</code>, <code>latin1</code> and <code>latin2</code> included, as deprecated.</td>
+<a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file" class="external-link">WRE: The DESCRIPTION file</a>: a non-ASCII DESCRIPTION “should contain an ‘Encoding’ field”. The <a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages" class="external-link">incoming check</a> NOTEs any value other than <code>UTF-8</code> as deprecated, <code>latin1</code> and <code>latin2</code> included.</td>
 </tr>
 <tr class="odd">
 <td><code>description_starts_with</code></td>
 <td><code>policy</code></td>
 <td>
-<a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file" class="external-link">WRE: The DESCRIPTION file</a>: “It is good practice not to start with the package name, ‘This package’ or similar”; flagged by the <a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages" class="external-link">incoming check</a>.</td>
+<a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file" class="external-link">WRE: The DESCRIPTION file</a>: “It is good practice not to start with the package name, ‘This package’ or similar”. The <a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages" class="external-link">incoming check</a> flags it.</td>
 </tr>
 <tr class="even">
 <td><code>references</code></td>
@@ -370,7 +433,7 @@
 <tr class="even">
 <td><code>license_year</code></td>
 <td><code>robustness</code></td>
-<td>No binding rule. An unfilled <code>LICENSE</code> template, with <code>&lt;YEAR&gt;</code> or <code>&lt;COPYRIGHT HOLDER&gt;</code> left in, leaves a placeholder. Recipe: <a href="https://contributor.r-project.org/cran-cookbook/description_issues.html#license-files" class="external-link">LICENSE files</a>.</td>
+<td>No binding rule. Leaving <code>&lt;YEAR&gt;</code> or <code>&lt;COPYRIGHT HOLDER&gt;</code> in the <code>LICENSE</code> template puts a placeholder where the copyright notice belongs. Recipe: <a href="https://contributor.r-project.org/cran-cookbook/description_issues.html#license-files" class="external-link">LICENSE files</a>.</td>
 </tr>
 <tr class="odd">
 <td><code>spelling</code></td>
@@ -388,24 +451,24 @@
 <td><code>cph_role</code></td>
 <td><code>opinion</code></td>
 <td>
-<code><a href="https://rdrr.io/r/utils/person.html" class="external-link">?person</a></code>: <code>cph</code> is for copyright holders, and authors who are natural persons hold copyright by default without it. CRAN Policy asks only that ownership be clear, which a <code>Copyright</code> field also does. Runs on request.</td>
+<code><a href="https://rdrr.io/r/utils/person.html" class="external-link">?person</a></code>: <code>cph</code> is for copyright holders, and authors who are natural persons hold copyright by default without it. CRAN Policy asks only that ownership be clear, which a <code>Copyright</code> field also achieves. Runs on request.</td>
 </tr>
 <tr class="even">
 <td><code>format_names</code></td>
 <td><code>opinion</code></td>
-<td>No rule. <a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file" class="external-link">WRE: The DESCRIPTION file</a> asks for quotes around software, and <code>JSON</code>, <code>HTML</code>, <code>XML</code>, <code>CSS</code>, <code>YAML</code>, <code>TOML</code>, <code>Markdown</code>, <code>LaTeX</code>, <code>TeX</code> and <code>SQL</code> are formats; <code>C++</code>, <code>Fortran</code> and <code>Tcl</code> are written either way. A census of CRAN in September 2026 found that packages accepted at new-package review in the previous 18 months wrote these bare 62% of the time, against 28% for the names <code>language_names</code> checks. Runs on request.</td>
+<td>No rule. <a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file" class="external-link">WRE: The DESCRIPTION file</a> asks for quotes around software, and <code>JSON</code>, <code>HTML</code>, <code>XML</code>, <code>CSS</code>, <code>YAML</code>, <code>TOML</code>, <code>Markdown</code>, <code>LaTeX</code>, <code>TeX</code> and <code>SQL</code> are formats. <code>C++</code>, <code>Fortran</code> and <code>Tcl</code> are written either way. In a census of CRAN in September 2026, packages accepted at new-package review in the previous 18 months wrote these bare 62% of the time, against 28% for the names <code>language_names</code> checks. Runs on request.</td>
 </tr>
 <tr class="odd">
 <td><code>description_length</code></td>
 <td><code>opinion</code></td>
 <td>
-<a href="https://contributor.r-project.org/cran-cookbook/general_issues.html#description-length" class="external-link">Cookbook: Description Length</a>. A one-line <code>Description</code> is thin, and reviewers ask for more.</td>
+<a href="https://contributor.r-project.org/cran-cookbook/general_issues.html#description-length" class="external-link">Cookbook: Description Length</a>. Reviewers find a one-line <code>Description</code> thin and ask for more.</td>
 </tr>
 <tr class="even">
 <td><code>title_length</code></td>
 <td><code>opinion</code></td>
 <td>
-<a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file" class="external-link">WRE: The DESCRIPTION file</a>: “Some package listings may truncate the title to 65 characters”. That is a display width, not a limit, so a <code>Title</code> filling it exactly still shows in full and nothing rejects a longer one.</td>
+<a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file" class="external-link">WRE: The DESCRIPTION file</a>: “Some package listings may truncate the title to 65 characters”. That is a display width rather than a limit, so a <code>Title</code> that fills it exactly still shows in full, and nothing rejects a longer one.</td>
 </tr>
 <tr class="odd">
 <td><code>title_redundant_phrases</code></td>
@@ -415,12 +478,12 @@
 <tr class="even">
 <td><code>title_starts_with_article</code></td>
 <td><code>opinion</code></td>
-<td>No rule. A mis-transplant of a real CRAN rule, kept callable but off by default.</td>
+<td>No rule. The real CRAN rule, which <code>description_starts_with</code> enforces, concerns the opening of the <code>Description</code>. Kept callable but off by default.</td>
 </tr>
 <tr class="odd">
 <td><code>description_function_quotes</code></td>
 <td><code>opinion</code></td>
-<td>No rule. An invented rule, kept callable but off by default.</td>
+<td>No rule, and Writing R Extensions points the other way. Kept callable but off by default.</td>
 </tr>
 </tbody>
 </table></section><section class="level2"><h2 id="documentation-checks">Documentation checks<a class="anchor" aria-label="anchor" href="#documentation-checks"></a>
@@ -428,7 +491,7 @@
 <table class="table caption-top">
 <thead><tr class="header">
 <th>Check</th>
-<th>Tier</th>
+<th>Severity</th>
 <th>Source</th>
 </tr></thead>
 <tbody>
@@ -447,36 +510,36 @@
 <tr class="odd">
 <td><code>roxygen_usage</code></td>
 <td><code>robustness</code></td>
-<td>No binding rule. A function tagged <code>@export</code> that never reached <code>NAMESPACE</code> is not actually exported. Recipe: <a href="https://contributor.r-project.org/cran-cookbook/docs_issues.html#repeated-rejections-of-issues-in-manuals-if-using-roxygen2" class="external-link">Repeated Rejections of Issues in Manuals If Using roxygen2</a>.</td>
+<td>No binding rule. Functions tagged <code>@export</code> that never reached <code>NAMESPACE</code> are not exported. Recipe: <a href="https://contributor.r-project.org/cran-cookbook/docs_issues.html#repeated-rejections-of-issues-in-manuals-if-using-roxygen2" class="external-link">Repeated Rejections of Issues in Manuals If Using roxygen2</a>.</td>
 </tr>
 <tr class="even">
 <td><code>unexported_example_ns</code></td>
 <td><code>robustness</code></td>
-<td>No formal rule. An example that reaches for an unexported object will error when it runs.</td>
+<td>No formal rule. Examples that reach for an unexported object error when they run.</td>
 </tr>
 <tr class="odd">
 <td><code>rd_bibliography_files</code></td>
 <td><code>robustness</code></td>
 <td>
-<a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Bibliographic-citations-and-references" class="external-link">WRE: Bibliographic citations and references</a> keeps the bibliography as <code>inst/REFERENCES.R</code> or <code>inst/REFERENCES.bib</code>, which “needs bibtex to be installed”. Nothing checks either: a <code>.bib</code> with no <code>bibtex</code> in <code>Suggests</code> fails a build that installs only what is declared, and one outside <code>inst/</code> is never installed for another package’s <code>pkg::key</code>.</td>
+<a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Bibliographic-citations-and-references" class="external-link">WRE: Bibliographic citations and references</a> keeps the bibliography as <code>inst/REFERENCES.R</code> or <code>inst/REFERENCES.bib</code>, which “needs bibtex to be installed”. Nothing checks either. Without <code>bibtex</code> in <code>Suggests</code>, a <code>.bib</code> fails a build that installs only what is declared, and one outside <code>inst/</code> is never installed for another package’s <code>pkg::key</code>.</td>
 </tr>
 <tr class="even">
 <td><code>value_tags</code></td>
 <td><code>opinion</code></td>
 <td>
-<a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Documenting-functions" class="external-link">WRE: Documenting functions</a> describes <code>\value{}</code> and <a href="https://contributor.r-project.org/cran-cookbook/docs_issues.html#missing-value-tags-in-.rd-files" class="external-link">Cookbook: Missing -tags in .Rd-files</a> is the recipe reviewers cite, but <code>R CMD check</code> does not require it.</td>
+<a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Documenting-functions" class="external-link">WRE: Documenting functions</a> describes <code>\value{}</code>, and <a href="https://contributor.r-project.org/cran-cookbook/docs_issues.html#missing-value-tags-in-.rd-files" class="external-link">Cookbook: Missing -tags in .Rd-files</a> is the recipe reviewers cite, but <code>R CMD check</code> does not require it.</td>
 </tr>
 <tr class="odd">
 <td><code>example_structure</code></td>
 <td><code>opinion</code></td>
 <td>
-<a href="https://contributor.r-project.org/cran-cookbook/general_issues.html#structuring-of-examples" class="external-link">Cookbook: Structuring of Examples</a>. <code>\dontrun{}</code> should wrap only code that genuinely cannot run inside a check.</td>
+<a href="https://contributor.r-project.org/cran-cookbook/general_issues.html#structuring-of-examples" class="external-link">Cookbook: Structuring of Examples</a>. <code>\dontrun{}</code> should wrap only code that cannot run inside a check.</td>
 </tr>
 <tr class="even">
 <td><code>donttest_vs_dontrun</code></td>
 <td><code>opinion</code></td>
 <td>
-<a href="https://contributor.r-project.org/cran-cookbook/general_issues.html#structuring-of-examples" class="external-link">Cookbook: Structuring of Examples</a>: <code>\donttest{}</code> is the wrapper for examples that merely run long, where <code>\dontrun{}</code> is often reached for instead.</td>
+<a href="https://contributor.r-project.org/cran-cookbook/general_issues.html#structuring-of-examples" class="external-link">Cookbook: Structuring of Examples</a>: <code>\donttest{}</code> is the wrapper for examples that merely run long, where many reach for <code>\dontrun{}</code> instead.</td>
 </tr>
 <tr class="odd">
 <td><code>missing_examples</code></td>
@@ -487,16 +550,17 @@
 <tr class="even">
 <td><code>commented_examples</code></td>
 <td><code>opinion</code></td>
-<td>Convention only. An <code>\examples{}</code> block that is entirely commented out demonstrates nothing.</td>
+<td>Convention only. Commenting out a whole <code>\examples{}</code> block leaves it demonstrating nothing.</td>
 </tr>
 </tbody>
 </table></section><section class="level2"><h2 id="example-vignette-and-demo-checks">Example, vignette and demo checks<a class="anchor" aria-label="anchor" href="#example-vignette-and-demo-checks"></a>
 </h2>
-<p>These cover the code outside <code>R/</code> that CRAN reads, where several of the most common rejections land. Each rule below is one a maintainer has received verbatim.</p>
+<p>These checks cover the code outside <code>R/</code> that CRAN reads, where several of the most common rejections land. Maintainers have received each rule below, verbatim, in a reply from CRAN.</p>
+<p><img src="figures/where-checks-read-light.svg" class="ct-fig ct-light" alt="Four folders of a package: R/ for package code, man/ for help page examples, vignettes/ and demo/. One green line spans all four and reads checktor reads all four. Under each folder is a finding checktor catches there: a seed set inside a function, an install, a write outside tempdir() and options() changed for good."><img src="figures/where-checks-read-dark.svg" class="ct-fig ct-dark" aria-hidden="true"></p>
 <table class="table caption-top">
 <thead><tr class="header">
 <th>Check</th>
-<th>Tier</th>
+<th>Severity</th>
 <th>Source</th>
 </tr></thead>
 <tbody>
@@ -504,7 +568,7 @@
 <td><code>example_interactive</code></td>
 <td><code>policy</code></td>
 <td>
-<a href="https://contributor.r-project.org/cran-cookbook/general_issues.html#structuring-of-examples" class="external-link">Cookbook: Structuring of Examples</a>: a function that only runs interactively belongs in <code>if (interactive())</code>, so a reader sees it is not for a script, rather than in <code>\dontrun{}</code>. In <code>\donttest{}</code> it is worse: <code>R CMD check --as-cran</code> runs that code, where a prompt errors and an app waits for input.</td>
+<a href="https://contributor.r-project.org/cran-cookbook/general_issues.html#structuring-of-examples" class="external-link">Cookbook: Structuring of Examples</a>: a function that only runs interactively belongs in <code>if (interactive())</code>, so a reader sees it is not for a script, rather than in <code>\dontrun{}</code>. In <code>\donttest{}</code> it does more harm, because <code>R CMD check --as-cran</code> runs that code, where a prompt errors and an app waits for input.</td>
 </tr>
 <tr class="even">
 <td><code>example_installs</code></td>
@@ -527,18 +591,18 @@
 <tr class="odd">
 <td><code>example_internal_ns</code></td>
 <td><code>policy</code></td>
-<td>CRAN asks you to omit one colon, since <code>:::</code> reaches an object whose behaviour the author may change.</td>
+<td>CRAN asks you to omit one colon, since <code>:::</code> reaches an object whose behavior the author may change.</td>
 </tr>
 <tr class="even">
 <td><code>example_tf_usage</code></td>
 <td><code>robustness</code></td>
 <td>
-<a href="https://contributor.r-project.org/cran-cookbook/code_issues.html#tf-instead-of-truefalse" class="external-link">Cookbook: T/F Instead of TRUE/FALSE</a>: <code>T</code> and <code>F</code> “should not be used as variable names in your code, examples, tests or vignettes”. The same rule as <code>tf_usage</code>, over examples, vignettes and demos.</td>
+<a href="https://contributor.r-project.org/cran-cookbook/code_issues.html#tf-instead-of-truefalse" class="external-link">Cookbook: T/F Instead of TRUE/FALSE</a>: <code>T</code> and <code>F</code> “should not be used as variable names in your code, examples, tests or vignettes”. The same rule as <code>tf_usage</code>, applied to examples, vignettes and demos.</td>
 </tr>
 <tr class="odd">
 <td><code>example_unparseable</code></td>
 <td><code>robustness</code></td>
-<td>A rejection reviewers send verbatim: “Unexecutable code in man/…Rd”. <a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Documenting-functions" class="external-link">WRE: Documenting functions</a> lets <code>\dontrun{}</code> text be something other than R, but reviewers run examples with it included, and <code>R CMD check</code> never parses it, so a missing bracket or a <code>&lt;your key&gt;</code> placeholder there goes unseen.</td>
+<td>Reviewers send this rejection verbatim: “Unexecutable code in man/…Rd”. <a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Documenting-functions" class="external-link">WRE: Documenting functions</a> lets <code>\dontrun{}</code> text be something other than R, but reviewers run examples with it included, and <code>R CMD check</code> never parses it, so a missing bracket or a <code>&lt;your key&gt;</code> placeholder there goes unseen.</td>
 </tr>
 </tbody>
 </table></section><section class="level2"><h2 id="general-checks">General checks<a class="anchor" aria-label="anchor" href="#general-checks"></a>
@@ -546,7 +610,7 @@
 <table class="table caption-top">
 <thead><tr class="header">
 <th>Check</th>
-<th>Tier</th>
+<th>Severity</th>
 <th>Source</th>
 </tr></thead>
 <tbody>
@@ -554,13 +618,13 @@
 <td><code>code_exercised</code></td>
 <td><code>policy</code></td>
 <td>
-<a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages" class="external-link">CRAN incoming check</a>: <code>--as-cran</code> WARNs “No examples, no tests, no vignettes” for a package that exports code and ships none of the three. <a href="https://cran.r-project.org/web/packages/policies.html" class="external-link">CRAN Policy</a> asks that “the checks that are left do exercise all the features of the package”.</td>
+<a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages" class="external-link">CRAN incoming check</a>: <code>--as-cran</code> WARNs “No examples, no tests, no vignettes” for a package that exports code and includes none of the three. <a href="https://cran.r-project.org/web/packages/policies.html" class="external-link">CRAN Policy</a> asks that “the checks that are left do exercise all the features of the package”.</td>
 </tr>
 <tr class="even">
 <td><code>citation_file</code></td>
 <td><code>policy</code></td>
 <td>
-<a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages" class="external-link">CRAN incoming check</a>: <code>--as-cran</code> NOTEs an <code>inst/CITATION</code> that calls the old-style <code><a href="https://rdrr.io/r/utils/citEntry.html" class="external-link">citEntry()</a></code> or <code><a href="https://rdrr.io/r/utils/personList.html" class="external-link">personList()</a></code> and lists calls to <code><a href="https://rdrr.io/r/utils/packageDescription.html" class="external-link">packageDescription()</a></code>, <code><a href="https://rdrr.io/r/base/library.html" class="external-link">library()</a></code> and <code><a href="https://rdrr.io/r/base/library.html" class="external-link">require()</a></code>. <a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#CITATION-files" class="external-link">WRE: CITATION files</a>: “It is desirable (and essential for CRAN) that the CITATION file does not contain calls to functions such as packageDescription which assume the package is installed”.</td>
+<a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages" class="external-link">CRAN incoming check</a>: <code>--as-cran</code> NOTEs an <code>inst/CITATION</code> that calls the old-style <code><a href="https://rdrr.io/r/utils/citEntry.html" class="external-link">citEntry()</a></code> or <code><a href="https://rdrr.io/r/utils/personList.html" class="external-link">personList()</a></code>, and lists calls to <code><a href="https://rdrr.io/r/utils/packageDescription.html" class="external-link">packageDescription()</a></code>, <code><a href="https://rdrr.io/r/base/library.html" class="external-link">library()</a></code> and <code><a href="https://rdrr.io/r/base/library.html" class="external-link">require()</a></code>. <a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#CITATION-files" class="external-link">WRE: CITATION files</a>: “It is desirable (and essential for CRAN) that the CITATION file does not contain calls to functions such as packageDescription which assume the package is installed”.</td>
 </tr>
 <tr class="odd">
 <td><code>package_size</code></td>
@@ -577,7 +641,7 @@
 <tr class="odd">
 <td><code>readme_links</code></td>
 <td><code>robustness</code></td>
-<td>No formal rule. A relative README link whose target is excluded from the tarball breaks on the package page.</td>
+<td>No formal rule. Relative README links whose targets are excluded from the tarball break on the package page.</td>
 </tr>
 <tr class="even">
 <td><code>urls</code></td>
@@ -587,12 +651,12 @@
 <tr class="odd">
 <td><code>news_file</code></td>
 <td><code>opinion</code></td>
-<td>Convention only. A <code>NEWS</code> file is expected but not required.</td>
+<td>Convention only. <code>NEWS</code> files are expected but not required.</td>
 </tr>
 <tr class="even">
 <td><code>cran_comments_file</code></td>
 <td><code>opinion</code></td>
-<td>Convention only. A <code>cran-comments.md</code> is a submission workflow rather than a property of the package, which is why it runs only when you call it.</td>
+<td>Convention only. <code>cran-comments.md</code> belongs to the submission workflow rather than to the package, so this check runs only when you call it.</td>
 </tr>
 </tbody>
 </table></section><section class="level2"><h2 id="cran-policy-checks">CRAN policy checks<a class="anchor" aria-label="anchor" href="#cran-policy-checks"></a>
@@ -600,7 +664,7 @@
 <table class="table caption-top">
 <thead><tr class="header">
 <th>Check</th>
-<th>Tier</th>
+<th>Severity</th>
 <th>Source</th>
 </tr></thead>
 <tbody>
@@ -608,7 +672,7 @@
 <td><code>browser_calls</code></td>
 <td><code>policy</code></td>
 <td>
-<a href="https://cran.r-project.org/web/packages/policies.html" class="external-link">CRAN Policy</a>: checks run non-interactively, so a debugging leftover such as <code><a href="https://rdrr.io/r/base/browser.html" class="external-link">browser()</a></code> must not be left in.</td>
+<a href="https://cran.r-project.org/web/packages/policies.html" class="external-link">CRAN Policy</a>: checks run non-interactively, so a debugging leftover such as <code><a href="https://rdrr.io/r/base/browser.html" class="external-link">browser()</a></code> must not remain.</td>
 </tr>
 <tr class="even">
 <td><code>file_operations</code></td>
@@ -625,17 +689,18 @@
 <tr class="even">
 <td><code>system_calls</code></td>
 <td><code>robustness</code></td>
-<td>No flat rule. A raw <code><a href="https://rdrr.io/r/base/system.html" class="external-link">system()</a></code> or <code><a href="https://rdrr.io/r/base/system2.html" class="external-link">system2()</a></code> call needs review for portability rather than being an automatic violation.</td>
+<td>No flat rule. Raw <code><a href="https://rdrr.io/r/base/system.html" class="external-link">system()</a></code> and <code><a href="https://rdrr.io/r/base/system2.html" class="external-link">system2()</a></code> calls need review for portability, so they are not automatic violations.</td>
 </tr>
 </tbody>
-</table></section><section class="level2"><h2 id="what-the-cookbook-covers-that-checktor-does-not">What the Cookbook covers that checktor does not<a class="anchor" aria-label="anchor" href="#what-the-cookbook-covers-that-checktor-does-not"></a>
+</table></section><section class="level2"><h2 id="leave-two-recipes-to-people">Leave two recipes to people<a class="anchor" aria-label="anchor" href="#leave-two-recipes-to-people"></a>
 </h2>
-<p>checktor has a check for every <a href="https://contributor.r-project.org/cran-cookbook/" class="external-link">CRAN Cookbook</a> recipe that describes a pattern in your sources. Two recipes do not, and neither is something a static reader can answer.</p>
-<p><em>Overall Checktime</em> is about a measurement rather than a pattern. The NOTE reads “Overall checktime 20 min &gt; 10 min”, and nothing in your sources says how long they will take to run. <code>R CMD check</code> reports the figure, and the fix is fewer or smaller examples, vignettes and tests.</p>
-<p><em>Communicating with CRAN</em> is advice on writing to CRAN, including copying <code>cran-submissions@r-project.org</code> and explaining yourself in <code>cran-comments.md</code>. The one checkable part of it, whether that file is there, is <code>cran_comments_file</code>.</p>
-</section><section class="level2"><h2 id="when-checktor-and-an-authority-disagree">When checktor and an authority disagree<a class="anchor" aria-label="anchor" href="#when-checktor-and-an-authority-disagree"></a>
+<p>checktor has a check for every <a href="https://contributor.r-project.org/cran-cookbook/" class="external-link">CRAN Cookbook</a> recipe that describes a pattern in your sources. The two recipes without one describe things that no reading of the sources can settle.</p>
+<p><em>Overall Checktime</em> concerns a measurement. The NOTE reads “Overall checktime 20 min &gt; 10 min”, and nothing in your sources tells how long they will take to run. <code>R CMD check</code> reports the figure, and the fix is fewer or smaller examples, vignettes and tests.</p>
+<p><em>Communicating with CRAN</em> is advice on writing to CRAN, including copying <code>cran-submissions@r-project.org</code> and explaining yourself in <code>cran-comments.md</code>. Its one checkable part, whether that file exists, is <code>cran_comments_file</code>.</p>
+</section><section class="level2"><h2 id="resolve-a-disagreement">Resolve a disagreement<a class="anchor" aria-label="anchor" href="#resolve-a-disagreement"></a>
 </h2>
-<p>A tier is where a check’s authority sits, not how strongly checktor feels about it. A few checks are deliberately <code>opinion</code> because no authority backs them in either direction, and three of those (<code>title_starts_with_article</code>, <code>description_function_quotes</code> and <code>format_names</code>) are kept callable but left out of the default run for the same reason. Two more <code>opinion</code> checks run only when you call them: <code>cph_role</code>, because its source says most authors need no <code>cph</code> role, and <code>cran_comments_file</code>, because it asks about a submission workflow rather than the package. If a finding does not match your reading of the policy, the tier is the first thing to look at: an <code>opinion</code> finding is a conversation, not a requirement. You can turn any check off for one package with <code>Config/checktor/disable</code> in its DESCRIPTION, or for every package with <code>options(checktor.disable = ...)</code>, for example in <code>.Rprofile</code>. A disabled check does not run at all.</p>
+<p>Severity records where a check’s authority sits, not how strongly checktor feels about it. Several checks are <code>opinion</code> because no authority backs them in either direction. Of those, <code>title_starts_with_article</code>, <code>description_function_quotes</code> and <code>format_names</code> stay callable but are left out of the default run for that reason. <code>cph_role</code> stays out because its own source says most authors need no <code>cph</code> role. <code>cran_comments_file</code> stays out because it asks about a submission workflow rather than the package.</p>
+<p>If a finding contradicts your reading of the policy, look at its severity first. Opinion findings open a conversation and require nothing. To turn a check off for one package, list it in <code>Config/checktor/disable</code> in that package’s DESCRIPTION. To turn it off for every package, set <code>options(checktor.disable = ...)</code>, for example in <code>.Rprofile</code>. Either way, the check does not run at all.</p>
 </section><script id="quarto-html-after-body" type="application/javascript">
   window.document.addEventListener("DOMContentLoaded", function (event) {
       var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);

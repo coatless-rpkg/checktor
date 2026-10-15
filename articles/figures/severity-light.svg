@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 310" width="800" height="310" role="img" aria-label="Three severities side by side. Policy breaks a CRAN rule, such as set.seed(42) inside a function. Robustness is a real defect that CRAN still accepts, such as sorted = F. Opinion is a convention with no rule behind it, such as a help page with no value section. Under policy and robustness, a bracket reads Counts toward overall health. Under opinion, a dashed bracket reads Listed, not counted.">
+  <style>
+    svg{--ink:#0E2A47;--muted:#5F7189;--panel:#F1F5F8;--line:#D6DFE8;--sheet:#FFFFFF;--green:#17915B;--greenfill:#2FBF71;--amber:#A86F06;--amberfill:#E7B24B;--cream:#FBF1DD;--chip:#0E2A47;--chiptext:#FFFFFF;--onamber:#0E2A47;--tile:#0E2A47;--tiletext:#F4F7FA;--prompt:#7FD8A6;--check:#FFFFFF;--tint:#E9F6EE}
+    text{fill:var(--ink);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,Helvetica,Arial,sans-serif;font-size:16px}
+    .m{fill:var(--muted)} .c{font-family:ui-monospace,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace} .b{font-weight:600} .pre{white-space:pre}
+  </style>
+  <defs>
+    <marker id="arw" markerWidth="10" markerHeight="10" refX="7" refY="4.5" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="var(--ink)"/>
+    </marker>
+  </defs>
+  <rect x="40" y="34" width="88" height="34" rx="17" fill="var(--chip)"/>
+  <text x="57" y="57" class="b" style="fill:var(--chiptext)">Policy</text>
+  <text x="40" y="104">Breaks a CRAN rule</text>
+  <rect x="40" y="146" width="210" height="76" rx="12" fill="var(--panel)"/>
+  <text x="58" y="179" class="c" style="font-size:15px">set.seed(42)</text>
+  <text x="58" y="204" class="m" style="font-size:14px">inside a function</text>
+  <rect x="300" y="34" width="124" height="34" rx="17" fill="var(--amberfill)"/>
+  <text x="317" y="57" class="b" style="fill:var(--onamber)">Robustness</text>
+  <text x="300" y="104">Real defect that</text>
+  <text x="300" y="127">CRAN still accepts</text>
+  <rect x="300" y="146" width="210" height="76" rx="12" fill="var(--panel)"/>
+  <text x="318" y="179" class="c" style="font-size:15px">sorted = F</text>
+  <text x="318" y="204" class="m" style="font-size:14px">F in place of FALSE</text>
+  <rect x="561" y="35" width="96" height="32" rx="16" fill="none" stroke="var(--muted)" stroke-width="1.6" stroke-dasharray="5 4"/>
+  <text x="577" y="57" class="b m">Opinion</text>
+  <text x="560" y="104">Convention with</text>
+  <text x="560" y="127">no rule behind it</text>
+  <rect x="560" y="146" width="210" height="76" rx="12" fill="var(--panel)"/>
+  <text x="578" y="179" class="c" style="font-size:15px">\value{}</text>
+  <text x="578" y="204" class="m" style="font-size:14px">missing from a help page</text>
+  <path d="M41,244 V256 H509 V244" fill="none" stroke="var(--ink)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="51" cy="283" r="10" fill="var(--greenfill)"/>
+  <polyline points="46.5,283.2 50.0,286.8 56.0,279.2" fill="none" stroke="var(--check)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="69" y="289" class="b">Counts toward overall health</text>
+  <path d="M561,244 V256 H769 V244" fill="none" stroke="var(--muted)" stroke-width="1.6" stroke-dasharray="5 4" stroke-linecap="round"/>
+  <text x="561" y="289" class="m">Listed, not counted</text>
+</svg>

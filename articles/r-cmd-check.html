@@ -17,7 +17,66 @@
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><script src="r-cmd-check_files/libs/quarto-html/popper.min.js"></script><script src="r-cmd-check_files/libs/quarto-html/tippy.umd.min.js"></script><link href="r-cmd-check_files/libs/quarto-html/tippy.css" rel="stylesheet">
 <link href="r-cmd-check_files/libs/quarto-html/light-border.css" rel="stylesheet">
-<!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="What R CMD check Checks">
+<script>
+  (function () {
+    var root = document.documentElement;
+    if (root.hasAttribute("data-bs-theme")) return; // a pkgdown page: it has its own switch
+    var KEY = "checktor-vignette-color-mode";
+    var media = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+    var choice = "auto";
+    try {
+      var saved = window.localStorage.getItem(KEY);
+      if (saved === "light" || saved === "dark") choice = saved;
+    } catch (e) {}
+    function apply() {
+      var dark = choice === "dark" || (choice === "auto" && media !== null && media.matches);
+      root.setAttribute("data-ct-mode", dark ? "dark" : "light");
+    }
+    apply();
+    if (media !== null) {
+      if (media.addEventListener) media.addEventListener("change", apply);
+      else if (media.addListener) media.addListener(apply);
+    }
+    document.addEventListener("DOMContentLoaded", function () {
+      if (root.hasAttribute("data-bs-theme") || document.querySelector(".navbar")) {
+        root.removeAttribute("data-ct-mode");
+        return;
+      }
+      var options = [["auto", "Auto", "Follow your system setting"],
+                     ["light", "Light", "Always light"],
+                     ["dark", "Dark", "Always dark"]];
+      var bar = document.createElement("div");
+      bar.className = "ct-mode";
+      var group = document.createElement("div");
+      group.className = "ct-mode-group";
+      group.setAttribute("role", "group");
+      group.setAttribute("aria-label", "Color mode");
+      var buttons = options.map(function (o) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.textContent = o[1];
+        b.title = o[2];
+        b.addEventListener("click", function () {
+          choice = o[0];
+          try {
+            if (choice === "auto") window.localStorage.removeItem(KEY);
+            else window.localStorage.setItem(KEY, choice);
+          } catch (e) {}
+          apply();
+          sync();
+        });
+        group.appendChild(b);
+        return [o[0], b];
+      });
+      function sync() {
+        buttons.forEach(function (pair) { pair[1].setAttribute("aria-pressed", String(pair[0] === choice)); });
+      }
+      sync();
+      bar.appendChild(group);
+      document.body.insertBefore(bar, document.body.firstChild);
+    });
+  })();
+  </script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="What R CMD check Checks">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:creator" content="@axiomsofxyz">
 <meta name="twitter:site" content="@axiomsofxyz">
@@ -30,7 +89,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">checktor</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -79,7 +138,7 @@
 
 
 
-      <small class="dont-index">Source: <a href="https://github.com/coatless-rpkg/checktor/blob/v0.2.0/vignettes/r-cmd-check.qmd" class="external-link"><code>vignettes/r-cmd-check.qmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/coatless-rpkg/checktor/blob/main/vignettes/r-cmd-check.qmd" class="external-link"><code>vignettes/r-cmd-check.qmd</code></a></small>
       <div class="d-none name"><code></code></div>
     </div>
 
@@ -88,25 +147,25 @@
 
 
 
-    <p><code>R CMD check</code> is a pipeline. It builds your package, installs it, and then runs roughly fifty separate checks, each of which prints a line beginning <code>* checking ...</code> and ends with a verdict. R itself parses those lines back out of the log with a single <a href="https://github.com/wch/r-source/blob/trunk/src/library/tools/R/checktools.R" class="external-link">regular expression</a>, and this page walks through what each one is actually looking at. The checks themselves are defined in R’s own <code>tools</code> package (<a href="https://github.com/wch/r-source/blob/trunk/src/library/tools/R/check.R" class="external-link"><code>check.R</code></a>), and the manual describes the process in <a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages" class="external-link">Writing R Extensions, “Checking packages”</a>.</p>
-<p>checktor is deliberately the other half of this story: it runs the extra-CRAN checks that a human reviewer applies but that <code>R CMD check</code> never will. Knowing exactly where <code>R CMD check</code> stops is the fastest way to see where checktor begins, so this page is a map of the territory <code>R CMD check</code> already covers. For the map of checktor’s own checks, see <a href="check-sources.html">Where the Checks Come From</a>.</p>
-<section class="level2"><h2 id="the-four-verdicts">The four verdicts<a class="anchor" aria-label="anchor" href="#the-four-verdicts"></a>
+    <p><code>R CMD check</code> is a pipeline. It builds your package, installs it and then runs a long series of checks. Each one prints a line that begins <code>* checking ...</code> and ends with its result. R reads those lines back out of the log with a single <a href="https://github.com/wch/r-source/blob/trunk/src/library/tools/R/checktools.R" class="external-link">regular expression</a>. The checks themselves live in R’s <code>tools</code> package (<a href="https://github.com/wch/r-source/blob/trunk/src/library/tools/R/check.R" class="external-link"><code>check.R</code></a>), and Writing R Extensions describes the process under <a href="https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-packages" class="external-link">“Checking packages”</a>. This page sets out what each step looks at.</p>
+<p>checktor covers the other half. It runs the checks a CRAN reviewer applies by hand and <code>R CMD check</code> does not. Knowing where <code>R CMD check</code> stops shows where checktor begins, so this page maps the ground <code>R CMD check</code> already covers. <a href="check-sources.html">Where the Checks Come From</a> maps checktor’s own checks.</p>
+<section class="level2"><h2 id="read-the-four-outcomes">Read the four outcomes<a class="anchor" aria-label="anchor" href="#read-the-four-outcomes"></a>
 </h2>
-<p>Every step ends in one of four states, and only the last three matter.</p>
+<p>Every step ends in one of four states, and only the last three need attention.</p>
 <ul>
 <li>
 <code>OK</code> means nothing to report.</li>
 <li>
-<code>NOTE</code> means something a reviewer will likely ask about. A submission with NOTEs can still be accepted, but each one needs a reason.</li>
+<code>NOTE</code> flags something a reviewer will likely ask about. CRAN can still accept a submission with NOTEs, but each one needs an explanation.</li>
 <li>
 <code>WARNING</code> means a real problem. CRAN will not accept a package with a WARNING.</li>
 <li>
 <code>ERROR</code> means the check could not complete, usually because code or a test failed outright.</li>
 </ul>
-<p>A clean <code>R CMD check</code> is the floor for a CRAN submission, not the ceiling. Many of its steps are structural (“is this a well-formed package?”) rather than editorial (“is this package good?”), which is exactly the gap a reviewer fills in, and the gap checktor is built for.</p>
-</section><section class="level2"><h2 id="packaging-and-installation">Packaging and installation<a class="anchor" aria-label="anchor" href="#packaging-and-installation"></a>
+<p>Passing <code>R CMD check</code> cleanly is the minimum for a CRAN submission. Most of its steps ask whether the package is well formed, and few ask whether it is written the way a reviewer wants. Reviewers fill that gap by hand, and checktor is built for the same gap.</p>
+</section><section class="level2"><h2 id="build-and-install">Build and install<a class="anchor" aria-label="anchor" href="#build-and-install"></a>
 </h2>
-<p>These run first and decide whether the package is even well-formed enough to install. A failure here stops everything else.</p>
+<p>These steps run first and decide whether the package is well formed enough to install. Failure here stops everything else.</p>
 <table class="table caption-top">
 <colgroup>
 <col style="width: 50%">
@@ -136,7 +195,7 @@
 </tr>
 <tr class="odd">
 <td><code>checking if there is a namespace</code></td>
-<td>A <code>NAMESPACE</code> file is present.</td>
+<td>The package has a <code>NAMESPACE</code> file.</td>
 </tr>
 <tr class="even">
 <td><code>checking for executable files</code></td>
@@ -144,11 +203,11 @@
 </tr>
 <tr class="odd">
 <td><code>checking for hidden files and directories</code></td>
-<td>Flags hidden files (<code>.foo</code>) that are usually build detritus.</td>
+<td>Flags hidden files (<code>.foo</code>) that are usually build debris.</td>
 </tr>
 <tr class="even">
 <td><code>checking for portable file names</code></td>
-<td>File names are ASCII, case-insensitively unique, and free of characters that break on other platforms.</td>
+<td>File names are ASCII, unique when case is ignored, and free of characters that break on other platforms.</td>
 </tr>
 <tr class="odd">
 <td><code>checking for sufficient/correct file permissions</code></td>
@@ -156,7 +215,7 @@
 </tr>
 <tr class="even">
 <td><code>checking whether package can be installed</code></td>
-<td>The package installs cleanly with <code>R CMD INSTALL</code>; the install log is scanned for warnings.</td>
+<td>The package installs cleanly with <code>R CMD INSTALL</code>, and the install log is scanned for warnings.</td>
 </tr>
 <tr class="odd">
 <td><code>checking installed package size</code></td>
@@ -173,7 +232,7 @@
 <tr class="even">
 <td><code>checking index information</code></td>
 <td>
-<code>INDEX</code> and demo/vignette indices are present and consistent.</td>
+<code>INDEX</code> and the demo and vignette indices are present and consistent.</td>
 </tr>
 <tr class="odd">
 <td><code>checking package subdirectories</code></td>
@@ -181,15 +240,16 @@
 </tr>
 <tr class="even">
 <td><code>checking top-level files</code></td>
-<td>Only recognised files sit at the package root.</td>
+<td>Only recognized files sit at the package root.</td>
 </tr>
 <tr class="odd">
 <td><code>checking for left-over files</code></td>
 <td>No editor backups or merge-conflict leftovers are present.</td>
 </tr>
 </tbody>
-</table></section><section class="level2"><h2 id="description-and-metadata">DESCRIPTION and metadata<a class="anchor" aria-label="anchor" href="#description-and-metadata"></a>
+</table></section><section class="level2"><h2 id="read-the-metadata">Read the metadata<a class="anchor" aria-label="anchor" href="#read-the-metadata"></a>
 </h2>
+<p>One step covers <code>DESCRIPTION</code> as a whole.</p>
 <table class="table caption-top">
 <colgroup>
 <col style="width: 50%">
@@ -202,11 +262,11 @@
 <tbody><tr class="odd">
 <td><code>checking DESCRIPTION meta-information</code></td>
 <td>
-<code>DESCRIPTION</code> parses, the <code>License</code> is recognised, <code>Authors@R</code> is valid, the encoding is declared, and the dependency fields are well-formed.</td>
+<code>DESCRIPTION</code> parses, the <code>License</code> is recognized, <code>Authors@R</code> is valid, the encoding is declared, and the dependency fields are well formed.</td>
 </tr></tbody>
-</table></section><section class="level2"><h2 id="r-code">R code<a class="anchor" aria-label="anchor" href="#r-code"></a>
+</table></section><section class="level2"><h2 id="check-the-r-code">Check the R code<a class="anchor" aria-label="anchor" href="#check-the-r-code"></a>
 </h2>
-<p>The heart of the static analysis. <code>checking R code for possible problems</code> is R’s own linter (<code>codetools</code>), and it catches a great deal on its own.</p>
+<p>Most of the static analysis happens here. <code>checking R code for possible problems</code> runs codetools, the code analyzer that comes with R, and it catches a great deal by itself.</p>
 <table class="table caption-top">
 <colgroup>
 <col style="width: 50%">
@@ -231,7 +291,7 @@
 </tr>
 <tr class="even">
 <td><code>checking whether the package can be loaded with stated dependencies</code></td>
-<td>It loads using only the declared dependencies, catching an undeclared <code>Depends</code>.</td>
+<td>It loads using only the declared dependencies, which catches an undeclared <code>Depends</code>.</td>
 </tr>
 <tr class="odd">
 <td><code>checking whether the package can be unloaded cleanly</code></td>
@@ -255,26 +315,25 @@
 </tr>
 <tr class="even">
 <td><code>checking S3 generic/method consistency</code></td>
-<td>An S3 method’s arguments are compatible with its generic.</td>
+<td>S3 methods take arguments compatible with their generics.</td>
 </tr>
 <tr class="odd">
 <td><code>checking replacement functions</code></td>
-<td>A <code>foo&lt;-</code> function takes <code>value</code> as its final argument.</td>
+<td>Replacement functions such as <code>foo&lt;-</code> take <code>value</code> as their final argument.</td>
 </tr>
 <tr class="even">
 <td><code>checking foreign function calls</code></td>
 <td>
-<code>.C</code>, <code>.Call</code>, and friends name registered, correctly-shaped native routines.</td>
+<code>.C</code>, <code>.Call</code> and the other foreign-function interfaces name registered native routines of the right shape.</td>
 </tr>
 <tr class="odd">
 <td><code>checking R code for possible problems</code></td>
-<td>
-<code>codetools</code> flags undefined globals, unused arguments, questionable <code>.Internal</code> use, and similar issues across all R code.</td>
+<td>codetools flags undefined globals, unused arguments, questionable <code>.Internal</code> use and similar issues across all R code.</td>
 </tr>
 </tbody>
-</table></section><section class="level2"><h2 id="documentation">Documentation<a class="anchor" aria-label="anchor" href="#documentation"></a>
+</table></section><section class="level2"><h2 id="check-the-documentation">Check the documentation<a class="anchor" aria-label="anchor" href="#check-the-documentation"></a>
 </h2>
-<p>Everything here works on the <code>.Rd</code> files, whether written by hand or generated by roxygen2.</p>
+<p>Every step here reads the <code>.Rd</code> files, whether you wrote them by hand or roxygen2 generated them.</p>
 <table class="table caption-top">
 <colgroup>
 <col style="width: 50%">
@@ -308,7 +367,7 @@
 </tr>
 <tr class="even">
 <td><code>checking for code/documentation mismatches</code></td>
-<td>Argument names in <code>\usage</code>, <code>\arguments</code>, and function signatures agree.</td>
+<td>Argument names in <code>\usage</code>, <code>\arguments</code> and function signatures agree.</td>
 </tr>
 <tr class="odd">
 <td><code>checking Rd \usage sections</code></td>
@@ -319,9 +378,9 @@
 <td>Flags placeholder or empty sections left in a documentation template.</td>
 </tr>
 </tbody>
-</table></section><section class="level2"><h2 id="examples-tests-and-vignettes">Examples, tests, and vignettes<a class="anchor" aria-label="anchor" href="#examples-tests-and-vignettes"></a>
+</table></section><section class="level2"><h2 id="run-the-examples-tests-and-vignettes">Run the examples, tests and vignettes<a class="anchor" aria-label="anchor" href="#run-the-examples-tests-and-vignettes"></a>
 </h2>
-<p>The dynamic checks: R actually runs your code and fails on any error.</p>
+<p>These steps run your code and fail on any error.</p>
 <table class="table caption-top">
 <colgroup>
 <col style="width: 50%">
@@ -350,7 +409,7 @@
 </tr>
 <tr class="odd">
 <td><code>checking files in 'vignettes'</code></td>
-<td>The <code>vignettes/</code> sources are well-formed.</td>
+<td>The <code>vignettes/</code> sources are well formed.</td>
 </tr>
 <tr class="even">
 <td><code>checking for unstated dependencies in 'tests'</code></td>
@@ -358,7 +417,7 @@
 </tr>
 <tr class="odd">
 <td><code>checking tests</code></td>
-<td>The test suite runs; any failure is an ERROR.</td>
+<td>The test suite runs, and any failure is an ERROR.</td>
 </tr>
 <tr class="even">
 <td><code>checking for unstated dependencies in vignettes</code></td>
@@ -373,9 +432,9 @@
 <td>Every vignette rebuilds from source without error.</td>
 </tr>
 </tbody>
-</table></section><section class="level2"><h2 id="the-cran-incoming-checks---as-cran">The CRAN incoming checks (<code>--as-cran</code>)<a class="anchor" aria-label="anchor" href="#the-cran-incoming-checks---as-cran"></a>
+</table></section><section class="level2"><h2 id="add-the-cran-incoming-checks">Add the CRAN incoming checks<a class="anchor" aria-label="anchor" href="#add-the-cran-incoming-checks"></a>
 </h2>
-<p>With <code>--as-cran</code>, the checks people actually mean by “the CRAN checks” are added. Most of a maintainer’s NOTEs come from the first line here.</p>
+<p><code>--as-cran</code> adds the steps people mean when they say “the CRAN checks”. Most of the NOTEs a maintainer sees come from the first one.</p>
 <table class="table caption-top">
 <colgroup>
 <col style="width: 50%">
@@ -388,7 +447,7 @@
 <tbody>
 <tr class="odd">
 <td><code>checking CRAN incoming feasibility</code></td>
-<td>The submission-readiness pass: the <code>Title</code> case, <code>Version</code>, <code>Date</code>, <code>Description</code>, <code>Authors@R</code>, <code>License</code>, URLs, and DOIs, plus a spell-check and a look for prior versions and problematic dependencies.</td>
+<td>The submission-readiness pass. It looks at the <code>Title</code> case, <code>Version</code>, <code>Date</code>, <code>Description</code>, <code>Authors@R</code>, <code>License</code>, URLs and DOIs, runs a spell check, and looks for prior versions and problematic dependencies.</td>
 </tr>
 <tr class="even">
 <td><code>checking for future file timestamps</code></td>
@@ -399,9 +458,9 @@
 <td>No saved object uses a serialization format newer than the package’s stated R dependency.</td>
 </tr>
 </tbody>
-</table></section><section class="level2"><h2 id="cleanup">Cleanup<a class="anchor" aria-label="anchor" href="#cleanup"></a>
+</table></section><section class="level2"><h2 id="clean-up">Clean up<a class="anchor" aria-label="anchor" href="#clean-up"></a>
 </h2>
-<p>The last two steps confirm the check itself left nothing behind.</p>
+<p>The last two steps confirm that the check left nothing behind.</p>
 <table class="table caption-top">
 <colgroup>
 <col style="width: 50%">
@@ -421,9 +480,9 @@
 <td>The package cleaned up after itself in <code><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir()</a></code>.</td>
 </tr>
 </tbody>
-</table></section><section class="level2"><h2 id="steps-you-will-only-see-sometimes">Steps you will only see sometimes<a class="anchor" aria-label="anchor" href="#steps-you-will-only-see-sometimes"></a>
+</table></section><section class="level2"><h2 id="expect-a-few-extra-steps">Expect a few extra steps<a class="anchor" aria-label="anchor" href="#expect-a-few-extra-steps"></a>
 </h2>
-<p>Several checks run only when the package has the matching content.</p>
+<p>Several steps run only when the package has the matching content.</p>
 <table class="table caption-top">
 <colgroup>
 <col style="width: 50%">
@@ -448,7 +507,7 @@
 </tr>
 <tr class="even">
 <td><code>checking line endings in ... sources and headers</code></td>
-<td>The package includes C, C++, or Fortran code.</td>
+<td>The package includes C, C++ or Fortran code.</td>
 </tr>
 <tr class="odd">
 <td><code>checking compilation flags in Makevars</code></td>
@@ -463,10 +522,10 @@
 <td>The manual is built (skipped by <code>--no-manual</code>).</td>
 </tr>
 </tbody>
-</table></section><section class="level2"><h2 id="where-checktor-fits">Where checktor fits<a class="anchor" aria-label="anchor" href="#where-checktor-fits"></a>
+</table></section><section class="level2"><h2 id="pick-up-where-it-stops">Pick up where it stops<a class="anchor" aria-label="anchor" href="#pick-up-where-it-stops"></a>
 </h2>
-<p>Read the tables above and a pattern emerges. <code>R CMD check</code> asks, thoroughly, <em>is this a well-formed package that builds, installs, and runs?</em> What it almost never asks is <em>is this the way a CRAN reviewer wants it written?</em> It will not object to a bare <code>T</code> in place of <code>TRUE</code>, a <code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed()</a></code> buried in a function, an unquoted package name in the <code>Title</code>, an exported function with no <code>\value{}</code> tag, or a one-line <code>Description</code>. Those are judgement calls a human makes, and they are where a passing check and a passing review part ways.</p>
-<p>That gap is checktor’s whole job. It runs the extra-CRAN checks that live in the Repository Policy and reviewers’ habits but nowhere in <code>R CMD check</code>. Run the two together: <code>R CMD check</code> for the structure, checktor for the review. See <a href="check-sources.html">Where the Checks Come From</a> for the source and severity behind each one checktor adds.</p>
+<p>Read down the tables and a pattern appears. <code>R CMD check</code> asks, thoroughly, whether this is a well-formed package that builds, installs and runs. It rarely asks whether the package is written the way a CRAN reviewer wants. It will not object to a bare <code>T</code> in place of <code>TRUE</code>, a <code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed()</a></code> buried in a function, an unquoted package name in the <code>Title</code>, an exported function with no <code>\value{}</code> tag or a one-line <code>Description</code>. People make those calls, and they are where a passing check and a passing review part ways.</p>
+<p>Those cases are checktor’s job. It runs the extra-CRAN checks drawn from the Repository Policy and from reviewers’ habits, none of which <code>R CMD check</code> runs. Use the two together, <code>R CMD check</code> for structure and checktor for the review. The rcmdcheck package runs <code>R CMD check</code> from R and returns its NOTEs, WARNINGs and ERRORs as data, and <code>devtools::check()</code> uses it. <a href="check-sources.html">Where the Checks Come From</a> gives the source and severity of each check checktor adds.</p>
 </section><script id="quarto-html-after-body" type="application/javascript">
   window.document.addEventListener("DOMContentLoaded", function (event) {
       var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
