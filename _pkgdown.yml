@@ -229,6 +229,3 @@ reference:
   - not_under_fn_with_call_xpath
   - extract_rd_section
   - collect_rd_text
-
-development:
-  mode: auto
