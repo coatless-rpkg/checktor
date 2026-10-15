@@ -1,7 +1,7 @@
 # Diagnose the License Field
 
 Flags a `License` that
-[`tools::analyze_license()`](https://rdrr.io/r/tools/licensetools.html)
+[`tools::analyze_license()`](https://search.r-project.org/R/refmans/tools/html/licensetools.html)
 cannot standardize, and a `+ file LICENSE` pointing at a file that does
 not exist. For MIT and the BSD licenses it also reads that file as
 `R CMD check` does: it must be the stub of `YEAR` and `COPYRIGHT HOLDER`

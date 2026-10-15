@@ -4,7 +4,7 @@ Fetches every URL in the package, across DESCRIPTION, `.Rd` files and
 vignettes, and reports the ones that fail: 404s, other error statuses,
 and redirects that ought to point at their final target. This is what
 `R CMD check --as-cran` does, through the same base R machinery
-([`tools::check_package_urls()`](https://rdrr.io/r/tools/urltools.html)),
+([`tools::check_package_urls()`](https://search.r-project.org/R/refmans/tools/html/urltools.html)),
 so you can see those findings without a full `--as-cran` pass and
 without depending on the `urlchecker` package.
 

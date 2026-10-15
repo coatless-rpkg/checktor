@@ -3,10 +3,11 @@
 Flags an `inst/CITATION` that calls the old-style
 [`citEntry()`](https://rdrr.io/r/utils/citEntry.html) (use
 [`bibentry()`](https://rdrr.io/r/utils/bibentry.html)) or
-[`personList()`](https://rdrr.io/r/utils/personList.html) and
-[`as.personList()`](https://rdrr.io/r/utils/personList.html) (use
-[`c()`](https://rdrr.io/r/base/c.html) on `person` objects), or that
-calls
+[`personList()`](https://search.r-project.org/R/refmans/utils/html/personList.html)
+and
+[`as.personList()`](https://search.r-project.org/R/refmans/utils/html/personList.html)
+(use [`c()`](https://rdrr.io/r/base/c.html) on `person` objects), or
+that calls
 [`packageDescription()`](https://rdrr.io/r/utils/packageDescription.html),
 [`library()`](https://rdrr.io/r/base/library.html) or
 [`require()`](https://rdrr.io/r/base/library.html). R passes the file a

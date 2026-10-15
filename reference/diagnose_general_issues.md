@@ -46,7 +46,8 @@ This function checks:
 
 - An `inst/CITATION` that uses the old-style
   [`citEntry()`](https://rdrr.io/r/utils/citEntry.html) or
-  [`personList()`](https://rdrr.io/r/utils/personList.html), or calls
+  [`personList()`](https://search.r-project.org/R/refmans/utils/html/personList.html),
+  or calls
   [`packageDescription()`](https://rdrr.io/r/utils/packageDescription.html),
   [`library()`](https://rdrr.io/r/base/library.html) or
   [`require()`](https://rdrr.io/r/base/library.html).

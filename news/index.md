@@ -43,7 +43,7 @@ tune checktor through `Config/checktor/*` fields in its own DESCRIPTION.
 
 - checktor needs R 4.5.0 or later, where 0.1.0 asked only for R 3.5.0. R
   4.5.0 added
-  [`tools::check_package_urls()`](https://rdrr.io/r/tools/urltools.html),
+  [`tools::check_package_urls()`](https://search.r-project.org/R/refmans/tools/html/urltools.html),
   which the new `url_liveness` check uses. An older installation stays
   on 0.1.0.
 
@@ -245,7 +245,7 @@ tune checktor through `Config/checktor/*` fields in its own DESCRIPTION.
 - `url_liveness` fetches every URL in the DESCRIPTION, `.Rd` files and
   vignettes and reports the ones that return an error, a 404, or a
   redirect, which is what `R CMD check --as-cran` does through
-  [`tools::check_package_urls()`](https://rdrr.io/r/tools/urltools.html).
+  [`tools::check_package_urls()`](https://search.r-project.org/R/refmans/tools/html/urltools.html).
   It runs when you are at the console and stays off in scripts, in
   continuous integration and under `R CMD check`, where a slow or
   unreachable network would make the result depend on the machine rather
@@ -383,8 +383,10 @@ tune checktor through `Config/checktor/*` fields in its own DESCRIPTION.
 - `citation_file` reads `inst/CITATION` for the calls CRAN’s incoming
   check NOTEs: the old-style
   [`citEntry()`](https://rdrr.io/r/utils/citEntry.html),
-  [`personList()`](https://rdrr.io/r/utils/personList.html) and
-  [`as.personList()`](https://rdrr.io/r/utils/personList.html), and
+  [`personList()`](https://search.r-project.org/R/refmans/utils/html/personList.html)
+  and
+  [`as.personList()`](https://search.r-project.org/R/refmans/utils/html/personList.html),
+  and
   [`packageDescription()`](https://rdrr.io/r/utils/packageDescription.html),
   [`library()`](https://rdrr.io/r/base/library.html) or
   [`require()`](https://rdrr.io/r/base/library.html), which assume the
@@ -540,7 +542,7 @@ instead of reimplementing them.
 
 - `title_case` and `license` hand off to R’s own
   [`tools::toTitleCase()`](https://rdrr.io/r/tools/toTitleCase.html) and
-  [`tools::analyze_license()`](https://rdrr.io/r/tools/licensetools.html),
+  [`tools::analyze_license()`](https://search.r-project.org/R/refmans/tools/html/licensetools.html),
   so they match R’s behaviour. `license` also catches a bare `MIT`,
   which needs `MIT + file LICENSE` pointing at a file that exists, and a
   `LICENSE` holding the full MIT or BSD text rather than the `YEAR` /
