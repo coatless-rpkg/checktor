@@ -251,7 +251,7 @@ fetch_url_db <- function(path) {
 #' vignettes, and reports the ones that fail: 404s, other error statuses, and
 #' redirects that ought to point at their final target. This is what
 #' `R CMD check --as-cran` does, through the same base R machinery
-#' ([tools::check_package_urls()]), so you can see those findings without a full
+#' (\href{https://search.r-project.org/R/refmans/tools/html/urltools.html}{\verb{tools::check_package_urls()}}), so you can see those findings without a full
 #' `--as-cran` pass and without depending on the `urlchecker` package.
 #'
 #' It runs by default when you are working at the console, since that is when a

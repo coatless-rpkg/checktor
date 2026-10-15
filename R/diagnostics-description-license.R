@@ -6,7 +6,7 @@
 # parser rather than a regex over the field.
 #' Diagnose the License Field
 #'
-#' Flags a `License` that [tools::analyze_license()] cannot standardize, and a `+ file LICENSE` pointing at a file that does not exist. For MIT and the BSD licenses it also reads that file as `R CMD check` does: it must be the stub of `YEAR` and `COPYRIGHT HOLDER` fields (and `ORGANIZATION` for BSD 3-clause), so the full license text in its place is reported, as R's "License stub is invalid DCF" NOTE.
+#' Flags a `License` that \href{https://search.r-project.org/R/refmans/tools/html/licensetools.html}{\verb{tools::analyze_license()}} cannot standardize, and a `+ file LICENSE` pointing at a file that does not exist. For MIT and the BSD licenses it also reads that file as `R CMD check` does: it must be the stub of `YEAR` and `COPYRIGHT HOLDER` fields (and `ORGANIZATION` for BSD 3-clause), so the full license text in its place is reported, as R's "License stub is invalid DCF" NOTE.
 #'
 #' @section Source:
 #' The [CRAN Repository Policy](https://cran.r-project.org/web/packages/policies.html)

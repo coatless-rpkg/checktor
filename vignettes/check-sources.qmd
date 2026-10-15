@@ -171,7 +171,7 @@ verbatim, in a reply from CRAN.
 | Check | Severity | Source |
 |---|---|---|
 | `code_exercised` | `policy` | [CRAN incoming check][wre-check]: `--as-cran` WARNs "No examples, no tests, no vignettes" for a package that exports code and includes none of the three. [CRAN Policy][policy] asks that "the checks that are left do exercise all the features of the package". |
-| `citation_file` | `policy` | [CRAN incoming check][wre-check]: `--as-cran` NOTEs an `inst/CITATION` that calls the old-style `citEntry()` or `personList()`, and lists calls to `packageDescription()`, `library()` and `require()`. [WRE: CITATION files][wre-citation]: "It is desirable (and essential for CRAN) that the CITATION file does not contain calls to functions such as packageDescription which assume the package is installed". |
+| `citation_file` | `policy` | [CRAN incoming check][wre-check]: `--as-cran` NOTEs an `inst/CITATION` that calls the old-style `citEntry()` or [`personList()`][r-personlist], and lists calls to `packageDescription()`, `library()` and `require()`. [WRE: CITATION files][wre-citation]: "It is desirable (and essential for CRAN) that the CITATION file does not contain calls to functions such as packageDescription which assume the package is installed". |
 | `package_size` | `policy` | [CRAN Policy][policy]: CRAN limits the size of the built tarball. Recipe: [Package Size][cb-size], which gives the practical figures. |
 | `url_liveness` | `robustness` | [CRAN incoming check][wre-check]: `--as-cran` fetches URLs and NOTEs 404s and redirects. It runs at the console and stays off in scripts and checks, where the network would decide the result. |
 | `readme_links` | `robustness` | No formal rule. Relative README links whose targets are excluded from the tarball break on the package page. |
@@ -229,6 +229,7 @@ DESCRIPTION. To turn it off for every package, set `options(checktor.disable =
 [wre-citation]: https://cran.r-project.org/doc/manuals/r-release/R-exts.html#CITATION-files
 [wre-doc]: https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Documenting-functions
 [wre-bib]: https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Bibliographic-citations-and-references
+[r-personlist]: https://search.r-project.org/R/refmans/utils/html/personList.html
 [cookbook]: https://contributor.r-project.org/cran-cookbook/
 [cb-tf]: https://contributor.r-project.org/cran-cookbook/code_issues.html#tf-instead-of-truefalse
 [cb-seed]: https://contributor.r-project.org/cran-cookbook/code_issues.html#setting-a-specific-seed

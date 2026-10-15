@@ -31,7 +31,8 @@ is the fast local pass.
 \item Relative links in the \code{README} that would break on CRAN.
 \item A package that exports code but has no examples, no tests and no
 vignettes to exercise it.
-\item An \code{inst/CITATION} that uses the old-style \code{citEntry()} or \code{personList()},
+\item An \code{inst/CITATION} that uses the old-style \code{citEntry()} or
+\href{https://search.r-project.org/R/refmans/utils/html/personList.html}{\verb{personList()}},
 or calls \code{packageDescription()}, \code{library()} or \code{require()}.
 }
 

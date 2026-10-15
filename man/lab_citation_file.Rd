@@ -16,7 +16,8 @@ lab_citation_file(path = ".", verbose = TRUE)
 }
 \description{
 Flags an \code{inst/CITATION} that calls the old-style \code{citEntry()} (use
-\code{bibentry()}) or \code{personList()} and \code{as.personList()} (use \code{c()} on \code{person}
+\code{bibentry()}) or \href{https://search.r-project.org/R/refmans/utils/html/personList.html}{\verb{personList()}} and
+\href{https://search.r-project.org/R/refmans/utils/html/personList.html}{\verb{as.personList()}} (use \code{c()} on \code{person}
 objects), or that calls \code{packageDescription()}, \code{library()} or \code{require()}.
 R passes the file a \code{meta} object holding the package's DESCRIPTION, so it
 needs none of those, and each assumes the package is already installed.

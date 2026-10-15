@@ -33,8 +33,8 @@ fields in its own DESCRIPTION.
 ## Breaking changes
 
 * checktor needs R 4.5.0 or later, where 0.1.0 asked only for R 3.5.0. R 4.5.0 added
-  `tools::check_package_urls()`, which the new `url_liveness` check uses. An older
-  installation stays on 0.1.0.
+  [`tools::check_package_urls()`][r-urltools], which the new `url_liveness` check
+  uses. An older installation stays on 0.1.0.
 
 * The individual checks are now `lab_*()`, so the doctor orders a panel of labs.
   `diagnose_tf_usage()` is `lab_tf_usage()`, and the name after `lab_` is the check
@@ -176,7 +176,8 @@ fields in its own DESCRIPTION.
 
 * `url_liveness` fetches every URL in the DESCRIPTION, `.Rd` files and vignettes and
   reports the ones that return an error, a 404, or a redirect, which is what
-  `R CMD check --as-cran` does through `tools::check_package_urls()`. It runs when
+  `R CMD check --as-cran` does through
+  [`tools::check_package_urls()`][r-urltools]. It runs when
   you are at the console and stays off in scripts, in continuous integration and
   under `R CMD check`, where a slow or unreachable network would make the result
   depend on the machine rather than the package. Set
@@ -284,7 +285,8 @@ fields in its own DESCRIPTION.
   `.Rbuildignore` excludes do not count.
 
 * `citation_file` reads `inst/CITATION` for the calls CRAN's incoming check NOTEs:
-  the old-style `citEntry()`, `personList()` and `as.personList()`, and
+  the old-style `citEntry()`, [`personList()`][r-personlist] and
+  [`as.personList()`][r-personlist], and
   `packageDescription()`, `library()` or `require()`, which assume the package is
   installed when R already hands the file its DESCRIPTION as `meta`. R's own
   `if (!exists("meta") || is.null(meta))` fallback is exempt. The file is parsed,
@@ -393,7 +395,8 @@ reimplementing them.
   NOTE it and CRAN's page links it all the same.
 
 * `title_case` and `license` hand off to R's own `tools::toTitleCase()` and
-  `tools::analyze_license()`, so they match R's behaviour. `license` also catches a
+  [`tools::analyze_license()`][r-licensetools], so they match R's behaviour.
+  `license` also catches a
   bare `MIT`, which needs `MIT + file LICENSE` pointing at a file that exists, and
   a `LICENSE` holding the full MIT or BSD text rather than the `YEAR` /
   `COPYRIGHT HOLDER` stub, which `R CMD check` NOTEs as invalid DCF.
@@ -669,6 +672,10 @@ the code you wrote.
 
 * The pkgdown site picked up a theme drawn from the package logo, with a light and
   dark toggle in the navbar.
+
+[r-urltools]: https://search.r-project.org/R/refmans/tools/html/urltools.html
+[r-personlist]: https://search.r-project.org/R/refmans/utils/html/personList.html
+[r-licensetools]: https://search.r-project.org/R/refmans/tools/html/licensetools.html
 
 # checktor 0.1.0
 

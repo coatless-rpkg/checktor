@@ -3,7 +3,8 @@
 #' Diagnose Old-Style or Unsafe Calls in inst/CITATION
 #'
 #' Flags an `inst/CITATION` that calls the old-style `citEntry()` (use
-#' `bibentry()`) or `personList()` and `as.personList()` (use `c()` on `person`
+#' `bibentry()`) or \href{https://search.r-project.org/R/refmans/utils/html/personList.html}{\verb{personList()}} and
+#' \href{https://search.r-project.org/R/refmans/utils/html/personList.html}{\verb{as.personList()}} (use `c()` on `person`
 #' objects), or that calls `packageDescription()`, `library()` or `require()`.
 #' R passes the file a `meta` object holding the package's DESCRIPTION, so it
 #' needs none of those, and each assumes the package is already installed.

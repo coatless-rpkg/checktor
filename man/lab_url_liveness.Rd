@@ -19,7 +19,7 @@ Fetches every URL in the package, across DESCRIPTION, \code{.Rd} files and
 vignettes, and reports the ones that fail: 404s, other error statuses, and
 redirects that ought to point at their final target. This is what
 \verb{R CMD check --as-cran} does, through the same base R machinery
-(\code{\link[tools:check_package_urls]{tools::check_package_urls()}}), so you can see those findings without a full
+(\href{https://search.r-project.org/R/refmans/tools/html/urltools.html}{\verb{tools::check_package_urls()}}), so you can see those findings without a full
 \code{--as-cran} pass and without depending on the \code{urlchecker} package.
 }
 \details{

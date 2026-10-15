@@ -16,7 +16,8 @@
 #' - Relative links in the `README` that would break on CRAN.
 #' - A package that exports code but has no examples, no tests and no
 #'   vignettes to exercise it.
-#' - An `inst/CITATION` that uses the old-style `citEntry()` or `personList()`,
+#' - An `inst/CITATION` that uses the old-style `citEntry()` or
+#'   \href{https://search.r-project.org/R/refmans/utils/html/personList.html}{\verb{personList()}},
 #'   or calls `packageDescription()`, `library()` or `require()`.
 #'
 #' [lab_cran_comments_file()] is intentionally not part of this default
