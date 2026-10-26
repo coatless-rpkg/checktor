@@ -120,7 +120,7 @@ results <- checktor(pkg, verbose = FALSE, progress = FALSE)
 results
 #> ── Package Doctor - Diagnosis Summary ──────────────────────────────────────────
 #> Patient: examplepackage
-#> Examined: 2026-10-15 23:04:27.017247
+#> Examined: 2026-10-26 20:02:47.012239
 #> Doctor version: 0.2.0.9000
 #> 
 #> CODE ISSUES: 1 failing check
