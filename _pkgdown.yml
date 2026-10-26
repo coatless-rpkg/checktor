@@ -29,9 +29,12 @@ navbar:
     # `lightswitch` must be listed explicitly. Setting `light-switch: true`
     # alone only enables the feature; pkgdown drops the toggle whenever
     # `structure.right` is overridden, as it is here.
-    left:  [intro, reference, articles, news]
+    left:  [intro, reference, articles, news, blog]
     right: [search, github, lightswitch]
   components:
+    blog:
+      text: Blog posts
+      href: https://blog.thecoatlessprofessor.com/projects/checktor/
     articles:
       text: Articles
       menu:
